@@ -1,0 +1,183 @@
+import makeWASocket, {
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
+  proto,
+} from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
+import qrcode from "qrcode";
+import { storage } from "./storage";
+import { detectIntentAndProcess, chatWithContext } from "./ai";
+import type { IntentResult } from "./ai";
+import { log } from "./index";
+import * as fs from "fs";
+import * as path from "path";
+
+export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
+
+const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
+
+class WhatsAppManager {
+  private sock: any = null;
+  private status: WhatsAppStatus = "disconnected";
+  private qrCode: string | null = null;
+  private connectedPhone: string | null = null;
+  private retryCount = 0;
+
+  getStatus(): WhatsAppStatus { return this.status; }
+  getQrCode(): string | null { return this.qrCode; }
+  getConnectedPhone(): string | null { return this.connectedPhone; }
+
+  async initialize(): Promise<void> {
+    if (this.status === "connected") return;
+
+    if (!fs.existsSync(SESSION_DIR)) {
+      fs.mkdirSync(SESSION_DIR, { recursive: true });
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+    const { version } = await fetchLatestBaileysVersion();
+
+    this.sock = makeWASocket({
+      version,
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, { level: "silent" } as any),
+      },
+      printQRInTerminal: false,
+      logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({ level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {} }) } as any,
+    });
+
+    this.sock.ev.on("connection.update", async (update: any) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        this.status = "qr_pending";
+        this.qrCode = await qrcode.toDataURL(qr);
+        log("WhatsApp QR code generated", "whatsapp");
+      }
+
+      if (connection === "close") {
+        const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        const shouldReconnect = reason !== DisconnectReason.loggedOut;
+        log(`WhatsApp disconnected — reason: ${reason}`, "whatsapp");
+        this.status = "disconnected";
+        this.qrCode = null;
+        this.connectedPhone = null;
+
+        if (shouldReconnect && this.retryCount < 5) {
+          this.retryCount++;
+          setTimeout(() => this.initialize(), 3000 * this.retryCount);
+        } else if (!shouldReconnect) {
+          this.clearSession();
+        }
+      }
+
+      if (connection === "open") {
+        this.status = "connected";
+        this.qrCode = null;
+        this.retryCount = 0;
+        this.connectedPhone = this.sock?.user?.id?.split(":")[0] || null;
+        log(`WhatsApp connected — ${this.connectedPhone}`, "whatsapp");
+      }
+    });
+
+    this.sock.ev.on("creds.update", saveCreds);
+
+    this.sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
+      if (type !== "notify") return;
+      for (const msg of messages) {
+        if (msg.key.fromMe) continue;
+        await this.handleIncomingMessage(msg);
+      }
+    });
+  }
+
+  private async handleIncomingMessage(msg: proto.IWebMessageInfo): Promise<void> {
+    const jid = msg.key.remoteJid;
+    if (!jid) return;
+
+    const senderPhone = jid.replace("@s.whatsapp.net", "").replace(/[^0-9]/g, "");
+    const text =
+      msg.message?.conversation ||
+      msg.message?.extendedTextMessage?.text ||
+      msg.message?.ephemeralMessage?.message?.conversation ||
+      "";
+
+    if (!text.trim()) return;
+
+    log(`WhatsApp message from ${senderPhone}: ${text}`, "whatsapp");
+
+    try {
+      const profile = await storage.getUserProfileByPhone(senderPhone);
+      if (!profile) {
+        await this.sendMessage(jid, "❌ Número não vinculado ao AXIS.\n\nConfigure em: Configurações → WhatsApp.");
+        return;
+      }
+
+      const result = await detectIntentAndProcess(text, profile.userId);
+      const reply = await this.buildReply(result, profile.userId);
+      await this.sendMessage(jid, reply);
+    } catch (err: any) {
+      log(`WhatsApp error handling message: ${err.message}`, "whatsapp");
+      await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
+    }
+  }
+
+  private async buildReply(result: IntentResult, userId: string): Promise<string> {
+    const { intent, data } = result;
+
+    switch (intent) {
+      case "expense":
+        return `✅ Gasto de R$ ${Number(data.amount).toFixed(2)} em *${data.categoryName || "outros"}* registrado!`;
+      case "income":
+        return `✅ Receita de R$ ${Number(data.amount).toFixed(2)} registrada!`;
+      case "task": {
+        const p = data.priority === "high" ? "alta" : data.priority === "medium" ? "média" : "baixa";
+        return `✅ Tarefa *${data.title}* criada com prioridade ${p}!`;
+      }
+      case "schedule": {
+        const dt = data.startTime ? new Date(data.startTime).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+        return `✅ Compromisso *${data.title}* agendado${dt ? ` para ${dt}` : ""}!`;
+      }
+      case "habit":
+        return `✅ Hábito *${data.name}* criado!`;
+      case "chat": {
+        const chatReply = await chatWithContext(result.rawText, userId).catch(() => null);
+        return chatReply || "💬 Mensagem recebida!";
+      }
+      default:
+        return "🤔 Não entendi. Tente:\n• *gastei 50 no almoço*\n• *criar tarefa reunião*\n• *hábito academia todo dia*\n• *agendar consulta sexta 10h*";
+    }
+  }
+
+  private async sendMessage(jid: string, text: string): Promise<void> {
+    if (!this.sock || this.status !== "connected") return;
+    await this.sock.sendMessage(jid, { text });
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.sock) {
+      await this.sock.logout().catch(() => {});
+      this.sock = null;
+    }
+    this.status = "disconnected";
+    this.qrCode = null;
+    this.connectedPhone = null;
+    this.clearSession();
+    log("WhatsApp disconnected by user", "whatsapp");
+  }
+
+  private clearSession(): void {
+    if (fs.existsSync(SESSION_DIR)) {
+      fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+    }
+  }
+
+  hasSession(): boolean {
+    return fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0;
+  }
+}
+
+export const whatsappManager = new WhatsAppManager();

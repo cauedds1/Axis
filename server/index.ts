@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runPeriodicAlertsForAll } from "./alerts";
+import { whatsappManager } from "./whatsapp";
 
 const app = express();
 const httpServer = createServer(app);
@@ -106,6 +107,10 @@ app.use((req, res, next) => {
       setTimeout(() => {
         runPeriodicAlertsForAll().catch(() => {});
       }, 30_000);
+
+      if (whatsappManager.hasSession()) {
+        whatsappManager.initialize().catch(() => {});
+      }
 
       setInterval(() => {
         runPeriodicAlertsForAll().catch(() => {});

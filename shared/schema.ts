@@ -108,6 +108,7 @@ export const userProfile = pgTable("user_profile", {
   aiDiagnosis: text("ai_diagnosis"),
   lastLoginAt: timestamp("last_login_at"),
   emailAlerts: text("email_alerts").default('{"billDueSoon":true,"offlineReminder":true}'),
+  whatsappPhone: text("whatsapp_phone"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

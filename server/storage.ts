@@ -78,6 +78,7 @@ export interface IStorage {
   createEmailAlertLog(data: InsertEmailAlertLog): Promise<EmailAlertLog>;
   getRecentAlerts(userId: string, alertType: string, referenceId: string | null, sinceDate: Date): Promise<EmailAlertLog[]>;
   getAllProfiles(): Promise<UserProfile[]>;
+  getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined>;
 
   deleteUserAccount(userId: string): Promise<void>;
 }
@@ -364,6 +365,11 @@ export class DatabaseStorage implements IStorage {
 
   async getAllProfiles(): Promise<UserProfile[]> {
     return db.select().from(userProfile);
+  }
+
+  async getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined> {
+    const [profile] = await db.select().from(userProfile).where(eq(userProfile.whatsappPhone, phone));
+    return profile as (UserProfile & { userId: string }) | undefined;
   }
 
   async deleteUserAccount(userId: string): Promise<void> {

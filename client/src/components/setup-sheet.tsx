@@ -23,6 +23,10 @@ import {
   Plus,
   Bell,
   Mail,
+  MessageCircle,
+  Wifi,
+  WifiOff,
+  QrCode,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +36,7 @@ const MINT = "#4ECDC4";
 const LAVANDA = "#A78BFA";
 const CORAL = "#FF6B6B";
 
-type Tab = "renda" | "gastos" | "rotina" | "notificacoes";
+type Tab = "renda" | "gastos" | "rotina" | "notificacoes" | "whatsapp";
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 interface Recurrence {
@@ -1060,6 +1064,143 @@ function SectionNotificacoes() {
   );
 }
 
+function SectionWhatsApp() {
+  const { toast } = useToast();
+  const [phone, setPhone] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
+
+  const { data: status, refetch } = useQuery<{ status: string; qrCode?: string; phone?: string }>({
+    queryKey: ["/api/whatsapp/status"],
+    refetchInterval: (data) => (data?.status === "qr_pending" ? 3000 : false),
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
+    onSuccess: () => setTimeout(() => refetch(), 1500),
+    onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/disconnect"),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] }); refetch(); },
+    onError: () => toast({ title: "Erro ao desconectar", variant: "destructive" }),
+  });
+
+  const phoneMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
+    onSuccess: () => { setPhoneSaved(true); toast({ title: "Número vinculado com sucesso!" }); setTimeout(() => setPhoneSaved(false), 2000); },
+    onError: () => toast({ title: "Erro ao salvar número", variant: "destructive" }),
+  });
+
+  const wStatus = status?.status || "disconnected";
+
+  const statusConfig = {
+    disconnected: { label: "Desconectado", color: "#FF1744", icon: WifiOff },
+    qr_pending:   { label: "Aguardando QR", color: "#FFA000", icon: QrCode },
+    connected:    { label: "Conectado", color: "#00E5C8", icon: Wifi },
+  }[wStatus] || { label: "Desconectado", color: "#FF1744", icon: WifiOff };
+
+  const StatusIcon = statusConfig.icon;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1">WhatsApp Bot</p>
+        <p className="text-xs text-white/40 leading-relaxed">
+          Envie mensagens para o número vinculado e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
+        </p>
+      </div>
+
+      <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-3">
+          <StatusIcon className="h-5 w-5" style={{ color: statusConfig.color }} />
+          <div>
+            <p className="text-sm font-semibold text-white">{statusConfig.label}</p>
+            {wStatus === "connected" && status?.phone && (
+              <p className="text-[11px] text-white/40">+{status.phone}</p>
+            )}
+          </div>
+        </div>
+        {wStatus === "connected" ? (
+          <button
+            onClick={() => disconnectMutation.mutate()}
+            disabled={disconnectMutation.isPending}
+            className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+            style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+            data-testid="button-whatsapp-disconnect"
+          >
+            {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
+          </button>
+        ) : wStatus === "disconnected" ? (
+          <button
+            onClick={() => connectMutation.mutate()}
+            disabled={connectMutation.isPending}
+            className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+            style={{ background: "rgba(0,229,200,0.1)", color: "#00E5C8", border: "1px solid rgba(0,229,200,0.2)" }}
+            data-testid="button-whatsapp-connect"
+          >
+            {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Conectar"}
+          </button>
+        ) : null}
+      </div>
+
+      {wStatus === "qr_pending" && status?.qrCode && (
+        <div className="rounded-2xl p-4 flex flex-col items-center gap-3" style={{ background: "rgba(255,160,0,0.05)", border: "1px solid rgba(255,160,0,0.2)" }}>
+          <p className="text-xs text-white/60 text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
+          <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
+          <p className="text-[10px] text-white/30 text-center">O QR expira em 60 segundos — atualize se necessário</p>
+        </div>
+      )}
+
+      {wStatus === "qr_pending" && !status?.qrCode && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-white/40" />
+          <span className="text-xs text-white/40">Gerando QR code...</span>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Seu número de WhatsApp</p>
+        <p className="text-xs text-white/40">Vincule seu número para receber e enviar mensagens ao AXIS.</p>
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="+55 11 99999-9999"
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/20"
+            data-testid="input-whatsapp-phone"
+          />
+          <button
+            onClick={() => phoneMutation.mutate()}
+            disabled={phoneMutation.isPending || !phone.trim()}
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-all"
+            style={{ background: phoneSaved ? "rgba(0,229,200,0.15)" : "rgba(255,255,255,0.06)", color: phoneSaved ? "#00E5C8" : "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+            data-testid="button-save-whatsapp-phone"
+          >
+            {phoneMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : phoneSaved ? <Check className="h-3.5 w-3.5" /> : "Salvar"}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Exemplos de mensagens</p>
+        {[
+          "gastei 50 no almoço",
+          "criar tarefa reunião de equipe sexta",
+          "hábito academia todo dia às 7h",
+          "agendar consulta médica segunda 10h",
+        ].map(ex => (
+          <div key={ex} className="flex items-start gap-2">
+            <MessageCircle className="h-3 w-3 text-white/20 mt-0.5 shrink-0" />
+            <span className="text-[11px] text-white/35 italic">"{ex}"</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<Tab>("gastos");
   const [savedIncome, setSavedIncome] = useState("");
@@ -1089,6 +1230,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
     { id: "gastos", label: "Gastos Fixos", icon: ClipboardList },
     { id: "rotina", label: "Rotina", icon: Calendar },
     { id: "notificacoes", label: "Alertas", icon: Bell },
+    { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
   ];
 
   return (
@@ -1152,6 +1294,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
                 {activeTab === "gastos" && <SectionGastos />}
                 {activeTab === "rotina" && <SectionRotina />}
                 {activeTab === "notificacoes" && <SectionNotificacoes />}
+                {activeTab === "whatsapp" && <SectionWhatsApp />}
               </motion.div>
             </AnimatePresence>
           </div>

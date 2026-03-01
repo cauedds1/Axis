@@ -9,6 +9,7 @@ import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts,
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { whatsappManager } from "./whatsapp";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -1591,6 +1592,44 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
       res.status(500).json({ message: error.message });
     }
+  });
+
+  // ── WHATSAPP ROUTES ─────────────────────────────────────────────────────
+  app.get("/api/whatsapp/status", isAuthenticated, (_req, res) => {
+    res.json({
+      status: whatsappManager.getStatus(),
+      qrCode: whatsappManager.getQrCode(),
+      phone: whatsappManager.getConnectedPhone(),
+    });
+  });
+
+  app.post("/api/whatsapp/connect", isAuthenticated, async (_req, res) => {
+    try {
+      if (whatsappManager.getStatus() === "connected") {
+        return res.json({ status: "connected", phone: whatsappManager.getConnectedPhone() });
+      }
+      whatsappManager.initialize().catch(err => console.error("WhatsApp init error:", err));
+      res.json({ status: "initializing" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/whatsapp/disconnect", isAuthenticated, async (_req, res) => {
+    try {
+      await whatsappManager.disconnect();
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/user/whatsapp-phone", isAuthenticated, async (req, res) => {
+    const userId = getUserId(req);
+    const { phone } = req.body;
+    const cleaned = (phone || "").replace(/[^0-9]/g, "");
+    await storage.upsertUserProfile(userId, { whatsappPhone: cleaned || null } as any);
+    res.json({ success: true, phone: cleaned });
   });
 
   return httpServer;
