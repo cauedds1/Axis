@@ -9,7 +9,7 @@ import makeWASocket, {
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode";
 import { storage } from "./storage";
-import { detectIntentAndProcess, chatWithContext, processReceiptPhoto, transcribeAudio, processPDFExtract } from "./ai";
+import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./index";
 import * as fs from "fs";
@@ -356,157 +356,176 @@ class WhatsAppManager {
       }
     } catch {}
 
-    let receipt: any;
+    let multiResult: { count: number; receipts: any[] };
     try {
-      receipt = await processReceiptPhoto(dataUrl, userId, userName);
+      multiResult = await processMultipleReceipts(dataUrl, userId, userName);
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise de imagem pela IA — ${aiErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente descrever o gasto em texto, por exemplo: *gastei 50 reais no almoço*");
       return;
     }
 
-    if (!receipt || !receipt.totalAmount) {
+    const validReceipts = multiResult.receipts.filter(r => r.totalAmount);
+    if (validReceipts.length === 0) {
       await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida ou descreva o gasto em texto.");
       return;
     }
 
-    // Safety net: cross-check receiver/sender name against user's name
-    // Normalize a string: lowercase, remove accents, keep only letters
+    // Helper: normalize name for comparison
     const normName = (s: string) =>
       s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").trim();
 
-    if (userName && (receipt.imageType === "pix_sent" || receipt.imageType === "pix_received")) {
-      const userNorm = normName(userName);
-      const userParts = userNorm.split(/\s+/).filter(w => w.length > 2);
-      const firstName = userParts[0] ?? "";
-      const lastName = userParts[userParts.length - 1] ?? "";
-      const receiverNorm = receipt.receiverName ? normName(receipt.receiverName) : "";
-      const senderNorm = receipt.senderName ? normName(receipt.senderName) : "";
+    const userNorm = userName ? normName(userName) : "";
+    const userParts = userNorm.split(/\s+/).filter(w => w.length > 2);
+    const firstName = userParts[0] ?? "";
+    const lastName = userParts[userParts.length - 1] ?? "";
+    const nameMatchesIn = (target: string) =>
+      firstName.length > 0 && lastName.length > 0 && firstName !== lastName &&
+      target.includes(firstName) && target.includes(lastName);
 
-      // Require BOTH first name AND last name to be present to avoid false positives
-      const nameMatchesIn = (target: string) =>
-        firstName.length > 0 && lastName.length > 0 && firstName !== lastName &&
-        target.includes(firstName) && target.includes(lastName);
-
-      // If receiverName matches user's name but AI said pix_sent → correct to pix_received
-      const receiverIsUser = nameMatchesIn(receiverNorm);
-      // If senderName matches user's name but AI said pix_received → correct to pix_sent
-      const senderIsUser = nameMatchesIn(senderNorm);
-
-      if (receiverIsUser && receipt.imageType === "pix_sent") {
-        log(`WhatsApp: corrigindo classificação pix_sent→pix_received (receiverName="${receipt.receiverName}" bate com userName="${userName}")`, "whatsapp");
-        receipt.imageType = "pix_received";
-        receipt.transactionType = "income";
-      } else if (senderIsUser && receipt.imageType === "pix_received") {
-        log(`WhatsApp: corrigindo classificação pix_received→pix_sent (senderName="${receipt.senderName}" bate com userName="${userName}")`, "whatsapp");
-        receipt.imageType = "pix_sent";
-        receipt.transactionType = "expense";
+    // Helper: build tx data from a single receipt object
+    const buildTxData = (receipt: any) => {
+      // Correct Pix direction if user name is known
+      if (userName && (receipt.imageType === "pix_sent" || receipt.imageType === "pix_received")) {
+        const receiverNorm = receipt.receiverName ? normName(receipt.receiverName) : "";
+        const senderNorm = receipt.senderName ? normName(receipt.senderName) : "";
+        if (nameMatchesIn(receiverNorm) && receipt.imageType === "pix_sent") {
+          receipt.imageType = "pix_received";
+          receipt.transactionType = "income";
+        } else if (nameMatchesIn(senderNorm) && receipt.imageType === "pix_received") {
+          receipt.imageType = "pix_sent";
+          receipt.transactionType = "expense";
+        }
       }
-    }
 
-    const amount = Number(receipt.totalAmount);
-    const transactionType: "expense" | "income" = receipt.transactionType === "income" ? "income" : "expense";
-    const categoryName = receipt.categoryName || "outros";
-    const imageType = receipt.imageType ?? "receipt";
+      const amount = Number(receipt.totalAmount);
+      const transactionType: "expense" | "income" = receipt.transactionType === "income" ? "income" : "expense";
+      const categoryName = receipt.categoryName || "outros";
+      const imageType = receipt.imageType ?? "receipt";
 
-    // Build date + time combined
-    let date = new Date();
-    if (receipt.date) {
-      const [y, m, d] = receipt.date.split("-").map(Number);
-      if (receipt.time) {
-        const [h, min] = receipt.time.split(":").map(Number);
-        date = new Date(y, m - 1, d, h, min, 0, 0);
+      let date = new Date();
+      if (receipt.date) {
+        const [y, m, d] = receipt.date.split("-").map(Number);
+        if (receipt.time) {
+          const [h, min] = receipt.time.split(":").map(Number);
+          date = new Date(y, m - 1, d, h, min, 0, 0);
+        } else {
+          date = new Date(y, m - 1, d);
+        }
+      }
+
+      const senderName: string | null = receipt.senderName || null;
+      const receiverName: string | null = receipt.receiverName || null;
+      const establishment: string | null = receipt.establishment || senderName || receiverName || null;
+
+      let description: string;
+      if (imageType === "pix_received") {
+        description = senderName ? `Pix de ${senderName}` : "Pix recebido";
+      } else if (imageType === "pix_sent") {
+        description = receiverName ? `Pix para ${receiverName}` : "Pix enviado";
       } else {
-        date = new Date(y, m - 1, d);
+        description = receipt.establishment || receipt.description || "Comprovante";
       }
-    }
 
-    // Build establishment and description based on transaction type
-    const senderName: string | null = receipt.senderName || null;
-    const receiverName: string | null = receipt.receiverName || null;
-    const establishment: string | null = receipt.establishment || senderName || receiverName || null;
+      const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
 
-    let description: string;
-    if (imageType === "pix_received") {
-      description = senderName ? `Pix de ${senderName}` : "Pix recebido";
-    } else if (imageType === "pix_sent") {
-      description = receiverName ? `Pix para ${receiverName}` : "Pix enviado";
-    } else {
-      description = receipt.establishment || receipt.description || "Comprovante";
-    }
+      const transactionData = {
+        userId,
+        type: transactionType,
+        amount: amount as any,
+        categoryName,
+        description,
+        date,
+        paymentMethod: receipt.paymentMethod || null,
+        establishment,
+        location: receipt.location || null,
+        source: "whatsapp",
+        receiptItems: receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
+      };
 
-    const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
+      const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const timeStr = receipt.time ? ` às ${receipt.time}` : "";
 
-    const transactionData = {
-      userId,
-      type: transactionType,
-      amount: amount as any,
-      categoryName,
-      description,
-      date,
-      paymentMethod: receipt.paymentMethod || null,
-      establishment,
-      location: receipt.location || null,
-      source: "whatsapp",
-      receiptItems: receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
+      let replyLine: string;
+      if (imageType === "pix_received") {
+        replyLine = `📥 Pix recebido${senderName ? ` de *${senderName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
+      } else if (imageType === "pix_sent") {
+        replyLine = `📤 Pix enviado${receiverName ? ` p/ *${receiverName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
+      } else {
+        replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}${timeStr}`;
+        if (receipt.items && receipt.items.length > 1) replyLine += ` 📋 ${receipt.items.length} itens`;
+      }
+
+      return { transactionData, amount, transactionType, description, establishment, date, replyLine };
     };
 
-    const emoji = transactionType === "income" ? "📥" : "📤";
-    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const timeStr = receipt.time ? ` às ${receipt.time}` : "";
+    // Single receipt: keep existing duplicate-detection + pendingDuplicates flow
+    if (validReceipts.length === 1) {
+      const { transactionData, amount, transactionType, description, establishment, date, replyLine } = buildTxData(validReceipts[0]);
 
-    let reply: string;
-    if (imageType === "pix_received") {
-      reply = `${emoji} *Pix recebido registrado!*\n`;
-      if (senderName) reply += `👤 De: *${senderName}*\n`;
-    } else if (imageType === "pix_sent") {
-      reply = `📤 *Pix enviado registrado!*\n`;
-      if (receiverName) reply += `👤 Para: *${receiverName}*\n`;
-    } else {
-      reply = `✅ *Comprovante registrado!*\n`;
-      if (establishment) reply += `🏪 ${establishment}\n`;
-    }
-    reply += `💰 R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*`;
-    reply += `\n📅 ${dateStr}${timeStr}`;
-    if (receipt.paymentMethod) reply += `\n💳 ${receipt.paymentMethod}`;
-    if (receipt.items && receipt.items.length > 1) reply += `\n📋 ${receipt.items.length} itens`;
+      const windowStart = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const recent = await storage.getTransactions(userId, { startDate: windowStart, endDate: windowEnd });
 
-    // Duplicate detection: check for transactions with same amount + description/establishment within last 7 days
-    const windowStart = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const windowEnd = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const recent = await storage.getTransactions(userId, { startDate: windowStart, endDate: windowEnd });
-
-    const isDuplicate = recent.some(tx => {
-      if (Math.abs(Number(tx.amount) - amount) > 0.01) return false;
-      if (tx.type !== transactionType) return false;
-      const txDate = new Date(tx.date);
-      const diffMs = Math.abs(txDate.getTime() - date.getTime());
-      const withinTwoHours = diffMs < 2 * 60 * 60 * 1000;
-      const sameDay = txDate.toDateString() === date.toDateString();
-      if (!withinTwoHours && !sameDay) return false;
-      const descMatch = tx.description?.toLowerCase() === description.toLowerCase();
-      const estMatch = establishment && tx.establishment?.toLowerCase() === establishment.toLowerCase();
-      return descMatch || estMatch;
-    });
-
-    if (isDuplicate) {
-      log(`WhatsApp: transação duplicada detectada — R$ ${amount} "${description}"`, "whatsapp");
-      this.pendingDuplicates.set(jid, {
-        transactionData,
-        replyText: reply,
-        expiresAt: Date.now() + 5 * 60 * 1000,
+      const isDuplicate = recent.some(tx => {
+        if (Math.abs(Number(tx.amount) - amount) > 0.01) return false;
+        if (tx.type !== transactionType) return false;
+        const txDate = new Date(tx.date);
+        const diffMs = Math.abs(txDate.getTime() - date.getTime());
+        const withinTwoHours = diffMs < 2 * 60 * 60 * 1000;
+        const sameDay = txDate.toDateString() === date.toDateString();
+        if (!withinTwoHours && !sameDay) return false;
+        const descMatch = tx.description?.toLowerCase() === description.toLowerCase();
+        const estMatch = establishment && tx.establishment?.toLowerCase() === establishment.toLowerCase();
+        return descMatch || estMatch;
       });
-      await this.sendMessage(jid,
-        `⚠️ *Transação já cadastrada!*\n${reply}\n\n` +
-        `Essa transação parece já ter sido registrada. Deseja cadastrar novamente?\n` +
-        `Responda *sim* para cadastrar ou *não* para cancelar.`
-      );
+
+      if (isDuplicate) {
+        log(`WhatsApp: transação duplicada detectada — R$ ${amount} "${description}"`, "whatsapp");
+        this.pendingDuplicates.set(jid, {
+          transactionData,
+          replyText: replyLine,
+          expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+        await this.sendMessage(jid,
+          `⚠️ *Transação já cadastrada!*\n${replyLine}\n\n` +
+          `Essa transação parece já ter sido registrada. Deseja cadastrar novamente?\n` +
+          `Responda *sim* para cadastrar ou *não* para cancelar.`
+        );
+        return;
+      }
+
+      await storage.createTransaction(transactionData);
+      await this.sendMessage(jid, `✅ *Comprovante registrado!*\n${replyLine}`);
+      log(`WhatsApp image processed — ${transactionType} R$ ${amount}`, "whatsapp");
       return;
     }
 
-    await storage.createTransaction(transactionData);
-    await this.sendMessage(jid, reply);
-    log(`WhatsApp image processed — ${transactionType} R$ ${amount} (${imageType})`, "whatsapp");
+    // Multiple receipts: save all, build consolidated summary
+    const lines: string[] = [];
+    let savedCount = 0;
+    for (const receipt of validReceipts) {
+      const { transactionData, amount, transactionType, replyLine } = buildTxData(receipt);
+      try {
+        await storage.createTransaction(transactionData);
+        lines.push(replyLine);
+        savedCount++;
+        log(`WhatsApp multi-receipt: saved ${transactionType} R$ ${amount}`, "whatsapp");
+      } catch (err: any) {
+        log(`WhatsApp multi-receipt: erro ao salvar — ${err.message}`, "whatsapp");
+      }
+    }
+
+    if (savedCount === 0) {
+      await this.sendMessage(jid, "😕 Não consegui salvar os comprovantes. Tente novamente.");
+      return;
+    }
+
+    const header = savedCount === 1
+      ? `✅ *1 comprovante registrado!*`
+      : `✅ *${savedCount} comprovantes registrados!*`;
+    await this.sendMessage(jid, `${header}\n\n${lines.join("\n\n")}`);
+    log(`WhatsApp: ${savedCount} comprovantes processados da imagem`, "whatsapp");
   }
 
   private async handleAudioMessage(

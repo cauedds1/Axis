@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { z } from "zod";
 import multer from "multer";
-import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification } from "./ai";
+import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification } from "./ai";
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
 import { db } from "./db";
 import { users } from "@shared/schema";
@@ -306,7 +306,7 @@ export async function registerRoutes(
       const userId = getUserId(req);
       if (!req.file) return res.status(400).json({ message: "Nenhuma imagem enviada" });
       const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-      const result = await processReceiptPhoto(base64, userId);
+      const result = await processMultipleReceipts(base64, userId);
       res.json(result);
     } catch (error: any) {
       console.error("Error processing photo:", error);
@@ -317,30 +317,39 @@ export async function registerRoutes(
   app.post("/api/finance/photo/confirm", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { items, totalAmount, establishment, date, categoryName, location, paymentMethod, transactionType, description: bodyDesc } = req.body;
 
-      const txItems: { description: string; amount: number }[] = (items || []).map((i: any) => ({
-        description: String(i.description || ""),
-        amount: Number(i.amount || 0),
-      }));
-      const total = Number(totalAmount) || txItems.reduce((s, i) => s + i.amount, 0);
-      const desc = bodyDesc || establishment || (txItems.length === 1 ? txItems[0].description : "Nota fiscal");
-      const type = transactionType === "income" ? "income" : "expense";
+      // Support both single receipt (legacy) and array of receipts
+      const receiptsRaw: any[] = Array.isArray(req.body.receipts)
+        ? req.body.receipts
+        : [req.body];
 
-      const tx = await storage.createTransaction({
-        userId,
-        amount: total as any,
-        description: desc,
-        categoryName: categoryName || null,
-        type,
-        date: date ? new Date(date) : new Date(),
-        source: "photo",
-        establishment: establishment || null,
-        location: location || null,
-        paymentMethod: paymentMethod || null,
-        receiptItems: txItems.length > 1 ? JSON.stringify(txItems) : null,
-      });
-      res.json(tx);
+      const created = await Promise.all(
+        receiptsRaw.map(async (r: any) => {
+          const { items, totalAmount, establishment, date, categoryName, location, paymentMethod, transactionType, description: bodyDesc } = r;
+          const txItems: { description: string; amount: number }[] = (items || []).map((i: any) => ({
+            description: String(i.description || ""),
+            amount: Number(i.amount || 0),
+          }));
+          const total = Number(totalAmount) || txItems.reduce((s, i) => s + i.amount, 0);
+          const desc = bodyDesc || establishment || (txItems.length === 1 ? txItems[0].description : "Nota fiscal");
+          const type = transactionType === "income" ? "income" : "expense";
+
+          return storage.createTransaction({
+            userId,
+            amount: total as any,
+            description: desc,
+            categoryName: categoryName || null,
+            type,
+            date: date ? new Date(date) : new Date(),
+            source: "photo",
+            establishment: establishment || null,
+            location: location || null,
+            paymentMethod: paymentMethod || null,
+            receiptItems: txItems.length > 1 ? JSON.stringify(txItems) : null,
+          });
+        })
+      );
+      res.json(created);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -420,46 +429,60 @@ export async function registerRoutes(
 
       if (isImage) {
         const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
-        const result = await processReceiptPhoto(base64, userId);
-        if (!result.totalAmount || result.imageType === "unknown") {
+        const multiResult = await processMultipleReceipts(base64, userId);
+        const validReceipts = multiResult.receipts.filter((r: any) => r.totalAmount && r.imageType !== "unknown");
+
+        if (validReceipts.length === 0) {
           botMessage = "🤔 Não consegui identificar transações nessa imagem. Tente uma foto mais clara do comprovante ou nota fiscal.";
         } else {
-          const txDate = result.date ? new Date(result.date) : new Date();
-          if (result.time && result.time !== "00:00") {
-            const [h, m] = result.time.split(":").map(Number);
-            txDate.setHours(h, m, 0, 0);
+          const lines: string[] = [];
+          for (const result of validReceipts) {
+            const txDate = result.date ? new Date(result.date) : new Date();
+            if (result.time && result.time !== "00:00") {
+              const [h, m] = result.time.split(":").map(Number);
+              txDate.setHours(h, m, 0, 0);
+            }
+            const txType = result.transactionType === "income" ? "income" : "expense";
+            const txAmount = Number(result.totalAmount);
+            const txEstablishment = result.establishment || null;
+            const txDesc = result.items?.[0]?.description || result.receiverName || result.senderName || (txEstablishment ?? "Comprovante");
+
+            const dayStart = new Date(txDate); dayStart.setHours(0, 0, 0, 0);
+            const dayEnd = new Date(txDate); dayEnd.setHours(23, 59, 59, 999);
+            const existing = await storage.getTransactions(userId, { startDate: dayStart, endDate: dayEnd });
+            const isDuplicate = existing.some((e: any) =>
+              Math.abs(Number(e.amount) - txAmount) < 0.01 && e.type === txType
+            );
+
+            if (isDuplicate) {
+              skipped++;
+              lines.push(`⚠️ Já cadastrado: ${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}`);
+            } else {
+              const txItems = result.items && result.items.length > 1 ? result.items : null;
+              await storage.createTransaction({
+                userId,
+                amount: txAmount as any,
+                description: txEstablishment || txDesc,
+                categoryName: result.categoryName || "outros",
+                type: txType as "expense" | "income",
+                date: txDate,
+                source: "photo",
+                establishment: txEstablishment,
+                paymentMethod: result.paymentMethod || null,
+                location: result.location || null,
+                receiptItems: txItems ? JSON.stringify(txItems.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
+              });
+              imported++;
+              lines.push(`${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""} · ${result.categoryName || "outros"}`);
+            }
           }
-          const txType = result.transactionType === "income" ? "income" : "expense";
-          const txAmount = Number(result.totalAmount);
-          const txEstablishment = result.establishment || null;
-          const txDesc = result.items?.[0]?.description || result.receiverName || result.senderName || (txEstablishment ?? "Comprovante");
 
-          const dayStart = new Date(txDate); dayStart.setHours(0, 0, 0, 0);
-          const dayEnd = new Date(txDate); dayEnd.setHours(23, 59, 59, 999);
-          const existing = await storage.getTransactions(userId, { startDate: dayStart, endDate: dayEnd });
-          const isDuplicate = existing.some((e: any) =>
-            Math.abs(Number(e.amount) - txAmount) < 0.01 && e.type === txType
-          );
-
-          if (isDuplicate) {
-            skipped = 1;
-            botMessage = `⚠️ Essa transação parece já estar cadastrada!\n\n${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}\n📅 ${txDate.toLocaleDateString("pt-BR")}\n\nNenhuma transação foi importada.`;
+          if (imported === 0) {
+            botMessage = `⚠️ ${skipped > 1 ? `Todos os ${skipped} comprovantes já estavam cadastrados.` : "Essa transação parece já estar cadastrada."}\n\nNenhuma transação foi importada.`;
+          } else if (validReceipts.length === 1) {
+            botMessage = `✅ Comprovante importado!\n\n${lines[0]}\n📅 ${(validReceipts[0].date ? new Date(validReceipts[0].date) : new Date()).toLocaleDateString("pt-BR")}`;
           } else {
-            const items = result.items && result.items.length > 1 ? result.items : [{ description: txDesc, amount: txAmount }];
-            await storage.createManyTransactions(items.map((item: any) => ({
-              userId,
-              amount: Number(item.amount),
-              description: item.description || txDesc,
-              categoryName: result.categoryName || "outros",
-              type: txType as "expense" | "income",
-              date: txDate,
-              source: "photo" as const,
-              establishment: txEstablishment,
-              paymentMethod: result.paymentMethod || null,
-            })));
-            imported = items.length;
-            const totalShown = items.reduce((s: number, i: any) => s + Number(i.amount), 0);
-            botMessage = `✅ ${imported === 1 ? "Comprovante importado" : `${imported} itens importados`}!\n\n${txType === "income" ? "💰" : "💸"} R$ ${totalShown.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}\n🏷️ ${result.categoryName || "outros"}\n📅 ${txDate.toLocaleDateString("pt-BR")}`;
+            botMessage = `✅ ${imported} comprovante${imported > 1 ? "s" : ""} importado${imported > 1 ? "s" : ""}${skipped > 0 ? ` (${skipped} já existia${skipped > 1 ? "m" : ""})` : ""}!\n\n${lines.join("\n")}`;
           }
         }
       } else {

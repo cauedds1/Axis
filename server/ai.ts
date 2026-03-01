@@ -190,7 +190,74 @@ REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
   return { intent: parsed.intent, data: parsed, rawText: text };
 }
 
-export async function processReceiptPhoto(imageBase64: string, userId: string, userName?: string): Promise<any> {
+function buildReceiptSystemPrompt(todayDate: string, userNameRule: string, multipleMode: boolean): string {
+  const receiptSchema = `{
+  "imageType": "receipt" | "pix_sent" | "pix_received" | "unknown",
+  "transactionType": "expense" (se receipt ou pix_sent) | "income" (se pix_received),
+  "senderName": "nome COMPLETO de quem ENVIOU o dinheiro (pagador)",
+  "receiverName": "nome COMPLETO de quem RECEBEU o dinheiro (destinatário)",
+  "establishment": "nome do estabelecimento (para receipts) ou nome da outra parte na transação Pix",
+  "description": "descrição curta e clara do que foi pago/recebido",
+  "location": "endereço/cidade se visível, ou null",
+  "date": "YYYY-MM-DD (data da transação, não de hoje)",
+  "time": "HH:MM (horário da transação no formato 24h — ex: '10h23' → '10:23', ou null se não visível)",
+  "items": [{ "description": "item", "amount": número }],
+  "totalAmount": número (valor total da transação),
+  "categoryName": "categoria precisa — veja regras abaixo",
+  "paymentMethod": "Pix" | "cartão" | "dinheiro" | "boleto" | null
+}`;
+
+  const singleInstructions = `EXTRAIA o seguinte JSON com os dados do comprovante:
+${receiptSchema}`;
+
+  const multipleInstructions = `Esta imagem pode conter UM ou MÚLTIPLOS comprovantes/notas fiscais diferentes.
+
+REGRAS CRÍTICAS:
+- Identifique CADA comprovante separado visível na imagem (notas fiscais, comprovantes de Pix, cupons, etc.)
+- Cada papel/comprovante diferente = um item separado no array
+- Não agrupe comprovantes distintos em um só
+
+RETORNE um JSON com:
+{
+  "count": <número de comprovantes identificados>,
+  "receipts": [
+    ${receiptSchema},
+    ...
+  ]
+}`;
+
+  const pixTips = `DICAS PARA IDENTIFICAR PIX (quando não há nome do usuário disponível):
+- "Pix enviado", "Você enviou", "Transferência realizada", "Pagamento realizado", "Debitado" → pix_sent
+- "Pix recebido", "Você recebeu", "Transferência recebida", "Creditado" → pix_received`;
+
+  return `Você é o AXIS, um assistente financeiro. Analise esta imagem e extraia dados de comprovantes financeiros — pode ser nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
+
+DATA DE HOJE: ${todayDate}
+${userNameRule}
+
+TIPOS DE COMPROVANTE:
+- "receipt": nota fiscal, cupom fiscal, ticket de compra
+- "pix_sent": comprovante de Pix ENVIADO pelo usuário
+- "pix_received": comprovante de Pix RECEBIDO pelo usuário
+- "unknown": não é possível identificar
+
+${pixTips}
+
+${multipleMode ? multipleInstructions : singleInstructions}
+
+${CATEGORY_RULES}
+
+REGRAS ADICIONAIS:
+- Analise SEMPRE o nome do estabelecimento, localização e TODOS os itens listados antes de escolher a categoria.
+- Para Pix: categoryName = "transferência" a menos que o nome do destinatário indique claramente o uso (ex: "iFood" → alimentação, posto → combustível)
+- senderName = nome de quem PAGOU, receiverName = nome de quem RECEBEU (sempre, independente do tipo)
+- Para receipt: establishment = nome do estabelecimento/loja
+- Sempre extraia o horário se estiver visível
+- Se não conseguir ler algo, coloque null. Nunca invente dados.
+- Se a imagem não for financeira, retorne ${multipleMode ? '{ "count": 0, "receipts": [] }' : "totalAmount: null"}`;
+}
+
+export async function processMultipleReceipts(imageBase64: string, userId: string, userName?: string): Promise<{ count: number; receipts: any[] }> {
   const openai = getOpenAIClient();
   const todayDate = new Date().toISOString().split("T")[0];
 
@@ -210,57 +277,23 @@ REGRA CRÍTICA DE DIREÇÃO DO PIX:
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem e retorne um JSON com os dados financeiros extraídos — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
-
-DATA DE HOJE: ${todayDate}
-${userNameRule}
-
-PRIMEIRO identifique o tipo da imagem em "imageType":
-- "receipt": nota fiscal, cupom fiscal, ticket de compra
-- "pix_sent": comprovante de Pix ENVIADO pelo usuário, pagamento feito pelo usuário
-- "pix_received": comprovante de Pix RECEBIDO pelo usuário, valor creditado para o usuário
-- "unknown": não é possível identificar
-
-DICAS PARA IDENTIFICAR PIX (quando não há nome do usuário disponível):
-- "Pix enviado", "Você enviou", "Transferência realizada", "Pagamento realizado", "Debitado" → pix_sent
-- "Pix recebido", "Você recebeu", "Transferência recebida", "Creditado" → pix_received
-
-EXTRAIA o seguinte JSON:
-{
-  "imageType": "receipt" | "pix_sent" | "pix_received" | "unknown",
-  "transactionType": "expense" (se receipt ou pix_sent) | "income" (se pix_received),
-  "senderName": "nome COMPLETO de quem ENVIOU o dinheiro (pagador)",
-  "receiverName": "nome COMPLETO de quem RECEBEU o dinheiro (destinatário)",
-  "establishment": "nome do estabelecimento (para receipts) ou nome da outra parte na transação Pix",
-  "description": "descrição curta e clara do que foi pago/recebido",
-  "location": "endereço/cidade se visível, ou null",
-  "date": "YYYY-MM-DD (data da transação, não de hoje)",
-  "time": "HH:MM (horário da transação no formato 24h — ex: '10h23' → '10:23', ou null se não visível)",
-  "items": [{ "description": "item", "amount": número }],
-  "totalAmount": número (valor total da transação),
-  "categoryName": "categoria precisa — veja regras abaixo",
-  "paymentMethod": "Pix" | "cartão" | "dinheiro" | "boleto" | null
-}
-
-${CATEGORY_RULES}
-
-REGRAS ADICIONAIS PARA FOTO:
-- Analise SEMPRE o nome do estabelecimento, localização e TODOS os itens listados antes de escolher a categoria.
-- Para Pix: categoryName = "transferência" a menos que o nome do destinatário indique claramente o uso (ex: "iFood" → alimentação, posto → combustível)
-- senderName = nome de quem PAGOU, receiverName = nome de quem RECEBEU (sempre, independente do tipo)
-- Para receipt: establishment = nome do estabelecimento/loja
-- Sempre extraia o horário se estiver visível
-- Se não conseguir ler algo, coloque null. Nunca invente dados.
-- Se a imagem não for financeira, retorne totalAmount: null`
+        content: buildReceiptSystemPrompt(todayDate, userNameRule, true),
       },
       {
         role: "user",
-        content: [{ type: "image_url", image_url: { url: imageBase64 } }]
-      }
+        content: [{ type: "image_url", image_url: { url: imageBase64 } }],
+      },
     ],
   });
 
-  return JSON.parse(response.choices[0]?.message?.content || "{}");
+  const parsed = JSON.parse(response.choices[0]?.message?.content || '{"count":0,"receipts":[]}');
+  const receipts: any[] = Array.isArray(parsed.receipts) ? parsed.receipts : [];
+  return { count: receipts.length, receipts };
+}
+
+export async function processReceiptPhoto(imageBase64: string, userId: string, userName?: string): Promise<any> {
+  const result = await processMultipleReceipts(imageBase64, userId, userName);
+  return result.receipts[0] ?? {};
 }
 
 export async function processPDFExtract(pdfText: string, userId: string): Promise<any> {

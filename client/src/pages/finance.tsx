@@ -48,7 +48,8 @@ export default function Finance() {
     paymentMethodOther: "",
   });
   const [goalForm, setGoalForm] = useState({ title: "", targetAmount: "" });
-  const [photoPreview, setPhotoPreview] = useState<any>(null);
+  const [photoResults, setPhotoResults] = useState<any[] | null>(null);
+  const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
@@ -121,19 +122,29 @@ export default function Finance() {
       const res = await fetch("/api/finance/photo", { method: "POST", body: formData, credentials: "include" });
       return res.json();
     },
-    onSuccess: (data) => setPhotoPreview(data),
+    onSuccess: (data: { count: number; receipts: any[] }) => {
+      const receipts = data.receipts?.filter((r: any) => r.totalAmount) ?? [];
+      if (receipts.length === 0) {
+        toast({ title: "Nenhum comprovante identificado", description: "Tente uma foto mais nítida.", variant: "destructive" });
+      } else {
+        setPhotoResults(receipts);
+        setExpandedReceiptIdx(receipts.length === 1 ? 0 : null);
+      }
+    },
   });
 
   const confirmPhotoMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/finance/photo/confirm", photoPreview);
+      const res = await apiRequest("POST", "/api/finance/photo/confirm", { receipts: photoResults });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any[]) => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      setPhotoPreview(null);
-      toast({ title: "Transações registradas" });
+      setPhotoResults(null);
+      setExpandedReceiptIdx(null);
+      const count = Array.isArray(data) ? data.length : 1;
+      toast({ title: count > 1 ? `${count} comprovantes registrados` : "Comprovante registrado" });
     },
   });
 
@@ -269,25 +280,66 @@ export default function Finance() {
 
         {/* Left col (2/3): previews + transactions */}
         <div className="xl:col-span-2 space-y-4">
-          {photoPreview && (
+          {photoResults && photoResults.length > 0 && (
             <Card className="border-primary" data-testid="card-photo-preview">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Nota fiscal detectada</CardTitle>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPhotoPreview(null)}><X className="h-4 w-4" /></Button>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    {photoResults.length === 1
+                      ? "Comprovante detectado"
+                      : `${photoResults.length} comprovantes detectados`}
+                  </CardTitle>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setPhotoResults(null); setExpandedReceiptIdx(null); }}><X className="h-4 w-4" /></Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {photoPreview.establishment && <p className="text-sm"><strong>Local:</strong> {photoPreview.establishment}</p>}
-                {photoPreview.items?.map((item: any, i: number) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{item.description}</span>
-                    <span>R$ {fmtBRL(item.amount ?? 0)}</span>
-                  </div>
-                ))}
-                {photoPreview.totalAmount && <p className="text-sm font-bold border-t pt-2">Total: R$ {fmtBRL(photoPreview.totalAmount)}</p>}
+              <CardContent className="space-y-3">
+                {photoResults.map((r: any, idx: number) => {
+                  const isExpanded = expandedReceiptIdx === idx || photoResults.length === 1;
+                  const label = r.establishment || r.description || `Comprovante ${idx + 1}`;
+                  const typeColor = r.transactionType === "income" ? "text-green-500" : "text-destructive";
+                  return (
+                    <div key={idx} className="rounded-lg border border-border/60 overflow-hidden" data-testid={`card-receipt-${idx}`}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
+                        onClick={() => setExpandedReceiptIdx(isExpanded && photoResults.length > 1 ? null : idx)}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span className={`h-2 w-2 rounded-full flex-shrink-0 ${typeColor}`} />
+                          <span className="truncate font-medium">{label}</span>
+                          {r.categoryName && <span className="text-xs text-muted-foreground hidden sm:inline">· {r.categoryName}</span>}
+                        </span>
+                        <span className={`ml-2 font-bold flex-shrink-0 flex items-center gap-1 ${typeColor}`}>
+                          R$ {fmtBRL(r.totalAmount ?? 0)}
+                          {photoResults.length > 1 && (isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                        </span>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-3 pb-3 space-y-1 border-t border-border/40 pt-2">
+                          {r.date && <p className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(r.date).toLocaleDateString("pt-BR")}{r.time ? ` às ${r.time}` : ""}</p>}
+                          {r.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.location}</p>}
+                          {r.paymentMethod && <p className="text-xs text-muted-foreground flex items-center gap-1"><CreditCard className="h-3 w-3" /> {r.paymentMethod}</p>}
+                          {r.items && r.items.length > 1 && (
+                            <div className="mt-1 space-y-0.5 max-h-32 overflow-auto">
+                              {r.items.map((item: any, i: number) => (
+                                <div key={i} className="flex justify-between text-xs py-0.5">
+                                  <span className="truncate">{item.description}</span>
+                                  <span className="ml-2 flex-shrink-0">R$ {fmtBRL(item.amount ?? 0)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 <Button onClick={() => confirmPhotoMutation.mutate()} disabled={confirmPhotoMutation.isPending} className="w-full" data-testid="button-confirm-photo">
-                  {confirmPhotoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Confirmar
+                  {confirmPhotoMutation.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    : <Check className="h-4 w-4 mr-2" />}
+                  {photoResults.length > 1 ? `Confirmar todos (${photoResults.length})` : "Confirmar"}
                 </Button>
               </CardContent>
             </Card>
