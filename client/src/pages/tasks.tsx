@@ -659,7 +659,14 @@ export default function Tasks() {
           </div>
 
           <div className="space-y-2">
-            {habits.map((habit) => {
+            {habits.filter((habit) => {
+              const todayDow = new Date().getDay();
+              let wp: number[] = [];
+              if ((habit as any).weekdays) {
+                try { wp = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {}
+              }
+              return habit.frequency === "daily" || wp.length === 0 || wp.includes(todayDow);
+            }).map((habit) => {
               const today = new Date().toISOString().split("T")[0];
               const checkedToday = habit.lastChecked === today;
               const habitEmoji = (habit as any).emoji || "⚡";
@@ -668,8 +675,6 @@ export default function Tasks() {
               if ((habit as any).weekdays) {
                 try { weekdaysParsed = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {}
               }
-              const todayDow = new Date().getDay();
-              const isScheduledToday = habit.frequency === "daily" || (habit.frequency === "weekly" && weekdaysParsed.includes(todayDow));
               const dayLabel = habit.frequency === "weekly" && weekdaysParsed.length > 0
                 ? weekdaysParsed.map(d => DAYS[d]).join(", ")
                 : "Diário";
@@ -678,15 +683,14 @@ export default function Tasks() {
                   key={habit.id}
                   className="rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                   style={{
-                    background: checkedToday ? "rgba(78,205,196,0.04)" : isScheduledToday ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${checkedToday ? "rgba(78,205,196,0.25)" : isScheduledToday ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)"}`,
-                    opacity: isScheduledToday || checkedToday ? 1 : 0.5,
+                    background: checkedToday ? "rgba(78,205,196,0.04)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${checkedToday ? "rgba(78,205,196,0.25)" : "rgba(255,255,255,0.1)"}`,
                   }}
                   onClick={() => openHabitDetail(habit)}
                   data-testid={`card-habit-${habit.id}`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    {isScheduledToday && !checkedToday && (
+                    {!checkedToday && (
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ background: "#FFA000" }} />
                     )}
                     <span className="text-xl shrink-0">{habitEmoji}</span>
@@ -722,6 +726,12 @@ export default function Tasks() {
               );
             })}
             {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum compromisso ainda</p>}
+            {habits.length > 0 && habits.filter((h) => {
+              const dow = new Date().getDay();
+              let wp: number[] = [];
+              if ((h as any).weekdays) { try { wp = typeof (h as any).weekdays === "string" ? JSON.parse((h as any).weekdays) : (h as any).weekdays; } catch {} }
+              return h.frequency === "daily" || wp.length === 0 || wp.includes(dow);
+            }).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Sem compromissos para hoje</p>}
           </div>
         </div>
       </div>
