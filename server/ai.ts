@@ -10,6 +10,64 @@ function getOpenAIClient(): OpenAI {
   return new OpenAI({ apiKey, baseURL });
 }
 
+// ── CATEGORIA: REGRAS COMPARTILHADAS ────────────────────────────────────────
+// Usadas em detectIntentAndProcess, processReceiptPhoto e processPDFExtract
+const CATEGORY_RULES = `
+CATEGORIAS DISPONÍVEIS E REGRAS DE INFERÊNCIA (seja EXTREMAMENTE preciso):
+
+combustível → postos de gasolina, abastecimento, gasolina, etanol, diesel, GNV.
+  Palavras-chave no nome do estabelecimento: "posto", "COMB", "combustível", "petróleo", "shell", "ipiranga", "BR distribuidora", "raízen".
+  REGRA: se foi em posto de gasolina ou o nome contém "COMB" → SEMPRE "combustível", NUNCA "transporte".
+
+mercado → supermercados, hipermercados, atacadistas, compras de rancho/mês.
+  Estabelecimentos: "supermercado", "mercado", "hipermercado", "atacado", "atacadão", "assaí", "carrefour", "extra", "walmart", "bistek", "zaffari", "nacional", "condor", "grupo pão de açúcar".
+  REGRA: analise o CONJUNTO da compra — se a nota tem vários tipos de item (limpeza + alimentos + higiene) → "mercado". Não classifique "mercado" como "alimentação".
+  REGRA: se o ticket tem apenas snacks/guloseimas como único conteúdo (energético, chocolate, salgadinho) sem outros itens essenciais → "alimentação" mesmo em supermercado.
+
+alimentação → restaurantes, lanchonetes, fast food, delivery, padaria, café, açaí, bar de comida, iFood, Rappi, UberEats.
+  REGRA: diferente de "lazer" — alimentação é para comer/beber cotidiano. Bar com bebida alcoólica como foco → "lazer".
+
+lazer → bar, pub, balada, boate, festa, show, cinema, teatro, streaming (Netflix, Spotify, Disney+, Prime), jogos, parque.
+  Estabelecimentos com "bar", "pub", "night", "club", "lounge", "grill" (como social) → lazer.
+  REGRA: restaurante sofisticado/rodízio/churrascaria em final de semana pode ser lazer; entregou de comida diária → alimentação.
+
+farmácia → farmácia, drogaria, perfumaria, produtos de higiene pessoal.
+  REGRA: se a compra foi em farmácia mas os itens são só snacks/besteiras → "alimentação". Se tem medicamentos, higiene, cosméticos → "farmácia".
+
+saúde → médico, dentista, clínica, hospital, exame, plano de saúde, academia, personal trainer, suplemento, vitamina.
+
+moradia → aluguel, condomínio, água, luz, gás, internet, TV a cabo, telefone residencial, reforma, móveis, decoração.
+
+transporte → Uber, 99, táxi, ônibus, metrô, trem, estacionamento, pedágio, oficina mecânica, manutenção do veículo, IPVA, seguro auto.
+  ATENÇÃO: combustível NÃO é "transporte" — use a categoria "combustível".
+
+vestuário → loja de roupas, calçados, acessórios, moda, tênis, bolsa.
+
+educação → curso, escola, faculdade, material escolar, livro, apostila, plataforma de ensino.
+
+trabalho → salário, freelance, renda de serviço prestado, comissão, bônus.
+
+transferência → Pix, TED, DOC, transferência bancária entre pessoas físicas/jurídicas (sem categoria óbvia de uso).
+
+outros → o que genuinamente não se encaixa em nenhuma categoria acima.
+
+EXEMPLOS CRÍTICOS:
+- "RC SFP COM DE COMB LTDA" → combustível (COMB = combustível)
+- "Posto Japonês" → combustível
+- "Shell" / "Ipiranga" → combustível
+- "Assaí Atacadista" → mercado
+- "Carrefour" com compra variada → mercado
+- "Mercadinho" / "Minimercado" → mercado
+- "iFood" / "Rappi" → alimentação
+- "McDonald's" / "Subway" → alimentação
+- "Farmácia Vantre" → farmácia (se comprou medicamento/higiene)
+- "Uber" / "99" → transporte (não confundir com combustível)
+- "Netflix" / "Spotify" → lazer
+- "ENDUTEX HOTEIS" / "Airbnb" → lazer (ou moradia se for longa estadia)
+- "Carole Winebar" → lazer (wine bar = bebida/social)
+- "Academia" / "SmartFit" → saúde
+`;
+
 export interface IntentResult {
   intent: "expense" | "income" | "task" | "schedule" | "habit" | "chat" | "unknown";
   data: any;
@@ -70,7 +128,7 @@ Para expense/income:
   "intent": "expense" ou "income",
   "amount": número (valor em reais),
   "description": "descrição curta do gasto/receita",
-  "categoryName": "nome da categoria inferida (alimentação, transporte, lazer, saúde, moradia, educação, trabalho, outros)",
+  "categoryName": "categoria precisa — veja regras abaixo",
   "establishment": "nome do estabelecimento se mencionado, senão null",
   "date": "${todayDate}" (ou data mencionada no formato YYYY-MM-DD)
 }
@@ -107,12 +165,15 @@ Para chat:
   "message": "a mensagem original do usuário"
 }
 
-REGRAS:
-- Infira a categoria de gastos inteligentemente (açaí → alimentação, uber → transporte, cinema → lazer)
+${CATEGORY_RULES}
+
+REGRAS GERAIS:
 - Se o valor não for mencionado explicitamente em um gasto, retorne intent "chat" e pergunte
 - Interprete datas relativas: "amanhã", "sexta", "semana que vem", etc.
-- "Gastei 19 reais com açaí" → expense, amount: 19, categoryName: "alimentação"
-- "Recebi 5000 de salário" → income, amount: 5000, categoryName: "trabalho"
+- "Abasteci o carro" → expense, categoryName: "combustível"
+- "Gastei 19 reais com açaí" → expense, categoryName: "alimentação"
+- "Fui no mercado" → expense, categoryName: "mercado"
+- "Recebi 5000 de salário" → income, categoryName: "trabalho"
 - "Preciso ligar pro dentista" → task
 - "Reunião com João terça às 14h" → schedule
 
@@ -177,12 +238,15 @@ EXTRAIA o seguinte JSON:
   "time": "HH:MM (horário da transação no formato 24h — ex: '10h23' → '10:23', ou null se não visível)",
   "items": [{ "description": "item", "amount": número }],
   "totalAmount": número (valor total da transação),
-  "categoryName": "categoria: alimentação | transporte | lazer | saúde | moradia | educação | trabalho | transferência | outros",
+  "categoryName": "categoria precisa — veja regras abaixo",
   "paymentMethod": "Pix" | "cartão" | "dinheiro" | "boleto" | null
 }
 
-REGRAS:
-- Para Pix: categoryName = "transferência" a menos que haja pista clara do motivo (ex: "iFood" → alimentação)
+${CATEGORY_RULES}
+
+REGRAS ADICIONAIS PARA FOTO:
+- Analise SEMPRE o nome do estabelecimento, localização e TODOS os itens listados antes de escolher a categoria.
+- Para Pix: categoryName = "transferência" a menos que o nome do destinatário indique claramente o uso (ex: "iFood" → alimentação, posto → combustível)
 - senderName = nome de quem PAGOU, receiverName = nome de quem RECEBEU (sempre, independente do tipo)
 - Para receipt: establishment = nome do estabelecimento/loja
 - Sempre extraia o horário se estiver visível
@@ -225,17 +289,11 @@ EXTRAIA:
   ]
 }
 
-REGRAS:
+REGRAS GERAIS:
 - Débitos são "expense", créditos são "income"
-- Infira categorias inteligentemente baseado na descrição
-- PIX, TED, DOC para terceiros → "transferência"
-- Salário, freelance → "trabalho"
-- iFood, restaurantes → "alimentação"
-- Uber, 99, combustível → "transporte"
-- Netflix, Spotify, cinema → "lazer"
-- Farmácia, consulta → "saúde"
-- Aluguel, condomínio, luz, água → "moradia"
-- Nunca invente transações que não estão no extrato`
+- Nunca invente transações que não estão no extrato
+
+${CATEGORY_RULES}`
       },
       { role: "user", content: pdfText }
     ],
