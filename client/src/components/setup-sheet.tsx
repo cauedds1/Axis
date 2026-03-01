@@ -1065,6 +1065,17 @@ function SectionNotificacoes() {
   );
 }
 
+function formatBotPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  if (d.startsWith("55") && d.length === 13) {
+    return `+55 ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
+  }
+  if (d.startsWith("55") && d.length === 12) {
+    return `+55 ${d.slice(2, 4)} ${d.slice(4, 8)}-${d.slice(8)}`;
+  }
+  return `+${d}`;
+}
+
 function SectionWhatsApp() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -1124,7 +1135,9 @@ function SectionWhatsApp() {
           <div>
             <p className="text-sm font-semibold text-white">{statusConfig.label}</p>
             {wStatus === "connected" && status?.phone && (
-              <p className="text-[11px] text-white/40">+{status.phone}</p>
+              <p className="text-[11px] font-medium" style={{ color: "#00E5C8" }}>
+                Bot conectado em {formatBotPhone(status.phone)}
+              </p>
             )}
           </div>
         </div>

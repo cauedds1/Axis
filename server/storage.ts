@@ -16,7 +16,7 @@ import {
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, or } from "drizzle-orm";
 
 export interface IStorage {
   getBills(userId: string): Promise<Bill[]>;
@@ -368,7 +368,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined> {
-    const [profile] = await db.select().from(userProfile).where(eq(userProfile.whatsappPhone, phone));
+    const variants = new Set<string>([phone]);
+    if (phone.startsWith("55") && phone.length === 13) variants.add(phone.slice(2));
+    if (phone.startsWith("55") && phone.length === 12) variants.add(phone.slice(2));
+    if (!phone.startsWith("55") && (phone.length === 11 || phone.length === 10)) variants.add("55" + phone);
+    const conditions = [...variants].map(v => eq(userProfile.whatsappPhone, v));
+    const [profile] = await db.select().from(userProfile).where(or(...conditions));
     return profile as (UserProfile & { userId: string }) | undefined;
   }
 

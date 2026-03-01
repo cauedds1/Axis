@@ -117,24 +117,29 @@ class WhatsAppManager {
     if (!text.trim() && !imageMsg) return;
 
     try {
+      log(`WhatsApp: mensagem recebida de ${senderPhone}${imageMsg ? " [imagem]" : ` — "${text.substring(0, 60)}"`}`, "whatsapp");
+
       const profile = await storage.getUserProfileByPhone(senderPhone);
       if (!profile) {
+        log(`WhatsApp: número não vinculado — ${senderPhone}`, "whatsapp");
         await this.sendMessage(jid, "❌ Número não vinculado ao AXIS.\n\nConfigure em: Configurações → WhatsApp.");
         return;
       }
 
+      log(`WhatsApp: usuário encontrado — userId=${profile.userId}`, "whatsapp");
+
       if (imageMsg) {
-        log(`WhatsApp image from ${senderPhone}`, "whatsapp");
         await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
         return;
       }
 
-      log(`WhatsApp message from ${senderPhone}: ${text}`, "whatsapp");
       const result = await detectIntentAndProcess(text, profile.userId);
+      log(`WhatsApp: intent=${result.intent} para userId=${profile.userId}`, "whatsapp");
       const reply = await this.buildReply(result, profile.userId);
       await this.sendMessage(jid, reply);
+      log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
     } catch (err: any) {
-      log(`WhatsApp error handling message: ${err.message}`, "whatsapp");
+      log(`WhatsApp: erro ao processar mensagem de ${senderPhone} — ${err.message}`, "whatsapp");
       await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
     }
   }
