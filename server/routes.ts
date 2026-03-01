@@ -1662,6 +1662,9 @@ export async function registerRoutes(
     const { phone } = req.body;
     const cleaned = (phone || "").replace(/[^0-9]/g, "");
     await storage.upsertUserProfile(userId, { whatsappPhone: cleaned || null } as any);
+    if (cleaned && whatsappManager.getStatus() === "connected") {
+      whatsappManager.resolveAndSaveJid(userId, cleaned).catch(() => {});
+    }
     res.json({ success: true, phone: cleaned });
   });
 

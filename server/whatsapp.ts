@@ -70,6 +70,24 @@ class WhatsAppManager {
     }
   }
 
+  async resolveAndSaveJid(userId: string, phone: string): Promise<void> {
+    if (!this.sock) return;
+    const normalized = phone.startsWith("55") ? phone : "55" + phone;
+    try {
+      const results: any[] = await this.sock.onWhatsApp(normalized);
+      if (results && results.length > 0) {
+        const jid: string = results[0].jid ?? "";
+        if (jid) {
+          await storage.upsertUserProfile(userId, { whatsappJid: jid } as any);
+          this.lidCache.set(jid, phone);
+          log(`WhatsApp: JID auto-resolvido para userId=${userId} → ${jid}`, "whatsapp");
+        }
+      }
+    } catch (e: any) {
+      log(`WhatsApp: falha ao auto-resolver JID para ${normalized} — ${e.message}`, "whatsapp");
+    }
+  }
+
   async initialize(): Promise<void> {
     if (this.status === "connected") return;
 
@@ -201,7 +219,13 @@ class WhatsAppManager {
       log(`WhatsApp: mensagem recebida de ${senderPhone}${imageMsg ? " [imagem]" : ` — "${text.substring(0, 60)}"`}`, "whatsapp");
 
       let profile = await storage.getUserProfileByJid(jid);
-      if (!profile) profile = await storage.getUserProfileByPhone(senderPhone);
+      if (!profile) {
+        profile = await storage.getUserProfileByPhone(senderPhone);
+        if (profile) {
+          storage.upsertUserProfile(profile.userId, { whatsappJid: jid } as any).catch(() => {});
+          log(`WhatsApp: JID ${jid} auto-salvo para userId=${profile.userId}`, "whatsapp");
+        }
+      }
 
       if (!profile) {
         log(`WhatsApp: JID não vinculado — ${jid}`, "whatsapp");
