@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,12 +34,55 @@ function paymentLabel(method: string | null | undefined): string {
   return found ? found.label : method;
 }
 
+type TxPeriodFilter = "current" | "last" | "last3" | "last6" | "custom";
+
+const TX_PERIOD_OPTS: { id: TxPeriodFilter; label: string }[] = [
+  { id: "current", label: "Mês atual" },
+  { id: "last", label: "Mês passado" },
+  { id: "last3", label: "3 meses" },
+  { id: "last6", label: "6 meses" },
+  { id: "custom", label: "Personalizado" },
+];
+
+function getTxDateRange(period: TxPeriodFilter, customStart?: string, customEnd?: string): { start: Date; end: Date } {
+  const now = new Date();
+  if (period === "current") {
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59) };
+  }
+  if (period === "last") {
+    return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59) };
+  }
+  if (period === "last3") {
+    return { start: new Date(now.getFullYear(), now.getMonth() - 2, 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59) };
+  }
+  if (period === "last6") {
+    return { start: new Date(now.getFullYear(), now.getMonth() - 5, 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59) };
+  }
+  if (period === "custom" && customStart && customEnd) {
+    return { start: new Date(customStart + "T00:00:00"), end: new Date(customEnd + "T23:59:59") };
+  }
+  return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59) };
+}
+
+function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Date }): string {
+  if (period === "current" || period === "last") {
+    return range.start.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+  }
+  const f = range.start.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  const l = range.end.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  return `${f} — ${l}`;
+}
+
 export default function Finance() {
   const [activeTab, setActiveTab] = useState<"transactions" | "bills">("transactions");
   const [showAddTx, setShowAddTx] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [expandedItemsTxId, setExpandedItemsTxId] = useState<string | null>(null);
   const [showDetailItems, setShowDetailItems] = useState(false);
+  const [txPeriod, setTxPeriod] = useState<TxPeriodFilter>("current");
+  const [txShowCustom, setTxShowCustom] = useState(false);
+  const [txCustomStart, setTxCustomStart] = useState("");
+  const [txCustomEnd, setTxCustomEnd] = useState("");
   const [txForm, setTxForm] = useState({
     amount: "",
     description: "",
@@ -230,8 +273,15 @@ export default function Finance() {
     },
   });
 
-  const totalExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  const totalIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const txDateRange = getTxDateRange(txPeriod, txCustomStart, txCustomEnd);
+  const filteredTx = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d >= txDateRange.start && d <= txDateRange.end;
+  });
+  const totalExpenses = filteredTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalIncome = filteredTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const allExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const allIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
 
   function handleSubmitTx(e: React.FormEvent) {
     e.preventDefault();
@@ -303,6 +353,54 @@ export default function Finance() {
 
       <CaptureButton variant="inline" />
 
+      {/* Period filter */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          {TX_PERIOD_OPTS.map(opt => {
+            const isActive = txPeriod === opt.id;
+            return (
+              <button
+                key={opt.id}
+                data-testid={`filter-tx-period-${opt.id}`}
+                onClick={() => {
+                  setTxPeriod(opt.id);
+                  setTxShowCustom(opt.id === "custom");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200"
+                style={isActive
+                  ? { background: "rgba(0,230,255,0.09)", color: "#00E6FF", borderColor: "rgba(0,230,255,0.25)" }
+                  : { background: "transparent", color: "rgba(255,255,255,0.35)", borderColor: "rgba(255,255,255,0.07)" }
+                }
+              >
+                <CalendarDays className="h-3 w-3" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {txShowCustom && (
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/[0.02]">
+            <span className="text-xs text-white/40 font-medium">De</span>
+            <input
+              type="date"
+              data-testid="input-tx-custom-start"
+              value={txCustomStart}
+              onChange={e => setTxCustomStart(e.target.value)}
+              className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
+            />
+            <span className="text-xs text-white/40 font-medium">até</span>
+            <input
+              type="date"
+              data-testid="input-tx-custom-end"
+              value={txCustomEnd}
+              onChange={e => setTxCustomEnd(e.target.value)}
+              className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
+            />
+          </div>
+        )}
+        <p className="text-xs text-white/35">{getTxPeriodLabel(txPeriod, txDateRange)}</p>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
@@ -319,8 +417,8 @@ export default function Finance() {
         <Card className="border-border relative" data-testid="card-balance">
           <CardContent className="pt-4 pb-10">
             <p className="text-xs text-muted-foreground">Saldo</p>
-            <p className={`text-xl font-bold mt-1 ${initialBalance + totalIncome - totalExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
-              R$ {fmtBRL(initialBalance + totalIncome - totalExpenses)}
+            <p className={`text-xl font-bold mt-1 ${initialBalance + allIncome - allExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
+              R$ {fmtBRL(initialBalance + allIncome - allExpenses)}
             </p>
           </CardContent>
           <button
@@ -611,11 +709,11 @@ export default function Finance() {
             <h2 className="text-sm font-medium text-muted-foreground mb-3">Transações recentes</h2>
             {txLoading ? (
               <div className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></div>
-            ) : transactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação ainda</p>
+            ) : filteredTx.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação neste período</p>
             ) : (
               <div className="space-y-1">
-                {transactions.slice(0, 30).map((tx) => {
+                {filteredTx.slice(0, 50).map((tx) => {
                   const pmLabel = paymentLabel((tx as any).paymentMethod);
                   const PMIcon = pmLabel ? (PM_ICONS[(tx as any).paymentMethod] || Wallet) : null;
                   const rawItems = (tx as any).receiptItems;
