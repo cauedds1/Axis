@@ -603,11 +603,9 @@ class WhatsAppManager {
       return;
     }
 
-    const pdfText = buffer.toString("utf-8");
-
     let extracted: any;
     try {
-      extracted = await processPDFExtract(pdfText, userId);
+      extracted = await processPDFExtract(buffer, userId);
     } catch (aiErr: any) {
       log(`WhatsApp: falha ao processar PDF — ${aiErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui interpretar o extrato. Verifique se o arquivo contém transações legíveis.");

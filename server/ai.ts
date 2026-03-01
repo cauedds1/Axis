@@ -1,4 +1,7 @@
 import OpenAI from "openai";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require("pdf-parse");
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/schema";
@@ -296,8 +299,24 @@ export async function processReceiptPhoto(imageBase64: string, userId: string, u
   return result.receipts[0] ?? {};
 }
 
-export async function processPDFExtract(pdfText: string, userId: string): Promise<any> {
+export async function processPDFExtract(pdfInput: Buffer | string, userId: string): Promise<any> {
   const openai = getOpenAIClient();
+
+  let pdfText: string;
+  if (Buffer.isBuffer(pdfInput)) {
+    try {
+      const parsed = await pdfParse(pdfInput);
+      pdfText = parsed.text?.trim() || "";
+    } catch {
+      pdfText = pdfInput.toString("latin1");
+    }
+  } else {
+    pdfText = pdfInput;
+  }
+
+  if (!pdfText || pdfText.length < 20) {
+    return { transactions: [] };
+  }
 
   const response = await openai.chat.completions.create({
     model: "gpt-5-mini",
@@ -305,9 +324,9 @@ export async function processPDFExtract(pdfText: string, userId: string): Promis
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, um assistente financeiro. Analise este extrato bancário e extraia TODAS as transações.
+        content: `Você é o AXIS, assistente financeiro. Analise o extrato bancário abaixo e retorne um JSON com TODAS as transações encontradas.
 
-EXTRAIA:
+Retorne APENAS o seguinte JSON:
 {
   "bankName": "nome do banco se identificável",
   "period": "período do extrato se identificável",
@@ -315,16 +334,17 @@ EXTRAIA:
     {
       "date": "YYYY-MM-DD",
       "description": "descrição da transação",
-      "amount": número (positivo),
+      "amount": número positivo,
       "type": "expense" ou "income",
-      "categoryName": "categoria inferida (alimentação, transporte, lazer, saúde, moradia, educação, trabalho, transferência, outros)"
+      "categoryName": "categoria"
     }
   ]
 }
 
 REGRAS GERAIS:
-- Débitos são "expense", créditos são "income"
+- Débitos/saídas são "expense", créditos/entradas são "income"
 - Nunca invente transações que não estão no extrato
+- Se não houver transações, retorne JSON com transactions vazio
 
 ${CATEGORY_RULES}`
       },

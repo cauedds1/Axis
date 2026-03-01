@@ -359,8 +359,7 @@ export async function registerRoutes(
     try {
       const userId = getUserId(req);
       if (!req.file) return res.status(400).json({ message: "Nenhum PDF enviado" });
-      const pdfText = req.file.buffer.toString("utf-8");
-      const result = await processPDFExtract(pdfText, userId);
+      const result = await processPDFExtract(req.file.buffer, userId);
       res.json(result);
     } catch (error: any) {
       console.error("Error processing PDF:", error);
@@ -486,8 +485,7 @@ export async function registerRoutes(
           }
         }
       } else {
-        const pdfText = file.buffer.toString("utf-8");
-        const extracted = await processPDFExtract(pdfText, userId);
+        const extracted = await processPDFExtract(file.buffer, userId);
         const txns: any[] = extracted?.transactions ?? [];
         if (txns.length === 0) {
           botMessage = "🤔 Nenhuma transação encontrada. Verifique se o arquivo é um extrato bancário em formato TXT ou CSV.";
