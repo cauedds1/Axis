@@ -227,6 +227,7 @@ function SectionRenda({
   const [riAmount, setRiAmount] = useState("");
   const [riDay, setRiDay] = useState("5");
   const [riCategory, setRiCategory] = useState("trabalho");
+  const [riCustomCategory, setRiCustomCategory] = useState("");
 
   const currentMonth = (() => {
     const n = new Date();
@@ -263,13 +264,15 @@ function SectionRenda({
       const day = parseInt(riDay);
       if (!riName.trim() || isNaN(amt) || amt <= 0) throw new Error("Preencha nome e valor");
       if (day < 1 || day > 31) throw new Error("Dia inválido");
-      await apiRequest("POST", "/api/recurring-incomes", { name: riName.trim(), amount: amt, dayOfMonth: day, active: true, categoryName: riCategory });
+      const finalCategory = riCategory === "outros" ? (riCustomCategory.trim() || "outros") : riCategory;
+      await apiRequest("POST", "/api/recurring-incomes", { name: riName.trim(), amount: amt, dayOfMonth: day, active: true, categoryName: finalCategory });
     },
     onSuccess: () => {
       setRiName("");
       setRiAmount("");
       setRiDay("5");
       setRiCategory("trabalho");
+      setRiCustomCategory("");
       queryClient.invalidateQueries({ queryKey: ["/api/recurring-incomes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Renda recorrente adicionada!" });
@@ -383,6 +386,14 @@ function SectionRenda({
             <option value="aluguel">🏠 Aluguel</option>
             <option value="outros">📦 Outros</option>
           </select>
+          {riCategory === "outros" && (
+            <StyledInput
+              placeholder="Nome da categoria (ex: Pensão, Bolsa...)"
+              value={riCustomCategory}
+              onChange={e => setRiCustomCategory(e.target.value)}
+              data-testid="input-recurring-custom-category"
+            />
+          )}
           <div className="flex gap-2">
             <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
               <span className="text-white/40 text-sm font-medium flex-shrink-0">R$</span>
