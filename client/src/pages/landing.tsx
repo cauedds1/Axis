@@ -693,14 +693,6 @@ const faqItems = [
 
 function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
   const [open, setOpen] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(0);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [open]);
 
   return (
     <motion.div
@@ -716,16 +708,14 @@ function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
         data-testid={`button-faq-${index}`}
       >
         <span className="text-base font-medium text-white/80 group-hover:text-white transition-colors pr-4">{item.q}</span>
-        <div className="flex-shrink-0 transition-transform duration-300 ease-out" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
+        <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
           <ChevronDown className="w-4 h-4 text-white/30" />
         </div>
       </button>
-      <div
-        ref={contentRef}
-        className="overflow-hidden transition-all duration-300 ease-out"
-        style={{ maxHeight: open ? `${contentHeight}px` : "0px", opacity: open ? 1 : 0 }}
-      >
-        <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
+      <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
+        <div className="overflow-hidden">
+          <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
+        </div>
       </div>
     </motion.div>
   );
