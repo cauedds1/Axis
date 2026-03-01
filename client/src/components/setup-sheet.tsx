@@ -1376,28 +1376,19 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="flex flex-col flex-1 min-w-0">
             {/* Content header */}
             <div
-              className="flex items-center justify-between px-6 py-4 shrink-0"
+              className="flex items-center gap-3 px-6 py-4 shrink-0"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: `${activeMeta.accent}18` }}
-                >
-                  <activeMeta.icon className="h-4 w-4" style={{ color: activeMeta.accent }} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">{activeMeta.label}</h3>
-                  <p className="text-[11px] text-white/35">{activeMeta.description}</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/25 hover:text-white/55 hover:bg-white/05 transition-colors"
-                data-testid="button-close-dialog"
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center"
+                style={{ background: `${activeMeta.accent}18` }}
               >
-                <X className="h-4 w-4" />
-              </button>
+                <activeMeta.icon className="h-4 w-4" style={{ color: activeMeta.accent }} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">{activeMeta.label}</h3>
+                <p className="text-[11px] text-white/35">{activeMeta.description}</p>
+              </div>
             </div>
 
             {/* Scrollable content */}
