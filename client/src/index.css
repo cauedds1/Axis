@@ -291,10 +291,18 @@
 /* Cards: animated border + hover shimmer */
 .high .bg-card,
 .high [class*="card"] {
+  background-color: rgba(10, 13, 28, 0.82) !important;
+  backdrop-filter: blur(1px);
   transition: border-color 0.4s, box-shadow 0.4s;
   animation: high-border-pulse 4s ease-in-out infinite;
   position: relative;
-  overflow: hidden;
+}
+
+/* Sidebar semi-transparent to blend with ambient orbs */
+.high .bg-sidebar,
+.high [data-sidebar="sidebar"],
+.high [data-slot="sidebar-inner"] {
+  background-color: rgba(7, 10, 22, 0.90) !important;
 }
 .high .bg-card:hover,
 .high [class*="card"]:hover {
