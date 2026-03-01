@@ -125,30 +125,43 @@ export async function processReceiptPhoto(imageBase64: string, userId: string): 
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, um assistente financeiro. Analise esta foto de nota fiscal/cupom fiscal e extraia TODAS as informações.
+        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
 
 DATA DE HOJE: ${todayDate}
 
+PRIMEIRO identifique o tipo da imagem em "imageType":
+- "receipt": nota fiscal, cupom fiscal, ticket de compra
+- "pix_sent": comprovante de Pix ENVIADO, transferência enviada, pagamento enviado
+- "pix_received": comprovante de Pix RECEBIDO, transferência recebida
+- "unknown": não é possível identificar
+
+DICAS PARA IDENTIFICAR PIX:
+- "Pix enviado", "Você enviou", "Transferência realizada", "Pagamento realizado", "Debitado" → pix_sent
+- "Pix recebido", "Você recebeu", "Transferência recebida", "Creditado" → pix_received
+- Se houver nome do pagador/recebedor e valor, identifique pela direção do fluxo
+
 EXTRAIA:
 {
-  "establishment": "nome do estabelecimento",
+  "imageType": "receipt" | "pix_sent" | "pix_received" | "unknown",
+  "transactionType": "expense" (se receipt ou pix_sent) | "income" (se pix_received),
+  "establishment": "nome do estabelecimento ou nome da pessoa/empresa que enviou/recebeu",
+  "description": "descrição curta do que foi pago/recebido",
   "location": "endereço/cidade se visível",
-  "date": "YYYY-MM-DD (da nota, não de hoje)",
-  "items": [
-    { "description": "item", "amount": número }
-  ],
-  "totalAmount": número total,
-  "categoryName": "categoria inferida (alimentação, farmácia, mercado, transporte, etc.)",
-  "paymentMethod": "forma de pagamento se visível"
+  "date": "YYYY-MM-DD (da transação, não de hoje)",
+  "items": [{ "description": "item", "amount": número }],
+  "totalAmount": número (valor total da transação),
+  "categoryName": "categoria: alimentação | transporte | lazer | saúde | moradia | educação | trabalho | transferência | outros",
+  "paymentMethod": "Pix" | "cartão" | "dinheiro" | "boleto" | null
 }
 
-Se não conseguir ler algo, coloque null. Nunca invente dados.`
+REGRAS:
+- Para Pix: categoryName = "transferência" a menos que haja pista clara do motivo (ex: "iFood" → alimentação)
+- Se não conseguir ler algo, coloque null. Nunca invente dados.
+- Se a imagem não for financeira, retorne totalAmount: null`
       },
       {
         role: "user",
-        content: [
-          { type: "image_url", image_url: { url: imageBase64 } }
-        ]
+        content: [{ type: "image_url", image_url: { url: imageBase64 } }]
       }
     ],
   });

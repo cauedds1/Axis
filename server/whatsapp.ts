@@ -249,7 +249,7 @@ class WhatsAppManager {
     userId: string,
     mimetype: string
   ): Promise<void> {
-    await this.sendMessage(jid, "🔍 Lendo nota fiscal...");
+    await this.sendMessage(jid, "🔍 Analisando comprovante...");
 
     const buffer = await downloadMediaMessage(
       msg,
@@ -264,36 +264,48 @@ class WhatsAppManager {
     const receipt = await processReceiptPhoto(dataUrl, userId);
 
     if (!receipt || !receipt.totalAmount) {
-      await this.sendMessage(jid, "😕 Não consegui ler a nota fiscal. Tente uma foto mais nítida e bem iluminada.");
+      await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida ou descreva o gasto em texto.");
       return;
     }
 
     const amount = Number(receipt.totalAmount);
+    const transactionType: "expense" | "income" = receipt.transactionType === "income" ? "income" : "expense";
     const categoryName = receipt.categoryName || "outros";
     const establishment = receipt.establishment || null;
-    const date = receipt.date || new Date().toISOString().split("T")[0];
+    const description = receipt.description || establishment || (transactionType === "income" ? "Pix recebido" : "Comprovante");
+    const date = receipt.date ? new Date(receipt.date) : new Date();
 
     await storage.createTransaction({
       userId,
-      type: "expense",
-      amount: String(amount),
+      type: transactionType,
+      amount: amount as any,
       categoryName,
-      description: establishment ? `${establishment}` : "Nota fiscal",
+      description,
       date,
       paymentMethod: receipt.paymentMethod || null,
-      establishment: establishment,
+      establishment,
+      source: "whatsapp",
     });
 
-    let reply = `✅ *Nota fiscal registrada!*\n`;
+    const imageType = receipt.imageType ?? "receipt";
+    const isPix = imageType === "pix_sent" || imageType === "pix_received";
+    const emoji = transactionType === "income" ? "📥" : "📤";
+
+    let reply: string;
+    if (transactionType === "income") {
+      reply = `${emoji} *Pix recebido registrado!*\n`;
+    } else if (isPix) {
+      reply = `${emoji} *Pix enviado registrado!*\n`;
+    } else {
+      reply = `✅ *Comprovante registrado!*\n`;
+    }
     if (establishment) reply += `🏪 ${establishment}\n`;
     reply += `💰 R$ ${amount.toFixed(2)} em *${categoryName}*`;
-    if (receipt.items && receipt.items.length > 1) {
-      reply += `\n📋 ${receipt.items.length} itens`;
-    }
     if (receipt.paymentMethod) reply += `\n💳 ${receipt.paymentMethod}`;
+    if (receipt.items && receipt.items.length > 1) reply += `\n📋 ${receipt.items.length} itens`;
 
     await this.sendMessage(jid, reply);
-    log(`WhatsApp receipt processed — R$ ${amount} at ${establishment}`, "whatsapp");
+    log(`WhatsApp image processed — ${transactionType} R$ ${amount} (${imageType})`, "whatsapp");
   }
 
   private async buildReply(result: IntentResult, userId: string): Promise<string> {
