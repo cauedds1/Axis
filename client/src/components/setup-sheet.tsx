@@ -1089,12 +1089,17 @@ function SectionWhatsApp() {
   });
 
   const connectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
-    onSuccess: () => {
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/whatsapp/connect");
+      return res.json() as Promise<{ status: string; qrCode?: string }>;
+    },
+    onSuccess: (data) => {
+      if (data?.qrCode) {
+        queryClient.setQueryData(["/api/whatsapp/status"], (old: any) => ({ ...old, status: data.status, qrCode: data.qrCode }));
+      }
       refetch();
-      setTimeout(() => refetch(), 1000);
-      setTimeout(() => refetch(), 2500);
-      setTimeout(() => refetch(), 4000);
+      setTimeout(() => refetch(), 1500);
+      setTimeout(() => refetch(), 3500);
     },
     onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
   });
@@ -1158,15 +1163,15 @@ function SectionWhatsApp() {
           >
             {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
           </button>
-        ) : isAdmin && wStatus === "disconnected" ? (
+        ) : isAdmin && (wStatus === "disconnected" || wStatus === "qr_pending") ? (
           <button
-            onClick={() => connectMutation.mutate()}
+            onClick={() => { connectMutation.mutate(); }}
             disabled={connectMutation.isPending}
             className="text-xs px-3 py-1.5 rounded-lg transition-colors"
             style={{ background: "rgba(0,229,200,0.1)", color: "#00E5C8", border: "1px solid rgba(0,229,200,0.2)" }}
             data-testid="button-whatsapp-connect"
           >
-            {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Conectar"}
+            {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : wStatus === "qr_pending" ? "Reconectar" : "Conectar"}
           </button>
         ) : null}
       </div>

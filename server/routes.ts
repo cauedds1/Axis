@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { log } from "./log";
 import { z } from "zod";
 import multer from "multer";
 import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification, matchBillIdentity, saveUserIdentityEntity, getUserIdentityEntities } from "./ai";
@@ -20,12 +21,18 @@ function getUserId(req: any): string {
 }
 
 async function isAdminUser(req: any): Promise<boolean> {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) return false;
-  const userId = getUserId(req);
-  if (!userId) return false;
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
-  return user?.email === adminEmail;
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) { log("isAdminUser: ADMIN_EMAIL not set", "express"); return false; }
+    const userId = getUserId(req);
+    if (!userId) return false;
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    const result = user?.email === adminEmail;
+    return result;
+  } catch (err: any) {
+    log(`isAdminUser error: ${err?.message}`, "express");
+    return false;
+  }
 }
 
 function paramId(req: any): string {
@@ -2287,23 +2294,25 @@ Se algum dado não foi mencionado, use valores razoáveis.`
 
   app.post("/api/whatsapp/connect", isAuthenticated, async (req, res) => {
     try {
-      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
-      if (whatsappManager.getStatus() === "connected") {
+      const admin = await isAdminUser(req);
+      if (!admin) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
+      const currentStatus = whatsappManager.getStatus();
+      if (currentStatus === "connected") {
         return res.json({ status: "connected", phone: whatsappManager.getConnectedPhone() });
       }
-      log(`WhatsApp connect requested — current status: ${whatsappManager.getStatus()}`, "whatsapp");
-      whatsappManager.resetRetryCount();
+      console.log(`[whatsapp] connect requested — current status: ${currentStatus}`);
+      try { whatsappManager.resetRetryCount(); } catch (_e) { /* ignore if method missing */ }
       whatsappManager.initialize().catch(err => {
-        log(`WhatsApp init error: ${err?.message || err}`, "whatsapp");
-        console.error("WhatsApp init error:", err);
+        console.log(`[whatsapp] init error: ${err?.message || err}`);
       });
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 2500));
       const newStatus = whatsappManager.getStatus();
-      log(`WhatsApp connect result — new status: ${newStatus}, hasQR: ${!!whatsappManager.getQrCode()}`, "whatsapp");
-      res.json({ status: newStatus, qrCode: whatsappManager.getQrCode() });
+      const qr = whatsappManager.getQrCode();
+      console.log(`[whatsapp] connect result — status: ${newStatus}, hasQR: ${!!qr}`);
+      res.json({ status: newStatus, qrCode: qr });
     } catch (error: any) {
-      log(`WhatsApp connect error: ${error.message}`, "whatsapp");
-      res.status(500).json({ message: error.message });
+      console.error(`[whatsapp] connect handler error:`, error);
+      res.status(500).json({ message: error?.message || "Erro interno" });
     }
   });
 

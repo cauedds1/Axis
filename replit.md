@@ -46,6 +46,8 @@ server/
   routes.ts       - All API endpoints
   storage.ts      - Database operations (IStorage interface)
   ai.ts           - OpenAI integration (transcription, intent, receipt, PDF, chat)
+  log.ts          - Centralized log() function (avoids circular dependency with index.ts)
+  whatsapp.ts     - WhatsApp bot (Baileys) with PostgreSQL session persistence
   seed.ts         - Seed data (currently empty)
 shared/
   schema.ts       - Drizzle schema + Zod validators + types

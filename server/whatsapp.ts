@@ -15,7 +15,7 @@ import qrcode from "qrcode";
 import { storage } from "./storage";
 import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract, matchBillIdentity, saveUserIdentityEntity } from "./ai";
 import type { IntentResult } from "./ai";
-import { log } from "./index";
+import { log } from "./log";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
