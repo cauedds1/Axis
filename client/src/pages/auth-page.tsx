@@ -250,115 +250,111 @@ export default function AuthPage() {
             </p>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.form
-              key={isLogin ? "login" : "register"}
-              initial={{ opacity: 0, x: isLogin ? -16 : 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: isLogin ? 16 : -16 }}
-              transition={{ duration: 0.3 }}
-              onSubmit={handleSubmit}
-              className="space-y-4"
-              data-testid="form-auth"
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+            data-testid="form-auth"
+          >
+            <div
+              className="overflow-hidden transition-all duration-300"
+              style={{ maxHeight: isLogin ? "0px" : "120px", opacity: isLogin ? 0 : 1 }}
             >
-              {!isLogin && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="firstName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                      Nome
-                    </label>
-                    <input
-                      id="firstName"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="João"
-                      required={!isLogin}
-                      className="auth-input"
-                      data-testid="input-first-name"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                      Sobrenome
-                    </label>
-                    <input
-                      id="lastName"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Silva"
-                      required={!isLogin}
-                      className="auth-input"
-                      data-testid="input-last-name"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3 pb-1">
+                <div>
+                  <label htmlFor="firstName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                    Nome
+                  </label>
+                  <input
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="João"
+                    required={!isLogin}
+                    tabIndex={isLogin ? -1 : 0}
+                    className="auth-input"
+                    data-testid="input-first-name"
+                  />
                 </div>
-              )}
-
-              <div>
-                <label htmlFor="email" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                  E-mail
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  required
-                  className="auth-input"
-                  data-testid="input-email"
-                />
+                <div>
+                  <label htmlFor="lastName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                    Sobrenome
+                  </label>
+                  <input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Silva"
+                    required={!isLogin}
+                    tabIndex={isLogin ? -1 : 0}
+                    className="auth-input"
+                    data-testid="input-last-name"
+                  />
+                </div>
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="password" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                  Senha
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  required
-                  minLength={6}
-                  className="auth-input"
-                  data-testid="input-password"
-                />
+            <div>
+              <label htmlFor="email" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                E-mail
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
+                className="auth-input"
+                data-testid="input-email"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                Senha
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                required
+                minLength={6}
+                className="auth-input"
+                data-testid="input-password"
+              />
+            </div>
+
+            {error && (
+              <div
+                className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl"
+                style={{ background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.18)", color: CORAL }}
+                data-testid="text-auth-error"
+              >
+                <span className="mt-0.5 flex-shrink-0">⚠</span>
+                <span>{(error as Error).message}</span>
               </div>
+            )}
 
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl"
-                  style={{ background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.18)", color: CORAL }}
-                  data-testid="text-auth-error"
-                >
-                  <span className="mt-0.5 flex-shrink-0">⚠</span>
-                  <span>{(error as Error).message}</span>
-                </motion.div>
-              )}
-
-              <div className="pt-1">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  data-testid="button-auth-submit"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      {isLogin ? "Entrar na conta" : "Criar minha conta"}
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.form>
-          </AnimatePresence>
+            <div className="pt-1">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                data-testid="button-auth-submit"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    {isLogin ? "Entrar na conta" : "Criar minha conta"}
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
 
           <div className="mt-7 text-center">
             <button
