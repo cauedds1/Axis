@@ -140,13 +140,15 @@ function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEn
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({ y: d.getFullYear(), m: d.getMonth() });
     }
-  } else if (period === "custom" && customStart && customEnd) {
-    const start = new Date(customStart + "T00:00:00");
-    const end = new Date(customEnd + "T00:00:00");
-    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
-    while (cur <= end) {
-      months.push({ y: cur.getFullYear(), m: cur.getMonth() });
-      cur.setMonth(cur.getMonth() + 1);
+  } else if (period === "custom") {
+    if (customStart && customEnd) {
+      const start = new Date(customStart + "T00:00:00");
+      const end = new Date(customEnd + "T00:00:00");
+      const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (cur <= end) {
+        months.push({ y: cur.getFullYear(), m: cur.getMonth() });
+        cur.setMonth(cur.getMonth() + 1);
+      }
     }
     if (months.length === 0) months.push({ y: now.getFullYear(), m: now.getMonth() });
   }
@@ -155,6 +157,10 @@ function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEn
 }
 
 function getPeriodLabel(period: PeriodFilter, months: Array<{ y: number; m: number }>): string {
+  if (months.length === 0) {
+    const now = new Date();
+    return now.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+  }
   if (months.length === 1) {
     const d = new Date(months[0].y, months[0].m, 1);
     return d.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
