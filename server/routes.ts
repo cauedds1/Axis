@@ -1210,8 +1210,13 @@ export async function registerRoutes(
   app.get("/api/onboarding/setup/status", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const context = await storage.getUserContext(userId);
-      const completed = context.some(c => c.key === "setup_completed" && c.value === "true");
+      const [context, recurringIncomes] = await Promise.all([
+        storage.getUserContext(userId),
+        storage.getRecurringIncomes(userId),
+      ]);
+      const incomeContext = context.find(c => c.key === "renda_atual");
+      const hasIncome = recurringIncomes.length > 0 || (incomeContext && parseFloat(incomeContext.value) > 0);
+      const completed = hasIncome === true;
       res.json({ completed });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

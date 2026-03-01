@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { SetupSheet } from "@/components/setup-sheet";
 
 function formatBotPhone(raw: string): string {
   const d = raw.replace(/\D/g, "");
@@ -207,6 +209,7 @@ function WhatsAppSection() {
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   const { data: userData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
 
@@ -295,7 +298,30 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-border" data-testid="card-edit-profile-settings">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <UserCog className="h-4 w-4" /> Editar cadastro
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Atualize sua renda, gastos fixos, rotina e preferências de alerta. Qualquer mudança é aplicada automaticamente no sistema.
+          </p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setShowSetupModal(true)}
+            data-testid="button-open-edit-profile"
+          >
+            Abrir cadastro
+          </Button>
+        </CardContent>
+      </Card>
+
       <WhatsAppSection />
+
+      <SetupSheet open={showSetupModal} onClose={() => setShowSetupModal(false)} />
     </div>
   );
 }
