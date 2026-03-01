@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, TrendingUp, TrendingDown, Minus, Flame } from "lucide-react";
+import { X, TrendingUp, TrendingDown, Minus, Flame, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface DisciplineEntry {
@@ -53,6 +54,81 @@ function formatDate(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function HowItWorks() {
+  const [expanded, setExpanded] = useState(false);
+
+  const Row = ({ label, pts, color }: { label: string; pts: string; color: string }) => (
+    <div className="flex items-center justify-between py-0.5">
+      <span className="text-[10px] text-white/40">{label}</span>
+      <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color }}>{pts} pts</span>
+    </div>
+  );
+
+  return (
+    <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-1.5">Como funciona</div>
+
+      <div className="space-y-0.5">
+        <Row label="Tarefas concluídas" pts="+3 a +6" color="#00E5C8" />
+        <Row label="Hábitos feitos" pts="+2" color="#00E5C8" />
+        <Row label="Gastos controlados / excesso" pts="+4 a −6" color="#FFA000" />
+        <Row label="Atrasos (justificativa devolve até +3)" pts="−4" color="#FF1744" />
+      </div>
+
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 mt-1.5 text-[9px] text-white/25 hover:text-white/40 transition-colors"
+        data-testid="button-toggle-discipline-details"
+      >
+        {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+        {expanded ? "Ocultar detalhes" : "Ver detalhes"}
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2 space-y-2">
+              <div>
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Tarefas</div>
+                <Row label="Alta prioridade" pts="+6" color="#00E5C8" />
+                <Row label="Média prioridade" pts="+4" color="#00E5C8" />
+                <Row label="Baixa prioridade" pts="+3" color="#00E5C8" />
+                <Row label="Atraso (+48h sem justificativa)" pts="−4" color="#FF1744" />
+              </div>
+              <div>
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Gastos (a cada 3 dias)</div>
+                <Row label="Controlados (ótimo)" pts="+4" color="#00E5C8" />
+                <Row label="Razoáveis (bom)" pts="+2" color="#00E5C8" />
+                <Row label="Neutros" pts="0" color="rgba(255,255,255,0.3)" />
+                <Row label="Excesso leve (20-30%)" pts="−2" color="#FFA000" />
+                <Row label="Excesso moderado (30-40%)" pts="−4" color="#FF1744" />
+                <Row label="Excesso grave (>40%)" pts="−6" color="#FF1744" />
+              </div>
+              <div>
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Justificativas (IA)</div>
+                <Row label="Excelente" pts="+3" color="#00E5C8" />
+                <Row label="Boa" pts="+2" color="#00E5C8" />
+                <Row label="Aceitável" pts="+1" color="#00E5C8" />
+                <div className="text-[9px] text-white/20 mt-0.5">A IA avalia sua justificativa e pode devolver pontos</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="pt-1.5 mt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+        <span className="text-[9px] text-white/20">A cada 8 pts acumulados a disciplina sobe ou desce 1 nível (máx 10, mín 1)</span>
+      </div>
+    </div>
+  );
 }
 
 export function DisciplinePanel({
@@ -174,75 +250,8 @@ export function DisciplinePanel({
               </p>
             </div>
 
-            {/* Como funciona — compact table */}
-            <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-              <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-2">Como funciona</div>
-
-              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Tarefas</div>
-              <div className="space-y-0.5 mb-2">
-                {[
-                  { label: "Alta prioridade concluída", pts: "+6", color: "#00E5C8" },
-                  { label: "Média prioridade concluída", pts: "+4", color: "#00E5C8" },
-                  { label: "Baixa prioridade concluída", pts: "+3", color: "#00E5C8" },
-                  { label: "Tarefa em atraso (+48h)", pts: "−4", color: "#FF1744" },
-                ].map(({ label: l, pts: p, color: c }) => (
-                  <div key={l} className="flex items-center justify-between py-0.5">
-                    <span className="text-[10px] text-white/40">{l}</span>
-                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Hábitos</div>
-              <div className="space-y-0.5 mb-2">
-                {[
-                  { label: "Hábito diário marcado como feito", pts: "+2", color: "#00E5C8" },
-                ].map(({ label: l, pts: p, color: c }) => (
-                  <div key={l} className="flex items-center justify-between py-0.5">
-                    <span className="text-[10px] text-white/40">{l}</span>
-                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Gastos (análise a cada 3 dias)</div>
-              <div className="space-y-0.5 mb-2">
-                {[
-                  { label: "Gastos controlados (ótimo)", pts: "+4", color: "#00E5C8" },
-                  { label: "Gastos razoáveis (bom)", pts: "+2", color: "#00E5C8" },
-                  { label: "Gastos neutros", pts: "0", color: "rgba(255,255,255,0.3)" },
-                  { label: "Excesso leve (20-30%)", pts: "−2", color: "#FFA000" },
-                  { label: "Excesso moderado (30-40%)", pts: "−4", color: "#FF1744" },
-                  { label: "Excesso grave (>40%)", pts: "−6", color: "#FF1744" },
-                ].map(({ label: l, pts: p, color: c }) => (
-                  <div key={l} className="flex items-center justify-between py-0.5">
-                    <span className="text-[10px] text-white/40">{l}</span>
-                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Justificativas (IA)</div>
-              <div className="space-y-0.5 mb-1.5">
-                {[
-                  { label: "Justificativa excelente", pts: "+3", color: "#00E5C8" },
-                  { label: "Justificativa boa", pts: "+2", color: "#00E5C8" },
-                  { label: "Justificativa aceitável", pts: "+1", color: "#00E5C8" },
-                ].map(({ label: l, pts: p, color: c }) => (
-                  <div key={l} className="flex items-center justify-between py-0.5">
-                    <span className="text-[10px] text-white/40">{l}</span>
-                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
-                  </div>
-                ))}
-                <div className="py-0.5">
-                  <span className="text-[9px] text-white/20">Ao justificar atraso, a IA avalia e pode devolver pontos</span>
-                </div>
-              </div>
-
-              <div className="pt-1.5 mt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                <span className="text-[9px] text-white/20">A cada 8 pts acumulados a disciplina sobe ou desce 1 nível (máx 10, mín 1)</span>
-              </div>
-            </div>
+            {/* Como funciona — compact + expandable */}
+            <HowItWorks />
 
             {/* Estado atual */}
             {currentReasons.length > 0 && (
