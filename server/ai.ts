@@ -125,7 +125,7 @@ export async function processReceiptPhoto(imageBase64: string, userId: string): 
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem e retorne um JSON — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
+        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem e retorne um JSON com os dados financeiros extraídos — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
 
 DATA DE HOJE: ${todayDate}
 
@@ -140,14 +140,17 @@ DICAS PARA IDENTIFICAR PIX:
 - "Pix recebido", "Você recebeu", "Transferência recebida", "Creditado" → pix_received
 - Se houver nome do pagador/recebedor e valor, identifique pela direção do fluxo
 
-EXTRAIA:
+EXTRAIA o seguinte JSON:
 {
   "imageType": "receipt" | "pix_sent" | "pix_received" | "unknown",
   "transactionType": "expense" (se receipt ou pix_sent) | "income" (se pix_received),
-  "establishment": "nome do estabelecimento ou nome da pessoa/empresa que enviou/recebeu",
-  "description": "descrição curta do que foi pago/recebido",
-  "location": "endereço/cidade se visível",
-  "date": "YYYY-MM-DD (da transação, não de hoje)",
+  "senderName": "nome COMPLETO de quem ENVIOU o dinheiro (para pix_received: quem pagou; para pix_sent: quem pagou, ou seja, o dono da conta)",
+  "receiverName": "nome COMPLETO de quem RECEBEU o dinheiro (para pix_sent: destinatário; para pix_received: dono da conta)",
+  "establishment": "nome do estabelecimento (para receipts) ou nome da outra parte na transação Pix",
+  "description": "descrição curta e clara do que foi pago/recebido",
+  "location": "endereço/cidade se visível, ou null",
+  "date": "YYYY-MM-DD (data da transação, não de hoje)",
+  "time": "HH:MM (horário da transação no formato 24h, ou null se não visível)",
   "items": [{ "description": "item", "amount": número }],
   "totalAmount": número (valor total da transação),
   "categoryName": "categoria: alimentação | transporte | lazer | saúde | moradia | educação | trabalho | transferência | outros",
@@ -156,6 +159,10 @@ EXTRAIA:
 
 REGRAS:
 - Para Pix: categoryName = "transferência" a menos que haja pista clara do motivo (ex: "iFood" → alimentação)
+- Para pix_received: senderName = quem enviou (o pagador), receiverName = dono da conta (quem recebeu)
+- Para pix_sent: senderName = dono da conta (quem enviou), receiverName = destinatário (quem recebeu)
+- Para receipt: establishment = nome do estabelecimento/loja
+- Sempre extraia o horário se estiver visível (ex: "10h23" → "10:23", "14:05" → "14:05")
 - Se não conseguir ler algo, coloque null. Nunca invente dados.
 - Se a imagem não for financeira, retorne totalAmount: null`
       },

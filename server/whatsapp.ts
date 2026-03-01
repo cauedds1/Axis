@@ -288,9 +288,33 @@ class WhatsAppManager {
     const amount = Number(receipt.totalAmount);
     const transactionType: "expense" | "income" = receipt.transactionType === "income" ? "income" : "expense";
     const categoryName = receipt.categoryName || "outros";
-    const establishment = receipt.establishment || null;
-    const description = receipt.description || establishment || (transactionType === "income" ? "Pix recebido" : "Comprovante");
-    const date = receipt.date ? new Date(receipt.date) : new Date();
+    const imageType = receipt.imageType ?? "receipt";
+
+    // Build date + time combined
+    let date = new Date();
+    if (receipt.date) {
+      const [y, m, d] = receipt.date.split("-").map(Number);
+      if (receipt.time) {
+        const [h, min] = receipt.time.split(":").map(Number);
+        date = new Date(y, m - 1, d, h, min, 0, 0);
+      } else {
+        date = new Date(y, m - 1, d);
+      }
+    }
+
+    // Build establishment and description based on transaction type
+    const senderName: string | null = receipt.senderName || null;
+    const receiverName: string | null = receipt.receiverName || null;
+    const establishment: string | null = receipt.establishment || senderName || receiverName || null;
+
+    let description: string;
+    if (imageType === "pix_received") {
+      description = senderName ? `Pix de ${senderName}` : "Pix recebido";
+    } else if (imageType === "pix_sent") {
+      description = receiverName ? `Pix para ${receiverName}` : "Pix enviado";
+    } else {
+      description = receipt.establishment || receipt.description || "Comprovante";
+    }
 
     await storage.createTransaction({
       userId,
@@ -301,23 +325,30 @@ class WhatsAppManager {
       date,
       paymentMethod: receipt.paymentMethod || null,
       establishment,
+      location: receipt.location || null,
       source: "whatsapp",
     });
 
-    const imageType = receipt.imageType ?? "receipt";
     const isPix = imageType === "pix_sent" || imageType === "pix_received";
     const emoji = transactionType === "income" ? "📥" : "📤";
 
+    // Format date/time for reply
+    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeStr = receipt.time ? ` às ${receipt.time}` : "";
+
     let reply: string;
-    if (transactionType === "income") {
+    if (imageType === "pix_received") {
       reply = `${emoji} *Pix recebido registrado!*\n`;
-    } else if (isPix) {
-      reply = `${emoji} *Pix enviado registrado!*\n`;
+      if (senderName) reply += `👤 De: *${senderName}*\n`;
+    } else if (imageType === "pix_sent") {
+      reply = `📤 *Pix enviado registrado!*\n`;
+      if (receiverName) reply += `👤 Para: *${receiverName}*\n`;
     } else {
       reply = `✅ *Comprovante registrado!*\n`;
+      if (establishment) reply += `🏪 ${establishment}\n`;
     }
-    if (establishment) reply += `🏪 ${establishment}\n`;
-    reply += `💰 R$ ${amount.toFixed(2)} em *${categoryName}*`;
+    reply += `💰 R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*`;
+    reply += `\n📅 ${dateStr}${timeStr}`;
     if (receipt.paymentMethod) reply += `\n💳 ${receipt.paymentMethod}`;
     if (receipt.items && receipt.items.length > 1) reply += `\n📋 ${receipt.items.length} itens`;
 
