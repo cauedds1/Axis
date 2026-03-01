@@ -618,7 +618,13 @@ class WhatsAppManager {
       const dueDay = Number(extracted.dueDay) || new Date().getDate();
       const billType = extracted.type === "income" ? "income" : "expense";
       const categoryName = extracted.categoryName || "outros";
-      const notes = extracted.notes || null;
+
+      const notesParts: string[] = [];
+      if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
+      if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+      if (extracted.recipient) notesParts.push(`Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+      if (extracted.paymentInfo) notesParts.push(`Pagamento: ${extracted.paymentInfo}`);
+      const notes = notesParts.length > 0 ? notesParts.join("\n") : null;
 
       await storage.createBill({
         userId,
@@ -634,15 +640,20 @@ class WhatsAppManager {
       });
 
       const amountStr = amount.toFixed(2).replace(".", ",");
-      const reply =
-        `📋 Conta registrada!\n\n` +
-        `*${title}*\n` +
-        `💰 R$ ${amountStr}\n` +
-        `📅 Vence dia ${dueDay}\n` +
-        `${notes ? notes + "\n" : ""}` +
-        `\nVeja em Contas no app.`;
+      const typeLabel = billType === "income" ? "💰 A receber" : "💸 A pagar";
+      const lines: string[] = [
+        `📋 Conta registrada!\n`,
+        `*${title}*`,
+        `${typeLabel}: R$ ${amountStr}`,
+        `📅 Vence dia ${dueDay}`,
+      ];
+      if (extracted.description) lines.push(`\n📄 ${extracted.description}`);
+      if (extracted.issuer) lines.push(`🏢 Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+      if (extracted.recipient) lines.push(`👤 Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+      if (extracted.paymentInfo) lines.push(`💳 ${extracted.paymentInfo}`);
+      lines.push(`\nVeja em Contas no app.`);
 
-      await this.sendMessage(jid, reply);
+      await this.sendMessage(jid, lines.join("\n"));
       log(`WhatsApp PDF bill: "${title}" R$ ${amount} criada (userId=${userId})`, "whatsapp");
       return;
     }

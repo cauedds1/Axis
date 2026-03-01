@@ -160,6 +160,11 @@ export default function Finance() {
     onSuccess: (data) => {
       setPdfPreview(data);
       if (data?.docType === "bill") {
+        const notesParts: string[] = [];
+        if (data.description) notesParts.push(`Descrição: ${data.description}`);
+        if (data.issuer) notesParts.push(`Emissor: ${data.issuer}${data.issuerCnpj ? ` (${data.issuerCnpj})` : ""}`);
+        if (data.recipient) notesParts.push(`Destinatário: ${data.recipient}${data.recipientCnpj ? ` (${data.recipientCnpj})` : ""}`);
+        if (data.paymentInfo) notesParts.push(`Pagamento: ${data.paymentInfo}`);
         setBillForm({
           title: data.title || "",
           amount: data.amount != null ? String(data.amount) : "",
@@ -167,7 +172,7 @@ export default function Finance() {
           dueDay: data.dueDay != null ? String(data.dueDay) : "",
           recurrenceType: "this_month",
           categoryName: data.categoryName || "",
-          notes: data.notes || "",
+          notes: notesParts.join("\n"),
         });
       }
     },
@@ -382,55 +387,97 @@ export default function Finance() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Título</label>
-                  <Input
-                    value={billForm.title}
-                    onChange={(e) => setBillForm(p => ({ ...p, title: e.target.value }))}
-                    data-testid="input-bill-title"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={billForm.amount}
-                    onChange={(e) => setBillForm(p => ({ ...p, amount: e.target.value }))}
-                    data-testid="input-bill-amount"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
-                  <Select value={billForm.type} onValueChange={(v) => setBillForm(p => ({ ...p, type: v }))}>
-                    <SelectTrigger data-testid="select-bill-type"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expense">A Pagar</SelectItem>
-                      <SelectItem value="income">A Receber</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Dia de vencimento (1-31)</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={billForm.dueDay}
-                    onChange={(e) => setBillForm(p => ({ ...p, dueDay: e.target.value }))}
-                    data-testid="input-bill-due-day"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Recorrência</label>
-                  <Select value={billForm.recurrenceType} onValueChange={(v) => setBillForm(p => ({ ...p, recurrenceType: v }))}>
-                    <SelectTrigger data-testid="select-bill-recurrence"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="this_month">Este mês</SelectItem>
-                      <SelectItem value="permanent">Permanente</SelectItem>
-                      <SelectItem value="three_months">3 meses</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {(pdfPreview.issuer || pdfPreview.recipient || pdfPreview.description) && (
+                  <div className="rounded-lg border p-3 space-y-1.5 text-sm bg-muted/30" data-testid="bill-info-summary">
+                    {pdfPreview.issuer && (
+                      <div className="flex gap-2" data-testid="text-bill-issuer">
+                        <Store className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div>
+                          <span className="text-xs text-muted-foreground">Emissor</span>
+                          <p className="font-medium">{pdfPreview.issuer}{pdfPreview.issuerCnpj ? <span className="text-muted-foreground font-normal"> ({pdfPreview.issuerCnpj})</span> : ""}</p>
+                        </div>
+                      </div>
+                    )}
+                    {pdfPreview.recipient && (
+                      <div className="flex gap-2" data-testid="text-bill-recipient">
+                        <ArrowDownCircle className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div>
+                          <span className="text-xs text-muted-foreground">Destinatário</span>
+                          <p className="font-medium">{pdfPreview.recipient}{pdfPreview.recipientCnpj ? <span className="text-muted-foreground font-normal"> ({pdfPreview.recipientCnpj})</span> : ""}</p>
+                        </div>
+                      </div>
+                    )}
+                    {pdfPreview.description && (
+                      <div className="flex gap-2" data-testid="text-bill-description">
+                        <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div>
+                          <span className="text-xs text-muted-foreground">Serviço/Produto</span>
+                          <p>{pdfPreview.description}</p>
+                        </div>
+                      </div>
+                    )}
+                    {pdfPreview.paymentInfo && (
+                      <div className="flex gap-2" data-testid="text-bill-payment">
+                        <CreditCard className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div>
+                          <span className="text-xs text-muted-foreground">Dados de pagamento</span>
+                          <p>{pdfPreview.paymentInfo}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">Título</label>
+                    <Input
+                      value={billForm.title}
+                      onChange={(e) => setBillForm(p => ({ ...p, title: e.target.value }))}
+                      data-testid="input-bill-title"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={billForm.amount}
+                      onChange={(e) => setBillForm(p => ({ ...p, amount: e.target.value }))}
+                      data-testid="input-bill-amount"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
+                    <Select value={billForm.type} onValueChange={(v) => setBillForm(p => ({ ...p, type: v }))}>
+                      <SelectTrigger data-testid="select-bill-type"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="expense">A Pagar</SelectItem>
+                        <SelectItem value="income">A Receber</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Vencimento (dia)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={31}
+                      value={billForm.dueDay}
+                      onChange={(e) => setBillForm(p => ({ ...p, dueDay: e.target.value }))}
+                      data-testid="input-bill-due-day"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Recorrência</label>
+                    <Select value={billForm.recurrenceType} onValueChange={(v) => setBillForm(p => ({ ...p, recurrenceType: v }))}>
+                      <SelectTrigger data-testid="select-bill-recurrence"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="this_month">Este mês</SelectItem>
+                        <SelectItem value="permanent">Permanente</SelectItem>
+                        <SelectItem value="three_months">3 meses</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
@@ -438,7 +485,7 @@ export default function Finance() {
                     value={billForm.notes}
                     onChange={(e) => setBillForm(p => ({ ...p, notes: e.target.value }))}
                     className="resize-none text-sm"
-                    rows={3}
+                    rows={4}
                     data-testid="textarea-bill-notes"
                   />
                 </div>

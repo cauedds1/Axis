@@ -351,14 +351,18 @@ Se docType = "statement", retorne este JSON:
 Se docType = "bill", retorne este JSON:
 {
   "docType": "bill",
-  "title": "nome curto e descritivo da conta (ex: 'TRUSTCOTA — Serviços administrativos')",
-  "amount": número positivo (valor total/líquido),
-  "type": "expense" se o documento indica que alguém precisa PAGAR, ou "income" se indica que alguém vai RECEBER,
-  "dueDate": "YYYY-MM-DD" (data de vencimento, ou data de emissão se vencimento não constar),
+  "title": "nome curto e descritivo (ex: 'TRUSTCOTA — Serviços administrativos')",
+  "description": "descrição detalhada do serviço ou produto cobrado, conforme consta no documento",
+  "amount": número positivo (valor líquido/total a pagar ou receber),
+  "type": "expense" se alguém precisa PAGAR esta conta, ou "income" se alguém vai RECEBER,
+  "dueDate": "YYYY-MM-DD" (data de vencimento; se não houver, use data de emissão)",
   "dueDay": número 1-31 (dia do mês do vencimento),
   "categoryName": "categoria mais adequada",
-  "entity": "nome da empresa/pessoa principal (prestador ou emissor)",
-  "notes": "dados de pagamento encontrados: Pix, banco, agência, conta, favorecido, código de barras, etc."
+  "issuer": "nome completo de quem EMITIU o documento (prestador/emissor)",
+  "issuerCnpj": "CNPJ ou CPF do emissor, se disponível",
+  "recipient": "nome completo de quem é o DESTINATÁRIO/TOMADOR (quem vai pagar ou receber)",
+  "recipientCnpj": "CNPJ ou CPF do destinatário, se disponível",
+  "paymentInfo": "dados para pagamento: chave Pix, banco, agência, conta, favorecido, código de barras — tudo que encontrar"
 }
 
 REGRAS PARA CLASSIFICAÇÃO:

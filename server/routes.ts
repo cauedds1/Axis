@@ -518,6 +518,13 @@ export async function registerRoutes(
         const extracted = await processPDFExtract(file.buffer, userId);
 
         if (extracted?.docType === "bill") {
+          const notesParts: string[] = [];
+          if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
+          if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+          if (extracted.recipient) notesParts.push(`Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+          if (extracted.paymentInfo) notesParts.push(`Pagamento: ${extracted.paymentInfo}`);
+          const composedNotes = notesParts.length > 0 ? notesParts.join("\n") : null;
+
           const bill = await storage.createBill({
             userId,
             title: extracted.title || "Conta importada",
@@ -528,11 +535,17 @@ export async function registerRoutes(
             recurrenceType: "this_month",
             active: true,
             paidMonths: "[]",
-            notes: extracted.notes || null,
+            notes: composedNotes,
           });
           imported = 1;
           const typeLabel = bill.type === "income" ? "💰 A receber" : "💸 A pagar";
-          botMessage = `📋 *Conta registrada!*\n\n*${bill.title}*\n${typeLabel}: R$ ${Number(bill.amount).toFixed(2)}\n📅 Vence dia ${bill.dueDay}\n${extracted.notes ? `\n📝 ${extracted.notes}` : ""}\n\nVeja em Contas no app.`;
+          const msgLines = [`📋 *Conta registrada!*\n`, `*${bill.title}*`, `${typeLabel}: R$ ${Number(bill.amount).toFixed(2)}`, `📅 Vence dia ${bill.dueDay}`];
+          if (extracted.description) msgLines.push(`\n📄 ${extracted.description}`);
+          if (extracted.issuer) msgLines.push(`🏢 ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+          if (extracted.recipient) msgLines.push(`👤 ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+          if (extracted.paymentInfo) msgLines.push(`💳 ${extracted.paymentInfo}`);
+          msgLines.push(`\nVeja em Contas no app.`);
+          botMessage = msgLines.join("\n");
         } else {
           const txns: any[] = extracted?.transactions ?? [];
           if (txns.length === 0) {
