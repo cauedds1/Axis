@@ -9,7 +9,7 @@ import makeWASocket, {
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode";
 import { storage } from "./storage";
-import { detectIntentAndProcess, chatWithContext, processReceiptPhoto } from "./ai";
+import { detectIntentAndProcess, chatWithContext, processReceiptPhoto, transcribeAudio, processPDFExtract } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./index";
 import * as fs from "fs";
@@ -214,16 +214,27 @@ class WhatsAppManager {
       msg.message?.viewOnceMessageV2?.message?.imageMessage ||
       null;
 
+    const audioMsg =
+      msg.message?.audioMessage ||
+      msg.message?.ephemeralMessage?.message?.audioMessage ||
+      null;
+
+    const docMsg =
+      msg.message?.documentMessage ||
+      msg.message?.ephemeralMessage?.message?.documentMessage ||
+      null;
+
     const text =
       msg.message?.conversation ||
       msg.message?.extendedTextMessage?.text ||
       msg.message?.ephemeralMessage?.message?.conversation ||
       (imageMsg?.caption ?? "");
 
-    if (!text.trim() && !imageMsg) return;
+    if (!text.trim() && !imageMsg && !audioMsg && !docMsg) return;
 
     try {
-      log(`WhatsApp: mensagem recebida de ${senderPhone}${imageMsg ? " [imagem]" : ` — "${text.substring(0, 60)}"`}`, "whatsapp");
+      const msgType = imageMsg ? " [imagem]" : audioMsg ? " [áudio]" : docMsg ? " [documento]" : ` — "${text.substring(0, 60)}"`;
+      log(`WhatsApp: mensagem recebida de ${senderPhone}${msgType}`, "whatsapp");
 
       let profile = await storage.getUserProfileByJid(jid);
       if (!profile) {
@@ -285,6 +296,16 @@ class WhatsAppManager {
 
       if (imageMsg) {
         await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
+        return;
+      }
+
+      if (audioMsg) {
+        await this.handleAudioMessage(msg, jid, profile.userId, audioMsg.mimetype || "audio/ogg; codecs=opus");
+        return;
+      }
+
+      if (docMsg) {
+        await this.handleDocumentPDF(msg, jid, profile.userId, docMsg.fileName || "documento");
         return;
       }
 
@@ -483,6 +504,127 @@ class WhatsAppManager {
     await storage.createTransaction(transactionData);
     await this.sendMessage(jid, reply);
     log(`WhatsApp image processed — ${transactionType} R$ ${amount} (${imageType})`, "whatsapp");
+  }
+
+  private async handleAudioMessage(
+    msg: proto.IWebMessageInfo,
+    jid: string,
+    userId: string,
+    mimetype: string
+  ): Promise<void> {
+    await this.sendMessage(jid, "🎙️ Transcrevendo áudio...");
+
+    let buffer: Buffer;
+    try {
+      buffer = await downloadMediaMessage(
+        msg,
+        "buffer",
+        {},
+        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
+      ) as Buffer;
+    } catch (dlErr: any) {
+      log(`WhatsApp: falha ao baixar áudio — ${dlErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui baixar o áudio. Tente enviar novamente.");
+      return;
+    }
+
+    let transcription: string;
+    try {
+      transcription = await transcribeAudio(buffer, mimetype);
+    } catch (tErr: any) {
+      log(`WhatsApp: falha na transcrição — ${tErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui entender o áudio. Tente falar com mais clareza ou envie uma mensagem de texto.");
+      return;
+    }
+
+    if (!transcription?.trim()) {
+      await this.sendMessage(jid, "😕 Não consegui entender o áudio. Tente enviar uma mensagem de texto.");
+      return;
+    }
+
+    log(`WhatsApp: áudio transcrito — "${transcription.substring(0, 80)}"`, "whatsapp");
+    await this.sendMessage(jid, `🎙️ Entendi: _${transcription}_`);
+
+    const result = await detectIntentAndProcess(transcription, userId);
+    log(`WhatsApp: intent=${result.intent} (áudio) para userId=${userId}`, "whatsapp");
+    const reply = await this.buildReply(result, userId);
+    await this.sendMessage(jid, reply);
+  }
+
+  private async handleDocumentPDF(
+    msg: proto.IWebMessageInfo,
+    jid: string,
+    userId: string,
+    fileName: string
+  ): Promise<void> {
+    const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+    const supported = ["pdf", "txt", "csv"].includes(ext);
+
+    if (!supported) {
+      await this.sendMessage(jid, `📄 Arquivo *${fileName}* não suportado.\n\nEnvie extratos nos formatos: PDF, TXT ou CSV.`);
+      return;
+    }
+
+    await this.sendMessage(jid, "📄 Analisando extrato...");
+
+    let buffer: Buffer;
+    try {
+      buffer = await downloadMediaMessage(
+        msg,
+        "buffer",
+        {},
+        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
+      ) as Buffer;
+    } catch (dlErr: any) {
+      log(`WhatsApp: falha ao baixar documento — ${dlErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui baixar o arquivo. Tente enviar novamente.");
+      return;
+    }
+
+    const pdfText = buffer.toString("utf-8");
+
+    let extracted: any;
+    try {
+      extracted = await processPDFExtract(pdfText, userId);
+    } catch (aiErr: any) {
+      log(`WhatsApp: falha ao processar PDF — ${aiErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui interpretar o extrato. Verifique se o arquivo contém transações legíveis.");
+      return;
+    }
+
+    const txns: any[] = extracted?.transactions ?? [];
+    if (txns.length === 0) {
+      await this.sendMessage(jid, "🤔 Nenhuma transação encontrada no arquivo. Verifique se o extrato está no formato correto.");
+      return;
+    }
+
+    const toCreate = txns.map((t: any) => ({
+      userId,
+      amount: Number(t.amount),
+      description: t.description || "Sem descrição",
+      categoryName: t.categoryName || "outros",
+      type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
+      date: t.date ? new Date(t.date) : new Date(),
+      source: "pdf" as const,
+      establishment: null,
+      paymentMethod: null,
+    }));
+
+    await storage.createManyTransactions(toCreate);
+
+    const totalExpense = toCreate.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+    const totalIncome = toCreate.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+    const period = extracted.period ? `\n📅 Período: ${extracted.period}` : "";
+    const bank = extracted.bankName ? `\n🏦 Banco: ${extracted.bankName}` : "";
+
+    const summary =
+      `✅ *${toCreate.length} transações importadas!*${bank}${period}\n\n` +
+      `💰 Receitas: R$ ${totalIncome.toFixed(2)}\n` +
+      `💸 Gastos: R$ ${totalExpense.toFixed(2)}\n\n` +
+      `_Todas as transações estão disponíveis no AXIS._`;
+
+    await this.sendMessage(jid, summary);
+    log(`WhatsApp PDF: ${toCreate.length} transações importadas para userId=${userId}`, "whatsapp");
   }
 
   private async buildReply(result: IntentResult, userId: string): Promise<string> {
