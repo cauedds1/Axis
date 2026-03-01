@@ -10,12 +10,12 @@ import { SetupSheet } from "@/components/setup-sheet";
 
 const HIGH_PALETTE = {
   primary: "#00E6FF",
-  finance: "#FF6B6B",
-  agenda: "#FFB347",
-  tasks: "#A78BFA",
-  habits: "#4ECDC4",
-  positive: "#4ECDC4",
-  negative: "#FF6B6B",
+  finance: "#FF1744",
+  agenda: "#FFA000",
+  tasks: "#AE73FF",
+  habits: "#00E5C8",
+  positive: "#00E5C8",
+  negative: "#FF1744",
 };
 
 const SLIM_PALETTE = {
@@ -28,7 +28,7 @@ const SLIM_PALETTE = {
   negative: "#9E7575",
 };
 
-const MINT = "#4ECDC4";
+const MINT = "#00E5C8";
 
 
 function SkeletonCard() {
@@ -152,7 +152,7 @@ export default function Dashboard() {
   const name = data?.userName || "";
   const disciplineScore = data?.disciplineScore || 5;
 
-  const scoreColor = disciplineScore <= 4 ? "#FF6B6B" : disciplineScore <= 7 ? "#4A90E2" : "#4ECDC4";
+  const scoreColor = disciplineScore <= 4 ? "#FF1744" : disciplineScore <= 7 ? "#2979FF" : "#00E5C8";
 
   const activeModules: string[] = data?.activeModules || [];
   const showAll = activeModules.length === 0;

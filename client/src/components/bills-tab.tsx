@@ -12,8 +12,8 @@ import type { Bill } from "@shared/schema";
 
 const HIGH_PRIMARY = "#00E6FF";
 const SLIM_PRIMARY = "#7A9E8A";
-const EXPENSE_COLOR = "#FF6B6B";
-const INCOME_COLOR = "#4ECDC4";
+const EXPENSE_COLOR = "#FF1744";
+const INCOME_COLOR = "#00E5C8";
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 
@@ -393,8 +393,8 @@ export function BillsTab() {
         <SummaryCard label="A Pagar" value={`R$ ${totalPagar.toFixed(2)}`} sub={`${activeBills.filter(b => b.type === "expense" && !isBillPaidThisMonth(b)).length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
         <SummaryCard label="A Receber" value={`R$ ${totalReceber.toFixed(2)}`} sub={`${activeBills.filter(b => b.type === "income" && !isBillPaidThisMonth(b)).length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label="Saldo Previsto" value={`R$ ${saldoPrevisto.toFixed(2)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
-        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${vencidas.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={vencidas.length > 0 ? "#FF6B6B" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
-        <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${proximos7.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={proximos7.length > 0 ? "#FFB347" : "rgba(255,255,255,0.3)"} icon={Clock} />
+        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${vencidas.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={vencidas.length > 0 ? "#FF1744" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
+        <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${proximos7.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
         <SummaryCard label="Pago este Mês" value={`R$ ${totalPagoMes.toFixed(2)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
       </div>
 

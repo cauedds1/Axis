@@ -13,10 +13,10 @@ import {
   ArrowUpRight, ArrowDownRight, Receipt,
 } from "lucide-react";
 
-const HIGH_PALETTE = { primary: "#00E6FF", finance: "#FF6B6B", tasks: "#A78BFA", habits: "#4ECDC4", schedule: "#FFB347", positive: "#4ECDC4", negative: "#FF6B6B" };
+const HIGH_PALETTE = { primary: "#00E6FF", finance: "#FF1744", tasks: "#AE73FF", habits: "#00E5C8", schedule: "#FFA000", positive: "#00E5C8", negative: "#FF1744" };
 const SLIM_PALETTE = { primary: "#7A9E8A", finance: "#7A9E8A", tasks: "#7A9E8A", habits: "#7A9E8A", schedule: "#7A9E8A", positive: "#5A8F70", negative: "#9E7575" };
 
-const PIE_COLORS = ["#00E6FF", "#FF6B6B", "#FFB347", "#A78BFA", "#4ECDC4", "#F59E0B", "#EC4899", "#8B5CF6"];
+const PIE_COLORS = ["#00E6FF", "#FF1744", "#FFA000", "#AE73FF", "#00E5C8", "#F59E0B", "#EC4899", "#8B5CF6"];
 const PIE_COLORS_SLIM = ["#7A9E8A", "#8A9A7A", "#9A8A7A", "#7A8A9A", "#9A7A8A", "#8A7A9A", "#7A9A9A", "#9A9A7A"];
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -130,10 +130,10 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const capitalizedMonth = currentMonth.name.charAt(0).toUpperCase() + currentMonth.name.slice(1);
 
   const pmColors: Record<string, string> = {
-    debit: isHigh ? "#A78BFA" : "#7A8A9A",
-    credit: isHigh ? "#FF6B6B" : "#9E7575",
-    pix: isHigh ? "#4ECDC4" : "#5A8F70",
-    cash: isHigh ? "#FFB347" : "#9A8A7A",
+    debit: isHigh ? "#AE73FF" : "#7A8A9A",
+    credit: isHigh ? "#FF1744" : "#9E7575",
+    pix: isHigh ? "#00E5C8" : "#5A8F70",
+    cash: isHigh ? "#FFA000" : "#9A8A7A",
     other: isHigh ? "#00E6FF" : "#7A9E8A",
   };
 

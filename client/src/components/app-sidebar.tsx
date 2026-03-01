@@ -18,10 +18,10 @@ import { DisciplinePanel } from "@/components/discipline-panel";
 
 const HIGH_PALETTE = {
   primary: "#00E6FF",
-  finance: "#FF6B6B",
-  agenda: "#FFB347",
-  tasks: "#A78BFA",
-  habits: "#4ECDC4",
+  finance: "#FF1744",
+  agenda: "#FFA000",
+  tasks: "#AE73FF",
+  habits: "#00E5C8",
   chat: "#00E6FF",
   início: "#00E6FF",
 };
@@ -39,7 +39,7 @@ const SLIM_PALETTE = {
 function ScoreBar({ score, isHigh }: { score: number; isHigh: boolean }) {
   const pct = (score / 10) * 100;
 
-  const color = score <= 4 ? "#FF6B6B" : score <= 7 ? "#4A90E2" : "#4ECDC4";
+  const color = score <= 4 ? "#FF1744" : score <= 7 ? "#2979FF" : "#00E5C8";
 
   return (
     <div className="mt-3 px-1">
@@ -47,7 +47,7 @@ function ScoreBar({ score, isHigh }: { score: number; isHigh: boolean }) {
         <div className="flex items-center gap-1.5">
           <Flame
             className={`h-3 w-3 ${isHigh ? "high-flame" : ""}`}
-            style={{ color: isHigh ? "#FF6B6B" : "#7A9E8A" }}
+            style={{ color: isHigh ? "#FF1744" : "#7A9E8A" }}
           />
           <span className="text-[11px] text-muted-foreground font-medium">Disciplina</span>
         </div>

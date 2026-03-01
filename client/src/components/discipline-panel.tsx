@@ -12,9 +12,9 @@ interface DisciplineEntry {
 }
 
 function scoreColor(score: number): string {
-  if (score <= 4) return "#FF6B6B";
-  if (score <= 7) return "#4A90E2";
-  return "#4ECDC4";
+  if (score <= 4) return "#FF1744";
+  if (score <= 7) return "#2979FF";
+  return "#00E5C8";
 }
 
 function scoreLabel(score: number): string {
@@ -28,13 +28,13 @@ function scoreLabel(score: number): string {
 function DeltaBadge({ delta }: { delta: number }) {
   if (delta > 0)
     return (
-      <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: "#4ECDC4" }}>
+      <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: "#00E5C8" }}>
         <TrendingUp className="h-3 w-3" />+{delta}
       </span>
     );
   if (delta < 0)
     return (
-      <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: "#FF6B6B" }}>
+      <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: "#FF1744" }}>
         <TrendingDown className="h-3 w-3" />{delta}
       </span>
     );
@@ -155,7 +155,7 @@ export function DisciplinePanel({
               {(() => {
                 const pts = disciplinePoints;
                 const isPositive = pts >= 0;
-                const barColor = isPositive ? "#4ECDC4" : "#FF6B6B";
+                const barColor = isPositive ? "#00E5C8" : "#FF1744";
                 const barPct = Math.min(Math.abs(pts) / 8 * 100, 100);
                 const nextAction = isPositive ? "subir" : "descer";
                 const ptsLeft = 8 - Math.abs(pts);
@@ -191,11 +191,11 @@ export function DisciplinePanel({
               <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-3">Como funciona</div>
               <div className="space-y-1.5">
                 {[
-                  { label: "Tarefa alta prioridade concluída", pts: "+6", color: "#4ECDC4" },
-                  { label: "Tarefa média prioridade concluída", pts: "+4", color: "#4ECDC4" },
-                  { label: "Tarefa baixa prioridade concluída", pts: "+3", color: "#4ECDC4" },
-                  { label: "Hábito diário marcado como feito",  pts: "+2", color: "#4ECDC4" },
-                  { label: "Tarefa em atraso detectada",        pts: "−4", color: "#FF6B6B" },
+                  { label: "Tarefa alta prioridade concluída", pts: "+6", color: "#00E5C8" },
+                  { label: "Tarefa média prioridade concluída", pts: "+4", color: "#00E5C8" },
+                  { label: "Tarefa baixa prioridade concluída", pts: "+3", color: "#00E5C8" },
+                  { label: "Hábito diário marcado como feito",  pts: "+2", color: "#00E5C8" },
+                  { label: "Tarefa em atraso detectada",        pts: "−4", color: "#FF1744" },
                 ].map(({ label, pts, color: c }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-[11px] text-white/40">{label}</span>

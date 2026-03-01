@@ -9,7 +9,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - **Database**: PostgreSQL (Neon) via Drizzle ORM
 - **AI**: OpenAI via Replit AI Integrations (transcription, intent detection, receipt/PDF analysis, contextual chat)
 - **Auth**: Native email/password (bcrypt + express-session)
-- **Themes**: Two dark themes — Slim (achromatic minimalist) and High (electric cyan accent)
+- **Themes**: Two dark themes — Slim (achromatic minimalist) and High (electric cyan accent with vivid palette)
 
 ## Key Features
 - Dual input: every voice input has text equivalent (mic + text field always visible)

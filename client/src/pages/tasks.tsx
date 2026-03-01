@@ -14,9 +14,9 @@ const HIGH_PRIMARY = "#00E6FF";
 const SLIM_PRIMARY = "#7A9E8A";
 
 const PRIORITY_OPTIONS = [
-  { value: "high", label: "Alta", color: "#FF6B6B" },
-  { value: "medium", label: "Média", color: "#FFB347" },
-  { value: "low", label: "Baixa", color: "#4ECDC4" },
+  { value: "high", label: "Alta", color: "#FF1744" },
+  { value: "medium", label: "Média", color: "#FFA000" },
+  { value: "low", label: "Baixa", color: "#00E5C8" },
 ] as const;
 
 const HABIT_EMOJIS = ["⚡", "🏋️", "📚", "💧", "🧘", "🍎", "😴", "💊", "🚶", "✍️"];
@@ -444,9 +444,9 @@ export default function Tasks() {
   const completed = tasks.filter(t => t.status === "completed");
 
   const priorityColor: Record<string, string> = {
-    high: "#FF6B6B",
-    medium: "#FFB347",
-    low: "#4ECDC4",
+    high: "#FF1744",
+    medium: "#FFA000",
+    low: "#00E5C8",
   };
 
   function formatDueDate(dueDate: Date | string | null | undefined): string | null {
@@ -506,7 +506,7 @@ export default function Tasks() {
                     <div className="flex items-center gap-2 flex-wrap mt-0.5">
                       {task.category && <span className="text-[10px] text-muted-foreground">{task.category}</span>}
                       {due && (
-                        <span className="text-[10px] flex items-center gap-0.5" style={{ color: isOverdue ? "#FF6B6B" : "rgba(255,255,255,0.3)" }}>
+                        <span className="text-[10px] flex items-center gap-0.5" style={{ color: isOverdue ? "#FF1744" : "rgba(255,255,255,0.3)" }}>
                           <Clock className="h-2.5 w-2.5" />{due}
                         </span>
                       )}
