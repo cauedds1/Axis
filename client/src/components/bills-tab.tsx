@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw } from "lucide-react";
+
+function fmtBRL(v: number): string {
+  return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -544,16 +548,16 @@ export function BillsTab() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SummaryCard label="A Pagar" value={`R$ ${totalPagar.toFixed(2)}`} sub={`${unpaidExpenses.length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
-        <SummaryCard label="A Receber" value={`R$ ${totalReceber.toFixed(2)}`} sub={`${unpaidIncomes.length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
-        <SummaryCard label="Saldo Previsto" value={`R$ ${saldoPrevisto.toFixed(2)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
-        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${vencidas.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={vencidas.length > 0 ? "#FF1744" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
+        <SummaryCard label="A Pagar" value={`R$ ${fmtBRL(totalPagar)}`} sub={`${unpaidExpenses.length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
+        <SummaryCard label="A Receber" value={`R$ ${fmtBRL(totalReceber)}`} sub={`${unpaidIncomes.length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
+        <SummaryCard label="Saldo Previsto" value={`R$ ${fmtBRL(saldoPrevisto)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
+        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${fmtBRL(vencidas.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={vencidas.length > 0 ? "#FF1744" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
         {isSingleCurrentMonth ? (
-          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${proximos7.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
+          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${fmtBRL(proximos7.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
         ) : (
           <SummaryCard label="Total Contas" value={`${activeBills.length}`} sub={`no período`} accent="rgba(255,255,255,0.5)" icon={Clock} />
         )}
-        <SummaryCard label={isSingleCurrentMonth ? "Pago este Mês" : "Pago no Período"} value={`R$ ${totalPagoMes.toFixed(2)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
+        <SummaryCard label={isSingleCurrentMonth ? "Pago este Mês" : "Pago no Período"} value={`R$ ${fmtBRL(totalPagoMes)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
       </div>
 
       {/* Filters */}
@@ -646,7 +650,7 @@ export function BillsTab() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-base font-bold" style={{ color: paid ? "rgba(255,255,255,0.3)" : rowAccent }}>
-                            {isExpense ? "-" : "+"}R$ {bill.amount.toFixed(2)}
+                            {isExpense ? "-" : "+"}R$ {fmtBRL(bill.amount)}
                           </span>
                           <div className="p-1.5">
                             {expanded ? <ChevronUp className="h-4 w-4 text-white/30" /> : <ChevronDown className="h-4 w-4 text-white/30" />}
