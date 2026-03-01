@@ -1748,18 +1748,17 @@ Se algum dado não foi mencionado, use valores razoáveis.`
           ops.push(storage.upsertUserContext(userId, "gastos_fixos_total", `Total de gastos fixos mensais: R$${total} (${parsed.map(i => `${i.description} R$${i.amount}`).join(", ")})`));
           for (const item of parsed) {
             ops.push(
-              storage.createTransaction({
+              storage.createBill({
                 userId,
-                description: item.description,
+                title: item.description,
                 amount: item.amount,
                 type: "expense",
+                dueDay: 5,
+                recurrenceType: "permanent",
                 categoryName: item.category,
-                categoryId: null,
-                date: new Date(),
-                source: "manual",
-                establishment: null,
-                location: null,
-                paymentMethod: null,
+                notes: null,
+                active: true,
+                paidMonths: "[]",
               })
             );
             expensesCreated++;

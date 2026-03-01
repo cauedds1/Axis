@@ -612,8 +612,12 @@ export function BillsTab() {
               const isExpense = bill.type === "expense";
               const rowAccent = isExpense ? EXPENSE_COLOR : INCOME_COLOR;
               const expanded = expandedId === bill.id;
-              const statusColor = paid ? INCOME_COLOR : overdue ? EXPENSE_COLOR : "rgba(255,255,255,0.25)";
-              const statusLabel = paid ? "Pago" : overdue ? "Vencido" : `Dia ${bill.dueDay}`;
+              const today = new Date().getDate();
+              const daysUntilDue = bill.dueDay - today;
+              const isUpcomingSoon = !paid && !overdue && daysUntilDue >= 0 && daysUntilDue <= 5;
+              const WARN_COLOR = "#FFA000";
+              const statusColor = paid ? INCOME_COLOR : overdue ? EXPENSE_COLOR : isUpcomingSoon ? WARN_COLOR : "rgba(255,255,255,0.25)";
+              const statusLabel = paid ? "Pago" : overdue ? "Vencido" : isUpcomingSoon ? (daysUntilDue === 0 ? "Vence hoje!" : `Vence em ${daysUntilDue}d`) : `Dia ${bill.dueDay}`;
 
               return (
                 <motion.div
@@ -624,8 +628,8 @@ export function BillsTab() {
                   exit={{ opacity: 0, height: 0 }}
                   className="rounded-2xl overflow-hidden"
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: `1px solid ${paid ? "rgba(255,255,255,0.06)" : overdue ? `${EXPENSE_COLOR}25` : "rgba(255,255,255,0.07)"}`,
+                    background: isUpcomingSoon ? "rgba(255,160,0,0.04)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${paid ? "rgba(255,255,255,0.06)" : overdue ? `${EXPENSE_COLOR}25` : isUpcomingSoon ? `${WARN_COLOR}35` : "rgba(255,255,255,0.07)"}`,
                     opacity: paid ? 0.65 : 1,
                   }}
                   data-testid={`card-bill-${bill.id}`}
