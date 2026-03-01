@@ -1256,7 +1256,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </button>
           </div>
 
-          <div className="flex gap-1.5 px-5 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex gap-1.5 px-5 py-3 border-b overflow-x-auto shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1264,7 +1264,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex-1 justify-center"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 shrink-0 whitespace-nowrap"
                   style={{
                     background: isActive ? `${MINT}12` : "transparent",
                     border: `1px solid ${isActive ? `${MINT}30` : "transparent"}`,
