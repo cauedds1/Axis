@@ -38,10 +38,16 @@ export default function Agenda() {
 
   const periodStart = new Date(selectedDate);
   const dayOfMonth = periodStart.getDate();
-  periodStart.setDate(dayOfMonth <= 15 ? 1 : 16);
+  const isFirstHalf = dayOfMonth <= 15;
+  periodStart.setDate(isFirstHalf ? 1 : 16);
   periodStart.setHours(0, 0, 0, 0);
   const periodEnd = new Date(periodStart);
-  periodEnd.setDate(periodEnd.getDate() + 14);
+  if (isFirstHalf) {
+    periodEnd.setDate(15);
+  } else {
+    const lastDay = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0).getDate();
+    periodEnd.setDate(lastDay);
+  }
   periodEnd.setHours(23, 59, 59, 999);
 
   const { data: items = [], isLoading } = useQuery<ScheduleItem[]>({
@@ -204,7 +210,8 @@ export default function Agenda() {
     onError: () => toast({ title: "Erro ao criar compromisso", variant: "destructive" }),
   });
 
-  const periodDays = Array.from({ length: 15 }, (_, i) => {
+  const daysInPeriod = periodEnd.getDate() - periodStart.getDate() + 1;
+  const periodDays = Array.from({ length: daysInPeriod }, (_, i) => {
     const d = new Date(periodStart);
     d.setDate(d.getDate() + i);
     return d;

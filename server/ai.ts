@@ -125,7 +125,7 @@ export async function processReceiptPhoto(imageBase64: string, userId: string): 
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
+        content: `Você é o AXIS, um assistente financeiro. Analise esta imagem e retorne um JSON — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
 
 DATA DE HOJE: ${todayDate}
 
