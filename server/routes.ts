@@ -2268,12 +2268,16 @@ Se algum dado não foi mencionado, use valores razoáveis.`
 
   // ── ADMIN CHECK ─────────────────────────────────────────────────────────
   app.get("/api/auth/is-admin", isAuthenticated, async (req, res) => {
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({ isAdmin: await isAdminUser(req) });
   });
 
   // ── WHATSAPP ROUTES ─────────────────────────────────────────────────────
   app.get("/api/whatsapp/status", isAuthenticated, async (req, res) => {
     const admin = await isAdminUser(req);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     res.json({
       status: whatsappManager.getStatus(),
       qrCode: admin ? whatsappManager.getQrCode() : undefined,

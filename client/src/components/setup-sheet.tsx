@@ -1078,20 +1078,24 @@ function SectionWhatsApp() {
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
 
-  const { data: adminData } = useQuery<{ isAdmin: boolean }>({ queryKey: ["/api/auth/is-admin"] });
+  const { data: adminData } = useQuery<{ isAdmin: boolean }>({ queryKey: ["/api/auth/is-admin"], staleTime: 0 });
   const isAdmin = adminData?.isAdmin ?? false;
 
   const { data: status, refetch } = useQuery<{ status: string; qrCode?: string; phone?: string }>({
     queryKey: ["/api/whatsapp/status"],
-    refetchInterval: (query) => {
-      const s = (query.state.data as any)?.status;
-      return s === "qr_pending" ? 3000 : 10000;
-    },
+    refetchInterval: 3000,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const connectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
-    onSuccess: () => { refetch(); setTimeout(() => refetch(), 1500); },
+    onSuccess: () => {
+      refetch();
+      setTimeout(() => refetch(), 1000);
+      setTimeout(() => refetch(), 2500);
+      setTimeout(() => refetch(), 4000);
+    },
     onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
   });
 
