@@ -27,6 +27,7 @@ const allowlist = [
   "stripe",
   "uuid",
   "ws",
+  "qrcode",
   "xlsx",
   "zod",
   "zod-validation-error",
