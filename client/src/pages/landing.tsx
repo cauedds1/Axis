@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { motion, useInView, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
 import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Zap, ChevronDown, Volume2, Camera, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
@@ -682,15 +682,26 @@ const marqueeItems = [
 ];
 
 const faqItems = [
-  { q: "O AXIS é gratuito?", a: "Sim! Você pode criar sua conta e usar todas as funcionalidades principais sem pagar nada." },
-  { q: "Funciona no WhatsApp?", a: "Sim. Conecte seu WhatsApp ao AXIS e registre gastos, crie tarefas, consulte saldo e muito mais — tudo por mensagem de texto ou áudio." },
-  { q: "Meus dados estão seguros?", a: "Totalmente. Usamos criptografia, seus dados ficam isolados e você pode excluir sua conta e todos os dados a qualquer momento." },
-  { q: "Preciso instalar algum app?", a: "Não. O AXIS funciona direto no navegador, em qualquer dispositivo. E o bot funciona no WhatsApp que você já usa." },
-  { q: "Como a IA funciona?", a: "A IA do AXIS entende linguagem natural. Você diz \"gastei 50 no almoço\" e ela categoriza automaticamente. Com o tempo, ela aprende seus padrões e fica cada vez mais precisa." },
+  { q: "O AXIS é gratuito?", a: "Sim! Você cria sua conta em segundos e tem acesso a todas as funcionalidades principais sem pagar nada — finanças, agenda, tarefas, hábitos, chat com IA e o bot do WhatsApp. Não pedimos cartão de crédito. A ideia é que você experimente o AXIS sem nenhuma barreira e sinta o impacto na sua rotina antes de qualquer coisa." },
+  { q: "Funciona no WhatsApp?", a: "Funciona sim, e essa é uma das partes mais legais. Você conecta seu WhatsApp ao AXIS e passa a registrar gastos, criar tarefas, agendar compromissos e consultar seu saldo — tudo por mensagem de texto ou áudio. Mandou um áudio dizendo \"gastei 30 no uber\"? O bot transcreve, entende e registra automaticamente. Você nem precisa abrir o app pra manter tudo organizado." },
+  { q: "Meus dados estão seguros?", a: "Totalmente. Seus dados são armazenados com criptografia e ficam completamente isolados — ninguém além de você tem acesso. Não vendemos, não compartilhamos e não usamos seus dados pra treinar modelos. Você tem controle total: pode exportar tudo ou excluir sua conta e todos os dados a qualquer momento, sem burocracia." },
+  { q: "Preciso instalar algum app?", a: "Não precisa instalar nada. O AXIS funciona 100% no navegador, em qualquer dispositivo — computador, tablet ou celular. É só abrir o site e usar. E se preferir, o bot funciona direto no WhatsApp que você já tem instalado. Sem downloads, sem atualizações, sem ocupar espaço no celular." },
+  { q: "Como a IA funciona?", a: "A IA do AXIS entende linguagem natural em português. Você fala ou digita do jeito que quiser — \"gastei 50 no almoço\", \"reunião com o João sexta às 15h\", \"quero ler 30 minutos por dia\" — e ela categoriza, organiza e registra tudo automaticamente. Com o tempo, ela aprende seus padrões de gastos, horários e hábitos, ficando cada vez mais precisa nas sugestões. Ela também avalia suas justificativas de hábitos e tarefas usando um score de disciplina gamificado." },
+  { q: "Posso usar por voz?", a: "Com certeza. Você pode enviar áudios pelo WhatsApp ou usar o microfone direto no app. O AXIS transcreve o áudio em tempo real e interpreta o que você disse. Funciona também com fotos de recibos e PDFs de extratos bancários — a IA lê, extrai os valores e categoriza cada gasto automaticamente." },
+  { q: "O que é o Score de Disciplina?", a: "É um sistema de gamificação que acompanha o quanto você está mantendo suas tarefas e hábitos em dia. Completar tarefas e manter streaks de hábitos aumenta seu score, enquanto atrasos e tarefas ignoradas diminuem. A IA também avalia suas justificativas — se você explicar por que não fez algo, ela pode aceitar parcialmente e reduzir a penalidade. É uma forma de te manter motivado sem ser punitivo." },
 ];
 
 function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
   const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
+    }
+  }, [open]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -705,23 +716,17 @@ function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
         data-testid={`button-faq-${index}`}
       >
         <span className="text-base font-medium text-white/80 group-hover:text-white transition-colors pr-4">{item.q}</span>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />
-        </motion.div>
+        <div className="flex-shrink-0 transition-transform duration-300 ease-out" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
+          <ChevronDown className="w-4 h-4 text-white/30" />
+        </div>
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden"
-          >
-            <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        ref={contentRef}
+        className="overflow-hidden transition-all duration-300 ease-out"
+        style={{ maxHeight: open ? `${contentHeight}px` : "0px", opacity: open ? 1 : 0 }}
+      >
+        <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
+      </div>
     </motion.div>
   );
 }
