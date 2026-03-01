@@ -799,17 +799,50 @@
     border-color: rgba(255,255,255,0.08) transparent transparent transparent;
   }
 
-  .landing-feature-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-    border: 1px solid rgba(255,255,255,0.06);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  @keyframes landing-marquee-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
   }
 
-  .landing-feature-card:hover {
-    background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%);
-    border-color: rgba(255,255,255,0.12);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  @keyframes landing-marquee-scroll-reverse {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(0); }
+  }
+
+  .landing-marquee-container {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .landing-marquee {
+    display: flex;
+    white-space: nowrap;
+    animation: landing-marquee-scroll 30s linear infinite;
+  }
+
+  .landing-marquee-reverse {
+    animation: landing-marquee-scroll-reverse 35s linear infinite;
+  }
+
+  .landing-marquee-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+
+  @keyframes landing-whatsapp-pulse {
+    0%, 100% { text-shadow: 0 0 12px rgba(78,205,196,0.4), 0 0 40px rgba(78,205,196,0.15); }
+    50% { text-shadow: 0 0 20px rgba(78,205,196,0.6), 0 0 60px rgba(78,205,196,0.25); }
+  }
+
+  .landing-whatsapp-glow {
+    color: #4ECDC4;
+    animation: landing-whatsapp-pulse 3s ease-in-out infinite;
   }
 
   .landing-app-window {

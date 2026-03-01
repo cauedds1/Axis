@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { motion, useInView, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
-import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Shield, BarChart3, Zap, ChevronDown, Send, Volume2, Camera, FileText, Check } from "lucide-react";
+import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Zap, ChevronDown, Volume2, Camera, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 
@@ -666,13 +666,19 @@ const steps = [
   { title: "Pronto", desc: "Tudo registrado. Zero esforço. Vida organizada.", type: "done" as const, color: LAVANDA },
 ];
 
-const features = [
-  { icon: <Mic className="w-5 h-5" />, title: "Por voz ou texto", desc: "Fale ou digite — o AXIS entende os dois.", color: CORAL },
-  { icon: <Smartphone className="w-5 h-5" />, title: "WhatsApp integrado", desc: "Bot nativo. Registre tudo sem abrir o app.", color: GREEN },
-  { icon: <Brain className="w-5 h-5" />, title: "IA que aprende", desc: "Memória de longo prazo. Quanto mais usa, mais esperta.", color: LAVANDA },
-  { icon: <Zap className="w-5 h-5" />, title: "Score de disciplina", desc: "Gamificação real. Veja seu progresso diário.", color: GOLD },
-  { icon: <BarChart3 className="w-5 h-5" />, title: "Relatórios visuais", desc: "Gráficos de gastos, hábitos, tarefas e agenda.", color: CORAL },
-  { icon: <Shield className="w-5 h-5" />, title: "Privacidade total", desc: "Seus dados são seus. Criptografia e controle total.", color: CYAN },
+const marqueeItems = [
+  "Por voz ou texto",
+  "WhatsApp integrado",
+  "IA que aprende",
+  "Score de disciplina",
+  "Relatórios visuais",
+  "Privacidade total",
+  "Foto de recibo",
+  "PDF de extrato",
+  "Streaks diários",
+  "Memória longa",
+  "Zero configuração",
+  "Áudio → Texto",
 ];
 
 const faqItems = [
@@ -848,39 +854,86 @@ export default function Landing() {
 
       <div className="landing-section-divider max-w-4xl mx-auto" />
 
-      <section className="py-24 md:py-32 px-6 relative">
+      <section className="py-20 md:py-28 px-6 relative">
         <div className="max-w-6xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: CORAL }}>
-              Veja na prática
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight" data-testid="text-demo-title">
-              Fale. O AXIS <span className="landing-gradient-text">faz o resto.</span>
-            </h2>
-            <p className="text-white/35 text-lg mt-4 max-w-lg mx-auto">
-              Registre um gasto, crie um compromisso ou inicie um hábito — tudo com uma frase.
-            </p>
-          </motion.div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: CORAL }}>
+                Veja na prática
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-demo-title">
+                Fale. O AXIS <span className="landing-gradient-text">faz o resto.</span>
+              </h2>
+              <p className="text-white/35 text-base leading-relaxed mb-6 max-w-md">
+                Registre um gasto, crie um compromisso ou inicie um hábito — tudo com uma frase.
+              </p>
+              <TypewriterDemo />
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            <TypewriterDemo />
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="flex flex-col gap-6"
+            >
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: CORAL },
+                  { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: GOLD },
+                  { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LAVANDA },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.12 }}
+                    className="flex items-center gap-5 rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`stat-${i}`}
+                  >
+                    <div className="text-4xl md:text-5xl font-bold tabular-nums" style={{ color: stat.color }}>
+                      <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
+                    </div>
+                    <p className="text-white/45 text-sm leading-snug">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-2">
+                {[
+                  { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz", color: CORAL },
+                  { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto", color: GOLD },
+                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: LAVANDA },
+                  { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF", color: CYAN },
+                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: GREEN },
+                ].map((input, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 + i * 0.06 }}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03]"
+                    data-testid={`input-type-${i}`}
+                  >
+                    <span style={{ color: input.color }}>{input.icon}</span>
+                    <span className="text-xs text-white/50">{input.label}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
       <div className="landing-section-divider max-w-4xl mx-auto" />
 
-      <section className="py-24 md:py-32 px-6 relative">
+      <section className="py-20 md:py-28 px-6 relative">
         <div className="landing-blob-2 absolute top-[20%] right-[-15%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(78,205,196,0.08) 0%, transparent 60%)`, filter: "blur(70px)" }} />
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -889,13 +942,9 @@ export default function Landing() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-4"
-                style={{ background: "rgba(78,205,196,0.08)", borderColor: "rgba(78,205,196,0.2)" }}>
-                <Smartphone className="w-3 h-3" style={{ color: GREEN }} />
-                <span className="text-[11px] font-medium" style={{ color: GREEN }}>WhatsApp Bot</span>
-              </div>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-whatsapp-title">
-                Tudo pelo <span style={{ color: GREEN }}>WhatsApp.</span>
+                Tudo pelo{" "}
+                <span className="landing-whatsapp-glow">WhatsApp.</span>
                 <br />
                 <span className="text-white/40">Sem abrir o app.</span>
               </h2>
@@ -1028,79 +1077,27 @@ export default function Landing() {
         </div>
       </section>
 
-      <div className="landing-section-divider max-w-4xl mx-auto" />
-
-      <section className="py-24 md:py-32 px-6 relative">
-        <div className="max-w-5xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: CYAN }}>
-              Diferenciais
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Por que o <span className="landing-gradient-text">AXIS?</span>
-            </h2>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {features.map((feat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-                className="landing-feature-card rounded-2xl p-6 group"
-                data-testid={`panel-feature-${i}`}
-              >
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110"
-                  style={{ background: `${feat.color}12`, border: `1px solid ${feat.color}20`, color: feat.color }}>
-                  {feat.icon}
-                </div>
-                <h3 className="text-base font-bold text-white/90 mb-1.5">{feat.title}</h3>
-                <p className="text-sm text-white/40 leading-relaxed">{feat.desc}</p>
-              </motion.div>
+      <section className="py-8 relative overflow-hidden" data-testid="section-marquee">
+        <div className="landing-marquee-container">
+          <div className="landing-marquee">
+            {[...marqueeItems, ...marqueeItems].map((item, i) => (
+              <span key={i} className="landing-marquee-item">
+                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [CORAL, GOLD, LAVANDA, GREEN, CYAN][i % 5] }} />
+                {item}
+              </span>
+            ))}
+          </div>
+          <div className="landing-marquee landing-marquee-reverse" style={{ marginTop: "12px" }}>
+            {[...marqueeItems.slice().reverse(), ...marqueeItems.slice().reverse()].map((item, i) => (
+              <span key={i} className="landing-marquee-item">
+                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [GREEN, LAVANDA, CORAL, CYAN, GOLD][i % 5] }} />
+                {item}
+              </span>
             ))}
           </div>
         </div>
-      </section>
-
-      <div className="landing-section-divider max-w-4xl mx-auto" />
-
-      <section className="py-24 md:py-28 px-6 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 20% 50%, rgba(255,107,107,0.05) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(167,139,250,0.05) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(255,179,71,0.03) 0%, transparent 40%)` }} />
-        <div className="max-w-4xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 text-center"
-          >
-            {[
-              { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: CORAL },
-              { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: GOLD },
-              { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LAVANDA },
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-                data-testid={`stat-${i}`}
-              >
-                <div className="text-5xl md:text-6xl font-bold mb-2" style={{ color: stat.color }}>
-                  <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
-                </div>
-                <p className="text-white/40 text-sm">{stat.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+        <div className="absolute left-0 top-0 h-full w-24 bg-gradient-to-r from-[#08080f] to-transparent z-10 pointer-events-none" />
+        <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-[#08080f] to-transparent z-10 pointer-events-none" />
       </section>
 
       <div className="landing-section-divider max-w-4xl mx-auto" />
