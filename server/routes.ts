@@ -1624,6 +1624,18 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/whatsapp/reset", isAuthenticated, async (_req, res) => {
+    try {
+      await whatsappManager.disconnect();
+      setTimeout(() => {
+        whatsappManager.initialize().catch(err => console.error("WhatsApp reset error:", err));
+      }, 800);
+      res.json({ status: "initializing" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.patch("/api/user/whatsapp-phone", isAuthenticated, async (req, res) => {
     const userId = getUserId(req);
     const { phone } = req.body;

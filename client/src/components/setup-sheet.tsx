@@ -27,6 +27,7 @@ import {
   Wifi,
   WifiOff,
   QrCode,
+  RefreshCw,
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -1086,6 +1087,12 @@ function SectionWhatsApp() {
     onError: () => toast({ title: "Erro ao desconectar", variant: "destructive" }),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
+    onSuccess: () => { toast({ title: "Gerando novo QR code..." }); setTimeout(() => refetch(), 1200); },
+    onError: () => toast({ title: "Erro ao gerar QR", variant: "destructive" }),
+  });
+
   const phoneMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
     onSuccess: () => { setPhoneSaved(true); toast({ title: "Número vinculado com sucesso!" }); setTimeout(() => setPhoneSaved(false), 2000); },
@@ -1148,14 +1155,38 @@ function SectionWhatsApp() {
         <div className="rounded-2xl p-4 flex flex-col items-center gap-3" style={{ background: "rgba(255,160,0,0.05)", border: "1px solid rgba(255,160,0,0.2)" }}>
           <p className="text-xs text-white/60 text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
           <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
-          <p className="text-[10px] text-white/30 text-center">O QR expira em 60 segundos — atualize se necessário</p>
+          <div className="flex items-center gap-3">
+            <p className="text-[10px] text-white/30">QR expira em 60s</p>
+            <button
+              onClick={() => resetMutation.mutate()}
+              disabled={resetMutation.isPending}
+              className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+              style={{ color: "#FFA000", background: "rgba(255,160,0,0.1)", border: "1px solid rgba(255,160,0,0.25)" }}
+              data-testid="button-whatsapp-new-qr"
+            >
+              {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Gerar novo QR
+            </button>
+          </div>
         </div>
       )}
 
       {wStatus === "qr_pending" && !status?.qrCode && (
-        <div className="flex items-center justify-center gap-2 py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-white/40" />
-          <span className="text-xs text-white/40">Gerando QR code...</span>
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-white/40" />
+            <span className="text-xs text-white/40">Gerando QR code...</span>
+          </div>
+          <button
+            onClick={() => resetMutation.mutate()}
+            disabled={resetMutation.isPending}
+            className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+            style={{ color: "#FFA000", background: "rgba(255,160,0,0.1)", border: "1px solid rgba(255,160,0,0.25)" }}
+            data-testid="button-whatsapp-new-qr-fallback"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Tentar novamente
+          </button>
         </div>
       )}
 
