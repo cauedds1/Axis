@@ -304,9 +304,9 @@
 .high [data-slot="sidebar-inner"] {
   background-color: rgba(7, 10, 22, 0.90) !important;
 }
-/* Header matches blue background */
+/* Header blends with background */
 .high header {
-  background-color: rgba(8, 14, 38, 0.88) !important;
+  background-color: transparent !important;
   border-bottom-color: rgba(0, 230, 255, 0.07) !important;
   backdrop-filter: blur(8px);
 }
