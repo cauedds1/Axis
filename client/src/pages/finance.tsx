@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp, Settings2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
 import { BillsTab } from "@/components/bills-tab";
+import { ManageBillsSheet } from "@/components/manage-bills-sheet";
 import type { Transaction, FinancialGoal } from "@shared/schema";
 
 const PAYMENT_METHODS = [
@@ -75,6 +76,7 @@ function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Dat
 
 export default function Finance() {
   const [activeTab, setActiveTab] = useState<"transactions" | "bills">("transactions");
+  const [showManageBills, setShowManageBills] = useState(false);
   const [showAddTx, setShowAddTx] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [expandedItemsTxId, setExpandedItemsTxId] = useState<string | null>(null);
@@ -307,8 +309,8 @@ export default function Finance() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold" data-testid="text-finance-title">Finanças</h1>
-        {activeTab === "transactions" && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {activeTab === "transactions" && (<>
             <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadPhotoMutation.mutate(e.target.files[0]); }} />
             <input ref={pdfInputRef} type="file" accept=".pdf,.txt,.csv" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadPdfMutation.mutate(e.target.files[0]); }} />
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadPhotoMutation.isPending} data-testid="button-upload-photo">
@@ -320,8 +322,12 @@ export default function Finance() {
             <Button size="sm" onClick={() => setShowAddTx(true)} data-testid="button-add-transaction">
               <Plus className="h-4 w-4 mr-1" /> Adicionar
             </Button>
-          </div>
-        )}
+          </>)}
+          <Button variant="outline" size="sm" onClick={() => setShowManageBills(true)} data-testid="button-manage-bills">
+            <Settings2 className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Contas Fixas</span>
+          </Button>
+        </div>
       </div>
 
       {/* Tab switcher */}
@@ -1161,6 +1167,8 @@ export default function Finance() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManageBillsSheet open={showManageBills} onClose={() => setShowManageBills(false)} />
     </div>
   );
 }
