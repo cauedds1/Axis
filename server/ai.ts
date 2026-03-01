@@ -17,11 +17,25 @@ export interface IntentResult {
 }
 
 export async function transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
-  const file = new File([audioBuffer], "audio.webm", { type: mimeType || "audio/webm" });
+  const baseMime = (mimeType || "audio/ogg").split(";")[0].trim().toLowerCase();
+  const mimeToExt: Record<string, string> = {
+    "audio/ogg": "ogg",
+    "audio/webm": "webm",
+    "audio/mp4": "mp4",
+    "audio/mpeg": "mp3",
+    "audio/mp3": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/m4a": "m4a",
+    "audio/x-m4a": "m4a",
+    "audio/aac": "aac",
+  };
+  const ext = mimeToExt[baseMime] || "ogg";
+  const file = new File([audioBuffer], `audio.${ext}`, { type: baseMime });
   const openai = getOpenAIClient();
   const transcription = await openai.audio.transcriptions.create({
     file,
-    model: "gpt-4o-mini-transcribe",
+    model: "whisper-1",
     language: "pt",
   });
   return transcription.text;
