@@ -110,6 +110,7 @@ export const userProfile = pgTable("user_profile", {
   emailAlerts: text("email_alerts").default('{"billDueSoon":true,"offlineReminder":true}'),
   whatsappPhone: text("whatsapp_phone"),
   whatsappJid: text("whatsapp_jid"),
+  initialBalance: real("initial_balance").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

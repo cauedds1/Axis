@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,12 +43,31 @@ export default function Finance() {
   const [goalForm, setGoalForm] = useState({ title: "", targetAmount: "" });
   const [photoPreview, setPhotoPreview] = useState<any>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
+  const [showBalanceDialog, setShowBalanceDialog] = useState(false);
+  const [balanceInput, setBalanceInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: transactions = [], isLoading: txLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: goals = [] } = useQuery<FinancialGoal[]>({ queryKey: ["/api/goals"] });
+  const { data: profileData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
+  const initialBalance: number = profileData?.profile?.initialBalance ?? 0;
+
+  const setInitialBalanceMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const res = await apiRequest("POST", "/api/user/initial-balance", { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setShowBalanceDialog(false);
+      setBalanceInput("");
+      toast({ title: "Saldo atualizado com sucesso" });
+    },
+    onError: () => toast({ title: "Erro ao atualizar saldo", variant: "destructive" }),
+  });
 
   const resetTxForm = () => setTxForm({ amount: "", description: "", type: "expense", categoryName: "", paymentMethod: "", paymentMethodOther: "" });
 
@@ -218,13 +237,21 @@ export default function Finance() {
             <p className="text-xl font-bold mt-1">R$ {totalIncome.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className="border-border" data-testid="card-balance">
-          <CardContent className="pt-4">
+        <Card className="border-border relative" data-testid="card-balance">
+          <CardContent className="pt-4 pb-10">
             <p className="text-xs text-muted-foreground">Saldo</p>
-            <p className={`text-xl font-bold mt-1 ${totalIncome - totalExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
-              R$ {(totalIncome - totalExpenses).toFixed(2)}
+            <p className={`text-xl font-bold mt-1 ${initialBalance + totalIncome - totalExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
+              R$ {(initialBalance + totalIncome - totalExpenses).toFixed(2)}
             </p>
           </CardContent>
+          <button
+            onClick={() => { setBalanceInput(initialBalance > 0 ? String(initialBalance) : ""); setShowBalanceDialog(true); }}
+            className="absolute bottom-2 right-2 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground bg-white/5 hover:bg-white/10 rounded-md px-2 py-1 transition-colors"
+            data-testid="button-add-balance"
+          >
+            <PlusCircle className="h-3 w-3" />
+            Adicionar saldo
+          </button>
         </Card>
       </div>
 
@@ -468,6 +495,52 @@ export default function Finance() {
         </DialogContent>
       </Dialog>
       </>}
+
+      {/* ── Dialog: Adicionar Saldo ── */}
+      <Dialog open={showBalanceDialog} onOpenChange={setShowBalanceDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{initialBalance > 0 ? "Atualizar saldo" : "Adicionar saldo inicial"}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {initialBalance > 0
+              ? "Informe o valor total que você tem agora. O sistema vai controlar tudo que entra e sai a partir desse valor."
+              : "Informe quanto dinheiro você tem hoje — salário, poupança, tudo junto. O sistema trabalha em cima desse saldo."}
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const val = parseFloat(balanceInput.replace(",", "."));
+              if (isNaN(val) || val < 0) {
+                toast({ title: "Informe um valor válido", variant: "destructive" });
+                return;
+              }
+              setInitialBalanceMutation.mutate(val);
+            }}
+            className="space-y-4"
+            data-testid="form-initial-balance"
+          >
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={balanceInput}
+                onChange={(e) => setBalanceInput(e.target.value)}
+                className="pl-9"
+                autoFocus
+                data-testid="input-initial-balance"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={setInitialBalanceMutation.isPending} data-testid="button-submit-balance">
+              {setInitialBalanceMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {initialBalance > 0 ? "Atualizar saldo" : "Definir saldo"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

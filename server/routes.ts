@@ -103,6 +103,20 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/user/initial-balance", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { amount } = req.body;
+      if (typeof amount !== "number" || isNaN(amount) || amount < 0) {
+        return res.status(400).json({ message: "Valor inválido" });
+      }
+      await storage.upsertUserProfile(userId, { initialBalance: amount } as any);
+      res.json({ success: true, initialBalance: amount });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/user/notifications", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -960,7 +974,9 @@ export async function registerRoutes(
         const transactions = await storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfDay });
         const totalExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
         const totalIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-        result.finance = { totalExpenses, totalIncome, balance: totalIncome - totalExpenses, transactionCount: transactions.length };
+        const profile = await storage.getUserProfile(userId);
+        const initialBalance = profile?.initialBalance ?? 0;
+        result.finance = { totalExpenses, totalIncome, balance: initialBalance + totalIncome - totalExpenses, initialBalance, transactionCount: transactions.length };
         result.goals = await storage.getFinancialGoals(userId);
       }
 
