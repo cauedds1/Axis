@@ -478,10 +478,7 @@ export default function Onboarding() {
         setDiagnosis(data.diagnosis);
         setPhase("diagnosis");
       } else {
-        await queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        await queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-        setLocation("/");
+        await goToDashboard();
       }
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -491,12 +488,18 @@ export default function Onboarding() {
   };
 
   const goToDashboard = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
-    await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-    await queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-    await queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-    await queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+    queryClient.setQueryData(["/api/auth/user"], (old: any) =>
+      old ? { ...old, onboardingCompleted: true } : old
+    );
+    queryClient.setQueryData(["/api/user/profile"], (old: any) =>
+      old?.user ? { ...old, user: { ...old.user, onboardingCompleted: true } } : old
+    );
     setLocation("/");
+    queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
   };
 
   const submitSetup = async () => {

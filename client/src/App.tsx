@@ -53,6 +53,9 @@ function AuthenticatedLayout() {
     if (onboardingCompleted === false && !gatedPaths.includes(location)) {
       setLocation("/welcome");
     }
+    if (onboardingCompleted === true && gatedPaths.includes(location)) {
+      setLocation("/");
+    }
   }, [onboardingCompleted, location, setLocation]);
 
   if (onboardingCompleted === false) {
