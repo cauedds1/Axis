@@ -154,6 +154,11 @@ export const habitLogsRelations = relations(habitLogs, ({ one }) => ({
   habit: one(habits, { fields: [habitLogs.habitId], references: [habits.id] }),
 }));
 
+export const whatsappAuth = pgTable("whatsapp_auth", {
+  key: varchar("key").primaryKey(),
+  data: text("data").notNull(),
+});
+
 export const recurringIncomes = pgTable("recurring_incomes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),

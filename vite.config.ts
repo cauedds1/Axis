@@ -1,23 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+
+async function loadReplitPlugins(): Promise<PluginOption[]> {
+  if (process.env.NODE_ENV === "production" || !process.env.REPL_ID) return [];
+  const plugins: PluginOption[] = [];
+  try { const m = await import("@replit/vite-plugin-runtime-error-modal"); plugins.push(m.default()); } catch {}
+  try { const m = await import("@replit/vite-plugin-cartographer"); plugins.push(m.cartographer()); } catch {}
+  try { const m = await import("@replit/vite-plugin-dev-banner"); plugins.push(m.devBanner()); } catch {}
+  return plugins;
+}
 
 export default defineConfig({
   plugins: [
     react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
+    ...await loadReplitPlugins(),
   ],
   resolve: {
     alias: {

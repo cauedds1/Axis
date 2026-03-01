@@ -1,7 +1,11 @@
 import sgMail from "@sendgrid/mail";
 
-// Replit SendGrid integration — uses connector credentials (never cached)
-async function getUncachableSendGridClient() {
+async function getSendGridClient(): Promise<{ client: typeof sgMail; fromEmail: string }> {
+  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    return { client: sgMail, fromEmail: process.env.SENDGRID_FROM_EMAIL };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -9,8 +13,8 @@ async function getUncachableSendGridClient() {
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!xReplitToken) {
-    throw new Error("X-Replit-Token not found for repl/depl");
+  if (!hostname || !xReplitToken) {
+    throw new Error("SendGrid não configurado: defina SENDGRID_API_KEY + SENDGRID_FROM_EMAIL ou use o conector Replit");
   }
 
   const data = await fetch(
@@ -24,7 +28,7 @@ async function getUncachableSendGridClient() {
   ).then((res) => res.json()).then((d) => d.items?.[0]);
 
   if (!data || !data.settings.api_key || !data.settings.from_email) {
-    throw new Error("SendGrid não conectado");
+    throw new Error("SendGrid não conectado via Replit Connectors");
   }
 
   sgMail.setApiKey(data.settings.api_key);
@@ -37,7 +41,7 @@ export async function sendEmail(options: {
   html: string;
   fromName?: string;
 }) {
-  const { client, fromEmail } = await getUncachableSendGridClient();
+  const { client, fromEmail } = await getSendGridClient();
   await client.send({
     to: options.to,
     from: { email: fromEmail, name: options.fromName || "AXIS" },
@@ -46,7 +50,9 @@ export async function sendEmail(options: {
   });
 }
 
-const APP_URL = process.env.APP_URL || "https://axis.replit.app";
+const APP_URL = process.env.APP_URL
+  || (process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : null)
+  || "https://axis.replit.app";
 
 function baseTemplate(content: string): string {
   return `<!DOCTYPE html>

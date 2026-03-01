@@ -62,6 +62,25 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  const required = ["DATABASE_URL", "SESSION_SECRET"];
+  const missing = required.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.error(`[AXIS] ERRO: variáveis obrigatórias ausentes: ${missing.join(", ")}`);
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
+  }
+  const optional: Record<string, string> = {
+    OPENAI_API_KEY: "IA/chat/transcrição desativados",
+    SENDGRID_API_KEY: "alertas por email desativados",
+    APP_URL: `usando fallback: ${process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : "http://localhost:5000"}`,
+  };
+  for (const [key, hint] of Object.entries(optional)) {
+    if (!process.env[key] && !process.env[`AI_INTEGRATIONS_${key}`]) {
+      log(`⚠ ${key} não definida — ${hint}`, "config");
+    }
+  }
+
   const { seedDatabase } = await import("./seed");
   await seedDatabase().catch(err => console.error("Seed error:", err));
 
@@ -108,9 +127,9 @@ app.use((req, res, next) => {
         runPeriodicAlertsForAll().catch(() => {});
       }, 30_000);
 
-      if (whatsappManager.hasSession()) {
-        whatsappManager.initialize().catch(() => {});
-      }
+      whatsappManager.hasSessionAsync().then(has => {
+        if (has) whatsappManager.initialize().catch(() => {});
+      });
 
       setInterval(() => {
         runPeriodicAlertsForAll().catch(() => {});

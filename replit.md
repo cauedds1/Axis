@@ -74,8 +74,17 @@ shared/
   - Overdue task justification: 48h grace window → user submits justification → AI judges (1-5 score) → net penalty = -4 + credit (0/+1/+2/+3)
 - `email_alert_log` - Tracks sent email alerts (alertType, referenceId, sentAt) to prevent duplicates
 
+## Railway Migration
+- **WhatsApp auth**: sessão persistida no PostgreSQL via `usePostgresAuthState()` (tabela `whatsapp_auth`); fallback para filesystem local quando `DATABASE_URL` ausente
+- **SendGrid**: prioriza `SENDGRID_API_KEY` + `SENDGRID_FROM_EMAIL` env vars; fallback para conector Replit
+- **Vite plugins**: plugins Replit (`cartographer`, `dev-banner`, `runtime-error-modal`) carregados condicionalmente com try/catch — build funciona sem eles
+- **APP_URL**: `APP_URL || RAILWAY_PUBLIC_DOMAIN || "https://axis.replit.app"`
+- **Env vars obrigatórias**: `DATABASE_URL`, `SESSION_SECRET`
+- **Env vars opcionais**: `OPENAI_API_KEY`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `APP_URL`
+- **Build/Start**: `npm run build` (Vite + esbuild → `dist/`) → `npm run start` (`drizzle-kit push --force && node dist/index.cjs`)
+
 ## Email Alert System
-- **SendGrid** connected via Replit integration — `server/integrations/sendgrid.ts`
+- **SendGrid** — prioriza `SENDGRID_API_KEY` env var, fallback para Replit Connectors — `server/integrations/sendgrid.ts`
 - Templates: bill due soon (warns 1–3 days before dueDay), offline reminder (7+ days without login)
 - `server/alerts.ts`: `updateLastLogin`, `checkAndSendBillAlerts`, `checkAndSendOfflineAlerts`
 - Bill alerts fire on every dashboard load (fire-and-forget); offline check runs every 6h via `setInterval` in `server/index.ts`

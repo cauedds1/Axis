@@ -5,6 +5,10 @@ import makeWASocket, {
   makeCacheableSignalKeyStore,
   downloadMediaMessage,
   proto,
+  type AuthenticationCreds,
+  type SignalDataTypeMap,
+  initAuthCreds,
+  BufferJSON,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode";
@@ -15,7 +19,7 @@ import { log } from "./index";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, whatsappAuth } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
@@ -25,6 +29,65 @@ function normalizeCnpjLocal(raw: string): string {
 }
 
 const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
+
+async function usePostgresAuthState() {
+  const readData = async (key: string): Promise<any> => {
+    const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, key));
+    if (!row) return null;
+    return JSON.parse(row.data, BufferJSON.reviver);
+  };
+
+  const writeData = async (key: string, data: any): Promise<void> => {
+    const serialized = JSON.stringify(data, BufferJSON.replacer);
+    await db
+      .insert(whatsappAuth)
+      .values({ key, data: serialized })
+      .onConflictDoUpdate({ target: whatsappAuth.key, set: { data: serialized } });
+  };
+
+  const removeData = async (key: string): Promise<void> => {
+    await db.delete(whatsappAuth).where(eq(whatsappAuth.key, key));
+  };
+
+  const creds: AuthenticationCreds = (await readData("creds")) || initAuthCreds();
+
+  return {
+    state: {
+      creds,
+      keys: {
+        get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
+          const data: { [id: string]: SignalDataTypeMap[T] } = {};
+          for (const id of ids) {
+            const value = await readData(`${type}-${id}`);
+            if (value) {
+              if (type === "app-state-sync-key" && value.keyData) {
+                data[id] = proto.Message.AppStateSyncKeyData.fromObject(value) as any;
+              } else {
+                data[id] = value;
+              }
+            }
+          }
+          return data;
+        },
+        set: async (data: any) => {
+          const tasks: Promise<void>[] = [];
+          for (const category in data) {
+            for (const id in data[category]) {
+              const value = data[category][id];
+              const key = `${category}-${id}`;
+              tasks.push(value ? writeData(key, value) : removeData(key));
+            }
+          }
+          await Promise.all(tasks);
+        },
+      },
+    },
+    saveCreds: () => writeData("creds", creds),
+    clearAll: async () => {
+      await db.delete(whatsappAuth);
+    },
+  };
+}
 
 interface PendingDuplicate {
   transactionData: any;
@@ -49,6 +112,7 @@ class WhatsAppManager {
   private lidCache: Map<string, string> = new Map();
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
+  private pgAuthClearAll: (() => Promise<void>) | null = null;
 
   getStatus(): WhatsAppStatus { return this.status; }
   getQrCode(): string | null { return this.qrCode; }
@@ -111,11 +175,26 @@ class WhatsAppManager {
   async initialize(): Promise<void> {
     if (this.status === "connected") return;
 
-    if (!fs.existsSync(SESSION_DIR)) {
-      fs.mkdirSync(SESSION_DIR, { recursive: true });
-    }
+    let state: any;
+    let saveCreds: () => Promise<void>;
 
-    const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+    const usePostgres = !!process.env.DATABASE_URL;
+
+    if (usePostgres) {
+      log("WhatsApp: usando PostgreSQL para persistir sessão", "whatsapp");
+      const pgAuth = await usePostgresAuthState();
+      state = pgAuth.state;
+      saveCreds = pgAuth.saveCreds;
+      this.pgAuthClearAll = pgAuth.clearAll;
+    } else {
+      log("WhatsApp: usando filesystem local para sessão", "whatsapp");
+      if (!fs.existsSync(SESSION_DIR)) {
+        fs.mkdirSync(SESSION_DIR, { recursive: true });
+      }
+      const fileAuth = await useMultiFileAuthState(SESSION_DIR);
+      state = fileAuth.state;
+      saveCreds = fileAuth.saveCreds;
+    }
     const { version } = await fetchLatestBaileysVersion();
 
     const baileysLogger = {
@@ -883,13 +962,34 @@ class WhatsAppManager {
   }
 
   private clearSession(): void {
+    if (this.pgAuthClearAll) {
+      this.pgAuthClearAll().catch(e => log(`WhatsApp: erro ao limpar sessão PG — ${e.message}`, "whatsapp"));
+    }
     if (fs.existsSync(SESSION_DIR)) {
       fs.rmSync(SESSION_DIR, { recursive: true, force: true });
     }
   }
 
   hasSession(): boolean {
-    return fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0;
+    if (fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  async hasSessionAsync(): Promise<boolean> {
+    if (fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0) {
+      return true;
+    }
+    if (process.env.DATABASE_URL) {
+      try {
+        const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, "creds"));
+        return !!row;
+      } catch {
+        return false;
+      }
+    }
+    return false;
   }
 }
 
