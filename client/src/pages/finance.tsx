@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
@@ -50,6 +51,7 @@ export default function Finance() {
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [txToDelete, setTxToDelete] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -347,7 +349,7 @@ export default function Finance() {
                         <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
                           {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
                         </span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteTxMutation.mutate(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setTxToDelete(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
                           <Trash2 className="h-3 w-3 text-destructive" />
                         </Button>
                       </div>
@@ -661,7 +663,7 @@ export default function Finance() {
                 variant="destructive"
                 size="sm"
                 className="w-full mt-2"
-                onClick={() => { deleteTxMutation.mutate(tx.id); setSelectedTx(null); }}
+                onClick={() => setTxToDelete(tx.id)}
                 data-testid="button-delete-tx-detail"
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Excluir transação
@@ -670,6 +672,33 @@ export default function Finance() {
           </Dialog>
         );
       })()}
+
+      <AlertDialog open={!!txToDelete} onOpenChange={(o) => { if (!o) setTxToDelete(null); }}>
+        <AlertDialogContent data-testid="dialog-confirm-delete-tx">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. A transação será removida permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-tx">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (txToDelete) {
+                  deleteTxMutation.mutate(txToDelete);
+                  setTxToDelete(null);
+                  setSelectedTx(null);
+                }
+              }}
+              data-testid="button-confirm-delete-tx"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
