@@ -21,6 +21,12 @@ function paramId(req: any): string {
   return req.params.id as string;
 }
 
+function getISOWeekLabel(d: Date): string {
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
 // ── DISCIPLINE POINT VALUES ────────────────────────────────────────────
 // Positive actions
 const DISCIPLINE_POINTS = {
@@ -1356,39 +1362,55 @@ export async function registerRoutes(
       const userId = getUserId(req);
       const now = new Date();
 
-      // Current month boundaries
-      const curMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const curMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      // Previous month boundaries
-      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+      // Parse optional filter params
+      const { startDate: startParam, endDate: endParam } = req.query as { startDate?: string; endDate?: string };
+
+      let periodStart: Date;
+      let periodEnd: Date;
+
+      if (startParam && endParam) {
+        periodStart = new Date(startParam);
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd = new Date(endParam);
+        periodEnd.setHours(23, 59, 59, 999);
+      } else {
+        periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      }
+
+      // Previous period: same duration immediately before periodStart
+      const periodMs = periodEnd.getTime() - periodStart.getTime();
+      const prevPeriodEnd = new Date(periodStart.getTime() - 1);
+      prevPeriodEnd.setHours(23, 59, 59, 999);
+      const prevPeriodStart = new Date(prevPeriodEnd.getTime() - periodMs);
+      prevPeriodStart.setHours(0, 0, 0, 0);
+
       // 6 months ago for trend chart
       const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      // Fetch from earliest needed date
+      const fetchFrom = prevPeriodStart < sixMonthsAgo ? prevPeriodStart : sixMonthsAgo;
 
       const [allTx, goals] = await Promise.all([
-        storage.getTransactions(userId, { startDate: sixMonthsAgo }),
+        storage.getTransactions(userId, { startDate: fetchFrom }),
         storage.getFinancialGoals(userId),
       ]);
 
-      // Accumulators
-      let totalIncome = 0;
-      let totalExpenses = 0;
+      // Accumulators for 6-month chart
       const monthlyMap: Record<string, { income: number; expenses: number }> = {};
-      const categoryMap: Record<string, { amount: number; count: number }> = {};
 
-      // Current month accumulators
-      let curIncome = 0;
-      let curExpenses = 0;
-      const curCatMap: Record<string, { amount: number; count: number }> = {};
-      const dailyMap: Record<number, number> = {}; // day → expenses
+      // Selected period accumulators
+      let selIncome = 0;
+      let selExpenses = 0;
+      const selCatMap: Record<string, { amount: number; count: number }> = {};
+      const selDailyMap: Record<string, number> = {}; // ISO date key → expenses
 
-      // Previous month accumulators
+      // Previous period accumulators
       let prevIncome = 0;
       let prevExpenses = 0;
 
-      // Establishment, hour & payment method maps (all 6 months, expenses only)
+      // Selected period detail maps (for payment, establishment, hour)
       const establishmentMap: Record<string, { amount: number; count: number }> = {};
-      const hourMap: Record<number, { amount: number; count: number }> = {}; // 0-23
+      const hourMap: Record<number, { amount: number; count: number }> = {};
       const paymentMap: Record<string, { amount: number; count: number }> = {};
 
       for (const tx of allTx) {
@@ -1396,47 +1418,40 @@ export async function registerRoutes(
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         if (!monthlyMap[key]) monthlyMap[key] = { income: 0, expenses: 0 };
         const amt = Number(tx.amount);
-        const isCurMonth = d >= curMonthStart && d <= curMonthEnd;
-        const isPrevMonth = d >= prevMonthStart && d <= prevMonthEnd;
+        const inPeriod = d >= periodStart && d <= periodEnd;
+        const inPrev = d >= prevPeriodStart && d <= prevPeriodEnd;
 
         if (tx.type === "income") {
           monthlyMap[key].income += amt;
-          totalIncome += amt;
-          if (isCurMonth) curIncome += amt;
-          if (isPrevMonth) prevIncome += amt;
+          if (inPeriod) selIncome += amt;
+          if (inPrev) prevIncome += amt;
         } else {
           monthlyMap[key].expenses += amt;
-          totalExpenses += amt;
-          if (isCurMonth) {
-            curExpenses += amt;
+          if (inPeriod) {
+            selExpenses += amt;
             const cat = tx.categoryName || "Sem categoria";
-            if (!curCatMap[cat]) curCatMap[cat] = { amount: 0, count: 0 };
-            curCatMap[cat].amount += amt;
-            curCatMap[cat].count++;
-            const day = d.getDate();
-            dailyMap[day] = (dailyMap[day] || 0) + amt;
+            if (!selCatMap[cat]) selCatMap[cat] = { amount: 0, count: 0 };
+            selCatMap[cat].amount += amt;
+            selCatMap[cat].count++;
+            const dayKey = d.toISOString().slice(0, 10);
+            selDailyMap[dayKey] = (selDailyMap[dayKey] || 0) + amt;
+            // Establishment
+            const place = tx.establishment || tx.description || "Não identificado";
+            if (!establishmentMap[place]) establishmentMap[place] = { amount: 0, count: 0 };
+            establishmentMap[place].amount += amt;
+            establishmentMap[place].count++;
+            // Hour
+            const hour = d.getHours();
+            if (!hourMap[hour]) hourMap[hour] = { amount: 0, count: 0 };
+            hourMap[hour].amount += amt;
+            hourMap[hour].count++;
+            // Payment method
+            const pm = tx.paymentMethod || "Não informado";
+            if (!paymentMap[pm]) paymentMap[pm] = { amount: 0, count: 0 };
+            paymentMap[pm].amount += amt;
+            paymentMap[pm].count++;
           }
-          if (isPrevMonth) prevExpenses += amt;
-          // 6-month global categories
-          const cat = tx.categoryName || "Sem categoria";
-          if (!categoryMap[cat]) categoryMap[cat] = { amount: 0, count: 0 };
-          categoryMap[cat].amount += amt;
-          categoryMap[cat].count++;
-          // Establishment tracking
-          const place = tx.establishment || tx.description || "Não identificado";
-          if (!establishmentMap[place]) establishmentMap[place] = { amount: 0, count: 0 };
-          establishmentMap[place].amount += amt;
-          establishmentMap[place].count++;
-          // Hour tracking
-          const hour = d.getHours();
-          if (!hourMap[hour]) hourMap[hour] = { amount: 0, count: 0 };
-          hourMap[hour].amount += amt;
-          hourMap[hour].count++;
-          // Payment method tracking
-          const pm = tx.paymentMethod || "Não informado";
-          if (!paymentMap[pm]) paymentMap[pm] = { amount: 0, count: 0 };
-          paymentMap[pm].amount += amt;
-          paymentMap[pm].count++;
+          if (inPrev) prevExpenses += amt;
         }
       }
 
@@ -1450,46 +1465,76 @@ export async function registerRoutes(
         monthly.push({ month: label, income: m.income, expenses: m.expenses, balance: m.income - m.expenses });
       }
 
-      // Global 6-month category breakdown
-      const byCategory = Object.entries(categoryMap)
-        .map(([name, d]) => ({ name, amount: d.amount, count: d.count, pct: totalExpenses > 0 ? Math.round((d.amount / totalExpenses) * 100) : 0 }))
+      // Build daily/weekly chart for selected period
+      const rangeDays = Math.ceil(periodMs / (1000 * 60 * 60 * 24)) + 1;
+      const groupByWeek = rangeDays > 45;
+      const dailyThisMonth: { day: string | number; expenses: number }[] = [];
+
+      if (groupByWeek) {
+        // Group by ISO week
+        const weekMap: Record<string, number> = {};
+        for (const [isoDate, amt] of Object.entries(selDailyMap)) {
+          const d = new Date(isoDate);
+          const week = getISOWeekLabel(d);
+          weekMap[week] = (weekMap[week] || 0) + amt;
+        }
+        // Fill all weeks in range
+        let cur = new Date(periodStart);
+        cur.setDate(cur.getDate() - cur.getDay() + 1); // Monday
+        while (cur <= periodEnd) {
+          const label = getISOWeekLabel(cur);
+          if (!dailyThisMonth.find(x => x.day === label)) {
+            dailyThisMonth.push({ day: label, expenses: Number((weekMap[label] || 0).toFixed(2)) });
+          }
+          cur.setDate(cur.getDate() + 7);
+        }
+      } else {
+        // Day by day
+        const cur = new Date(periodStart);
+        while (cur <= periodEnd) {
+          const isoDate = cur.toISOString().slice(0, 10);
+          dailyThisMonth.push({ day: cur.getDate(), expenses: Number((selDailyMap[isoDate] || 0).toFixed(2)) });
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+
+      // Period label for frontend
+      const fmtDate = (d: Date) => d.toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "2-digit" });
+      const isSingleMonth = periodStart.getMonth() === periodEnd.getMonth() && periodStart.getFullYear() === periodEnd.getFullYear()
+        && periodStart.getDate() === 1 && periodEnd.getDate() === new Date(periodEnd.getFullYear(), periodEnd.getMonth() + 1, 0).getDate();
+      const periodLabel = isSingleMonth
+        ? periodStart.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+        : `${fmtDate(periodStart)} – ${fmtDate(periodEnd)}`;
+
+      // Selected period categories
+      const byCategory = Object.entries(selCatMap)
+        .map(([name, d]) => ({ name, amount: d.amount, count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 8);
 
-      // Current month by category
-      const currentMonthByCategory = Object.entries(curCatMap)
-        .map(([name, d]) => ({ name, amount: d.amount, count: d.count, pct: curExpenses > 0 ? Math.round((d.amount / curExpenses) * 100) : 0 }))
+      // Current month by category (alias for compatibility)
+      const currentMonthByCategory = Object.entries(selCatMap)
+        .map(([name, d]) => ({ name, amount: d.amount, count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 8);
 
-      // Daily spending this month (full array for the chart)
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const dailyThisMonth = Array.from({ length: daysInMonth }, (_, i) => ({
-        day: i + 1,
-        expenses: Number((dailyMap[i + 1] || 0).toFixed(2)),
-      }));
+      // Period-over-period trends
+      const expenseTrend = prevExpenses > 0 ? Math.round(((selExpenses - prevExpenses) / prevExpenses) * 100) : null;
+      const incomeTrend = prevIncome > 0 ? Math.round(((selIncome - prevIncome) / prevIncome) * 100) : null;
 
-      // Month-over-month trends (positive = expenses went UP = bad, negative = went DOWN = good)
-      const expenseTrend = prevExpenses > 0 ? Math.round(((curExpenses - prevExpenses) / prevExpenses) * 100) : null;
-      const incomeTrend = prevIncome > 0 ? Math.round(((curIncome - prevIncome) / prevIncome) * 100) : null;
-
-      const curBalance = curIncome - curExpenses;
-      const curSavingsRate = curIncome > 0 ? Math.round((curBalance / curIncome) * 100) : 0;
-      const balance = totalIncome - totalExpenses;
-      const savingsRate = totalIncome > 0 ? Math.round((balance / totalIncome) * 100) : 0;
-      const avgMonthlyExpense = Math.round(totalExpenses / 6);
+      const selBalance = selIncome - selExpenses;
+      const selSavingsRate = selIncome > 0 ? Math.round((selBalance / selIncome) * 100) : 0;
       const topCategory = byCategory[0]?.name || "N/A";
-      const curMonthName = now.toLocaleDateString("pt-BR", { month: "long" });
 
       // Payment method breakdown
       const PM_LABELS: Record<string, string> = { debit: "Débito", credit: "Crédito", pix: "Pix", cash: "Dinheiro", other: "Outro" };
       const byPaymentMethod = Object.entries(paymentMap)
-        .map(([key, d]) => ({ key, label: PM_LABELS[key] || key, amount: Number(d.amount.toFixed(2)), count: d.count, pct: totalExpenses > 0 ? Math.round((d.amount / totalExpenses) * 100) : 0 }))
+        .map(([key, d]) => ({ key, label: PM_LABELS[key] || key, amount: Number(d.amount.toFixed(2)), count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount);
 
-      // Top establishments (all 6 months)
+      // Top establishments (selected period)
       const byEstablishment = Object.entries(establishmentMap)
-        .map(([name, d]) => ({ name, amount: Number(d.amount.toFixed(2)), count: d.count, pct: totalExpenses > 0 ? Math.round((d.amount / totalExpenses) * 100) : 0 }))
+        .map(([name, d]) => ({ name, amount: Number(d.amount.toFixed(2)), count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 10);
 
@@ -1522,20 +1567,28 @@ export async function registerRoutes(
         emoji: p.emoji,
         amount: Number(p.amount.toFixed(2)),
         count: p.count,
-        pct: totalExpenses > 0 ? Math.round((p.amount / totalExpenses) * 100) : 0,
+        pct: selExpenses > 0 ? Math.round((p.amount / selExpenses) * 100) : 0,
       }));
 
       const recentTransactions = [...allTx]
+        .filter(t => { const d = new Date(t.date); return d >= periodStart && d <= periodEnd; })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 30);
 
+      const selTxCount = allTx.filter(t => { const d = new Date(t.date); return d >= periodStart && d <= periodEnd; }).length;
+
+      const periodMonths = Math.max(1, Math.round(periodMs / (1000 * 60 * 60 * 24 * 30)));
+      const avgMonthlyExpense = Math.round(selExpenses / periodMonths);
+
       res.json({
-        summary: { totalIncome, totalExpenses, balance, savingsRate, avgMonthlyExpense, transactionCount: allTx.length, topCategory },
-        currentMonth: { name: curMonthName, income: curIncome, expenses: curExpenses, balance: curBalance, savingsRate: curSavingsRate, transactionCount: allTx.filter(t => { const d = new Date(t.date); return d >= curMonthStart && d <= curMonthEnd; }).length, expenseTrend, incomeTrend, topCategory: currentMonthByCategory[0]?.name || "N/A" },
+        summary: { totalIncome: selIncome, totalExpenses: selExpenses, balance: selBalance, savingsRate: selSavingsRate, topCategory, transactionCount: selTxCount, avgMonthlyExpense },
+        currentMonth: { name: periodLabel, income: selIncome, expenses: selExpenses, balance: selBalance, savingsRate: selSavingsRate, transactionCount: selTxCount, expenseTrend, incomeTrend, topCategory: currentMonthByCategory[0]?.name || "N/A" },
+        periodLabel,
         monthly,
         byCategory,
         currentMonthByCategory,
         dailyThisMonth,
+        groupByWeek,
         byPaymentMethod,
         byEstablishment,
         byHour,

@@ -10,7 +10,7 @@ import {
 import {
   DollarSign, CheckSquare, Flame, Calendar, TrendingUp, TrendingDown,
   Target, Clock, Zap, AlertCircle, Star, BarChart2, ShoppingBag, Wallet,
-  ArrowUpRight, ArrowDownRight, Receipt,
+  ArrowUpRight, ArrowDownRight, Receipt, CalendarDays, ChevronDown,
 } from "lucide-react";
 
 const HIGH_PALETTE = { primary: "#00E6FF", finance: "#FF1744", tasks: "#AE73FF", habits: "#00E5C8", schedule: "#FFA000", positive: "#00E5C8", negative: "#FF1744" };
@@ -109,25 +109,57 @@ function TrendBadge({ value, invertColor = false }: { value: number | null; inve
   );
 }
 
+type DateFilter = "current" | "last" | "last3" | "custom";
+
+function getFilterDates(filter: DateFilter, customStart: string, customEnd: string): { startDate: string; endDate: string } {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (filter === "current") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: fmt(start), endDate: fmt(end) };
+  }
+  if (filter === "last") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { startDate: fmt(start), endDate: fmt(end) };
+  }
+  if (filter === "last3") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: fmt(start), endDate: fmt(end) };
+  }
+  return { startDate: customStart, endDate: customEnd };
+}
+
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
-  const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/finance"] });
+  const [filter, setFilter] = useState<DateFilter>("current");
+  const [customStart, setCustomStart] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+  });
+  const [showCustom, setShowCustom] = useState(false);
+
+  const { startDate, endDate } = getFilterDates(filter, customStart, customEnd);
+  const queryUrl = `/api/reports/finance?startDate=${startDate}&endDate=${endDate}`;
+
+  const { data, isLoading } = useQuery<any>({ queryKey: [queryUrl] });
   const pieColors = isHigh ? PIE_COLORS : PIE_COLORS_SLIM;
 
-  if (isLoading) return (
-    <div className="space-y-4 mt-4">
-      {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}
-    </div>
-  );
-  if (!data) return <EmptyState icon={DollarSign} message="Sem dados financeiros ainda" />;
-
-  const { summary, currentMonth, monthly, byCategory, currentMonthByCategory, dailyThisMonth, byPaymentMethod, byEstablishment, byHour, byTimePeriod, peakHour, recentTransactions, goals } = data;
-
-  const filteredTx = recentTransactions?.filter((tx: any) => txFilter === "all" || tx.type === txFilter) || [];
-  const hasCurrentMonthData = currentMonth.income > 0 || currentMonth.expenses > 0;
-  const hasMonthlyData = monthly.some((m: any) => m.income > 0 || m.expenses > 0);
-  const hasDailyData = dailyThisMonth.some((d: any) => d.expenses > 0);
-  const capitalizedMonth = currentMonth.name.charAt(0).toUpperCase() + currentMonth.name.slice(1);
+  const FILTER_OPTS: { id: DateFilter; label: string }[] = [
+    { id: "current", label: "Mês atual" },
+    { id: "last", label: "Mês passado" },
+    { id: "last3", label: "Últimos 3 meses" },
+    { id: "custom", label: "Personalizado" },
+  ];
 
   const pmColors: Record<string, string> = {
     debit: isHigh ? "#AE73FF" : "#7A8A9A",
@@ -137,8 +169,72 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
     other: isHigh ? "#00E6FF" : "#7A9E8A",
   };
 
+  const { summary, currentMonth, monthly, byCategory, currentMonthByCategory, dailyThisMonth, groupByWeek, byPaymentMethod, byEstablishment, byHour, byTimePeriod, peakHour, recentTransactions, goals, periodLabel: backendPeriodLabel } = data || {};
+
+  const filteredTx = recentTransactions?.filter((tx: any) => txFilter === "all" || tx.type === txFilter) || [];
+  const hasCurrentMonthData = currentMonth ? (currentMonth.income > 0 || currentMonth.expenses > 0) : false;
+  const hasMonthlyData = monthly?.some((m: any) => m.income > 0 || m.expenses > 0) ?? false;
+  const hasDailyData = dailyThisMonth?.some((d: any) => d.expenses > 0) ?? false;
+  const displayPeriod = backendPeriodLabel || (currentMonth?.name || "");
+  const capitalizedMonth = displayPeriod.charAt(0).toUpperCase() + displayPeriod.slice(1);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+
+      {/* ══ FILTROS DE PERÍODO ══ */}
+      <div className="mt-4 mb-2 flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          {FILTER_OPTS.map(opt => {
+            const isActive = filter === opt.id;
+            return (
+              <button
+                key={opt.id}
+                data-testid={`filter-${opt.id}`}
+                onClick={() => {
+                  setFilter(opt.id);
+                  setShowCustom(opt.id === "custom");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200"
+                style={isActive
+                  ? { background: `${color}18`, color, borderColor: `${color}40` }
+                  : { background: "transparent", color: "hsl(var(--muted-foreground))", borderColor: "hsl(var(--border))" }
+                }
+              >
+                <CalendarDays className="h-3 w-3" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {showCustom && (
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-card">
+            <span className="text-xs text-muted-foreground font-medium">De</span>
+            <input
+              type="date"
+              data-testid="input-custom-start"
+              value={customStart}
+              onChange={e => setCustomStart(e.target.value)}
+              className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-xs text-muted-foreground font-medium">até</span>
+            <input
+              type="date"
+              data-testid="input-custom-end"
+              value={customEnd}
+              onChange={e => setCustomEnd(e.target.value)}
+              className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="space-y-4 mt-4">
+          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}
+        </div>
+      )}
+      {!isLoading && !data && <EmptyState icon={DollarSign} message="Sem dados financeiros ainda" />}
+      {!isLoading && data && <>
 
       {/* ══ ROW 1: Hero mês + Categorias do mês ══ */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
@@ -149,7 +245,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           <div className="rounded-2xl border p-5 flex-1" style={{ borderColor: `${color}20`, background: `${color}06` }}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Mês atual</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Período selecionado</p>
                 <h2 className="text-2xl font-bold">{capitalizedMonth}</h2>
               </div>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}15` }}>
@@ -205,7 +301,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
           {/* Daily chart */}
           <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Gastos por dia — {capitalizedMonth}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Gastos por {groupByWeek ? "semana" : "dia"} — {capitalizedMonth}</p>
             {hasDailyData ? (
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={dailyThisMonth} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -217,7 +313,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Nenhum gasto registrado em {currentMonth.name}</p>
+              <p className="text-sm text-muted-foreground text-center py-10">Nenhum gasto registrado no período</p>
             )}
           </div>
         </div>
@@ -226,7 +322,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         <div className="xl:col-span-2 flex flex-col gap-4">
           {/* Categories this month */}
           <div className="rounded-2xl border bg-card p-5 flex-1" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Categorias — {capitalizedMonth}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Categorias — {capitalizedMonth.split(" ")[0]}</p>
             {currentMonthByCategory?.length > 0 ? (
               currentMonthByCategory.map((cat: any, i: number) => (
                 <div key={cat.name} className="mb-3">
@@ -246,7 +342,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem gastos categorizados em {currentMonth.name}</p>
+              <p className="text-sm text-muted-foreground text-center py-8">Sem gastos categorizados no período</p>
             )}
           </div>
 
@@ -387,10 +483,10 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
           {/* 6-month summary metrics */}
           <div className="xl:col-span-2 grid grid-cols-2 gap-3 content-start">
-            <MetricCard icon={TrendingUp} label="Receitas (6m)" value={`R$ ${summary.totalIncome.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
-            <MetricCard icon={TrendingDown} label="Gastos (6m)" value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} />
-            <MetricCard icon={ShoppingBag} label="Média mensal" value={`R$ ${summary.avgMonthlyExpense.toFixed(0)}`} sub="em gastos" color={color} />
-            <MetricCard icon={Target} label="Taxa de economia" value={`${summary.savingsRate}%`} sub={`${summary.transactionCount} tx`} color={color} />
+            <MetricCard icon={TrendingUp} label="Receitas" value={`R$ ${summary.totalIncome.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
+            <MetricCard icon={TrendingDown} label="Gastos" value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} />
+            <MetricCard icon={ShoppingBag} label="Média/mês" value={`R$ ${summary.avgMonthlyExpense?.toFixed(0) ?? "0"}`} sub="em gastos" color={color} />
+            <MetricCard icon={Target} label="Taxa de economia" value={`${summary.savingsRate}%`} sub={`${summary.transactionCount ?? 0} transações`} color={color} />
 
             {/* Global pie + goals in same column */}
             {byCategory.length > 0 && (
@@ -486,6 +582,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           </div>
         </div>
       ) : <EmptyState icon={DollarSign} message="Nenhuma transação encontrada" />}
+
+      </>}
     </motion.div>
   );
 }
