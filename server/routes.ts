@@ -310,21 +310,30 @@ export async function registerRoutes(
   app.post("/api/finance/photo/confirm", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { items, establishment, date, categoryName, location } = req.body;
-      const created = await storage.createManyTransactions(
-        (items || []).map((item: any) => ({
-          userId,
-          amount: item.amount,
-          description: item.description,
-          categoryName: categoryName || null,
-          type: "expense" as const,
-          date: date ? new Date(date) : new Date(),
-          source: "photo",
-          establishment: establishment || null,
-          location: location || null,
-        }))
-      );
-      res.json(created);
+      const { items, totalAmount, establishment, date, categoryName, location, paymentMethod, transactionType, description: bodyDesc } = req.body;
+
+      const txItems: { description: string; amount: number }[] = (items || []).map((i: any) => ({
+        description: String(i.description || ""),
+        amount: Number(i.amount || 0),
+      }));
+      const total = Number(totalAmount) || txItems.reduce((s, i) => s + i.amount, 0);
+      const desc = bodyDesc || establishment || (txItems.length === 1 ? txItems[0].description : "Nota fiscal");
+      const type = transactionType === "income" ? "income" : "expense";
+
+      const tx = await storage.createTransaction({
+        userId,
+        amount: total as any,
+        description: desc,
+        categoryName: categoryName || null,
+        type,
+        date: date ? new Date(date) : new Date(),
+        source: "photo",
+        establishment: establishment || null,
+        location: location || null,
+        paymentMethod: paymentMethod || null,
+        receiptItems: txItems.length > 1 ? JSON.stringify(txItems) : null,
+      });
+      res.json(tx);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

@@ -435,6 +435,8 @@ class WhatsAppManager {
       description = receipt.establishment || receipt.description || "Comprovante";
     }
 
+    const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
+
     const transactionData = {
       userId,
       type: transactionType,
@@ -446,6 +448,7 @@ class WhatsAppManager {
       establishment,
       location: receipt.location || null,
       source: "whatsapp",
+      receiptItems: receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
     };
 
     const emoji = transactionType === "income" ? "📥" : "📤";

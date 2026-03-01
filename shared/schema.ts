@@ -29,6 +29,7 @@ export const transactions = pgTable("transactions", {
   establishment: text("establishment"),
   location: text("location"),
   paymentMethod: text("payment_method"),
+  receiptItems: text("receipt_items"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -55,7 +55,7 @@ shared/
 ## Database Tables
 - `users` - Auth + preferences (activeModules, theme, aiPersonality, onboardingCompleted)
 - `sessions` - Express session store
-- `transactions` - Financial transactions (amount, description, category, type, source, establishment)
+- `transactions` - Financial transactions (amount, description, category, type, source, establishment, receiptItems JSON)
 - `categories` - User-defined categories
 - `financial_goals` - Savings/investment goals with progress tracking
 - `schedule_items` - Calendar items with AI suggestion flag and approval status

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,8 @@ export default function Finance() {
   const [activeTab, setActiveTab] = useState<"transactions" | "bills">("transactions");
   const [showAddTx, setShowAddTx] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
+  const [expandedItemsTxId, setExpandedItemsTxId] = useState<string | null>(null);
+  const [showDetailItems, setShowDetailItems] = useState(false);
   const [txForm, setTxForm] = useState({
     amount: "",
     description: "",
@@ -324,35 +326,68 @@ export default function Finance() {
                 {transactions.slice(0, 30).map((tx) => {
                   const pmLabel = paymentLabel((tx as any).paymentMethod);
                   const PMIcon = pmLabel ? (PM_ICONS[(tx as any).paymentMethod] || Wallet) : null;
+                  const rawItems = (tx as any).receiptItems;
+                  const parsedItems: { description: string; amount: number }[] | null = (() => {
+                    if (!rawItems) return null;
+                    try { const arr = JSON.parse(rawItems); return Array.isArray(arr) && arr.length > 0 ? arr : null; } catch { return null; }
+                  })();
+                  const isExpanded = expandedItemsTxId === tx.id;
                   return (
-                    <div key={tx.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group cursor-pointer" onClick={() => setSelectedTx(tx)} data-testid={`row-transaction-${tx.id}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`h-2 w-2 rounded-full flex-shrink-0 ${tx.type === "income" ? "bg-green-500" : "bg-destructive"}`} />
-                        <div className="min-w-0">
-                          <p className="text-sm truncate">{tx.description}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
-                            <span>{tx.categoryName || "Sem categoria"}</span>
-                            {tx.establishment && <><span>·</span><span>{tx.establishment}</span></>}
-                            {pmLabel && (
-                              <>
-                                <span>·</span>
-                                <span className="flex items-center gap-0.5">
-                                  {PMIcon && <PMIcon className="h-3 w-3" />}
-                                  {pmLabel}
-                                </span>
-                              </>
-                            )}
+                    <div key={tx.id} data-testid={`row-transaction-${tx.id}`}>
+                      <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group cursor-pointer" onClick={() => { setShowDetailItems(false); setSelectedTx(tx); }}>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-2 w-2 rounded-full flex-shrink-0 ${tx.type === "income" ? "bg-green-500" : "bg-destructive"}`} />
+                          <div className="min-w-0">
+                            <p className="text-sm truncate">{tx.description}</p>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+                              <span>{tx.categoryName || "Sem categoria"}</span>
+                              {tx.establishment && <><span>·</span><span>{tx.establishment}</span></>}
+                              {pmLabel && (
+                                <>
+                                  <span>·</span>
+                                  <span className="flex items-center gap-0.5">
+                                    {PMIcon && <PMIcon className="h-3 w-3" />}
+                                    {pmLabel}
+                                  </span>
+                                </>
+                              )}
+                              {parsedItems && (
+                                <>
+                                  <span>·</span>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setExpandedItemsTxId(isExpanded ? null : tx.id); }}
+                                    className="flex items-center gap-0.5 text-xs font-medium hover:text-foreground transition-colors"
+                                    style={{ color: "rgba(0,230,255,0.7)" }}
+                                    data-testid={`button-items-${tx.id}`}
+                                  >
+                                    <Package className="h-2.5 w-2.5" />
+                                    {parsedItems.length} {parsedItems.length === 1 ? "item" : "itens"}
+                                    {isExpanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
+                            {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
+                          </span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setTxToDelete(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
-                          {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
-                        </span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setTxToDelete(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </div>
+                      {isExpanded && parsedItems && (
+                        <div className="mx-3 mb-1 rounded-lg overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                          {parsedItems.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs" style={{ borderBottom: idx < parsedItems.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                              <span className="text-white/70 truncate mr-3">{item.description}</span>
+                              <span className="font-medium text-white/90 shrink-0">R$ {fmtBRL(item.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -657,6 +692,43 @@ export default function Finance() {
                     <span className="ml-auto font-medium">{srcInfo.label}</span>
                   </div>
                 )}
+
+                {/* Receipt items */}
+                {(() => {
+                  const rawItems = tx.receiptItems;
+                  if (!rawItems) return null;
+                  let items: { description: string; amount: number }[] = [];
+                  try { const arr = JSON.parse(rawItems); if (Array.isArray(arr) && arr.length > 0) items = arr; } catch { return null; }
+                  if (items.length === 0) return null;
+                  return (
+                    <div>
+                      <button
+                        onClick={() => setShowDetailItems(v => !v)}
+                        className="flex items-center justify-between w-full text-sm py-0.5"
+                        data-testid="button-toggle-receipt-items"
+                      >
+                        <span className="flex items-center gap-2.5">
+                          <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">Itens</span>
+                        </span>
+                        <span className="flex items-center gap-1 font-medium" style={{ color: "rgba(0,230,255,0.8)" }}>
+                          {items.length} {items.length === 1 ? "item" : "itens"}
+                          {showDetailItems ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </span>
+                      </button>
+                      {showDetailItems && (
+                        <div className="mt-2 rounded-lg overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                          {items.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs" style={{ borderBottom: idx < items.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                              <span className="text-white/70 truncate mr-3">{item.description}</span>
+                              <span className="font-medium text-white/90 shrink-0">R$ {fmtBRL(item.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <Button
