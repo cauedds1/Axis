@@ -23,6 +23,17 @@ const PRIORITY_OPTIONS = [
 const HABIT_EMOJIS = ["⚡", "🏋️", "📚", "💧", "🧘", "🍎", "😴", "💊", "🚶", "✍️"];
 const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+function calcEndTime(start: string, duration: string): string {
+  if (!start) return "";
+  const [h, m] = start.split(":").map(Number);
+  const mins: Record<string, number> = { "30min": 30, "1h": 60, "1h30": 90, "2h": 120, "3h": 180, "4h+": 240 };
+  const add = mins[duration] || 0;
+  const total = h * 60 + m + add;
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{children}</p>
@@ -217,6 +228,8 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
     frequency: "daily" as "daily" | "weekly",
     emoji: "⚡",
     targetTime: "",
+    endTime: "",
+    durationType: "" as string,
     description: "",
     weekdays: [] as number[],
   });
@@ -235,6 +248,7 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
         frequency: form.frequency,
         emoji: form.emoji,
         targetTime: form.targetTime || null,
+        endTime: form.endTime || null,
         description: form.description.trim() || null,
         weekdays: form.weekdays.length > 0 ? form.weekdays : undefined,
       });
@@ -243,7 +257,7 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      setForm({ name: "", frequency: "daily", emoji: "⚡", targetTime: "", description: "", weekdays: [] });
+      setForm({ name: "", frequency: "daily", emoji: "⚡", targetTime: "", endTime: "", durationType: "", description: "", weekdays: [] });
       onClose();
       toast({ title: "Compromisso criado" });
     },
@@ -348,15 +362,67 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
           </AnimatePresence>
 
           <div>
-            <FieldLabel>Horário alvo <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+            <FieldLabel>Horário <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
             <StyledInput
               type="time"
               value={form.targetTime}
-              onChange={e => setForm(f => ({ ...f, targetTime: e.target.value }))}
+              onChange={e => {
+                setForm(f => ({ ...f, targetTime: e.target.value, durationType: f.durationType || "custom" }));
+              }}
+              placeholder="Início"
               style={{ colorScheme: "dark" }}
               data-testid="input-habit-target-time"
             />
           </div>
+
+          <div>
+            <FieldLabel>Duração</FieldLabel>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[["30min", "30min"], ["1h", "1h"], ["1h30", "1h30"], ["2h", "2h"], ["3h", "3h"], ["4h+", "4h+"], ["custom", "Personalizado"]].map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => {
+                    if (val === "custom") {
+                      setForm(f => ({ ...f, durationType: "custom", endTime: "" }));
+                    } else {
+                      const end = form.targetTime ? calcEndTime(form.targetTime, val) : "";
+                      setForm(f => ({ ...f, durationType: val, endTime: end }));
+                    }
+                  }}
+                  className={`py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${val === "custom" ? "col-span-2" : ""}`}
+                  style={{
+                    background: form.durationType === val ? `${accent}15` : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${form.durationType === val ? `${accent}40` : "rgba(255,255,255,0.07)"}`,
+                    color: form.durationType === val ? accent : "rgba(255,255,255,0.35)",
+                  }}
+                  data-testid={`pill-duration-${val}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {form.durationType === "custom" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.18 }}
+              >
+                <FieldLabel>Horário final</FieldLabel>
+                <StyledInput
+                  type="time"
+                  value={form.endTime}
+                  onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+                  style={{ colorScheme: "dark" }}
+                  data-testid="input-habit-end-time"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div>
             <FieldLabel>Motivação / Observações <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
@@ -404,7 +470,7 @@ export default function Tasks() {
   const [taskForm, setTaskForm] = useState({ title: "", description: "", priority: "medium" as string, dueDate: "", category: "" });
   const [detailHabit, setDetailHabit] = useState<Habit | null>(null);
   const [editHabit, setEditHabit] = useState(false);
-  const [habitForm, setHabitForm] = useState({ name: "", frequency: "daily" as "daily" | "weekly", emoji: "⚡", targetTime: "", description: "", weekdays: [] as number[] });
+  const [habitForm, setHabitForm] = useState({ name: "", frequency: "daily" as "daily" | "weekly", emoji: "⚡", targetTime: "", endTime: "", description: "", weekdays: [] as number[] });
   const [manageTasks, setManageTasks] = useState(false);
   const [manageHabits, setManageHabits] = useState(false);
   const { toast } = useToast();
@@ -507,6 +573,7 @@ export default function Tasks() {
       frequency: habit.frequency as "daily" | "weekly",
       emoji: (habit as any).emoji || "⚡",
       targetTime: (habit as any).targetTime || "",
+      endTime: (habit as any).endTime || "",
       description: (habit as any).description || "",
       weekdays,
     });
@@ -712,6 +779,7 @@ export default function Tasks() {
               const checkedToday = habit.lastChecked === today;
               const habitEmoji = (habit as any).emoji || "⚡";
               const habitTime = (habit as any).targetTime as string | null;
+              const habitEndTime = (habit as any).endTime as string | null;
               let weekdaysParsed: number[] = [];
               if ((habit as any).weekdays) {
                 try { weekdaysParsed = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {}
@@ -744,7 +812,7 @@ export default function Tasks() {
                         <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
                         {habitTime && (
                           <span className="text-[10px] text-white/30 flex items-center gap-0.5">
-                            <Clock className="h-2.5 w-2.5" />{habitTime}
+                            <Clock className="h-2.5 w-2.5" />{habitTime}{habitEndTime && ` → ${habitEndTime}`}
                           </span>
                         )}
                       </div>
@@ -867,7 +935,7 @@ export default function Tasks() {
                         <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
                         {habitTime && (
                           <span className="text-[10px] text-white/30 flex items-center gap-0.5">
-                            <Clock className="h-2.5 w-2.5" />{habitTime}
+                            <Clock className="h-2.5 w-2.5" />{habitTime}{(habit as any).endTime ? ` → ${(habit as any).endTime}` : ""}
                           </span>
                         )}
                       </div>
@@ -919,12 +987,16 @@ export default function Tasks() {
                   </div>
                 </div>
 
-                {(detailHabit as any).targetTime && (
+                {((detailHabit as any).targetTime || (detailHabit as any).endTime) && (
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                     <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Horário</p>
                     <p className="text-sm font-medium text-white flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-white/40" />
-                      {(detailHabit as any).targetTime}
+                      {(detailHabit as any).targetTime || "—"}
+                      {(detailHabit as any).endTime && (
+                        <span className="text-white/40">→</span>
+                      )}
+                      {(detailHabit as any).endTime && (detailHabit as any).endTime}
                     </p>
                   </div>
                 )}
@@ -1086,13 +1158,24 @@ export default function Tasks() {
                 )}
 
                 <div>
-                  <FieldLabel>Horário alvo <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <FieldLabel>Horário início <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
                   <StyledInput
                     type="time"
                     value={habitForm.targetTime}
                     onChange={e => setHabitForm(f => ({ ...f, targetTime: e.target.value }))}
                     style={{ colorScheme: "dark" }}
                     data-testid="edit-input-habit-time"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Horário final <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <StyledInput
+                    type="time"
+                    value={habitForm.endTime}
+                    onChange={e => setHabitForm(f => ({ ...f, endTime: e.target.value }))}
+                    style={{ colorScheme: "dark" }}
+                    data-testid="edit-input-habit-end-time"
                   />
                 </div>
 
@@ -1117,6 +1200,7 @@ export default function Tasks() {
                       frequency: habitForm.frequency,
                       emoji: habitForm.emoji,
                       targetTime: habitForm.targetTime || null,
+                      endTime: habitForm.endTime || null,
                       description: habitForm.description.trim() || null,
                       weekdays: habitForm.weekdays.length > 0 ? habitForm.weekdays : null,
                     },

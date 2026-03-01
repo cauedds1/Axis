@@ -80,6 +80,7 @@ export const habits = pgTable("habits", {
   lastChecked: date("last_checked"),
   emoji: text("emoji").default("⚡"),
   targetTime: text("target_time"),
+  endTime: text("end_time"),
   description: text("description"),
   weekdays: text("weekdays"),
   lastPenalizedDate: date("last_penalized_date"),

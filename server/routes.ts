@@ -999,6 +999,7 @@ export async function registerRoutes(
         frequency: z.enum(["daily", "weekly"]).default("daily"),
         emoji: z.string().optional(),
         targetTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
         description: z.string().optional().nullable(),
         weekdays: z.array(z.number()).optional(),
       });
@@ -1009,6 +1010,7 @@ export async function registerRoutes(
         frequency: data.frequency,
         emoji: data.emoji || "⚡",
         targetTime: data.targetTime || null,
+        endTime: data.endTime || null,
         description: data.description || null,
         weekdays: data.weekdays && data.weekdays.length > 0 ? JSON.stringify(data.weekdays) : null,
       }));
@@ -1026,6 +1028,7 @@ export async function registerRoutes(
         frequency: z.string().optional(),
         emoji: z.string().optional(),
         targetTime: z.string().optional().nullable(),
+        endTime: z.string().optional().nullable(),
         description: z.string().optional().nullable(),
         weekdays: z.array(z.number()).optional().nullable(),
       });
