@@ -1,12 +1,14 @@
 import { Link } from "wouter";
-import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { motion, useInView, useMotionValue, useTransform, animate, AnimatePresence } from "framer-motion";
+import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Shield, BarChart3, Zap, ChevronDown, Send, Volume2, Camera, FileText, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 
 const CORAL = "#FF6B6B";
 const GOLD = "#FFB347";
 const LAVANDA = "#A78BFA";
+const CYAN = "#00E6FF";
+const GREEN = "#4ECDC4";
 const CORAL_MUTED = "rgba(255,107,107,0.15)";
 const GOLD_MUTED = "rgba(255,179,71,0.12)";
 const LAVANDA_MUTED = "rgba(167,139,250,0.12)";
@@ -40,6 +42,7 @@ const demoExamples = [
     label: "Gasto registrado",
     color: CORAL,
     bg: CORAL_MUTED,
+    icon: <Mic className="w-4 h-4" />,
   },
   {
     input: '"Reunião amanhã às 14h"',
@@ -47,13 +50,15 @@ const demoExamples = [
     label: "Evento criado",
     color: GOLD,
     bg: GOLD_MUTED,
+    icon: <Calendar className="w-4 h-4" />,
   },
   {
     input: '"Preciso estudar 2h por dia"',
-    result: "Compromisso: Estudar · 2h/dia · Streak: 0",
-    label: "Compromisso adicionado",
+    result: "Hábito: Estudar · 2h/dia · Streak: 0",
+    label: "Hábito adicionado",
     color: LAVANDA,
     bg: LAVANDA_MUTED,
+    icon: <ListChecks className="w-4 h-4" />,
   },
 ];
 
@@ -101,14 +106,17 @@ function TypewriterDemo() {
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8 backdrop-blur-sm">
-        <div className="flex items-center gap-3 mb-1">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8 backdrop-blur-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${example.color}15, transparent 70%)`, filter: "blur(30px)" }} />
+
+        <div className="flex items-center gap-3 mb-1 relative z-10">
           <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: example.color }} />
-          <span className="text-xs uppercase tracking-widest" style={{ color: example.color }}>
+          <span className="text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: example.color }}>
+            {example.icon}
             Você diz
           </span>
         </div>
-        <p className="text-xl md:text-2xl font-medium text-white/90 mb-6 min-h-[2em] font-mono" data-testid="text-demo-input">
+        <p className="text-xl md:text-2xl font-medium text-white/90 mb-6 min-h-[2em] font-mono relative z-10" data-testid="text-demo-input">
           {displayText}
           <span className="animate-blink text-white/40">|</span>
         </p>
@@ -117,12 +125,16 @@ function TypewriterDemo() {
           initial={false}
           animate={{ opacity: showResult ? 1 : 0, y: showResult ? 0 : 12 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
+          className="relative z-10"
         >
-          <div className="rounded-xl p-4" style={{ background: example.bg }}>
-            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: example.color }}>
-              {example.label}
-            </p>
-            <p className="text-base md:text-lg font-semibold text-white/90" data-testid="text-demo-result">
+          <div className="rounded-xl p-4" style={{ background: example.bg, border: `1px solid ${example.color}25` }}>
+            <div className="flex items-center gap-2">
+              <Check className="w-3.5 h-3.5" style={{ color: example.color }} />
+              <p className="text-xs uppercase tracking-widest" style={{ color: example.color }}>
+                {example.label}
+              </p>
+            </div>
+            <p className="text-base md:text-lg font-semibold text-white/90 mt-1" data-testid="text-demo-result">
               {example.result}
             </p>
           </div>
@@ -138,6 +150,7 @@ function TypewriterDemo() {
             style={{
               background: i === exampleIdx ? ex.color : "rgba(255,255,255,0.15)",
               transform: i === exampleIdx ? "scale(1.4)" : "scale(1)",
+              boxShadow: i === exampleIdx ? `0 0 8px ${ex.color}60` : "none",
             }}
             data-testid={`button-demo-dot-${i}`}
           />
@@ -149,40 +162,53 @@ function TypewriterDemo() {
 
 function OrbitalGraphic() {
   return (
-    <div className="relative w-[240px] h-[240px] sm:w-[320px] sm:h-[320px] md:w-[420px] md:h-[420px]">
-      <svg viewBox="0 0 420 420" className="w-full h-full" style={{ filter: "drop-shadow(0 0 40px rgba(255,107,107,0.1))" }}>
-        <circle cx="210" cy="210" r="140" fill="none" stroke="rgba(255,107,107,0.08)" strokeWidth="1" />
-        <circle cx="210" cy="210" r="100" fill="none" stroke="rgba(255,179,71,0.08)" strokeWidth="1" />
-        <circle cx="210" cy="210" r="60" fill="none" stroke="rgba(167,139,250,0.08)" strokeWidth="1" />
+    <div className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[440px] md:h-[440px]">
+      <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${CORAL}08, transparent 70%)` }} />
+      <svg viewBox="0 0 420 420" className="w-full h-full" style={{ filter: "drop-shadow(0 0 60px rgba(255,107,107,0.12))" }}>
+        <circle cx="210" cy="210" r="180" fill="none" stroke="rgba(255,107,107,0.06)" strokeWidth="0.5" strokeDasharray="4 6" />
+        <circle cx="210" cy="210" r="140" fill="none" stroke="rgba(255,107,107,0.1)" strokeWidth="1" />
+        <circle cx="210" cy="210" r="100" fill="none" stroke="rgba(255,179,71,0.1)" strokeWidth="1" />
+        <circle cx="210" cy="210" r="60" fill="none" stroke="rgba(167,139,250,0.1)" strokeWidth="1" />
 
         <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="350" cy="210" r="8" fill={CORAL} opacity="0.9" />
-          <text x="350" y="235" textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="10" fontWeight="500">Finanças</text>
+          <circle cx="350" cy="210" r="9" fill={CORAL} opacity="0.9" />
+          <circle cx="350" cy="210" r="14" fill={CORAL} opacity="0.15" />
+          <text x="350" y="237" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Finanças</text>
         </g>
 
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="310" cy="210" r="7" fill={GOLD} opacity="0.9" />
-          <text x="310" y="233" textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="10" fontWeight="500">Agenda</text>
+          <circle cx="310" cy="210" r="8" fill={GOLD} opacity="0.9" />
+          <circle cx="310" cy="210" r="12" fill={GOLD} opacity="0.15" />
+          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Agenda</text>
         </g>
 
         <g className="landing-orbit-slow" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="270" cy="210" r="6" fill={LAVANDA} opacity="0.9" />
-          <text x="270" y="231" textAnchor="middle" fill="rgba(255,255,255,0.6)" fontSize="10" fontWeight="500">Compromissos</text>
+          <circle cx="270" cy="210" r="7" fill={LAVANDA} opacity="0.9" />
+          <circle cx="270" cy="210" r="11" fill={LAVANDA} opacity="0.15" />
+          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Hábitos</text>
         </g>
 
         <g className="landing-orbit-mid" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="150" cy="120" r="5" fill="rgba(255,107,107,0.6)" />
+          <circle cx="150" cy="120" r="5" fill="rgba(255,107,107,0.7)" />
         </g>
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="280" cy="300" r="4" fill="rgba(255,179,71,0.5)" />
+          <circle cx="280" cy="300" r="4" fill="rgba(255,179,71,0.6)" />
+        </g>
+        <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="130" cy="280" r="3" fill="rgba(167,139,250,0.5)" />
         </g>
 
         <defs>
           <clipPath id="orbital-logo-clip">
             <circle cx="210" cy="210" r="54" />
           </clipPath>
+          <radialGradient id="logo-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,107,107,0.15)" />
+            <stop offset="100%" stopColor="transparent" />
+          </radialGradient>
         </defs>
-        <circle cx="210" cy="210" r="58" fill="rgba(255,107,107,0.08)" />
+        <circle cx="210" cy="210" r="70" fill="url(#logo-glow)" />
+        <circle cx="210" cy="210" r="58" fill="rgba(255,107,107,0.1)" />
         <image href="/logo.png" x="152" y="152" width="116" height="116" clipPath="url(#orbital-logo-clip)" preserveAspectRatio="xMidYMid slice" />
       </svg>
     </div>
@@ -192,16 +218,228 @@ function OrbitalGraphic() {
 function FloatingShapes() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="landing-float-1 absolute top-[15%] left-[10%] w-3 h-3 rounded-full" style={{ background: CORAL, opacity: 0.12 }} />
-      <div className="landing-float-2 absolute top-[25%] right-[15%] w-2 h-2 rounded-full" style={{ background: GOLD, opacity: 0.1 }} />
-      <div className="landing-float-3 absolute top-[60%] left-[8%] w-4 h-4 rounded-full" style={{ background: LAVANDA, opacity: 0.08 }} />
-      <div className="landing-float-1 absolute top-[70%] right-[12%] w-2.5 h-2.5 rounded-full" style={{ background: CORAL, opacity: 0.1 }} />
-      <div className="landing-float-2 absolute top-[40%] left-[80%] w-1.5 h-1.5 rounded-full" style={{ background: GOLD, opacity: 0.15 }} />
-      <div className="landing-float-3 absolute top-[85%] left-[30%] w-3 h-3 rounded-full" style={{ background: LAVANDA, opacity: 0.06 }} />
+      <div className="landing-float-1 absolute top-[15%] left-[10%] w-4 h-4 rounded-full" style={{ background: CORAL, opacity: 0.15 }} />
+      <div className="landing-float-2 absolute top-[25%] right-[15%] w-3 h-3 rounded-full" style={{ background: GOLD, opacity: 0.12 }} />
+      <div className="landing-float-3 absolute top-[60%] left-[8%] w-5 h-5 rounded-full" style={{ background: LAVANDA, opacity: 0.1 }} />
+      <div className="landing-float-1 absolute top-[70%] right-[12%] w-3 h-3 rounded-full" style={{ background: CORAL, opacity: 0.12 }} />
+      <div className="landing-float-2 absolute top-[40%] left-[80%] w-2 h-2 rounded-full" style={{ background: GOLD, opacity: 0.18 }} />
+      <div className="landing-float-3 absolute top-[85%] left-[30%] w-4 h-4 rounded-full" style={{ background: LAVANDA, opacity: 0.08 }} />
+      <div className="landing-float-1 absolute top-[50%] left-[50%] w-2 h-2 rounded-full" style={{ background: GREEN, opacity: 0.1 }} />
 
-      <div className="landing-float-2 absolute top-[20%] left-[45%] w-px h-16 rotate-45" style={{ background: `linear-gradient(to bottom, transparent, ${CORAL}20, transparent)` }} />
-      <div className="landing-float-1 absolute top-[50%] right-[25%] w-px h-20 -rotate-12" style={{ background: `linear-gradient(to bottom, transparent, ${GOLD}15, transparent)` }} />
-      <div className="landing-float-3 absolute top-[75%] left-[60%] w-px h-12 rotate-30" style={{ background: `linear-gradient(to bottom, transparent, ${LAVANDA}18, transparent)` }} />
+      <div className="landing-float-2 absolute top-[20%] left-[45%] w-px h-20 rotate-45" style={{ background: `linear-gradient(to bottom, transparent, ${CORAL}30, transparent)` }} />
+      <div className="landing-float-1 absolute top-[50%] right-[25%] w-px h-24 -rotate-12" style={{ background: `linear-gradient(to bottom, transparent, ${GOLD}25, transparent)` }} />
+      <div className="landing-float-3 absolute top-[75%] left-[60%] w-px h-16 rotate-[30deg]" style={{ background: `linear-gradient(to bottom, transparent, ${LAVANDA}25, transparent)` }} />
+    </div>
+  );
+}
+
+function WhatsAppSimulation() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const messages = [
+    { type: "user", text: "Gastei 80 no mercado", time: "14:32" },
+    { type: "bot", text: "Registrado! R$ 80,00 em Alimentação (Mercado). Seu gasto total do mês: R$ 1.420,00.", time: "14:32" },
+    { type: "user", text: "Audio (0:03)", time: "14:33", isAudio: true },
+    { type: "bot", text: "Transcrição: \"Reunião com o João amanhã às 15h\"\n\nEvento criado: Reunião com João\nAmanhã, 15:00 – 16:00", time: "14:33" },
+    { type: "user", text: "Quanto gastei esse mês?", time: "14:35" },
+    { type: "bot", text: "Este mês você gastou R$ 1.420,00\n\nAlimentação: R$ 580 (41%)\nTransporte: R$ 340 (24%)\nMoradia: R$ 500 (35%)", time: "14:35" },
+  ];
+
+  return (
+    <div ref={ref} className="w-full max-w-md mx-auto">
+      <div className="rounded-2xl overflow-hidden border border-white/10">
+        <div className="px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #075E54, #128C7E)" }}>
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+            <img src="/logo.png" alt="AXIS" className="w-7 h-7 rounded-full object-cover" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">AXIS Bot</p>
+            <p className="text-white/60 text-[11px]">online</p>
+          </div>
+          <div className="ml-auto flex gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3 min-h-[320px]" style={{ background: "linear-gradient(180deg, #0b1014 0%, #0d1117 100%)" }}>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+              transition={{ delay: i * 0.4, duration: 0.4, ease: "easeOut" }}
+              className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                data-testid={`text-whatsapp-msg-${i}`}
+                className={`max-w-[80%] rounded-xl px-3.5 py-2.5 relative ${msg.type === "user" ? "rounded-tr-sm" : "rounded-tl-sm"}`}
+                style={{
+                  background: msg.type === "user" ? "rgba(0,230,100,0.12)" : "rgba(255,255,255,0.06)",
+                  border: msg.type === "user" ? "1px solid rgba(0,230,100,0.15)" : "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                {msg.isAudio ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <Volume2 className="w-3.5 h-3.5 text-green-400" />
+                    </div>
+                    <div className="flex gap-0.5">
+                      {[...Array(18)].map((_, j) => (
+                        <div key={j} className="w-0.5 rounded-full bg-green-400/60" style={{ height: `${4 + Math.sin(j * 0.8) * 8 + Math.random() * 6}px` }} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-white/40 ml-1">0:03</span>
+                  </div>
+                ) : (
+                  <p className="text-[13px] text-white/85 whitespace-pre-line leading-relaxed">{msg.text}</p>
+                )}
+                <p className="text-[10px] text-white/30 text-right mt-1">{msg.time}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: "#0d1117", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex-1 rounded-full px-4 py-2 text-xs text-white/30 bg-white/[0.04] border border-white/[0.06]">
+            Digite uma mensagem...
+          </div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,230,100,0.15)" }}>
+            <Mic className="w-4 h-4 text-green-400" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardPreview() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  const bars = [35, 52, 45, 68, 40, 75, 90, 55, 62, 48, 70, 85];
+
+  return (
+    <div ref={ref} className="w-full max-w-3xl mx-auto">
+      <div className="landing-app-window rounded-2xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/70" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+            <div className="w-3 h-3 rounded-full bg-green-500/70" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="px-4 py-1 rounded-md bg-white/[0.04] text-[11px] text-white/30 font-mono">myaxis.com.br/dashboard</div>
+          </div>
+        </div>
+
+        <div className="p-5 md:p-7">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg overflow-hidden">
+              <img src="/logo.png" alt="AXIS" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white/90">Boa tarde, Lucas!</p>
+              <p className="text-[11px] text-white/40">Março 2026</p>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={isInView ? { scale: 1 } : {}}
+                transition={{ delay: 0.6, type: "spring" }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                style={{ background: "rgba(78,205,196,0.1)", border: "1px solid rgba(78,205,196,0.2)" }}
+              >
+                <Zap className="w-3.5 h-3.5" style={{ color: GREEN }} />
+                <span className="text-xs font-bold" style={{ color: GREEN }}>7.2</span>
+                <span className="text-[10px] text-white/40">disciplina</span>
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {[
+              { label: "Saldo", value: "R$ 3.280", color: GREEN, change: "+12%" },
+              { label: "Gastos", value: "R$ 1.420", color: CORAL, change: "-8%" },
+              { label: "Receitas", value: "R$ 4.700", color: GOLD, change: "+5%" },
+            ].map((card, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.2 + i * 0.1, duration: 0.5 }}
+                className="rounded-xl p-3.5 border border-white/[0.06]"
+                style={{ background: `linear-gradient(135deg, ${card.color}08, transparent)` }}
+                data-testid={`panel-dashboard-${card.label.toLowerCase()}`}
+              >
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">{card.label}</p>
+                <p className="text-lg font-bold text-white/90" data-testid={`text-dashboard-${card.label.toLowerCase()}`}>{card.value}</p>
+                <p className="text-[11px] font-medium mt-0.5" style={{ color: card.color }}>{card.change}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Gastos por Mês</p>
+              <div className="flex items-end gap-1 h-24">
+                {bars.map((h, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ height: 0 }}
+                    animate={isInView ? { height: `${h}%` } : {}}
+                    transition={{ delay: 0.4 + i * 0.05, duration: 0.5, ease: "easeOut" }}
+                    className="flex-1 rounded-t"
+                    style={{ background: i === bars.length - 1 ? CORAL : `rgba(255,107,107,${0.15 + (i / bars.length) * 0.4})` }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Tarefas Pendentes</p>
+              <div className="space-y-2">
+                {[
+                  { text: "Pagar fatura do cartão", priority: CORAL, done: false },
+                  { text: "Reunião com equipe", priority: GOLD, done: false },
+                  { text: "Enviar relatório", priority: LAVANDA, done: true },
+                ].map((task, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={isInView ? { opacity: 1, x: 0 } : {}}
+                    transition={{ delay: 0.6 + i * 0.12 }}
+                    className="flex items-center gap-2.5"
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${task.done ? "" : ""}`}
+                      style={{ borderColor: task.done ? GREEN : "rgba(255,255,255,0.15)", background: task.done ? `${GREEN}20` : "transparent" }}>
+                      {task.done && <Check className="w-2.5 h-2.5" style={{ color: GREEN }} />}
+                    </div>
+                    <span className={`text-xs ${task.done ? "line-through text-white/30" : "text-white/70"}`}>{task.text}</span>
+                    <div className="w-1.5 h-1.5 rounded-full ml-auto" style={{ background: task.priority }} />
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-white/[0.04]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-white/30 uppercase tracking-wider">Hábitos hoje</span>
+                  <span className="text-[11px] font-mono" style={{ color: GREEN }}>2/3</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={isInView ? { width: "66%" } : {}}
+                    transition={{ delay: 0.9, duration: 0.7, ease: "easeOut" }}
+                    className="h-full rounded-full"
+                    style={{ background: `linear-gradient(90deg, ${GREEN}, ${LAVANDA})` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -249,7 +487,7 @@ function MiniCalendar() {
             key={`${ci}-${ri}`}
             className="h-3.5 rounded-sm"
             style={{
-              background: filled ? `${GOLD}${filled ? "60" : "00"}` : "rgba(255,255,255,0.04)",
+              background: filled ? `${GOLD}60` : "rgba(255,255,255,0.04)",
             }}
           />
         ))
@@ -281,7 +519,7 @@ function MiniHabits() {
               animate={isInView ? { width: `${h.pct}%` } : {}}
               transition={{ delay: 0.3 + i * 0.15, duration: 0.7, ease: "easeOut" }}
               className="h-full rounded-full"
-              style={{ background: LAVANDA }}
+              style={{ background: `linear-gradient(90deg, ${LAVANDA}, ${LAVANDA}cc)` }}
             />
           </div>
         </div>
@@ -295,13 +533,13 @@ function MiniChat() {
     <div className="space-y-2.5">
       <div className="flex justify-end">
         <div className="rounded-xl rounded-tr-sm px-3 py-2 text-xs text-white/80 max-w-[70%]"
-          style={{ background: "rgba(255,107,107,0.15)" }}>
+          style={{ background: "rgba(255,107,107,0.15)", border: "1px solid rgba(255,107,107,0.1)" }}>
           Quanto gastei esse mês?
         </div>
       </div>
       <div className="flex justify-start">
         <div className="rounded-xl rounded-tl-sm px-3 py-2 text-xs text-white/80 max-w-[80%]"
-          style={{ background: "rgba(255,179,71,0.12)" }}>
+          style={{ background: "rgba(255,179,71,0.12)", border: "1px solid rgba(255,179,71,0.08)" }}>
           Você gastou R$ 2.340 em fevereiro. 42% foi em alimentação.
         </div>
       </div>
@@ -367,76 +605,150 @@ function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
 const moduleShowcase = [
   {
     title: "Finanças",
-    desc: "Registre por voz, texto, foto ou PDF. Veja pra onde vai cada real.",
+    desc: "Registre gastos por voz, texto, foto de recibo ou PDF. A IA categoriza automaticamente e você acompanha pra onde vai cada real.",
     color: CORAL,
     bg: CORAL_MUTED,
     visual: <MiniFinanceChart />,
-    extraContent: (
-      <div className="mt-3 rounded-lg p-2.5 bg-white/[0.03] border border-white/5">
-        <div className="flex justify-between text-xs">
-          <span className="text-white/50">Almoço · Alimentação</span>
-          <span style={{ color: CORAL }} className="font-mono">-R$ 45</span>
-        </div>
-      </div>
-    ),
+    icon: <TrendingUp className="w-5 h-5" />,
+    features: ["Foto de recibo", "PDF de extrato", "Categorização por IA", "Metas financeiras"],
   },
   {
     title: "Agenda",
-    desc: "Diga o compromisso. A IA sugere o horário. Você aprova.",
+    desc: "Diga o compromisso e a IA sugere o melhor horário. Aprove com um toque. Sem conflitos, sem esforço.",
     color: GOLD,
     bg: GOLD_MUTED,
     visual: <MiniCalendar />,
-    extraContent: null,
+    icon: <Calendar className="w-5 h-5" />,
+    features: ["Sugestão inteligente", "Sem conflitos", "Aprovação rápida", "Lembretes"],
   },
   {
-    title: "Tarefas & Compromissos",
-    desc: "Streaks, progresso e score de disciplina. Tudo automático.",
+    title: "Tarefas & Hábitos",
+    desc: "Streaks, progresso e score de disciplina automático. A IA avalia suas justificativas e te mantém no trilho.",
     color: LAVANDA,
     bg: LAVANDA_MUTED,
     visual: <MiniHabits />,
-    extraContent: null,
+    icon: <ListChecks className="w-5 h-5" />,
+    features: ["Streaks diários", "Score de disciplina", "Justificativas IA", "Prioridades"],
   },
   {
     title: "Chat Inteligente",
-    desc: "Pergunte qualquer coisa sobre seus dados. A IA sabe tudo.",
+    desc: "Pergunte qualquer coisa sobre seus dados. A IA tem memória de longo prazo e acesso total ao seu contexto.",
     color: CORAL,
     bg: "rgba(255,107,107,0.08)",
     visual: <MiniChat />,
-    extraContent: null,
+    icon: <Brain className="w-5 h-5" />,
+    features: ["Memória longa", "Acesso total", "Análises", "Sugestões"],
+  },
+  {
+    title: "WhatsApp Bot",
+    desc: "Registre gastos, consulte saldo, crie tarefas e muito mais — tudo direto pelo WhatsApp. Manda áudio e o bot transcreve.",
+    color: GREEN,
+    bg: "rgba(78,205,196,0.1)",
+    visual: (
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.2)" }}>
+          <Smartphone className="w-6 h-6 text-green-400" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-2 w-20 rounded-full bg-green-400/20" />
+          <div className="h-2 w-14 rounded-full bg-green-400/10" />
+        </div>
+      </div>
+    ),
+    icon: <MessageSquare className="w-5 h-5" />,
+    features: ["Áudio → texto", "Gastos por voz", "Consultar saldo", "Criar tarefas"],
   },
 ];
 
 const steps = [
-  { title: "Fale ou digite", desc: "Diga o que precisa. A IA escuta.", type: "voice" as const, color: CORAL },
-  { title: "IA entende", desc: "Classifica, categoriza, organiza.", type: "ai" as const, color: GOLD },
-  { title: "Pronto", desc: "Registrado automaticamente.", type: "done" as const, color: LAVANDA },
+  { title: "Fale ou digite", desc: "Texto, voz, foto, PDF ou WhatsApp. Do jeito que for mais fácil.", type: "voice" as const, color: CORAL },
+  { title: "IA entende", desc: "Classifica, categoriza e organiza em milissegundos.", type: "ai" as const, color: GOLD },
+  { title: "Pronto", desc: "Tudo registrado. Zero esforço. Vida organizada.", type: "done" as const, color: LAVANDA },
 ];
+
+const features = [
+  { icon: <Mic className="w-5 h-5" />, title: "Por voz ou texto", desc: "Fale ou digite — o AXIS entende os dois.", color: CORAL },
+  { icon: <Smartphone className="w-5 h-5" />, title: "WhatsApp integrado", desc: "Bot nativo. Registre tudo sem abrir o app.", color: GREEN },
+  { icon: <Brain className="w-5 h-5" />, title: "IA que aprende", desc: "Memória de longo prazo. Quanto mais usa, mais esperta.", color: LAVANDA },
+  { icon: <Zap className="w-5 h-5" />, title: "Score de disciplina", desc: "Gamificação real. Veja seu progresso diário.", color: GOLD },
+  { icon: <BarChart3 className="w-5 h-5" />, title: "Relatórios visuais", desc: "Gráficos de gastos, hábitos, tarefas e agenda.", color: CORAL },
+  { icon: <Shield className="w-5 h-5" />, title: "Privacidade total", desc: "Seus dados são seus. Criptografia e controle total.", color: CYAN },
+];
+
+const faqItems = [
+  { q: "O AXIS é gratuito?", a: "Sim! Você pode criar sua conta e usar todas as funcionalidades principais sem pagar nada." },
+  { q: "Funciona no WhatsApp?", a: "Sim. Conecte seu WhatsApp ao AXIS e registre gastos, crie tarefas, consulte saldo e muito mais — tudo por mensagem de texto ou áudio." },
+  { q: "Meus dados estão seguros?", a: "Totalmente. Usamos criptografia, seus dados ficam isolados e você pode excluir sua conta e todos os dados a qualquer momento." },
+  { q: "Preciso instalar algum app?", a: "Não. O AXIS funciona direto no navegador, em qualquer dispositivo. E o bot funciona no WhatsApp que você já usa." },
+  { q: "Como a IA funciona?", a: "A IA do AXIS entende linguagem natural. Você diz \"gastei 50 no almoço\" e ela categoriza automaticamente. Com o tempo, ela aprende seus padrões e fica cada vez mais precisa." },
+];
+
+function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.08 }}
+      className="border-b border-white/[0.06] last:border-0"
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between py-5 text-left group"
+        data-testid={`button-faq-${index}`}
+      >
+        <span className="text-base font-medium text-white/80 group-hover:text-white transition-colors pr-4">{item.q}</span>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" />
+        </motion.div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 export default function Landing() {
   useEffect(() => {
-    document.title = "AXIS — Organize sua vida. Por voz ou texto.";
+    document.title = "AXIS — Organize sua vida. Por voz, texto ou WhatsApp.";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "AXIS organiza finanças, agenda, tarefas e compromissos com inteligência artificial. Por voz ou texto.");
+    if (meta) meta.setAttribute("content", "AXIS organiza finanças, agenda, tarefas e hábitos com inteligência artificial. Por voz, texto ou WhatsApp.");
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden relative">
+    <div className="min-h-screen landing-bg text-white overflow-hidden relative">
       <div className="landing-grain" />
+      <div className="landing-grid-dots" />
 
-      <header className="fixed top-0 w-full z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/[0.04]">
+      <div className="landing-blob absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.12) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-2 absolute top-[30%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-3 absolute top-[60%] left-[-8%] w-[450px] h-[450px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,179,71,0.08) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+
+      <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="AXIS" className="w-16 h-16 rounded-xl object-cover" />
+            <img src="/logo.png" alt="AXIS" className="w-10 h-10 rounded-xl object-cover" />
             <span className="text-lg font-bold tracking-tight">AXIS</span>
           </div>
           <Link href="/auth">
             <Button
-              variant="ghost"
+              className="landing-cta-button border-0 text-sm font-semibold px-5"
               size="sm"
-              className="text-white/70 border border-white/10"
               data-testid="button-header-login"
             >
-              Entrar
+              Começar grátis
             </Button>
           </Link>
         </div>
@@ -444,8 +756,6 @@ export default function Landing() {
 
       <section className="relative min-h-screen flex items-center justify-center px-6 pt-16">
         <FloatingShapes />
-        <div className="absolute top-1/3 right-[15%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.06) 0%, rgba(255,179,71,0.03) 40%, transparent 70%)`, filter: "blur(60px)" }} />
-        <div className="absolute bottom-[10%] left-[10%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.04) 0%, transparent 60%)`, filter: "blur(80px)" }} />
         <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12 lg:gap-20 max-w-6xl mx-auto">
           <div className="flex-1 text-center lg:text-left">
             <motion.div
@@ -453,14 +763,21 @@ export default function Landing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6"
+                style={{ background: "rgba(255,107,107,0.08)", borderColor: "rgba(255,107,107,0.2)" }}>
+                <Zap className="w-3.5 h-3.5" style={{ color: CORAL }} />
+                <span className="text-xs font-medium" style={{ color: CORAL }}>Seu assistente de vida com IA</span>
+              </div>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-hero-title">
                 Organize{" "}
                 <span className="landing-gradient-text">sua vida.</span>
                 <br />
-                <span className="text-white/50">Por voz ou texto.</span>
+                <span className="text-white/50">Por voz, texto</span>
+                <br className="md:hidden" />
+                <span className="text-white/50"> ou WhatsApp.</span>
               </h1>
-              <p className="text-lg md:text-xl text-white/40 max-w-lg mb-10 leading-relaxed" data-testid="text-hero-subtitle">
-                Diga o que precisa. O AXIS entende, categoriza e organiza finanças, agenda, tarefas e compromissos automaticamente.
+              <p className="text-lg md:text-xl text-white/45 max-w-lg mb-10 leading-relaxed" data-testid="text-hero-subtitle">
+                Diga o que precisa — o AXIS entende, categoriza e organiza finanças, agenda, tarefas e hábitos automaticamente. Na web ou direto no WhatsApp.
               </p>
             </motion.div>
 
@@ -468,6 +785,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
+              className="flex flex-col sm:flex-row items-center gap-4"
             >
               <Link href="/auth">
                 <button
@@ -475,11 +793,35 @@ export default function Landing() {
                   data-testid="button-hero-start"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Começar agora
+                    Começar agora — é grátis
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
               </Link>
+              <div className="flex items-center gap-2 text-sm text-white/30">
+                <Check className="w-4 h-4" style={{ color: GREEN }} />
+                <span>Sem cartão de crédito</span>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="flex items-center gap-6 mt-8"
+            >
+              {[
+                { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz" },
+                { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto" },
+                { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto" },
+                { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF" },
+                { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-white/30 text-xs">
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </motion.div>
           </div>
 
@@ -504,8 +846,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-28 px-6 relative">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(ellipse, rgba(255,107,107,0.04) 0%, rgba(255,179,71,0.02) 40%, transparent 70%)`, filter: "blur(60px)" }} />
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
         <div className="max-w-6xl mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -517,8 +860,11 @@ export default function Landing() {
               Veja na prática
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight" data-testid="text-demo-title">
-              Fale. O AXIS faz o resto.
+              Fale. O AXIS <span className="landing-gradient-text">faz o resto.</span>
             </h2>
+            <p className="text-white/35 text-lg mt-4 max-w-lg mx-auto">
+              Registre um gasto, crie um compromisso ou inicie um hábito — tudo com uma frase.
+            </p>
           </motion.div>
 
           <motion.div
@@ -532,21 +878,97 @@ export default function Landing() {
         </div>
       </section>
 
-      <div className="relative h-px w-full">
-        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[200px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, rgba(167,139,250,0.05) 30%, rgba(255,179,71,0.04) 70%, transparent)`, filter: "blur(40px)" }} />
-      </div>
+      <div className="landing-section-divider max-w-4xl mx-auto" />
 
-      <section className="py-28 px-6 relative">
-        <div className="absolute top-[20%] left-[-5%] w-[400px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(ellipse, rgba(255,107,107,0.05) 0%, transparent 60%)`, filter: "blur(80px)" }} />
-        <div className="absolute top-[40%] right-[-5%] w-[350px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(ellipse, rgba(255,179,71,0.04) 0%, transparent 60%)`, filter: "blur(70px)" }} />
+      <section className="py-24 md:py-32 px-6 relative">
+        <div className="landing-blob-2 absolute top-[20%] right-[-15%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(78,205,196,0.08) 0%, transparent 60%)`, filter: "blur(70px)" }} />
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-4"
+                style={{ background: "rgba(78,205,196,0.08)", borderColor: "rgba(78,205,196,0.2)" }}>
+                <Smartphone className="w-3 h-3" style={{ color: GREEN }} />
+                <span className="text-[11px] font-medium" style={{ color: GREEN }}>WhatsApp Bot</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-whatsapp-title">
+                Tudo pelo <span style={{ color: GREEN }}>WhatsApp.</span>
+                <br />
+                <span className="text-white/40">Sem abrir o app.</span>
+              </h2>
+              <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
+                Mande uma mensagem de texto ou áudio pro bot do AXIS. Ele transcreve, entende e registra tudo automaticamente. Consulte saldo, veja tarefas pendentes, crie compromissos — tudo na conversa.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {["Áudio → Texto", "Registrar gastos", "Consultar saldo", "Criar tarefas", "Foto de recibo"].map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                    style={{ background: "rgba(78,205,196,0.1)", color: GREEN, border: "1px solid rgba(78,205,196,0.15)" }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <WhatsAppSimulation />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
+        <div className="landing-blob absolute top-[10%] left-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.06) 0%, transparent 60%)`, filter: "blur(70px)" }} />
+        <div className="max-w-6xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>
+              Painel completo
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Tudo <span className="landing-gradient-text">num só lugar.</span>
+            </h2>
+            <p className="text-white/35 text-lg mt-4 max-w-lg mx-auto">
+              Dashboard inteligente com tudo que você precisa ver em 30 segundos.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.97 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15, duration: 0.7 }}
+          >
+            <DashboardPreview />
+          </motion.div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
+        <div className="landing-blob-3 absolute top-[40%] right-[-5%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 60%)`, filter: "blur(70px)" }} />
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-20"
+            className="text-center mb-16"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LAVANDA }}>
               Módulos
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
@@ -555,7 +977,7 @@ export default function Landing() {
             </h2>
           </motion.div>
 
-          <div className="space-y-8">
+          <div className="space-y-6">
             {moduleShowcase.map((mod, i) => (
               <motion.div
                 key={mod.title}
@@ -564,34 +986,39 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: 0.1, duration: 0.6, ease: "easeOut" }}
                 className="landing-module-card group relative rounded-2xl p-[1px]"
-                style={{ "--module-color": mod.color, "--module-color-rgb": mod.color === CORAL ? "255,107,107" : mod.color === GOLD ? "255,179,71" : "167,139,250" } as React.CSSProperties}
+                style={{ "--module-color": mod.color, "--module-color-rgb": mod.color === CORAL ? "255,107,107" : mod.color === GOLD ? "255,179,71" : mod.color === LAVANDA ? "167,139,250" : mod.color === GREEN ? "78,205,196" : "255,107,107" } as React.CSSProperties}
                 data-testid={`panel-module-${mod.title.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <div className="absolute inset-0 rounded-2xl opacity-40 group-hover:opacity-70 transition-opacity duration-500" style={{ background: `linear-gradient(135deg, ${mod.color}25, transparent 50%, ${mod.color}08)` }} />
 
-                <div className="relative rounded-2xl bg-[#0d0d0d] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden">
+                <div className="relative rounded-2xl bg-[#0d0d14] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full rounded-r" style={{ background: `linear-gradient(to bottom, ${mod.color}, ${mod.color}30)` }} />
-
-                  <div className="absolute top-[-50%] left-[-20%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-30 group-hover:opacity-50 transition-opacity duration-500" style={{ background: `radial-gradient(circle, ${mod.color}12, transparent 60%)`, filter: "blur(40px)" }} />
+                  <div className="absolute top-[-50%] left-[-20%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-30 group-hover:opacity-50 transition-opacity duration-500" style={{ background: `radial-gradient(circle, ${mod.color}15, transparent 60%)`, filter: "blur(40px)" }} />
 
                   <div className="flex-1 relative z-10 pl-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${mod.color}15`, border: `1px solid ${mod.color}25` }}>
-                        <div className="w-2 h-2 rounded-full" style={{ background: mod.color, boxShadow: `0 0 8px ${mod.color}60` }} />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${mod.color}15`, border: `1px solid ${mod.color}25`, color: mod.color }}>
+                        {mod.icon}
                       </div>
                       <h3 className="text-xl md:text-2xl font-bold" style={{ color: mod.color }}>
                         {mod.title}
                       </h3>
                     </div>
-                    <p className="text-white/50 text-base leading-relaxed max-w-md">
+                    <p className="text-white/50 text-base leading-relaxed max-w-md mb-3">
                       {mod.desc}
                     </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {mod.features.map((f) => (
+                        <span key={f} className="px-2 py-0.5 rounded text-[11px] text-white/40" style={{ background: `${mod.color}08`, border: `1px solid ${mod.color}12` }}>
+                          {f}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="w-full md:w-60 flex-shrink-0 relative z-10">
+                  <div className="w-full md:w-56 flex-shrink-0 relative z-10">
                     <div className="rounded-xl p-4 border border-white/[0.06]" style={{ background: `linear-gradient(135deg, ${mod.color}08, rgba(255,255,255,0.02))` }}>
                       {mod.visual}
-                      {mod.extraContent}
                     </div>
                   </div>
                 </div>
@@ -601,8 +1028,51 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-28 px-6 relative">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 20% 50%, rgba(255,107,107,0.03) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(167,139,250,0.03) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(255,179,71,0.02) 0%, transparent 40%)` }} />
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
+        <div className="max-w-5xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: CYAN }}>
+              Diferenciais
+            </p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Por que o <span className="landing-gradient-text">AXIS?</span>
+            </h2>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {features.map((feat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
+                className="landing-feature-card rounded-2xl p-6 group"
+                data-testid={`panel-feature-${i}`}
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110"
+                  style={{ background: `${feat.color}12`, border: `1px solid ${feat.color}20`, color: feat.color }}>
+                  {feat.icon}
+                </div>
+                <h3 className="text-base font-bold text-white/90 mb-1.5">{feat.title}</h3>
+                <p className="text-sm text-white/40 leading-relaxed">{feat.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-28 px-6 relative">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 20% 50%, rgba(255,107,107,0.05) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(167,139,250,0.05) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(255,179,71,0.03) 0%, transparent 40%)` }} />
         <div className="max-w-4xl mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -613,7 +1083,7 @@ export default function Landing() {
             {[
               { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: CORAL },
               { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: GOLD },
-              { value: 0, suffix: "", prefix: "", label: "toques pra manter um compromisso", color: LAVANDA },
+              { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LAVANDA },
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -633,8 +1103,9 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-28 px-6 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(ellipse, rgba(167,139,250,0.04) 0%, transparent 60%)`, filter: "blur(60px)" }} />
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
         <div className="max-w-4xl mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -642,11 +1113,11 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LAVANDA }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>
               Como funciona
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Três passos. Zero esforço.
+              Três passos. <span className="text-white/30">Zero esforço.</span>
             </h2>
           </motion.div>
 
@@ -660,19 +1131,19 @@ export default function Landing() {
                 transition={{ delay: i * 0.2 }}
                 className="flex-1 flex flex-col items-center text-center relative"
               >
-                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 border border-white/[0.06]"
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 border border-white/[0.08]"
                   style={{ background: `${step.color}10` }}>
                   <StepIllustration type={step.type} />
                 </div>
                 <h3 className="text-lg font-bold mb-1" style={{ color: step.color }}>{step.title}</h3>
-                <p className="text-white/40 text-sm">{step.desc}</p>
+                <p className="text-white/40 text-sm max-w-[200px]">{step.desc}</p>
 
                 {i < steps.length - 1 && (
                   <div className="hidden md:block absolute top-10 -right-4 w-8">
                     <svg viewBox="0 0 32 8" className="w-full">
                       <motion.line
                         x1="0" y1="4" x2="28" y2="4"
-                        stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="4 3"
+                        stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="4 3"
                         initial={{ pathLength: 0 }}
                         whileInView={{ pathLength: 1 }}
                         viewport={{ once: true }}
@@ -680,7 +1151,7 @@ export default function Landing() {
                       />
                       <motion.polygon
                         points="26,1 32,4 26,7"
-                        fill="rgba(255,255,255,0.12)"
+                        fill="rgba(255,255,255,0.15)"
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
@@ -695,8 +1166,35 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-28 px-6 relative overflow-hidden">
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative">
+        <div className="max-w-2xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LAVANDA }}>
+              Dúvidas frequentes
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="text-faq-title">
+              Perguntas frequentes
+            </h2>
+          </motion.div>
+
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 md:px-8 divide-white/[0.06]">
+            {faqItems.map((item, i) => (
+              <FAQItem key={i} item={item} index={i} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-28 md:py-36 px-6 relative overflow-hidden">
         <div className="absolute inset-0 landing-cta-bg" />
+        <div className="landing-blob absolute top-[20%] left-[30%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -704,10 +1202,10 @@ export default function Landing() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4" data-testid="text-cta-title">
-              Pronto pra organizar sua vida?
+              Pronto pra <span className="landing-gradient-text">organizar sua vida?</span>
             </h2>
             <p className="text-white/40 text-lg mb-10 max-w-md mx-auto">
-              Crie sua conta em 30 segundos. Sem cartão. Sem compromisso.
+              Crie sua conta em 30 segundos. Sem cartão. Sem compromisso. Use pelo navegador ou WhatsApp.
             </p>
             <Link href="/auth">
               <button
@@ -715,16 +1213,22 @@ export default function Landing() {
                 data-testid="button-cta-start"
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  Criar minha conta
+                  Criar minha conta grátis
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
             </Link>
+
+            <div className="flex items-center justify-center gap-6 mt-6 text-xs text-white/25">
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> Grátis</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> Sem cartão</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> WhatsApp</span>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      <footer className="py-10 px-6 border-t border-white/[0.04]">
+      <footer className="py-10 px-6 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/25">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="AXIS" className="w-6 h-6 rounded object-cover opacity-60" />
