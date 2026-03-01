@@ -53,6 +53,8 @@ export default function Finance() {
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
   const [billForm, setBillForm] = useState({ title: "", amount: "", type: "expense", dueDay: "", recurrenceType: "this_month", categoryName: "", notes: "" });
+  const [identityNeeded, setIdentityNeeded] = useState(false);
+  const [identityChoice, setIdentityChoice] = useState<string | null>(null);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -157,18 +159,45 @@ export default function Finance() {
       const res = await fetch("/api/finance/pdf", { method: "POST", body: formData, credentials: "include" });
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setPdfPreview(data);
+      setIdentityNeeded(false);
+      setIdentityChoice(null);
       if (data?.docType === "bill") {
         const notesParts: string[] = [];
         if (data.description) notesParts.push(`Descrição: ${data.description}`);
         if (data.issuer) notesParts.push(`Emissor: ${data.issuer}${data.issuerCnpj ? ` (${data.issuerCnpj})` : ""}`);
         if (data.recipient) notesParts.push(`Destinatário: ${data.recipient}${data.recipientCnpj ? ` (${data.recipientCnpj})` : ""}`);
         if (data.paymentInfo) notesParts.push(`Pagamento: ${data.paymentInfo}`);
+
+        let resolvedType = data.type || "expense";
+        let needsIdentity = false;
+
+        if (data.issuerCnpj && data.recipientCnpj) {
+          try {
+            const idRes = await fetch("/api/user/identity", { credentials: "include" });
+            const idData = await idRes.json();
+            const entities: Array<{ name: string; cnpj: string }> = idData.entities || [];
+            const normCnpj = (c: string) => (c || "").replace(/[^0-9]/g, "");
+            const issuerNorm = normCnpj(data.issuerCnpj);
+            const recipientNorm = normCnpj(data.recipientCnpj);
+            const match = entities.find(e => {
+              const n = normCnpj(e.cnpj);
+              return (issuerNorm && n === issuerNorm) || (recipientNorm && n === recipientNorm);
+            });
+            if (match) {
+              resolvedType = normCnpj(match.cnpj) === issuerNorm ? "income" : "expense";
+            } else {
+              needsIdentity = true;
+            }
+          } catch {}
+        }
+
+        setIdentityNeeded(needsIdentity);
         setBillForm({
           title: data.title || "",
           amount: data.amount != null ? String(data.amount) : "",
-          type: data.type || "expense",
+          type: resolvedType,
           dueDay: data.dueDay != null ? String(data.dueDay) : "",
           recurrenceType: "this_month",
           categoryName: data.categoryName || "",
@@ -427,6 +456,44 @@ export default function Finance() {
                     )}
                   </div>
                 )}
+                {identityNeeded && pdfPreview.issuerCnpj && pdfPreview.recipientCnpj && (
+                  <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 space-y-2" data-testid="identity-picker">
+                    <p className="text-sm font-medium">Quem é você nessa nota?</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        type="button"
+                        className={`flex items-start gap-2 rounded-md border p-2 text-left text-sm transition-colors ${identityChoice === "issuer" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"}`}
+                        onClick={() => {
+                          setIdentityChoice("issuer");
+                          setBillForm(p => ({ ...p, type: "income" }));
+                        }}
+                        data-testid="button-identity-issuer"
+                      >
+                        <Store className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-medium">{pdfPreview.issuer || "Emissor"}</p>
+                          <p className="text-xs text-muted-foreground">{pdfPreview.issuerCnpj}</p>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex items-start gap-2 rounded-md border p-2 text-left text-sm transition-colors ${identityChoice === "recipient" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"}`}
+                        onClick={() => {
+                          setIdentityChoice("recipient");
+                          setBillForm(p => ({ ...p, type: "expense" }));
+                        }}
+                        data-testid="button-identity-recipient"
+                      >
+                        <ArrowDownCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="font-medium">{pdfPreview.recipient || "Destinatário"}</p>
+                          <p className="text-xs text-muted-foreground">{pdfPreview.recipientCnpj}</p>
+                        </div>
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Vou lembrar sua escolha para as próximas notas.</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">Título</label>
@@ -490,17 +557,24 @@ export default function Finance() {
                   />
                 </div>
                 <Button
-                  onClick={() => confirmPdfMutation.mutate({
-                    docType: "bill",
-                    title: billForm.title,
-                    amount: parseFloat(billForm.amount) || 0,
-                    type: billForm.type,
-                    dueDay: parseInt(billForm.dueDay) || 1,
-                    recurrenceType: billForm.recurrenceType,
-                    categoryName: billForm.categoryName || pdfPreview.categoryName || "outros",
-                    notes: billForm.notes,
-                  })}
-                  disabled={confirmPdfMutation.isPending}
+                  onClick={() => {
+                    const payload: any = {
+                      docType: "bill",
+                      title: billForm.title,
+                      amount: parseFloat(billForm.amount) || 0,
+                      type: billForm.type,
+                      dueDay: parseInt(billForm.dueDay) || 1,
+                      recurrenceType: billForm.recurrenceType,
+                      categoryName: billForm.categoryName || pdfPreview.categoryName || "outros",
+                      notes: billForm.notes,
+                    };
+                    if (identityNeeded && identityChoice) {
+                      payload.identityName = identityChoice === "issuer" ? pdfPreview.issuer : pdfPreview.recipient;
+                      payload.identityCnpj = identityChoice === "issuer" ? pdfPreview.issuerCnpj : pdfPreview.recipientCnpj;
+                    }
+                    confirmPdfMutation.mutate(payload);
+                  }}
+                  disabled={confirmPdfMutation.isPending || (identityNeeded && !identityChoice)}
                   className="w-full"
                   data-testid="button-confirm-bill"
                 >

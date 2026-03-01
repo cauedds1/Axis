@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { z } from "zod";
 import multer from "multer";
-import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification } from "./ai";
+import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification, matchBillIdentity, saveUserIdentityEntity, getUserIdentityEntities } from "./ai";
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
 import { db } from "./db";
 import { users } from "@shared/schema";
@@ -12,6 +12,8 @@ import { eq } from "drizzle-orm";
 import { whatsappManager } from "./whatsapp";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+
+const pendingChatBills = new Map<string, { extracted: any; expiresAt: number }>();
 
 function getUserId(req: any): string {
   return req.session?.userId;
@@ -163,6 +165,16 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  app.get("/api/user/identity", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const entities = await getUserIdentityEntities(userId);
+      res.json({ entities });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.get("/api/user/profile", isAuthenticated, async (req, res) => {
     try {
@@ -373,7 +385,7 @@ export async function registerRoutes(
       const { docType } = req.body;
 
       if (docType === "bill") {
-        const { title, amount, type, dueDay, categoryName, notes, recurrenceType } = req.body;
+        const { title, amount, type, dueDay, categoryName, notes, recurrenceType, identityName, identityCnpj } = req.body;
         const parsedAmount = Number(amount);
         const parsedDueDay = Number(dueDay);
         if (!title || typeof title !== "string" || title.trim().length === 0) {
@@ -384,6 +396,12 @@ export async function registerRoutes(
         }
         if (isNaN(parsedDueDay) || parsedDueDay < 1 || parsedDueDay > 31) {
           return res.status(400).json({ message: "Dia de vencimento deve ser entre 1 e 31" });
+        }
+        if (identityName && identityCnpj) {
+          const cleanCnpj = (identityCnpj as string).replace(/[^0-9]/g, "");
+          if (cleanCnpj.length === 11 || cleanCnpj.length === 14) {
+            await saveUserIdentityEntity(userId, identityName, identityCnpj);
+          }
         }
         const bill = await storage.createBill({
           userId,
@@ -518,6 +536,21 @@ export async function registerRoutes(
         const extracted = await processPDFExtract(file.buffer, userId);
 
         if (extracted?.docType === "bill") {
+          const hasBothEntities = extracted.issuerCnpj && extracted.recipientCnpj;
+          let resolvedType: "income" | "expense" = extracted.type === "income" ? "income" : "expense";
+
+          if (hasBothEntities) {
+            const identityMatch = await matchBillIdentity(userId, extracted);
+            if (identityMatch) {
+              resolvedType = identityMatch.type;
+            } else {
+              botMessage = `🔍 *Quem é você nessa nota?*\n\n1️⃣ ${extracted.issuer || "Emissor"} (${extracted.issuerCnpj})\n2️⃣ ${extracted.recipient || "Destinatário"} (${extracted.recipientCnpj})\n\nResponda *1* ou *2* para eu registrar a conta corretamente.`;
+              pendingChatBills.set(userId, { extracted, expiresAt: Date.now() + 10 * 60 * 1000 });
+              await storage.createChatMessage({ userId, role: "assistant", content: botMessage });
+              return res.json({ botMessage, imported: 0, skipped: 0 });
+            }
+          }
+
           const notesParts: string[] = [];
           if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
           if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
@@ -529,7 +562,7 @@ export async function registerRoutes(
             userId,
             title: extracted.title || "Conta importada",
             amount: Number(extracted.amount) || 0,
-            type: extracted.type === "income" ? "income" : "expense",
+            type: resolvedType,
             dueDay: Number(extracted.dueDay) || new Date().getDate(),
             categoryName: extracted.categoryName || "outros",
             recurrenceType: "this_month",
@@ -1009,6 +1042,61 @@ export async function registerRoutes(
       if (!message) return res.status(400).json({ message: "Mensagem vazia" });
 
       await storage.createChatMessage({ userId, role: "user", content: message });
+
+      const pendingBill = pendingChatBills.get(userId);
+      if (pendingBill && Date.now() < pendingBill.expiresAt) {
+        const answer = message.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const ext = pendingBill.extracted;
+        const name1 = (ext.issuer || "").toLowerCase();
+        const name2 = (ext.recipient || "").toLowerCase();
+        let chosenName: string | null = null;
+        let chosenCnpj: string | null = null;
+        let billType: "income" | "expense" = "expense";
+
+        const answerDigits = answer.replace(/[^0-9]/g, "");
+        const normCnpj = (c: string) => (c || "").replace(/[^0-9]/g, "");
+        const cnpj1 = normCnpj(ext.issuerCnpj);
+        const cnpj2 = normCnpj(ext.recipientCnpj);
+
+        if (answer === "1" || (name1.length > 5 && answer.includes(name1.substring(0, 8))) || (answerDigits.length >= 11 && answerDigits === cnpj1)) {
+          chosenName = ext.issuer; chosenCnpj = ext.issuerCnpj;
+          billType = "income";
+        } else if (answer === "2" || (name2.length > 5 && answer.includes(name2.substring(0, 8))) || (answerDigits.length >= 11 && answerDigits === cnpj2)) {
+          chosenName = ext.recipient; chosenCnpj = ext.recipientCnpj;
+          billType = "expense";
+        }
+
+        if (chosenName && chosenCnpj) {
+          pendingChatBills.delete(userId);
+          await saveUserIdentityEntity(userId, chosenName, chosenCnpj);
+
+          const notesParts: string[] = [];
+          if (ext.description) notesParts.push(`Descrição: ${ext.description}`);
+          if (ext.issuer) notesParts.push(`Emissor: ${ext.issuer}${ext.issuerCnpj ? ` (${ext.issuerCnpj})` : ""}`);
+          if (ext.recipient) notesParts.push(`Destinatário: ${ext.recipient}${ext.recipientCnpj ? ` (${ext.recipientCnpj})` : ""}`);
+          if (ext.paymentInfo) notesParts.push(`Pagamento: ${ext.paymentInfo}`);
+          const composedNotes = notesParts.length > 0 ? notesParts.join("\n") : null;
+
+          const bill = await storage.createBill({
+            userId,
+            title: ext.title || "Conta importada",
+            amount: Number(ext.amount) || 0,
+            type: billType,
+            dueDay: Number(ext.dueDay) || new Date().getDate(),
+            categoryName: ext.categoryName || "outros",
+            recurrenceType: "this_month",
+            active: true,
+            paidMonths: "[]",
+            notes: composedNotes,
+          });
+          const typeLabel = billType === "income" ? "A receber" : "A pagar";
+          const reply = `Entendi! Salvei que você é *${chosenName}*. Nas próximas notas com esse CNPJ, vou saber automaticamente.\n\n📋 *Conta registrada!*\n*${bill.title}*\n${typeLabel}: R$ ${Number(bill.amount).toFixed(2)}\n📅 Vence dia ${bill.dueDay}\n\nVeja em Contas no app.`;
+          await storage.createChatMessage({ userId, role: "assistant", content: reply });
+          return res.json({ response: reply });
+        }
+      } else if (pendingBill) {
+        pendingChatBills.delete(userId);
+      }
 
       try {
         const intentResult = await detectIntentAndProcess(message, userId);

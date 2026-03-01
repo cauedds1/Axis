@@ -16,6 +16,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - AI intent detection: "gastei 45 no almoço" → expense R$45, alimentação
 - Receipt photo upload: AI extracts items, establishment, total → preview before confirming
 - PDF smart import: AI classifies document type (extrato vs conta/NFS-e/boleto) → extratos geram transações, contas/notas fiscais geram bills com campos editáveis
+- Identity recognition: when a bill/NFS-e has two entities (issuer + recipient), system asks "quem é você?" via WhatsApp/chat/UI, saves the answer to `user_context` (key: `identity_entities`), and auto-determines bill type (A Pagar/A Receber) for future invoices with the same CNPJ
 - Smart agenda: AI suggests time slots, user approves/rejects/edits
 - Habits with streaks and daily check-in
 - Discipline score visible on sidebar and dashboard
@@ -104,3 +105,4 @@ shared/
 - `GET/PATCH /api/user/notifications` - Email alert preferences
 - `GET/POST/PATCH/DELETE /api/recurring-incomes` - Auto-posted incomes
 - `GET/POST/PATCH/DELETE /api/bills` - Bills management
+- `GET /api/user/identity` - Get stored identity entities (CNPJs the user identified as theirs)

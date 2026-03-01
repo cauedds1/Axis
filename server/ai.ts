@@ -933,6 +933,45 @@ Regras:
   }
 }
 
+// ── IDENTITY: reconhecimento de CNPJ/CPF do usuário ─────────────────────────
+function normalizeCnpj(raw: string): string {
+  return (raw || "").replace(/[^0-9]/g, "");
+}
+
+export interface IdentityEntity {
+  name: string;
+  cnpj: string;
+}
+
+export async function getUserIdentityEntities(userId: string): Promise<IdentityEntity[]> {
+  const ctx = await storage.getUserContext(userId);
+  const entry = ctx.find(c => c.key === "identity_entities");
+  if (!entry) return [];
+  try { return JSON.parse(entry.value); } catch { return []; }
+}
+
+export async function saveUserIdentityEntity(userId: string, name: string, cnpj: string): Promise<void> {
+  const entities = await getUserIdentityEntities(userId);
+  const norm = normalizeCnpj(cnpj);
+  if (entities.some(e => normalizeCnpj(e.cnpj) === norm)) return;
+  entities.push({ name, cnpj });
+  await storage.upsertUserContext(userId, "identity_entities", JSON.stringify(entities));
+}
+
+export async function matchBillIdentity(userId: string, extracted: any): Promise<{ type: "income" | "expense"; matchedAs: "issuer" | "recipient" } | null> {
+  const entities = await getUserIdentityEntities(userId);
+  if (entities.length === 0) return null;
+  const issuerNorm = normalizeCnpj(extracted.issuerCnpj);
+  const recipientNorm = normalizeCnpj(extracted.recipientCnpj);
+  for (const ent of entities) {
+    const entNorm = normalizeCnpj(ent.cnpj);
+    if (!entNorm) continue;
+    if (issuerNorm && issuerNorm === entNorm) return { type: "income", matchedAs: "issuer" };
+    if (recipientNorm && recipientNorm === entNorm) return { type: "expense", matchedAs: "recipient" };
+  }
+  return null;
+}
+
 export async function saveEventToMemory(userId: string, summary: string): Promise<void> {
   try {
     const now = new Date();

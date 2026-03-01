@@ -9,7 +9,7 @@ import makeWASocket, {
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode";
 import { storage } from "./storage";
-import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract } from "./ai";
+import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract, matchBillIdentity, saveUserIdentityEntity } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./index";
 import * as fs from "fs";
@@ -20,11 +20,23 @@ import { eq } from "drizzle-orm";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
+function normalizeCnpjLocal(raw: string): string {
+  return (raw || "").replace(/[^0-9]/g, "");
+}
+
 const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
 
 interface PendingDuplicate {
   transactionData: any;
   replyText: string;
+  expiresAt: number;
+}
+
+interface PendingBillIdentity {
+  extracted: any;
+  userId: string;
+  option1: { name: string; cnpj: string };
+  option2: { name: string; cnpj: string };
   expiresAt: number;
 }
 
@@ -36,6 +48,7 @@ class WhatsAppManager {
   private retryCount = 0;
   private lidCache: Map<string, string> = new Map();
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
+  private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
 
   getStatus(): WhatsAppStatus { return this.status; }
   getQrCode(): string | null { return this.qrCode; }
@@ -289,6 +302,44 @@ class WhatsAppManager {
             await this.sendMessage(jid, "🚫 Ok, transação não cadastrada.");
           } else {
             await this.sendMessage(jid, `⚠️ Responda *sim* para cadastrar ou *não* para cancelar.\n${pending.replyText}`);
+          }
+          return;
+        }
+      }
+
+      const pendingIdentity = this.pendingBillIdentity.get(jid);
+      if (pendingIdentity && !imageMsg) {
+        if (Date.now() > pendingIdentity.expiresAt) {
+          this.pendingBillIdentity.delete(jid);
+        } else {
+          const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          let chosen: { name: string; cnpj: string } | null = null;
+          let billType: "income" | "expense" = "expense";
+
+          const name1 = pendingIdentity.option1.name.toLowerCase();
+          const name2 = pendingIdentity.option2.name.toLowerCase();
+          const cnpj1 = normalizeCnpjLocal(pendingIdentity.option1.cnpj);
+          const cnpj2 = normalizeCnpjLocal(pendingIdentity.option2.cnpj);
+          const answerDigits = answer.replace(/[^0-9]/g, "");
+
+          if (answer === "1" || (name1.length > 5 && answer.includes(name1.substring(0, 8))) || (answerDigits.length >= 11 && answerDigits === cnpj1)) {
+            chosen = pendingIdentity.option1;
+          } else if (answer === "2" || (name2.length > 5 && answer.includes(name2.substring(0, 8))) || (answerDigits.length >= 11 && answerDigits === cnpj2)) {
+            chosen = pendingIdentity.option2;
+          }
+
+          if (chosen) {
+            const issuerCnpjNorm = normalizeCnpjLocal(pendingIdentity.extracted.issuerCnpj);
+            billType = normalizeCnpjLocal(chosen.cnpj) === issuerCnpjNorm ? "income" : "expense";
+          }
+
+          if (chosen) {
+            this.pendingBillIdentity.delete(jid);
+            await saveUserIdentityEntity(pendingIdentity.userId, chosen.name, chosen.cnpj);
+            await this.createBillFromExtracted(jid, pendingIdentity.userId, pendingIdentity.extracted, billType);
+            log(`WhatsApp: identidade salva — ${chosen.name} (${chosen.cnpj}) para userId=${pendingIdentity.userId}`, "whatsapp");
+          } else {
+            await this.sendMessage(jid, `⚠️ Responda *1* ou *2* para identificar quem é você.\n\n1️⃣ ${pendingIdentity.option1.name}\n2️⃣ ${pendingIdentity.option2.name}`);
           }
           return;
         }
@@ -613,48 +664,27 @@ class WhatsAppManager {
     }
 
     if (extracted?.docType === "bill") {
-      const title = extracted.title || fileName;
-      const amount = Number(extracted.amount) || 0;
-      const dueDay = Number(extracted.dueDay) || new Date().getDate();
-      const billType = extracted.type === "income" ? "income" : "expense";
-      const categoryName = extracted.categoryName || "outros";
+      const hasBothEntities = extracted.issuerCnpj && extracted.recipientCnpj;
 
-      const notesParts: string[] = [];
-      if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
-      if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
-      if (extracted.recipient) notesParts.push(`Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
-      if (extracted.paymentInfo) notesParts.push(`Pagamento: ${extracted.paymentInfo}`);
-      const notes = notesParts.length > 0 ? notesParts.join("\n") : null;
-
-      await storage.createBill({
-        userId,
-        title,
-        amount,
-        type: billType,
-        dueDay,
-        categoryName,
-        recurrenceType: "this_month",
-        active: true,
-        paidMonths: "[]",
-        notes,
-      });
-
-      const amountStr = amount.toFixed(2).replace(".", ",");
-      const typeLabel = billType === "income" ? "💰 A receber" : "💸 A pagar";
-      const lines: string[] = [
-        `📋 Conta registrada!\n`,
-        `*${title}*`,
-        `${typeLabel}: R$ ${amountStr}`,
-        `📅 Vence dia ${dueDay}`,
-      ];
-      if (extracted.description) lines.push(`\n📄 ${extracted.description}`);
-      if (extracted.issuer) lines.push(`🏢 Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
-      if (extracted.recipient) lines.push(`👤 Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
-      if (extracted.paymentInfo) lines.push(`💳 ${extracted.paymentInfo}`);
-      lines.push(`\nVeja em Contas no app.`);
-
-      await this.sendMessage(jid, lines.join("\n"));
-      log(`WhatsApp PDF bill: "${title}" R$ ${amount} criada (userId=${userId})`, "whatsapp");
+      if (hasBothEntities) {
+        const identityMatch = await matchBillIdentity(userId, extracted);
+        if (identityMatch) {
+          await this.createBillFromExtracted(jid, userId, extracted, identityMatch.type);
+        } else {
+          this.pendingBillIdentity.set(jid, {
+            extracted,
+            userId,
+            option1: { name: extracted.issuer || "Emissor", cnpj: extracted.issuerCnpj },
+            option2: { name: extracted.recipient || "Destinatário", cnpj: extracted.recipientCnpj },
+            expiresAt: Date.now() + 5 * 60 * 1000,
+          });
+          await this.sendMessage(jid, `🔍 *Quem é você nessa nota?*\n\n1️⃣ ${extracted.issuer || "Emissor"} (${extracted.issuerCnpj})\n2️⃣ ${extracted.recipient || "Destinatário"} (${extracted.recipientCnpj})\n\nResponda *1* ou *2*`);
+          log(`WhatsApp PDF bill: aguardando identidade (userId=${userId})`, "whatsapp");
+        }
+      } else {
+        const billType = extracted.type === "income" ? "income" : "expense";
+        await this.createBillFromExtracted(jid, userId, extracted, billType);
+      }
       return;
     }
 
@@ -797,6 +827,42 @@ class WhatsAppManager {
       default:
         return "🤔 Não entendi. Tente:\n• *gastei 50 no almoço*\n• *criar tarefa reunião*\n• *hábito academia todo dia*\n• *agendar consulta sexta 10h*";
     }
+  }
+
+  private async createBillFromExtracted(jid: string, userId: string, extracted: any, billType: "income" | "expense"): Promise<void> {
+    const title = extracted.title || "Conta importada";
+    const amount = Number(extracted.amount) || 0;
+    const dueDay = Number(extracted.dueDay) || new Date().getDate();
+    const categoryName = extracted.categoryName || "outros";
+
+    const notesParts: string[] = [];
+    if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
+    if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+    if (extracted.recipient) notesParts.push(`Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+    if (extracted.paymentInfo) notesParts.push(`Pagamento: ${extracted.paymentInfo}`);
+    const notes = notesParts.length > 0 ? notesParts.join("\n") : null;
+
+    await storage.createBill({
+      userId, title, amount, type: billType, dueDay, categoryName,
+      recurrenceType: "this_month", active: true, paidMonths: "[]", notes,
+    });
+
+    const amountStr = amount.toFixed(2).replace(".", ",");
+    const typeLabel = billType === "income" ? "💰 A receber" : "💸 A pagar";
+    const lines: string[] = [
+      `📋 Conta registrada!\n`,
+      `*${title}*`,
+      `${typeLabel}: R$ ${amountStr}`,
+      `📅 Vence dia ${dueDay}`,
+    ];
+    if (extracted.description) lines.push(`\n📄 ${extracted.description}`);
+    if (extracted.issuer) lines.push(`🏢 Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+    if (extracted.recipient) lines.push(`👤 Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+    if (extracted.paymentInfo) lines.push(`💳 ${extracted.paymentInfo}`);
+    lines.push(`\nVeja em Contas no app.`);
+
+    await this.sendMessage(jid, lines.join("\n"));
+    log(`WhatsApp PDF bill: "${title}" R$ ${amount} (${billType}) criada (userId=${userId})`, "whatsapp");
   }
 
   private async sendMessage(jid: string, text: string): Promise<void> {
