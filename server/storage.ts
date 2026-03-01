@@ -372,8 +372,13 @@ export class DatabaseStorage implements IStorage {
     if (phone.startsWith("55") && phone.length === 13) variants.add(phone.slice(2));
     if (phone.startsWith("55") && phone.length === 12) variants.add(phone.slice(2));
     if (!phone.startsWith("55") && (phone.length === 11 || phone.length === 10)) variants.add("55" + phone);
-    const conditions = [...variants].map(v => eq(userProfile.whatsappPhone, v));
-    const [profile] = await db.select().from(userProfile).where(or(...conditions));
+    const phoneConditions = [...variants].map(v => eq(userProfile.whatsappPhone, v));
+    const [profile] = await db.select().from(userProfile).where(or(...phoneConditions, eq(userProfile.whatsappJid, phone)));
+    return profile as (UserProfile & { userId: string }) | undefined;
+  }
+
+  async getUserProfileByJid(jid: string): Promise<(UserProfile & { userId: string }) | undefined> {
+    const [profile] = await db.select().from(userProfile).where(eq(userProfile.whatsappJid, jid));
     return profile as (UserProfile & { userId: string }) | undefined;
   }
 
