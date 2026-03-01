@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil } from "lucide-react";
 
 function fmtBRL(v: number): string {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -396,6 +396,161 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
   );
 }
 
+function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => void; accent: string }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    title: bill.title,
+    amount: String(bill.amount),
+    type: (bill.type ?? "expense") as "expense" | "income",
+    dueDay: String(bill.dueDay),
+    categoryName: bill.categoryName ?? "",
+    notes: bill.notes ?? "",
+  });
+  const [recurrence, setRecurrence] = useState<Recurrence>(() => {
+    const rt = (bill.recurrenceType ?? "permanent") as RecurrenceType;
+    if (rt === "custom" && bill.recurrenceEndDate) {
+      return { type: "custom", endDate: new Date(bill.recurrenceEndDate).toISOString().split("T")[0] };
+    }
+    return { type: rt };
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const endDate = recurrence.type !== "permanent" ? getEndDate(recurrence).toISOString() : undefined;
+      const res = await apiRequest("PATCH", `/api/bills/${bill.id}`, {
+        title: form.title.trim(),
+        amount: parseFloat(form.amount),
+        type: form.type,
+        dueDay: parseInt(form.dueDay) || 1,
+        categoryName: form.categoryName.trim() || undefined,
+        recurrenceType: recurrence.type,
+        recurrenceEndDate: endDate ?? null,
+        notes: form.notes.trim() || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      onClose();
+      toast({ title: "Conta atualizada" });
+    },
+    onError: (e: any) => toast({ title: "Erro ao atualizar conta", description: e.message, variant: "destructive" }),
+  });
+
+  const canSave = form.title.trim().length > 0 && parseFloat(form.amount) > 0;
+  const billAccent = form.type === "expense" ? EXPENSE_COLOR : INCOME_COLOR;
+
+  return (
+    <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <DialogHeader>
+          <DialogTitle className="text-white">Editar conta</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-2">
+          <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            {([["expense", "A Pagar", EXPENSE_COLOR], ["income", "A Receber", INCOME_COLOR]] as const).map(([val, label, color]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, type: val }))}
+                className="flex-1 py-2.5 text-sm font-semibold transition-all duration-150"
+                style={{
+                  background: form.type === val ? `${color}18` : "transparent",
+                  color: form.type === val ? color : "rgba(255,255,255,0.3)",
+                }}
+                data-testid={`toggle-edit-bill-type-${val}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Descrição</p>
+            <input
+              value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              placeholder="Ex: Aluguel, Netflix..."
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+              data-testid="input-edit-bill-title"
+            />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Valor</p>
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+              <span className="text-white/40 text-sm font-medium">R$</span>
+              <input
+                type="number"
+                value={form.amount}
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                placeholder="0,00"
+                className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
+                data-testid="input-edit-bill-amount"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Dia de vencimento</p>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={form.dueDay}
+                onChange={e => setForm(f => ({ ...f, dueDay: e.target.value }))}
+                className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                data-testid="input-edit-bill-due-day"
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Categoria</p>
+              <input
+                value={form.categoryName}
+                onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
+                placeholder="Ex: Moradia..."
+                className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                data-testid="input-edit-bill-category"
+              />
+            </div>
+          </div>
+
+          <RecurrenceSelector value={recurrence} onChange={setRecurrence} accent={billAccent} />
+
+          <div>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Observações <span className="normal-case font-normal">(opcional)</span></p>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Anotações sobre esta conta..."
+              rows={2}
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+              data-testid="input-edit-bill-notes"
+            />
+          </div>
+
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !canSave}
+            className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: billAccent, color: "#060608" }}
+            data-testid="button-submit-edit-bill"
+          >
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            {mutation.isPending ? "Salvando..." : "Salvar alterações"}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const PERIOD_OPTS: { id: PeriodFilter; label: string }[] = [
   { id: "current", label: "Mês atual" },
   { id: "last", label: "Mês passado" },
@@ -410,6 +565,7 @@ export function BillsTab() {
   const accent = isHigh ? HIGH_PRIMARY : SLIM_PRIMARY;
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [filterType, setFilterType] = useState<"all" | "expense" | "income">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "paid" | "overdue">("all");
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>("current");
@@ -759,6 +915,14 @@ export function BillsTab() {
                               <div className="flex-1" />
                               <button
                                 type="button"
+                                onClick={(e) => { e.stopPropagation(); setEditingBill(bill); }}
+                                className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                                data-testid={`button-edit-bill-${bill.id}`}
+                              >
+                                <Pencil className="h-3.5 w-3.5 text-white/30" />
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => deleteMutation.mutate(bill.id)}
                                 disabled={deleteMutation.isPending}
                                 className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
@@ -786,6 +950,9 @@ export function BillsTab() {
       )}
 
       <AddBillModal open={showAdd} onClose={() => setShowAdd(false)} accent={accent} />
+  {editingBill && (
+    <EditBillModal bill={editingBill} onClose={() => setEditingBill(null)} accent={accent} />
+  )}
     </div>
   );
 }
