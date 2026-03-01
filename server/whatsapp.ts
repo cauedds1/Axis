@@ -29,6 +29,23 @@ function normalizeCnpjLocal(raw: string): string {
   return (raw || "").replace(/[^0-9]/g, "");
 }
 
+function downloadWithTimeout(
+  msg: proto.IWebMessageInfo,
+  sock: ReturnType<typeof makeWASocket>,
+  timeoutMs = 30_000
+): Promise<Buffer> {
+  const download = downloadMediaMessage(
+    msg,
+    "buffer",
+    {},
+    { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: sock.updateMediaMessage }
+  ) as Promise<Buffer>;
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("download timeout after 30s")), timeoutMs)
+  );
+  return Promise.race([download, timeout]);
+}
+
 const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
 
 async function usePostgresAuthState() {
@@ -317,6 +334,7 @@ class WhatsAppManager {
     const docMsg =
       msg.message?.documentMessage ||
       msg.message?.ephemeralMessage?.message?.documentMessage ||
+      msg.message?.documentWithCaptionMessage?.message?.documentMessage ||
       null;
 
     const text =
@@ -463,12 +481,7 @@ class WhatsAppManager {
 
     let buffer: Buffer;
     try {
-      buffer = await downloadMediaMessage(
-        msg,
-        "buffer",
-        {},
-        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
-      ) as Buffer;
+      buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar mídia — ${dlErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui baixar a imagem. Tente enviar novamente.");
@@ -671,12 +684,7 @@ class WhatsAppManager {
 
     let buffer: Buffer;
     try {
-      buffer = await downloadMediaMessage(
-        msg,
-        "buffer",
-        {},
-        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
-      ) as Buffer;
+      buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar áudio — ${dlErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui baixar o áudio. Tente enviar novamente.");
@@ -724,12 +732,7 @@ class WhatsAppManager {
 
     let buffer: Buffer;
     try {
-      buffer = await downloadMediaMessage(
-        msg,
-        "buffer",
-        {},
-        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
-      ) as Buffer;
+      buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar documento — ${dlErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui baixar o arquivo. Tente enviar novamente.");

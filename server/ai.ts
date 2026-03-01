@@ -7,10 +7,15 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
+let _openaiClient: OpenAI | null = null;
+
 function getOpenAIClient(): OpenAI {
   const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
-  return new OpenAI({ apiKey, baseURL });
+  if (!_openaiClient) {
+    _openaiClient = new OpenAI({ apiKey, baseURL });
+  }
+  return _openaiClient;
 }
 
 // ── CATEGORIA: REGRAS COMPARTILHADAS ────────────────────────────────────────
@@ -107,7 +112,7 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
       {
@@ -339,7 +344,7 @@ export async function processPDFExtract(pdfInput: Buffer | string, userId: strin
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
       {
@@ -698,7 +703,7 @@ ${profile?.disciplineScore !== undefined && profile.disciplineScore <= 4
   messages.push({ role: "user", content: message });
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: "gpt-4o-mini",
     messages,
   });
 
@@ -768,7 +773,7 @@ export async function generateOnboardingDiagnosis(profileData: any): Promise<str
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
-    model: "gpt-5-mini",
+    model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
@@ -1109,7 +1114,7 @@ Retorne APENAS este JSON (sem markdown):
 
   try {
     const resp = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
       max_tokens: 400,
@@ -1179,7 +1184,7 @@ Retorne APENAS o JSON, sem markdown.`;
 
   try {
     const resp = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,
       max_tokens: 200,
