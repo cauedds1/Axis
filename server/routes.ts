@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { z } from "zod";
 import multer from "multer";
-import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat } from "./ai";
+import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification } from "./ai";
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
 import { db } from "./db";
 import { users } from "@shared/schema";
@@ -30,11 +30,14 @@ function getISOWeekLabel(d: Date): string {
 // ── DISCIPLINE POINT VALUES ────────────────────────────────────────────
 // Positive actions
 const DISCIPLINE_POINTS = {
-  TASK_HIGH:    6,   // tarefa alta prioridade concluída
-  TASK_MEDIUM:  4,   // tarefa média prioridade concluída
-  TASK_LOW:     3,   // tarefa baixa prioridade concluída
-  HABIT_CHECK:  2,   // hábito diário marcado como feito
-  TASK_OVERDUE: -4,  // tarefa em atraso detectada
+  TASK_HIGH:           6,   // tarefa alta prioridade concluída
+  TASK_MEDIUM:         4,   // tarefa média prioridade concluída
+  TASK_LOW:            3,   // tarefa baixa prioridade concluída
+  HABIT_CHECK:         2,   // hábito diário marcado como feito
+  TASK_OVERDUE:       -4,   // tarefa em atraso detectada
+  SPENDING_LEVE:      -2,   // gastos com besteiras leves (10-20% da renda)
+  SPENDING_MODERADO:  -4,   // gastos com besteiras moderados (20-35% da renda)
+  SPENDING_GRAVE:     -6,   // gastos com besteiras graves (>35% da renda)
 } as const;
 const DISCIPLINE_THRESHOLD = 8; // pontos para subir/descer 1 nível
 
@@ -83,9 +86,57 @@ async function penalizeOverdueTasks(userId: string): Promise<void> {
       t => t.status !== "completed" && t.dueDate && new Date(t.dueDate) < now && !t.disciplinePenalized
     );
     for (const task of overdue) {
+      const dueDate = new Date(task.dueDate!);
+      const hoursLate = (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60);
+      if (hoursLate < 48 && !task.justification) {
+        continue;
+      }
       await storage.updatePersonalTask(task.id, userId, { disciplinePenalized: true });
       await adjustDisciplinePoints(userId, DISCIPLINE_POINTS.TASK_OVERDUE, `❌ Tarefa "${task.title}" em atraso — ${DISCIPLINE_POINTS.TASK_OVERDUE} pts`);
     }
+  } catch {
+    // silently fail
+  }
+}
+
+async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
+  try {
+    const profile = await storage.getUserProfile(userId);
+    const lastAnalysis = profile?.lastSpendingAnalysis;
+    const now = new Date();
+
+    if (lastAnalysis) {
+      const daysSince = (now.getTime() - new Date(lastAnalysis).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) return;
+    }
+
+    await storage.upsertUserProfile(userId, { lastSpendingAnalysis: now });
+
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const [transactions, recurringIncomes] = await Promise.all([
+      storage.getTransactions(userId, { startDate: thirtyDaysAgo, endDate: now }),
+      storage.getRecurringIncomes(userId),
+    ]);
+
+    const monthlyIncome = recurringIncomes.reduce((s: number, r: any) => {
+      const amount = Number(r.amount);
+      if (r.frequency === "weekly") return s + amount * 4.33;
+      if (r.frequency === "biweekly") return s + amount * 2;
+      return s + amount;
+    }, 0);
+
+    if (monthlyIncome <= 0 || transactions.length === 0) return;
+
+    const result = await analyzeSpendingDiscipline(
+      transactions.map(t => ({ title: t.title, amount: Number(t.amount), category: t.category, type: t.type })),
+      monthlyIncome
+    );
+
+    if (result.verdict === "neutro" || result.penalty === 0) return;
+
+    const categoryList = result.badCategories.slice(0, 3).join(", ") || "gastos desnecessários";
+    const reason = `💸 Gastos imprudentes detectados (${result.badPercentage}% da renda): ${categoryList} — ${result.penalty} pts`;
+    await adjustDisciplinePoints(userId, result.penalty, reason);
   } catch {
     // silently fail
   }
@@ -675,6 +726,45 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/tasks/:id/justify", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({ justification: z.string().min(5).max(500) });
+      const { justification } = schema.parse(req.body);
+
+      const tasks = await storage.getPersonalTasks(userId);
+      const task = tasks.find(t => t.id === paramId(req));
+      if (!task) return res.status(404).json({ message: "Tarefa não encontrada" });
+      if (task.justificationScore !== null && task.justificationScore !== undefined) {
+        return res.status(400).json({ message: "Justificativa já enviada anteriormente" });
+      }
+
+      const now = new Date();
+      const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+      const daysLate = dueDate ? Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+      const judgment = await judgeJustification(task.title, daysLate, justification);
+
+      await storage.updatePersonalTask(task.id, userId, {
+        justification,
+        justificationScore: judgment.score,
+        disciplinePenalized: true,
+      });
+
+      const netPenalty = DISCIPLINE_POINTS.TASK_OVERDUE + judgment.creditPoints;
+      const reason = judgment.creditPoints > 0
+        ? `⚠️ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (+${judgment.creditPoints} de crédito, net ${netPenalty} pts)`
+        : `❌ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (${DISCIPLINE_POINTS.TASK_OVERDUE} pts)`;
+
+      await adjustDisciplinePoints(userId, netPenalty, reason);
+
+      res.json({ judgment, netPenalty });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/habits", isAuthenticated, async (req, res) => {
     try {
       res.json(await storage.getHabits(getUserId(req)));
@@ -1142,6 +1232,7 @@ export async function registerRoutes(
       checkAndSendLowDisciplineAlert(userId).catch(() => {});
 
       penalizeOverdueTasks(userId).catch(() => {});
+      analyzeSpendingForDiscipline(userId).catch(() => {});
       const profile = await storage.getUserProfile(userId);
       result.disciplineScore = profile?.disciplineScore || 5;
       result.disciplinePoints = profile?.disciplinePoints ?? 0;

@@ -59,15 +59,18 @@ shared/
 - `categories` - User-defined categories
 - `financial_goals` - Savings/investment goals with progress tracking
 - `schedule_items` - Calendar items with AI suggestion flag and approval status
-- `personal_tasks` - Tasks with priority, status, due date
+- `personal_tasks` - Tasks with priority, status, due date, justification (text), justificationScore (1-5 from AI)
 - `habits` - Habit tracking with streak count
 - `habit_logs` - Daily habit completion logs
 - `chat_messages` - Chat history (user + assistant messages)
 - `user_context` - Long-term memory for AI (key-value pairs)
-- `user_profile` - Onboarding data (age, profession, goals, discipline score, lastLoginAt, emailAlerts JSON prefs)
+- `user_profile` - Onboarding data (age, profession, goals, discipline score, lastLoginAt, emailAlerts JSON prefs, lastSpendingAnalysis timestamp)
 - `bills` - Bills with dueDay, recurrenceType, paidMonths (JSON), active flag
 - `recurring_incomes` - Auto-posted monthly incomes (name, amount, dayOfMonth, lastPostedMonth)
 - `discipline_score_history` - Point events for discipline tracking
+  - Triggers: task completion (+3/+4/+6), habit check (+2), overdue task (-4 net of justification credit), spending analysis (-2/-4/-6 weekly)
+  - Spending analysis: AI evaluates last 30d transactions vs declared income weekly; penalizes fast food/bar/entertainment excess
+  - Overdue task justification: 48h grace window → user submits justification → AI judges (1-5 score) → net penalty = -4 + credit (0/+1/+2/+3)
 - `email_alert_log` - Tracks sent email alerts (alertType, referenceId, sentAt) to prevent duplicates
 
 ## Email Alert System

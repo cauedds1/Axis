@@ -798,3 +798,148 @@ export async function saveEventToMemory(userId: string, summary: string): Promis
     // fire-and-forget — never propagate
   }
 }
+
+export interface SpendingAnalysisResult {
+  penalty: number;
+  verdict: string;
+  badCategories: string[];
+  badPercentage: number;
+  message: string;
+}
+
+export async function analyzeSpendingDiscipline(
+  transactions: { title: string; amount: number; category?: string | null; type: string }[],
+  monthlyIncome: number
+): Promise<SpendingAnalysisResult> {
+  const openai = getOpenAIClient();
+  const expenses = transactions.filter(t => t.type === "expense");
+  const totalExpenses = expenses.reduce((s, t) => s + t.amount, 0);
+
+  if (expenses.length === 0 || monthlyIncome <= 0) {
+    return { penalty: 0, verdict: "neutro", badCategories: [], badPercentage: 0, message: "Sem dados suficientes para análise." };
+  }
+
+  const txSummary = expenses
+    .map(t => `- ${t.title} (${t.category || "sem categoria"}): R$ ${t.amount.toFixed(2)}`)
+    .slice(0, 60)
+    .join("\n");
+
+  const prompt = `Você é um coach de disciplina financeira. Analise os gastos do usuário dos últimos 30 dias e avalie o impacto na disciplina.
+
+Renda mensal declarada: R$ ${monthlyIncome.toFixed(2)}
+Total de gastos: R$ ${totalExpenses.toFixed(2)}
+
+Gastos:
+${txSummary}
+
+Categorias problemáticas: fast food, delivery de comida (iFood/UberEats/Rappi), bares, baladas, festas, apostas, jogos, assinaturas de entretenimento excessivas, compras por impulso, vestuário não essencial.
+
+Retorne um JSON com:
+{
+  "badCategories": ["lista das categorias/itens problemáticos encontrados"],
+  "badAmount": <total gasto em categorias problemáticas como número>,
+  "verdict": "leve" | "moderado" | "grave" | "neutro",
+  "message": "<mensagem curta e direta em pt-BR sobre o padrão de gastos, máx 80 chars>"
+}
+
+Regras:
+- "neutro": gastos problemáticos < 10% da renda
+- "leve": 10-20% da renda
+- "moderado": 20-35% da renda
+- "grave": > 35% da renda
+
+Retorne APENAS o JSON, sem markdown.`;
+
+  try {
+    const resp = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 300,
+    });
+    const raw = resp.choices[0].message.content?.trim() ?? "{}";
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+
+    const badAmount = parsed.badAmount ?? 0;
+    const badPct = monthlyIncome > 0 ? (badAmount / monthlyIncome) * 100 : 0;
+    const verdict = parsed.verdict ?? "neutro";
+
+    let penalty = 0;
+    if (verdict === "leve") penalty = -2;
+    else if (verdict === "moderado") penalty = -4;
+    else if (verdict === "grave") penalty = -6;
+
+    return {
+      penalty,
+      verdict,
+      badCategories: parsed.badCategories ?? [],
+      badPercentage: Math.round(badPct),
+      message: parsed.message ?? "",
+    };
+  } catch {
+    return { penalty: 0, verdict: "neutro", badCategories: [], badPercentage: 0, message: "" };
+  }
+}
+
+export interface JustificationResult {
+  score: number;
+  creditPoints: number;
+  verdict: string;
+  feedback: string;
+}
+
+export async function judgeJustification(
+  taskTitle: string,
+  daysLate: number,
+  justification: string
+): Promise<JustificationResult> {
+  const openai = getOpenAIClient();
+
+  const prompt = `Você é um coach rigoroso e justo de produtividade pessoal. Julgue a justificativa dada pelo usuário pelo atraso em uma tarefa.
+
+Tarefa: "${taskTitle}"
+Dias de atraso: ${daysLate}
+Justificativa do usuário: "${justification}"
+
+Retorne um JSON com:
+{
+  "score": <1 a 5, sendo 1=péssima/preguiça, 3=aceitável, 5=excelente/força maior>,
+  "verdict": "péssima" | "fraca" | "aceitável" | "boa" | "excelente",
+  "feedback": "<frase curta e direta em pt-BR com o julgamento, máx 80 chars>"
+}
+
+Critérios:
+- Score 5: doença grave, emergência familiar, desastre natural, hospitalização
+- Score 4: problema de saúde leve mas real, problema técnico sério
+- Score 3: sobrecarga de trabalho comprovável, esquecimento com boa fé
+- Score 2: procrastinação com desculpa fraca, "falta de tempo" sem justificativa
+- Score 1: sem justificativa real, preguiça evidente, "não tive vontade"
+
+Retorne APENAS o JSON, sem markdown.`;
+
+  try {
+    const resp = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+      max_tokens: 200,
+    });
+    const raw = resp.choices[0].message.content?.trim() ?? "{}";
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+
+    const score = Math.min(5, Math.max(1, parsed.score ?? 1));
+    let creditPoints = 0;
+    if (score >= 5) creditPoints = 3;
+    else if (score >= 4) creditPoints = 2;
+    else if (score >= 3) creditPoints = 1;
+
+    return {
+      score,
+      creditPoints,
+      verdict: parsed.verdict ?? "fraca",
+      feedback: parsed.feedback ?? "",
+    };
+  } catch {
+    return { score: 1, creditPoints: 0, verdict: "fraca", feedback: "Não foi possível avaliar." };
+  }
+}

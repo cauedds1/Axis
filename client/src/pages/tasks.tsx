@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock } from "lucide-react";
+import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -395,6 +396,9 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
 export default function Tasks() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [showAddHabit, setShowAddHabit] = useState(false);
+  const [justifyTask, setJustifyTask] = useState<PersonalTask | null>(null);
+  const [justifyText, setJustifyText] = useState("");
+  const [justifyResult, setJustifyResult] = useState<{ verdict: string; feedback: string; score: number; creditPoints: number; netPenalty: number } | null>(null);
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
@@ -440,7 +444,30 @@ export default function Tasks() {
     },
   });
 
-  const pending = tasks.filter(t => t.status === "pending");
+  const justifyMutation = useMutation({
+    mutationFn: async ({ id, justification }: { id: string; justification: string }) => {
+      const res = await apiRequest("POST", `/api/tasks/${id}/justify`, { justification });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Erro ao enviar justificativa");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setJustifyResult({ ...data.judgment, netPenalty: data.netPenalty });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+    },
+    onError: (err: any) => {
+      toast({ title: err.message || "Erro ao enviar justificativa", variant: "destructive" });
+    },
+  });
+
+  const now = new Date();
+  const needsJustification = tasks.filter(
+    t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now && (t as any).justificationScore == null
+  );
+  const pending = tasks.filter(t => t.status === "pending" && !(t.dueDate && new Date(t.dueDate) < now && (t as any).justificationScore == null));
   const completed = tasks.filter(t => t.status === "completed");
 
   const priorityColor: Record<string, string> = {
@@ -464,6 +491,14 @@ export default function Tasks() {
     return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");
   }
 
+  function closeJustifyDialog() {
+    setJustifyTask(null);
+    setJustifyText("");
+    setJustifyResult(null);
+  }
+
+  const scoreColors: Record<number, string> = { 1: "#FF1744", 2: "#FF5722", 3: "#FFA000", 4: "#8BC34A", 5: "#00E5C8" };
+
   return (
     <div className="px-6 py-6 space-y-6 pb-28">
       <title>AXIS - Tarefas e Compromissos</title>
@@ -475,6 +510,42 @@ export default function Tasks() {
       <div className="mb-4">
         <CaptureButton variant="inline" />
       </div>
+
+      {needsJustification.length > 0 && (
+        <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,170,0,0.07)", border: "1px solid rgba(255,170,0,0.2)" }}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" style={{ color: "#FFA000" }} />
+            <p className="text-sm font-semibold" style={{ color: "#FFA000" }}>
+              {needsJustification.length} tarefa{needsJustification.length > 1 ? "s" : ""} em atraso — justifique o atraso
+            </p>
+          </div>
+          <p className="text-xs text-white/40">A IA vai avaliar sua justificativa e isso afetará sua disciplina.</p>
+          <div className="space-y-2">
+            {needsJustification.map(task => (
+              <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,170,0,0.12)" }} data-testid={`row-justify-task-${task.id}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{task.title}</p>
+                  {task.dueDate && (
+                    <p className="text-[10px] text-white/30 mt-0.5 flex items-center gap-0.5">
+                      <Clock className="h-2.5 w-2.5" />
+                      {formatDueDate(task.dueDate)} — em atraso
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => { setJustifyTask(task); setJustifyText(""); setJustifyResult(null); }}
+                  className="shrink-0 text-xs font-semibold gap-1"
+                  style={{ background: "rgba(255,170,0,0.15)", color: "#FFA000", border: "1px solid rgba(255,170,0,0.3)" }}
+                  data-testid={`button-justify-task-${task.id}`}
+                >
+                  <MessageSquare className="h-3.5 w-3.5" /> Justificar
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Tasks column */}
@@ -606,6 +677,90 @@ export default function Tasks() {
 
       <TaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} accent={accent} />
       <HabitSheet open={showAddHabit} onClose={() => setShowAddHabit(false)} accent={accent} />
+
+      <Dialog open={!!justifyTask} onOpenChange={v => { if (!v) closeJustifyDialog(); }}>
+        <DialogContent className="max-w-md border-0 p-0" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
+          <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" style={{ color: "#FFA000" }} />
+                Justificativa de atraso
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="px-6 py-5 space-y-4">
+            {justifyTask && !justifyResult && (
+              <>
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <p className="text-xs text-white/40 mb-0.5">Tarefa em atraso</p>
+                  <p className="text-sm font-medium text-white">{justifyTask.title}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40 mb-2">Por que você não completou essa tarefa? A IA vai avaliar sua justificativa.</p>
+                  <textarea
+                    value={justifyText}
+                    onChange={e => setJustifyText(e.target.value)}
+                    placeholder="Explique o motivo do atraso com honestidade..."
+                    rows={4}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                    data-testid="textarea-justification"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="ghost"
+                    className="flex-1 text-white/40"
+                    onClick={closeJustifyDialog}
+                    data-testid="button-cancel-justification"
+                  >
+                    Cancelar
+                  </Button>
+                  <button
+                    onClick={() => justifyMutation.mutate({ id: justifyTask.id, justification: justifyText })}
+                    disabled={justifyMutation.isPending || justifyText.trim().length < 5}
+                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                    style={{ background: "#FFA000", color: "#060608" }}
+                    data-testid="button-submit-justification"
+                  >
+                    {justifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar para a IA"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {justifyResult && (
+              <div className="space-y-4">
+                <div className="text-center py-2">
+                  <p className="text-4xl font-black" style={{ color: scoreColors[justifyResult.score] ?? "#FFA000" }}>
+                    {justifyResult.score}/5
+                  </p>
+                  <p className="text-sm font-semibold mt-1 capitalize" style={{ color: scoreColors[justifyResult.score] ?? "#FFA000" }}>
+                    Justificativa {justifyResult.verdict}
+                  </p>
+                </div>
+                <div className="rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <p className="text-sm text-white/80 italic">"{justifyResult.feedback}"</p>
+                </div>
+                <div className="rounded-xl px-4 py-3 text-center" style={{ background: `${justifyResult.netPenalty >= 0 ? "rgba(0,229,200,0.06)" : "rgba(255,23,68,0.06)"}`, border: `1px solid ${justifyResult.netPenalty >= 0 ? "rgba(0,229,200,0.15)" : "rgba(255,23,68,0.15)"}` }}>
+                  <p className="text-xs text-white/40 mb-0.5">Impacto na disciplina</p>
+                  <p className="text-sm font-bold" style={{ color: justifyResult.netPenalty >= 0 ? "#00E5C8" : "#FF1744" }}>
+                    {justifyResult.creditPoints > 0 ? `${justifyResult.netPenalty} pts (${justifyResult.creditPoints} de crédito aplicado)` : `${justifyResult.netPenalty} pts`}
+                  </p>
+                </div>
+                <button
+                  onClick={closeJustifyDialog}
+                  className="w-full py-2.5 rounded-xl font-semibold text-sm"
+                  style={{ background: "rgba(255,255,255,0.08)", color: "white" }}
+                  data-testid="button-close-justification-result"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

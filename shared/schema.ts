@@ -65,6 +65,8 @@ export const personalTasks = pgTable("personal_tasks", {
   dueDate: timestamp("due_date"),
   category: text("category"),
   disciplinePenalized: boolean("discipline_penalized").notNull().default(false),
+  justification: text("justification"),
+  justificationScore: integer("justification_score"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -111,6 +113,7 @@ export const userProfile = pgTable("user_profile", {
   whatsappPhone: text("whatsapp_phone"),
   whatsappJid: text("whatsapp_jid"),
   initialBalance: real("initial_balance").default(0),
+  lastSpendingAnalysis: timestamp("last_spending_analysis"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
