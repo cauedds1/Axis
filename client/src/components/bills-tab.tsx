@@ -38,11 +38,8 @@ function recLabel(type: RecurrenceType): string {
   return "Personalizado";
 }
 
-function isBillActiveThisMonth(bill: Bill): boolean {
+function isBillActiveInMonth(bill: Bill, y: number, m: number): boolean {
   if (!bill.active) return false;
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
   const created = new Date(bill.createdAt!);
   const createdY = created.getFullYear();
   const createdM = created.getMonth();
@@ -59,6 +56,15 @@ function isBillActiveThisMonth(bill: Bill): boolean {
   return false;
 }
 
+function isBillActiveThisMonth(bill: Bill): boolean {
+  const now = new Date();
+  return isBillActiveInMonth(bill, now.getFullYear(), now.getMonth());
+}
+
+function isBillActiveInRange(bill: Bill, months: Array<{ y: number; m: number }>): boolean {
+  return months.some(({ y, m }) => isBillActiveInMonth(bill, y, m));
+}
+
 function getPaidMonths(bill: Bill): string[] {
   try { return JSON.parse(bill.paidMonths || "[]"); } catch { return []; }
 }
@@ -67,14 +73,93 @@ function monthKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function monthKeyFromYM(y: number, m: number): string {
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+function isBillPaidInMonth(bill: Bill, y: number, m: number): boolean {
+  return getPaidMonths(bill).includes(monthKeyFromYM(y, m));
+}
+
 function isBillPaidThisMonth(bill: Bill): boolean {
   return getPaidMonths(bill).includes(monthKey());
+}
+
+function isBillPaidInAllMonths(bill: Bill, months: Array<{ y: number; m: number }>): boolean {
+  const activeMonths = months.filter(({ y, m }) => isBillActiveInMonth(bill, y, m));
+  if (activeMonths.length === 0) return false;
+  return activeMonths.every(({ y, m }) => isBillPaidInMonth(bill, y, m));
+}
+
+function isBillPaidInAnyMonth(bill: Bill, months: Array<{ y: number; m: number }>): boolean {
+  return months.some(({ y, m }) => isBillPaidInMonth(bill, y, m));
 }
 
 function isBillOverdue(bill: Bill): boolean {
   if (isBillPaidThisMonth(bill)) return false;
   const today = new Date();
   return bill.dueDay < today.getDate();
+}
+
+function isBillOverdueInRange(bill: Bill, months: Array<{ y: number; m: number }>): boolean {
+  const now = new Date();
+  const currentY = now.getFullYear();
+  const currentM = now.getMonth();
+  const currentDay = now.getDate();
+  return months.some(({ y, m }) => {
+    if (!isBillActiveInMonth(bill, y, m)) return false;
+    if (isBillPaidInMonth(bill, y, m)) return false;
+    if (y < currentY || (y === currentY && m < currentM)) return true;
+    if (y === currentY && m === currentM && bill.dueDay < currentDay) return true;
+    return false;
+  });
+}
+
+type PeriodFilter = "current" | "last" | "last3" | "last6" | "custom";
+
+function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEnd?: string): Array<{ y: number; m: number }> {
+  const now = new Date();
+  const months: Array<{ y: number; m: number }> = [];
+
+  if (period === "current") {
+    months.push({ y: now.getFullYear(), m: now.getMonth() });
+  } else if (period === "last") {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    months.push({ y: d.getFullYear(), m: d.getMonth() });
+  } else if (period === "last3") {
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ y: d.getFullYear(), m: d.getMonth() });
+    }
+  } else if (period === "last6") {
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ y: d.getFullYear(), m: d.getMonth() });
+    }
+  } else if (period === "custom" && customStart && customEnd) {
+    const start = new Date(customStart + "T00:00:00");
+    const end = new Date(customEnd + "T00:00:00");
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= end) {
+      months.push({ y: cur.getFullYear(), m: cur.getMonth() });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    if (months.length === 0) months.push({ y: now.getFullYear(), m: now.getMonth() });
+  }
+
+  return months;
+}
+
+function getPeriodLabel(period: PeriodFilter, months: Array<{ y: number; m: number }>): string {
+  if (months.length === 1) {
+    const d = new Date(months[0].y, months[0].m, 1);
+    return d.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+  }
+  const first = new Date(months[months.length - 1].y, months[months.length - 1].m, 1);
+  const last = new Date(months[0].y, months[0].m, 1);
+  const f = first.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  const l = last.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  return `${f} — ${l}`;
 }
 
 const RECURRENCE_OPTIONS: { type: RecurrenceType; label: string; sub: string; icon: any }[] = [
@@ -301,6 +386,14 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
   );
 }
 
+const PERIOD_OPTS: { id: PeriodFilter; label: string }[] = [
+  { id: "current", label: "Mês atual" },
+  { id: "last", label: "Mês passado" },
+  { id: "last3", label: "3 meses" },
+  { id: "last6", label: "6 meses" },
+  { id: "custom", label: "Personalizado" },
+];
+
 export function BillsTab() {
   const { theme } = useTheme();
   const isHigh = theme === "high";
@@ -309,9 +402,16 @@ export function BillsTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "expense" | "income">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "paid" | "overdue">("all");
+  const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>("current");
+  const [showCustomDates, setShowCustomDates] = useState(false);
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: allBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
+
+  const periodMonths = getMonthsForPeriod(filterPeriod, customStart, customEnd);
+  const isSingleCurrentMonth = filterPeriod === "current";
 
   const togglePaidMutation = useMutation({
     mutationFn: async ({ bill, paid }: { bill: Bill; paid: boolean }) => {
@@ -334,22 +434,29 @@ export function BillsTab() {
     onError: () => toast({ title: "Erro ao remover conta", variant: "destructive" }),
   });
 
-  const activeBills = allBills.filter(isBillActiveThisMonth);
+  const activeBills = allBills.filter(b => isBillActiveInRange(b, periodMonths));
 
-  const totalPagar = activeBills.filter(b => b.type === "expense" && !isBillPaidThisMonth(b)).reduce((s, b) => s + b.amount, 0);
-  const totalReceber = activeBills.filter(b => b.type === "income" && !isBillPaidThisMonth(b)).reduce((s, b) => s + b.amount, 0);
+  const unpaidExpenses = activeBills.filter(b => b.type === "expense" && !isBillPaidInAllMonths(b, periodMonths));
+  const unpaidIncomes = activeBills.filter(b => b.type === "income" && !isBillPaidInAllMonths(b, periodMonths));
+  const totalPagar = unpaidExpenses.reduce((s, b) => s + b.amount * Math.max(1, periodMonths.filter(({ y, m }) => isBillActiveInMonth(b, y, m) && !isBillPaidInMonth(b, y, m)).length), 0);
+  const totalReceber = unpaidIncomes.reduce((s, b) => s + b.amount * Math.max(1, periodMonths.filter(({ y, m }) => isBillActiveInMonth(b, y, m) && !isBillPaidInMonth(b, y, m)).length), 0);
   const saldoPrevisto = totalReceber - totalPagar;
-  const vencidas = activeBills.filter(b => b.type === "expense" && isBillOverdue(b));
+  const vencidas = activeBills.filter(b => b.type === "expense" && isBillOverdueInRange(b, periodMonths));
   const hoje = new Date().getDate();
-  const proximos7 = activeBills.filter(b => !isBillPaidThisMonth(b) && b.dueDay >= hoje && b.dueDay <= hoje + 7);
-  const pagoMes = activeBills.filter(isBillPaidThisMonth);
-  const totalPagoMes = pagoMes.reduce((s, b) => s + b.amount, 0);
+  const proximos7 = isSingleCurrentMonth
+    ? activeBills.filter(b => !isBillPaidThisMonth(b) && b.dueDay >= hoje && b.dueDay <= hoje + 7)
+    : [];
+  const pagoMes = activeBills.filter(b => isBillPaidInAnyMonth(b, periodMonths));
+  const totalPagoMes = pagoMes.reduce((s, b) => {
+    const paidCount = periodMonths.filter(({ y, m }) => isBillActiveInMonth(b, y, m) && isBillPaidInMonth(b, y, m)).length;
+    return s + b.amount * paidCount;
+  }, 0);
 
   const filtered = activeBills.filter(b => {
     if (filterType !== "all" && b.type !== filterType) return false;
-    if (filterStatus === "paid" && !isBillPaidThisMonth(b)) return false;
-    if (filterStatus === "pending" && (isBillPaidThisMonth(b) || isBillOverdue(b))) return false;
-    if (filterStatus === "overdue" && !isBillOverdue(b)) return false;
+    if (filterStatus === "paid" && !isBillPaidInAnyMonth(b, periodMonths)) return false;
+    if (filterStatus === "pending" && (isBillPaidInAllMonths(b, periodMonths) || isBillOverdueInRange(b, periodMonths))) return false;
+    if (filterStatus === "overdue" && !isBillOverdueInRange(b, periodMonths)) return false;
     return true;
   });
 
