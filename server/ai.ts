@@ -72,7 +72,7 @@ EXEMPLOS CRÍTICOS:
 `;
 
 export interface IntentResult {
-  intent: "expense" | "income" | "task" | "schedule" | "habit" | "chat" | "unknown";
+  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown";
   data: any;
   rawText: string;
 }
@@ -117,12 +117,13 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
 DATA DE HOJE: ${todayDate}
 
 INTENÇÕES POSSÍVEIS:
-1. "expense" — O usuário registrou um GASTO. Palavras: "gastei", "paguei", "comprei", "custou", etc.
-2. "income" — O usuário registrou uma RECEITA. Palavras: "recebi", "ganhei", "entrou", "salário", etc.
-3. "task" — O usuário quer criar uma TAREFA. Palavras: "preciso", "tenho que", "não esquecer", "lembrar de", etc.
-4. "schedule" — O usuário quer AGENDAR algo. Palavras: "marcar", "agendar", "reunião dia", "compromisso", etc.
-5. "habit" — O usuário quer criar um HÁBITO. Palavras: "quero começar a", "hábito de", "todo dia", etc.
-6. "chat" — Qualquer outra coisa que não se encaixa acima — uma pergunta, reflexão, ou conversa.
+1. "expense" — O usuário registrou um GASTO ÚNICO/PONTUAL. Palavras: "gastei", "paguei", "comprei", "custou", etc.
+2. "income" — O usuário registrou uma RECEITA PONTUAL. Palavras: "recebi", "ganhei", "entrou", "salário", etc.
+3. "bill" — O usuário quer cadastrar uma CONTA FIXA/RECORRENTE (gasto ou receita que se repete). Palavras: "gasto fixo", "conta fixa", "mensalidade", "todo mês pago", "pago todo mês", "parcela de X meses", "minha fatura de", "conta de luz todo mês", "tenho um custo fixo de", "renda fixa todo mês", "recebo todo mês", etc.
+4. "task" — O usuário quer criar uma TAREFA. Palavras: "preciso", "tenho que", "não esquecer", "lembrar de", etc.
+5. "schedule" — O usuário quer AGENDAR algo. Palavras: "marcar", "agendar", "reunião dia", "compromisso", etc.
+6. "habit" — O usuário quer criar um HÁBITO. Palavras: "quero começar a", "hábito de", "todo dia", etc.
+7. "chat" — Qualquer outra coisa que não se encaixa acima — uma pergunta, reflexão, ou conversa.
 
 RESPONDA EM JSON:
 
@@ -134,6 +135,17 @@ Para expense/income:
   "categoryName": "categoria precisa — veja regras abaixo",
   "establishment": "nome do estabelecimento se mencionado, senão null",
   "date": "${todayDate}" (ou data mencionada no formato YYYY-MM-DD)
+}
+
+Para bill (conta fixa):
+{
+  "intent": "bill",
+  "title": "nome da conta (ex: Aluguel, Netflix, Conta de Luz)",
+  "amount": número (valor em reais),
+  "type": "expense" (se é gasto fixo) ou "income" (se é receita fixa),
+  "categoryName": "categoria",
+  "dueDay": número (dia do mês que vence/recebe, padrão 5 se não mencionado),
+  "recurrenceType": "permanent" (para sempre, padrão) ou "three_months" (3 meses) ou "this_month" (só este mês)
 }
 
 Para task:
@@ -177,8 +189,16 @@ REGRAS GERAIS:
 - "Gastei 19 reais com açaí" → expense, categoryName: "alimentação"
 - "Fui no mercado" → expense, categoryName: "mercado"
 - "Recebi 5000 de salário" → income, categoryName: "trabalho"
+- "Tenho gasto fixo de aluguel 1500" → bill, type: "expense", title: "Aluguel", recurrenceType: "permanent"
+- "Minha mensalidade da academia é 80 reais" → bill, type: "expense", title: "Academia"
+- "Todo mês recebo 200 de aluguel" → bill, type: "income", title: "Aluguel recebido"
 - "Preciso ligar pro dentista" → task
 - "Reunião com João terça às 14h" → schedule
+
+REGRA CRÍTICA — bill vs expense:
+- "bill" SOMENTE quando é claramente RECORRENTE/FIXO (todo mês, mensalidade, fixo, parcela recorrente)
+- Pagamento pontual → "expense" mesmo que seja uma conta (ex: "paguei a conta de luz" → expense)
+- "bill" SEM VALOR → retorne "chat" e pergunte o valor
 
 REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
 - "schedule": retorne SOMENTE quando há data/hora ESPECÍFICA (ex: "reunião amanhã às 14h"). Se o horário for vago ou ausente → retorne "chat".

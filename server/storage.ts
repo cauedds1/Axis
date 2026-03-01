@@ -16,7 +16,7 @@ import {
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, or, like } from "drizzle-orm";
 
 export interface IStorage {
   getBills(userId: string): Promise<Bill[]>;
@@ -33,6 +33,7 @@ export interface IStorage {
   createTransaction(data: InsertTransaction): Promise<Transaction>;
   createManyTransactions(data: InsertTransaction[]): Promise<Transaction[]>;
   deleteTransaction(id: string, userId: string): Promise<void>;
+  deleteTransactionsByBillId(userId: string, billId: string): Promise<void>;
 
   getFinancialGoals(userId: string): Promise<FinancialGoal[]>;
   createFinancialGoal(data: InsertFinancialGoal): Promise<FinancialGoal>;
@@ -142,6 +143,16 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTransaction(id: string, userId: string): Promise<void> {
     await db.delete(transactions).where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+  }
+
+  async deleteTransactionsByBillId(userId: string, billId: string): Promise<void> {
+    await db.delete(transactions).where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.source, "bill_payment"),
+        like(transactions.description, `[bill:${billId}]%`)
+      )
+    );
   }
 
   async getFinancialGoals(userId: string): Promise<FinancialGoal[]> {

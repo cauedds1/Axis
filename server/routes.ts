@@ -1200,6 +1200,30 @@ export async function registerRoutes(
       try {
         const intentResult = await detectIntentAndProcess(message, userId);
 
+        if (intentResult.intent === "bill") {
+          // Create bill directly — no confirmation needed
+          const d = intentResult.data;
+          const billType = d.type === "income" ? "income" : "expense";
+          const newBill = await storage.createBill({
+            userId,
+            title: (d.title || "Conta fixa").trim(),
+            amount: Number(d.amount) || 0,
+            type: billType,
+            dueDay: Number(d.dueDay) || 5,
+            categoryName: d.categoryName || null,
+            recurrenceType: ["permanent", "three_months", "this_month"].includes(d.recurrenceType) ? d.recurrenceType : "permanent",
+            active: true,
+            paidMonths: "[]",
+            notes: null,
+          });
+          const typeLabel = billType === "income" ? "💰 A receber" : "💸 A pagar";
+          const recLabel: Record<string, string> = { permanent: "todo mês, permanente", three_months: "próximos 3 meses", this_month: "só este mês" };
+          const reply = `📋 *Conta fixa cadastrada!*\n*${newBill.title}*\n${typeLabel}: R$ ${Number(newBill.amount).toFixed(2)}\n📅 Vence dia ${newBill.dueDay}${newBill.categoryName ? `\n🏷 ${newBill.categoryName}` : ""}\n🔁 Recorrência: ${recLabel[newBill.recurrenceType as string] || "permanente"}\n\nAparece em *Finanças → Contas* no app.`;
+          await storage.createChatMessage({ userId, role: "user", content: message });
+          await storage.createChatMessage({ userId, role: "assistant", content: reply });
+          return res.json({ response: reply });
+        }
+
         if (intentResult.intent !== "chat" && intentResult.intent !== "unknown") {
           const summary = buildActionSummary(intentResult.intent, intentResult.data);
           const confirmationMsg = `${summary} — confirma?`;
@@ -1460,29 +1484,6 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     return false;
   }
 
-  async function processBillsAsIncome(userId: string): Promise<void> {
-    const now = new Date();
-    const currentDay = now.getDate();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const bills = await storage.getBills(userId);
-    for (const bill of bills) {
-      if (bill.type !== "income") continue;
-      if (currentDay < bill.dueDay) continue;
-      if (!isBillActiveThisMonthServer(bill)) continue;
-      const paidMonths: string[] = (() => { try { return JSON.parse(bill.paidMonths || "[]"); } catch { return []; } })();
-      if (paidMonths.includes(currentMonth)) continue;
-      await storage.createTransaction({
-        userId,
-        amount: bill.amount,
-        description: bill.title,
-        type: "income",
-        source: "auto",
-        date: now,
-      });
-      const newPaidMonths = JSON.stringify([...paidMonths, currentMonth]);
-      await storage.updateBill(bill.id, userId, { paidMonths: newPaidMonths });
-    }
-  }
 
   async function processRecurringIncomes(userId: string): Promise<void> {
     const now = new Date();
@@ -1606,7 +1607,6 @@ Se algum dado não foi mencionado, use valores razoáveis.`
 
       // Fire-and-forget: process recurring incomes + income-type bills + alerts
       processRecurringIncomes(userId).catch(() => {});
-      processBillsAsIncome(userId).catch(() => {});
       updateLastLogin(userId).catch(() => {});
       checkAndSendBillAlerts(userId).catch(() => {});
       checkAndSendOverdueTaskAlerts(userId).catch(() => {});
@@ -2240,8 +2240,39 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         notes: z.string().optional().nullable(),
       });
       const data = schema.parse(req.body);
+
+      // Fetch current bill to compare paidMonths before updating
+      const existingBills = await storage.getBills(userId);
+      const existingBill = existingBills.find(b => b.id === req.params.id);
+
       const bill = await storage.updateBill(req.params.id, userId, data as any);
       if (!bill) return res.status(404).json({ message: "Conta não encontrada" });
+
+      // If paidMonths changed, create or remove transaction accordingly
+      if (data.paidMonths !== undefined && existingBill) {
+        const oldMonths: string[] = (() => { try { return JSON.parse(existingBill.paidMonths || "[]"); } catch { return []; } })();
+        const newMonths: string[] = (() => { try { return JSON.parse(data.paidMonths || "[]"); } catch { return []; } })();
+
+        const added = newMonths.filter(m => !oldMonths.includes(m));
+        const removed = oldMonths.filter(m => !newMonths.includes(m));
+
+        if (added.length > 0) {
+          // Marked as paid — create a transaction
+          await storage.createTransaction({
+            userId,
+            amount: bill.amount,
+            description: `[bill:${bill.id}] ${bill.title}`,
+            type: bill.type as "expense" | "income",
+            source: "bill_payment",
+            categoryName: bill.categoryName || null,
+            date: new Date(),
+          });
+        } else if (removed.length > 0) {
+          // Unmarked — delete the linked transaction
+          await storage.deleteTransactionsByBillId(userId, bill.id);
+        }
+      }
+
       res.json(bill);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
