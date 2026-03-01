@@ -2,11 +2,9 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Sheet,
-  SheetContent,
-  SheetPortal,
-  SheetOverlay,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import {
   X,
   Infinity,
@@ -31,7 +29,6 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import * as SheetPrimitive from "@radix-ui/react-dialog";
 
 const MINT = "#4ECDC4";
 const LAVANDA = "#A78BFA";
@@ -1245,8 +1242,16 @@ function SectionWhatsApp() {
   );
 }
 
+const TAB_META: { id: Tab; label: string; description: string; icon: any; accent: string }[] = [
+  { id: "renda",        label: "Renda",        description: "Salário e receitas",    icon: DollarSign,   accent: MINT },
+  { id: "gastos",       label: "Gastos Fixos", description: "Contas recorrentes",    icon: ClipboardList, accent: CORAL },
+  { id: "rotina",       label: "Rotina",       description: "Hábitos e horários",    icon: Calendar,      accent: LAVANDA },
+  { id: "notificacoes", label: "Alertas",      description: "Avisos por e-mail",     icon: Bell,          accent: "#00E6FF" },
+  { id: "whatsapp",     label: "WhatsApp",     description: "Integração com bot",    icon: MessageCircle, accent: "#25D366" },
+];
+
 export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<Tab>("gastos");
+  const [activeTab, setActiveTab] = useState<Tab>("renda");
   const [savedIncome, setSavedIncome] = useState("");
   const { toast } = useToast();
 
@@ -1269,101 +1274,155 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
     },
   });
 
-  const TABS: { id: Tab; label: string; icon: any }[] = [
-    { id: "renda", label: "Renda", icon: DollarSign },
-    { id: "gastos", label: "Gastos Fixos", icon: ClipboardList },
-    { id: "rotina", label: "Rotina", icon: Calendar },
-    { id: "notificacoes", label: "Alertas", icon: Bell },
-    { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-  ];
+  const activeMeta = TAB_META.find(t => t.id === activeTab)!;
 
   return (
-    <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetPortal>
-        <SheetOverlay />
-        <SheetPrimitive.Content
-          className="fixed inset-y-0 right-0 z-50 flex flex-col h-full w-full sm:w-[540px] shadow-2xl outline-none"
-          style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.07)" }}
-          data-testid="sheet-setup"
-        >
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-            <div>
-              <h2 className="text-base font-bold text-white">Configurar perfil</h2>
-              <p className="text-xs text-white/35 mt-0.5">A IA usará isso para personalizar tudo</p>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className="p-0 gap-0 border-0 outline-none overflow-hidden"
+        style={{
+          background: "#0d0d12",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "20px",
+          maxWidth: "860px",
+          width: "95vw",
+          maxHeight: "88vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        data-testid="dialog-setup"
+      >
+        <div className="flex flex-1 min-h-0">
+          {/* Left sidebar nav */}
+          <div
+            className="flex flex-col w-56 shrink-0 py-5 px-3"
+            style={{ borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
+          >
+            <div className="px-2 mb-5">
+              <h2 className="text-sm font-bold text-white">Configurar perfil</h2>
+              <p className="text-[11px] text-white/35 mt-0.5 leading-tight">A IA usará isso para personalizar tudo</p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/05 transition-colors"
-              data-testid="button-close-sheet"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
 
-          <div className="flex gap-1.5 px-5 py-3 border-b overflow-x-auto shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 shrink-0 whitespace-nowrap"
-                  style={{
-                    background: isActive ? `${MINT}12` : "transparent",
-                    border: `1px solid ${isActive ? `${MINT}30` : "transparent"}`,
-                    color: isActive ? MINT : "rgba(255,255,255,0.35)",
-                  }}
-                  data-testid={`tab-${tab.id}`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+            <nav className="flex flex-col gap-1 flex-1">
+              {TAB_META.map((tab, idx) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-150 group"
+                    style={{
+                      background: isActive ? `${tab.accent}12` : "transparent",
+                      border: `1px solid ${isActive ? `${tab.accent}28` : "transparent"}`,
+                    }}
+                    data-testid={`tab-${tab.id}`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+                      style={{
+                        background: isActive ? `${tab.accent}20` : "rgba(255,255,255,0.05)",
+                      }}
+                    >
+                      <Icon
+                        className="h-3.5 w-3.5"
+                        style={{ color: isActive ? tab.accent : "rgba(255,255,255,0.3)" }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className="text-xs font-semibold leading-tight"
+                        style={{ color: isActive ? "white" : "rgba(255,255,255,0.45)" }}
+                      >
+                        {tab.label}
+                      </p>
+                      <p
+                        className="text-[10px] leading-tight mt-0.5"
+                        style={{ color: isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.2)" }}
+                      >
+                        {tab.description}
+                      </p>
+                    </div>
+                    {isActive && (
+                      <ChevronRight className="h-3 w-3 ml-auto flex-shrink-0" style={{ color: tab.accent }} />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.18 }}
+            <div className="mt-auto pt-4 px-1 space-y-2">
+              <button
+                onClick={() => finishMutation.mutate()}
+                disabled={finishMutation.isPending}
+                className="w-full py-2.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 transition-all"
+                style={{ background: MINT, color: "#060608" }}
+                data-testid="button-finish-setup"
               >
-                {activeTab === "renda" && (
-                  <SectionRenda savedIncome={savedIncome} onSave={setSavedIncome} />
-                )}
-                {activeTab === "gastos" && <SectionGastos />}
-                {activeTab === "rotina" && <SectionRotina />}
-                {activeTab === "notificacoes" && <SectionNotificacoes />}
-                {activeTab === "whatsapp" && <SectionWhatsApp />}
-              </motion.div>
-            </AnimatePresence>
+                {finishMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                {finishMutation.isPending ? "Salvando..." : "Concluir configuração"}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full py-2 text-[11px] text-white/25 hover:text-white/45 transition-colors"
+                data-testid="button-skip-setup"
+              >
+                Fazer depois
+              </button>
+            </div>
           </div>
 
-          <div className="px-5 py-4 border-t space-y-2" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-            <button
-              onClick={() => finishMutation.mutate()}
-              disabled={finishMutation.isPending}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
-              style={{ background: MINT, color: "#060608" }}
-              data-testid="button-finish-setup"
+          {/* Right content area */}
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* Content header */}
+            <div
+              className="flex items-center justify-between px-6 py-4 shrink-0"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
             >
-              {finishMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              {finishMutation.isPending ? "Salvando..." : "Concluir configuração"}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full py-2.5 text-sm text-white/30 hover:text-white/50 transition-colors"
-              data-testid="button-skip-setup"
-            >
-              Fazer depois
-            </button>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: `${activeMeta.accent}18` }}
+                >
+                  <activeMeta.icon className="h-4 w-4" style={{ color: activeMeta.accent }} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{activeMeta.label}</h3>
+                  <p className="text-[11px] text-white/35">{activeMeta.description}</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-white/25 hover:text-white/55 hover:bg-white/05 transition-colors"
+                data-testid="button-close-dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.16 }}
+                >
+                  {activeTab === "renda" && (
+                    <SectionRenda savedIncome={savedIncome} onSave={setSavedIncome} />
+                  )}
+                  {activeTab === "gastos" && <SectionGastos />}
+                  {activeTab === "rotina" && <SectionRotina />}
+                  {activeTab === "notificacoes" && <SectionNotificacoes />}
+                  {activeTab === "whatsapp" && <SectionWhatsApp />}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
-        </SheetPrimitive.Content>
-      </SheetPortal>
-    </Sheet>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
