@@ -11,7 +11,7 @@ import makeWASocket, {
   BufferJSON,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
-import qrcode from "qrcode";
+import * as qrcode from "qrcode";
 import { storage } from "./storage";
 import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract, matchBillIdentity, saveUserIdentityEntity } from "./ai";
 import type { IntentResult } from "./ai";
