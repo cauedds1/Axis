@@ -141,7 +141,7 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
-  const [filter, setFilter] = useState<DateFilter>("last6");
+  const [filter, setFilter] = useState<DateFilter>("current");
   const [customStart, setCustomStart] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
