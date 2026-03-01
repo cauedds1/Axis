@@ -1,12 +1,163 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Loader2 } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+function WhatsAppSection() {
+  const { toast } = useToast();
+  const [phone, setPhone] = useState("");
+  const [phoneSaved, setPhoneSaved] = useState(false);
+
+  const { data: status, refetch } = useQuery<{ status: string; qrCode?: string; phone?: string }>({
+    queryKey: ["/api/whatsapp/status"],
+    refetchInterval: (data: any) => (data?.status === "qr_pending" ? 3000 : false),
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
+    onSuccess: () => setTimeout(() => refetch(), 1500),
+    onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/disconnect"),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] }); refetch(); },
+    onError: () => toast({ title: "Erro ao desconectar", variant: "destructive" }),
+  });
+
+  const phoneMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
+    onSuccess: () => {
+      setPhoneSaved(true);
+      toast({ title: "Número vinculado com sucesso!" });
+      setTimeout(() => setPhoneSaved(false), 2500);
+    },
+    onError: () => toast({ title: "Erro ao salvar número", variant: "destructive" }),
+  });
+
+  const wStatus = status?.status || "disconnected";
+  const statusMap: Record<string, { label: string; color: string; Icon: any }> = {
+    disconnected: { label: "Desconectado", color: "#FF1744", Icon: WifiOff },
+    qr_pending:   { label: "Aguardando QR", color: "#FFA000", Icon: QrCode },
+    connected:    { label: "Conectado",     color: "#00E5C8", Icon: Wifi },
+  };
+  const { label, color, Icon } = statusMap[wStatus] ?? statusMap.disconnected;
+
+  return (
+    <Card className="border-border" data-testid="card-whatsapp-settings">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <MessageCircle className="h-4 w-4" /> WhatsApp Bot
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <p className="text-xs text-muted-foreground">
+          Envie mensagens ou fotos de nota fiscal pelo WhatsApp e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
+        </p>
+
+        <div className="flex items-center justify-between rounded-xl p-4 border border-border bg-card">
+          <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5" style={{ color }} />
+            <div>
+              <p className="text-sm font-semibold">{label}</p>
+              {wStatus === "connected" && status?.phone && (
+                <p className="text-xs text-muted-foreground">+{status.phone}</p>
+              )}
+            </div>
+          </div>
+          {wStatus === "connected" ? (
+            <button
+              onClick={() => disconnectMutation.mutate()}
+              disabled={disconnectMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+              style={{ color: "#FF1744", borderColor: "rgba(255,23,68,0.3)", background: "rgba(255,23,68,0.08)" }}
+              data-testid="button-whatsapp-disconnect"
+            >
+              {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
+            </button>
+          ) : wStatus === "disconnected" ? (
+            <button
+              onClick={() => connectMutation.mutate()}
+              disabled={connectMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+              style={{ color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" }}
+              data-testid="button-whatsapp-connect"
+            >
+              {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Conectar"}
+            </button>
+          ) : null}
+        </div>
+
+        {wStatus === "qr_pending" && status?.qrCode && (
+          <div className="rounded-xl p-4 border border-amber-500/20 bg-amber-500/5 flex flex-col items-center gap-3">
+            <p className="text-xs text-muted-foreground text-center">
+              Abra o WhatsApp → Aparelhos conectados → Escanear QR
+            </p>
+            <img
+              src={status.qrCode}
+              alt="QR Code WhatsApp"
+              className="w-48 h-48 rounded-xl"
+              data-testid="img-whatsapp-qr"
+            />
+            <p className="text-[10px] text-muted-foreground text-center">QR expira em 60s — reconecte se necessário</p>
+          </div>
+        )}
+
+        {wStatus === "qr_pending" && !status?.qrCode && (
+          <div className="flex items-center justify-center gap-2 py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Gerando QR code...</span>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium">Seu número de WhatsApp</p>
+          <p className="text-xs text-muted-foreground">Vincule seu número para que o bot reconheça suas mensagens.</p>
+          <div className="flex gap-2">
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="+55 11 99999-9999"
+              className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+              data-testid="input-whatsapp-phone"
+            />
+            <button
+              onClick={() => phoneMutation.mutate()}
+              disabled={phoneMutation.isPending || !phone.trim()}
+              className="px-4 py-2 rounded-lg text-sm font-semibold border border-border transition-all disabled:opacity-40"
+              style={phoneSaved ? { color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" } : {}}
+              data-testid="button-save-whatsapp-phone"
+            >
+              {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : "Salvar"}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-xl p-4 border border-border bg-card space-y-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Exemplos de mensagens</p>
+          {[
+            "gastei 50 no almoço",
+            "criar tarefa reunião de equipe sexta",
+            "hábito academia todo dia às 7h",
+            "agendar consulta médica segunda 10h",
+            "[foto de nota fiscal] → registra automaticamente",
+          ].map(ex => (
+            <div key={ex} className="flex items-start gap-2">
+              <MessageCircle className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+              <span className="text-xs text-muted-foreground italic">"{ex}"</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -98,6 +249,8 @@ export default function SettingsPage() {
           })}
         </CardContent>
       </Card>
+
+      <WhatsAppSection />
     </div>
   );
 }
