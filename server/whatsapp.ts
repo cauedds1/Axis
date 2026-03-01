@@ -304,14 +304,21 @@ class WhatsAppManager {
 
     if (userName && (receipt.imageType === "pix_sent" || receipt.imageType === "pix_received")) {
       const userNorm = normName(userName);
-      const userWords = userNorm.split(/\s+/).filter(w => w.length > 2);
+      const userParts = userNorm.split(/\s+/).filter(w => w.length > 2);
+      const firstName = userParts[0] ?? "";
+      const lastName = userParts[userParts.length - 1] ?? "";
       const receiverNorm = receipt.receiverName ? normName(receipt.receiverName) : "";
       const senderNorm = receipt.senderName ? normName(receipt.senderName) : "";
 
+      // Require BOTH first name AND last name to be present to avoid false positives
+      const nameMatchesIn = (target: string) =>
+        firstName.length > 0 && lastName.length > 0 && firstName !== lastName &&
+        target.includes(firstName) && target.includes(lastName);
+
       // If receiverName matches user's name but AI said pix_sent → correct to pix_received
-      const receiverIsUser = userWords.some(w => receiverNorm.includes(w));
+      const receiverIsUser = nameMatchesIn(receiverNorm);
       // If senderName matches user's name but AI said pix_received → correct to pix_sent
-      const senderIsUser = userWords.some(w => senderNorm.includes(w));
+      const senderIsUser = nameMatchesIn(senderNorm);
 
       if (receiverIsUser && receipt.imageType === "pix_sent") {
         log(`WhatsApp: corrigindo classificação pix_sent→pix_received (receiverName="${receipt.receiverName}" bate com userName="${userName}")`, "whatsapp");

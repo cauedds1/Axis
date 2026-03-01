@@ -122,9 +122,11 @@ export async function processReceiptPhoto(imageBase64: string, userId: string, u
   const userNameRule = userName
     ? `\nNOME DO USUÁRIO DONO DESTA CONTA: "${userName}"
 REGRA CRÍTICA DE DIREÇÃO DO PIX:
-- Se o campo "Quem recebeu", "Destinatário", "Para", "Recebedor" ou similar contiver o nome do usuário (ou parte dele) → classifique como "pix_received" (transactionType: "income"), independente do que diz o cabeçalho.
-- Se o campo "Quem pagou", "Remetente", "De", "Pagador" ou similar contiver o nome do usuário → classifique como "pix_sent" (transactionType: "expense").
-- O cabeçalho "Pix enviado" pode estar na perspectiva de quem ENVIOU o comprovante, não necessariamente do dono da conta.`
+- Compare o NOME COMPLETO (nome E sobrenome) do usuário com os campos do comprovante.
+- Se o campo "Quem recebeu", "Destinatário", "Para" ou "Recebedor" contiver o nome E o sobrenome do usuário → classifique como "pix_received" (transactionType: "income"), independente do que diz o cabeçalho.
+- Se o campo "Quem pagou", "Remetente", "De" ou "Pagador" contiver o nome E o sobrenome do usuário → classifique como "pix_sent" (transactionType: "expense").
+- Apenas nome OU apenas sobrenome sozinhos NÃO são suficientes para identificar — exija os dois.
+- O cabeçalho "Pix enviado" pode estar na perspectiva de quem ENVIOU o comprovante (não do dono da conta).`
     : "";
 
   const response = await openai.chat.completions.create({
