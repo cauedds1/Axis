@@ -19,6 +19,15 @@ function getUserId(req: any): string {
   return req.session?.userId;
 }
 
+async function isAdminUser(req: any): Promise<boolean> {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return false;
+  const userId = getUserId(req);
+  if (!userId) return false;
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  return user?.email === adminEmail;
+}
+
 function paramId(req: any): string {
   return req.params.id as string;
 }
@@ -2257,17 +2266,24 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
+  // ── ADMIN CHECK ─────────────────────────────────────────────────────────
+  app.get("/api/auth/is-admin", isAuthenticated, async (req, res) => {
+    res.json({ isAdmin: await isAdminUser(req) });
+  });
+
   // ── WHATSAPP ROUTES ─────────────────────────────────────────────────────
-  app.get("/api/whatsapp/status", isAuthenticated, (_req, res) => {
+  app.get("/api/whatsapp/status", isAuthenticated, async (req, res) => {
+    const admin = await isAdminUser(req);
     res.json({
       status: whatsappManager.getStatus(),
-      qrCode: whatsappManager.getQrCode(),
+      qrCode: admin ? whatsappManager.getQrCode() : undefined,
       phone: whatsappManager.getConnectedPhone(),
     });
   });
 
-  app.post("/api/whatsapp/connect", isAuthenticated, async (_req, res) => {
+  app.post("/api/whatsapp/connect", isAuthenticated, async (req, res) => {
     try {
+      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
       if (whatsappManager.getStatus() === "connected") {
         return res.json({ status: "connected", phone: whatsappManager.getConnectedPhone() });
       }
@@ -2278,8 +2294,9 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
-  app.post("/api/whatsapp/disconnect", isAuthenticated, async (_req, res) => {
+  app.post("/api/whatsapp/disconnect", isAuthenticated, async (req, res) => {
     try {
+      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode desconectar o WhatsApp" });
       await whatsappManager.disconnect();
       res.json({ success: true });
     } catch (error: any) {
@@ -2287,8 +2304,9 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
-  app.post("/api/whatsapp/reset", isAuthenticated, async (_req, res) => {
+  app.post("/api/whatsapp/reset", isAuthenticated, async (req, res) => {
     try {
+      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode resetar o WhatsApp" });
       await whatsappManager.disconnect();
       setTimeout(() => {
         whatsappManager.initialize().catch(err => console.error("WhatsApp reset error:", err));

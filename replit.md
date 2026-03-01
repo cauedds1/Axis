@@ -80,7 +80,8 @@ shared/
 - **Vite plugins**: plugins Replit (`cartographer`, `dev-banner`, `runtime-error-modal`) carregados condicionalmente com try/catch — build funciona sem eles
 - **APP_URL**: `APP_URL || RAILWAY_PUBLIC_DOMAIN || "https://axis.replit.app"`
 - **Env vars obrigatórias**: `DATABASE_URL`, `SESSION_SECRET`
-- **Env vars opcionais**: `OPENAI_API_KEY`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `APP_URL`
+- **Env vars opcionais**: `OPENAI_API_KEY`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `APP_URL`, `ADMIN_EMAIL`
+- **Admin control**: apenas a conta com email = `ADMIN_EMAIL` pode conectar/desconectar/resetar o WhatsApp Bot; `isAdminUser()` helper em `server/routes.ts`; endpoint `GET /api/auth/is-admin`; frontend esconde botões de controle para não-admins
 - **Build/Start**: `npm run build` (Vite + esbuild → `dist/`) → `npm run start` (`drizzle-kit push --force && node dist/index.cjs`)
 
 ## Email Alert System

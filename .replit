@@ -49,3 +49,4 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
+ADMIN_EMAIL = "cauedalberto2@gmail.com"

@@ -1078,14 +1078,20 @@ function SectionWhatsApp() {
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
 
+  const { data: adminData } = useQuery<{ isAdmin: boolean }>({ queryKey: ["/api/auth/is-admin"] });
+  const isAdmin = adminData?.isAdmin ?? false;
+
   const { data: status, refetch } = useQuery<{ status: string; qrCode?: string; phone?: string }>({
     queryKey: ["/api/whatsapp/status"],
-    refetchInterval: (data) => (data?.status === "qr_pending" ? 3000 : false),
+    refetchInterval: (query) => {
+      const s = (query.state.data as any)?.status;
+      return s === "qr_pending" ? 3000 : 10000;
+    },
   });
 
   const connectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
-    onSuccess: () => setTimeout(() => refetch(), 1500),
+    onSuccess: () => { refetch(); setTimeout(() => refetch(), 1500); },
     onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
   });
 
@@ -1138,7 +1144,7 @@ function SectionWhatsApp() {
             )}
           </div>
         </div>
-        {wStatus === "connected" ? (
+        {isAdmin && wStatus === "connected" ? (
           <button
             onClick={() => disconnectMutation.mutate()}
             disabled={disconnectMutation.isPending}
@@ -1148,7 +1154,7 @@ function SectionWhatsApp() {
           >
             {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
           </button>
-        ) : wStatus === "disconnected" ? (
+        ) : isAdmin && wStatus === "disconnected" ? (
           <button
             onClick={() => connectMutation.mutate()}
             disabled={connectMutation.isPending}
@@ -1161,7 +1167,7 @@ function SectionWhatsApp() {
         ) : null}
       </div>
 
-      {wStatus === "qr_pending" && status?.qrCode && (
+      {isAdmin && wStatus === "qr_pending" && status?.qrCode && (
         <div className="rounded-2xl p-4 flex flex-col items-center gap-3" style={{ background: "rgba(255,160,0,0.05)", border: "1px solid rgba(255,160,0,0.2)" }}>
           <p className="text-xs text-white/60 text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
           <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
@@ -1181,7 +1187,7 @@ function SectionWhatsApp() {
         </div>
       )}
 
-      {wStatus === "qr_pending" && !status?.qrCode && (
+      {isAdmin && wStatus === "qr_pending" && !status?.qrCode && (
         <div className="flex flex-col items-center gap-3 py-4">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-white/40" />
