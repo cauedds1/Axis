@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare } from "lucide-react";
+import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -400,6 +400,9 @@ export default function Tasks() {
   const [justifyText, setJustifyText] = useState("");
   const [justifyResult, setJustifyResult] = useState<{ verdict: string; feedback: string; score: number; creditPoints: number; netPenalty: number } | null>(null);
   const [detailTask, setDetailTask] = useState<PersonalTask | null>(null);
+  const [detailHabit, setDetailHabit] = useState<Habit | null>(null);
+  const [editHabit, setEditHabit] = useState(false);
+  const [habitForm, setHabitForm] = useState({ name: "", frequency: "daily" as "daily" | "weekly", emoji: "⚡", targetTime: "", description: "", weekdays: [] as number[] });
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
@@ -444,6 +447,39 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
   });
+
+  const updateHabitMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/habits/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setEditHabit(false);
+      setDetailHabit(null);
+      toast({ title: "Compromisso atualizado" });
+    },
+    onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+  });
+
+  function openHabitDetail(habit: Habit) {
+    setDetailHabit(habit);
+    setEditHabit(false);
+    const weekdaysRaw = (habit as any).weekdays;
+    let weekdays: number[] = [];
+    if (weekdaysRaw) {
+      try { weekdays = typeof weekdaysRaw === "string" ? JSON.parse(weekdaysRaw) : weekdaysRaw; } catch {}
+    }
+    setHabitForm({
+      name: habit.name,
+      frequency: habit.frequency as "daily" | "weekly",
+      emoji: (habit as any).emoji || "⚡",
+      targetTime: (habit as any).targetTime || "",
+      description: (habit as any).description || "",
+      weekdays,
+    });
+  }
 
   const justifyMutation = useMutation({
     mutationFn: async ({ id, justification }: { id: string; justification: string }) => {
@@ -631,11 +667,12 @@ export default function Tasks() {
               return (
                 <div
                   key={habit.id}
-                  className="rounded-2xl p-4 flex items-center justify-between"
+                  className="rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                   style={{
                     background: "rgba(255,255,255,0.03)",
                     border: `1px solid ${checkedToday ? "rgba(78,205,196,0.25)" : "rgba(255,255,255,0.07)"}`,
                   }}
+                  onClick={() => openHabitDetail(habit)}
                   data-testid={`card-habit-${habit.id}`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -659,12 +696,12 @@ export default function Tasks() {
                     <Button
                       variant={checkedToday ? "secondary" : "outline"}
                       size="sm"
-                      onClick={() => checkHabitMutation.mutate(habit.id)}
+                      onClick={(e) => { e.stopPropagation(); checkHabitMutation.mutate(habit.id); }}
                       data-testid={`button-check-habit-${habit.id}`}
                     >
                       <Check className={`h-4 w-4 ${checkedToday ? "text-green-500" : ""}`} />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteHabitMutation.mutate(habit.id)} data-testid={`button-delete-habit-${habit.id}`}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); deleteHabitMutation.mutate(habit.id); }} data-testid={`button-delete-habit-${habit.id}`}>
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
@@ -678,6 +715,255 @@ export default function Tasks() {
 
       <TaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} accent={accent} />
       <HabitSheet open={showAddHabit} onClose={() => setShowAddHabit(false)} accent={accent} />
+
+      <Dialog open={!!detailHabit} onOpenChange={v => { if (!v) { setDetailHabit(null); setEditHabit(false); } }}>
+        <DialogContent className="max-w-md border-0 p-0 max-h-[85vh] overflow-y-auto" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
+          {detailHabit && !editHabit && (
+            <>
+              <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                    <span className="text-lg">{(detailHabit as any).emoji || "⚡"}</span>
+                    {detailHabit.name}
+                  </DialogTitle>
+                </DialogHeader>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Frequência</p>
+                    <p className="text-sm font-medium text-white">{detailHabit.frequency === "daily" ? "Diário" : "Semanal"}</p>
+                  </div>
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Sequência</p>
+                    <p className="text-sm font-medium text-white flex items-center gap-1">
+                      <Flame className="h-3.5 w-3.5" style={{ color: "#FFA000" }} />
+                      {detailHabit.streak} dias
+                    </p>
+                  </div>
+                </div>
+
+                {(detailHabit as any).targetTime && (
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Horário</p>
+                    <p className="text-sm font-medium text-white flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-white/40" />
+                      {(detailHabit as any).targetTime}
+                    </p>
+                  </div>
+                )}
+
+                {(() => {
+                  const wd = (detailHabit as any).weekdays;
+                  let parsed: number[] = [];
+                  if (wd) { try { parsed = typeof wd === "string" ? JSON.parse(wd) : wd; } catch {} }
+                  if (parsed.length === 0) return null;
+                  return (
+                    <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Dias da semana</p>
+                      <div className="flex gap-1.5">
+                        {DAYS.map((d, i) => (
+                          <span
+                            key={d}
+                            className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold text-center"
+                            style={{
+                              background: parsed.includes(i) ? `${accent}15` : "rgba(255,255,255,0.03)",
+                              border: `1px solid ${parsed.includes(i) ? `${accent}40` : "rgba(255,255,255,0.07)"}`,
+                              color: parsed.includes(i) ? accent : "rgba(255,255,255,0.2)",
+                            }}
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {(detailHabit as any).description && (
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Motivação</p>
+                    <p className="text-sm text-white/70 whitespace-pre-wrap" data-testid="text-habit-detail-desc">{(detailHabit as any).description}</p>
+                  </div>
+                )}
+
+                <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Último check</p>
+                  <p className="text-sm font-medium text-white">
+                    {detailHabit.lastChecked
+                      ? new Date(detailHabit.lastChecked + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+                      : "Nenhum ainda"}
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setEditHabit(true)}
+                    className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                    style={{ background: accent, color: "#060608" }}
+                    data-testid="button-edit-habit"
+                  >
+                    <Pencil className="h-4 w-4" /> Editar
+                  </button>
+                  <button
+                    onClick={() => { deleteHabitMutation.mutate(detailHabit.id); setDetailHabit(null); }}
+                    className="py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                    style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+                    data-testid="button-delete-habit-detail"
+                  >
+                    <Trash2 className="h-4 w-4" /> Excluir
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {detailHabit && editHabit && (
+            <>
+              <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                    <Pencil className="h-4 w-4" style={{ color: accent }} />
+                    Editar compromisso
+                  </DialogTitle>
+                </DialogHeader>
+              </div>
+              <div className="px-6 py-5 space-y-5">
+                <div>
+                  <FieldLabel>Ícone</FieldLabel>
+                  <div className="grid grid-cols-5 gap-2">
+                    {HABIT_EMOJIS.map(e => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => setHabitForm(f => ({ ...f, emoji: e }))}
+                        className="py-2.5 rounded-xl text-xl flex items-center justify-center transition-all duration-150"
+                        style={{
+                          background: habitForm.emoji === e ? `${accent}15` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${habitForm.emoji === e ? `${accent}40` : "rgba(255,255,255,0.07)"}`,
+                        }}
+                        data-testid={`edit-pill-emoji-${e}`}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel>Nome</FieldLabel>
+                  <StyledInput
+                    value={habitForm.name}
+                    onChange={e => setHabitForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Ex: Exercitar, Meditar, Ler..."
+                    data-testid="edit-input-habit-name"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Frequência</FieldLabel>
+                  <div className="flex gap-2">
+                    {([["daily", "Diário"], ["weekly", "Semanal"]] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setHabitForm(f => ({ ...f, frequency: val, weekdays: [] }))}
+                        className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150"
+                        style={{
+                          background: habitForm.frequency === val ? `${accent}15` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${habitForm.frequency === val ? `${accent}40` : "rgba(255,255,255,0.07)"}`,
+                          color: habitForm.frequency === val ? accent : "rgba(255,255,255,0.35)",
+                        }}
+                        data-testid={`edit-pill-frequency-${val}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {habitForm.frequency === "weekly" && (
+                  <div>
+                    <FieldLabel>Dias da semana</FieldLabel>
+                    <div className="flex gap-1.5">
+                      {DAYS.map((d, i) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setHabitForm(f => ({
+                            ...f,
+                            weekdays: f.weekdays.includes(i) ? f.weekdays.filter(x => x !== i) : [...f.weekdays, i],
+                          }))}
+                          className="flex-1 py-2 rounded-lg text-[10px] font-semibold transition-all duration-150"
+                          style={{
+                            background: habitForm.weekdays.includes(i) ? `${accent}15` : "rgba(255,255,255,0.03)",
+                            border: `1px solid ${habitForm.weekdays.includes(i) ? `${accent}40` : "rgba(255,255,255,0.07)"}`,
+                            color: habitForm.weekdays.includes(i) ? accent : "rgba(255,255,255,0.25)",
+                          }}
+                          data-testid={`edit-pill-weekday-${i}`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <FieldLabel>Horário alvo <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <StyledInput
+                    type="time"
+                    value={habitForm.targetTime}
+                    onChange={e => setHabitForm(f => ({ ...f, targetTime: e.target.value }))}
+                    style={{ colorScheme: "dark" }}
+                    data-testid="edit-input-habit-time"
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Motivação / Observações <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <StyledTextarea
+                    value={habitForm.description}
+                    onChange={e => setHabitForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Por que esse compromisso é importante para você?"
+                    rows={3}
+                    data-testid="edit-textarea-habit-description"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+                <button
+                  onClick={() => updateHabitMutation.mutate({
+                    id: detailHabit.id,
+                    data: {
+                      name: habitForm.name.trim(),
+                      frequency: habitForm.frequency,
+                      emoji: habitForm.emoji,
+                      targetTime: habitForm.targetTime || null,
+                      description: habitForm.description.trim() || null,
+                      weekdays: habitForm.weekdays.length > 0 ? habitForm.weekdays : null,
+                    },
+                  })}
+                  disabled={updateHabitMutation.isPending || !habitForm.name.trim()}
+                  className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                  style={{ background: accent, color: "#060608" }}
+                  data-testid="button-save-habit-edit"
+                >
+                  {updateHabitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  {updateHabitMutation.isPending ? "Salvando..." : "Salvar alterações"}
+                </button>
+                <button
+                  onClick={() => setEditHabit(false)}
+                  className="w-full py-2 text-xs text-white/30 hover:text-white/50 transition-colors"
+                >
+                  Voltar
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailTask} onOpenChange={v => { if (!v) setDetailTask(null); }}>
         <DialogContent className="max-w-md border-0 p-0" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
