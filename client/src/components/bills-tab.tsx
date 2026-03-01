@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -467,7 +467,11 @@ export function BillsTab() {
                     <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: paid ? "rgba(255,255,255,0.1)" : rowAccent }} />
 
                     <div className="flex-1 p-4">
-                      <div className="flex items-center justify-between gap-3">
+                      <div
+                        className="flex items-center justify-between gap-3 cursor-pointer select-none"
+                        onClick={() => setExpandedId(expanded ? null : bill.id)}
+                        data-testid={`button-expand-bill-${bill.id}`}
+                      >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${rowAccent}15` }}>
                             {isExpense ? <TrendingDown className="h-4 w-4" style={{ color: rowAccent }} /> : <TrendingUp className="h-4 w-4" style={{ color: rowAccent }} />}
@@ -486,14 +490,9 @@ export function BillsTab() {
                           <span className="text-base font-bold" style={{ color: paid ? "rgba(255,255,255,0.3)" : rowAccent }}>
                             {isExpense ? "-" : "+"}R$ {bill.amount.toFixed(2)}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedId(expanded ? null : bill.id)}
-                            className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
-                            data-testid={`button-expand-bill-${bill.id}`}
-                          >
+                          <div className="p-1.5">
                             {expanded ? <ChevronUp className="h-4 w-4 text-white/30" /> : <ChevronDown className="h-4 w-4 text-white/30" />}
-                          </button>
+                          </div>
                         </div>
                       </div>
 
@@ -504,34 +503,98 @@ export function BillsTab() {
                             animate={{ opacity: 1, height: "auto", marginTop: 12 }}
                             exit={{ opacity: 0, height: 0, marginTop: 0 }}
                             transition={{ duration: 0.18 }}
-                            className="flex items-center gap-2 pt-3"
+                            className="space-y-3 pt-3"
                             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
-                              disabled={togglePaidMutation.isPending}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                              style={{
-                                background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
-                                border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
-                                color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
-                              }}
-                              data-testid={`button-toggle-paid-${bill.id}`}
-                            >
-                              {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                              {paid ? "Desfazer pagamento" : "Marcar como pago"}
-                            </button>
-                            <div className="flex-1" />
-                            <button
-                              type="button"
-                              onClick={() => deleteMutation.mutate(bill.id)}
-                              disabled={deleteMutation.isPending}
-                              className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
-                              data-testid={`button-delete-bill-${bill.id}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" style={{ color: EXPENSE_COLOR }} />
-                            </button>
+                            {bill.notes && (() => {
+                              const lines = bill.notes.split("\n");
+                              const info: { label: string; value: string; icon: any }[] = [];
+                              for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (!trimmed) continue;
+                                if (trimmed.startsWith("Emissor:")) {
+                                  info.push({ label: "Emissor", value: trimmed.replace("Emissor:", "").trim(), icon: Store });
+                                } else if (trimmed.startsWith("Destinatário:") || trimmed.startsWith("Destinatario:")) {
+                                  info.push({ label: "Destinatário", value: trimmed.replace(/Destinat[áa]rio:/, "").trim(), icon: User });
+                                } else if (trimmed.startsWith("Pagamento:")) {
+                                  info.push({ label: "Pagamento", value: trimmed.replace("Pagamento:", "").trim(), icon: CreditCard });
+                                } else if (trimmed.startsWith("Descrição:") || trimmed.startsWith("Descricao:")) {
+                                  info.push({ label: "Serviço/Produto", value: trimmed.replace(/Descri[çc][ãa]o:/, "").trim(), icon: FileText });
+                                } else {
+                                  info.push({ label: "Observação", value: trimmed, icon: FileText });
+                                }
+                              }
+
+                              return info.length > 0 ? (
+                                <div
+                                  className="rounded-xl p-3 space-y-2.5"
+                                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+                                  data-testid={`bill-details-${bill.id}`}
+                                >
+                                  {info.map((item, i) => {
+                                    const Icon = item.icon;
+                                    return (
+                                      <div key={i} className="flex gap-2.5">
+                                        <Icon className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+                                        <div className="min-w-0">
+                                          <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: "rgba(255,255,255,0.25)" }}>{item.label}</p>
+                                          <p className="text-xs text-white/70 break-words whitespace-pre-wrap">{item.value}</p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : null;
+                            })()}
+
+                            <div className="flex items-center gap-3 text-[11px] text-white/30">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3" />
+                                <span>Vence dia {bill.dueDay}</span>
+                              </div>
+                              {bill.categoryName && (
+                                <div className="flex items-center gap-1.5">
+                                  <Tag className="h-3 w-3" />
+                                  <span>{bill.categoryName}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1.5">
+                                <RotateCcw className="h-3 w-3" />
+                                <span>{recLabel(bill.recurrenceType as RecurrenceType)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <DollarSign className="h-3 w-3" />
+                                <span>{isExpense ? "A Pagar" : "A Receber"}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
+                                disabled={togglePaidMutation.isPending}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                                style={{
+                                  background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
+                                  border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
+                                  color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
+                                }}
+                                data-testid={`button-toggle-paid-${bill.id}`}
+                              >
+                                {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                {paid ? "Desfazer pagamento" : "Marcar como pago"}
+                              </button>
+                              <div className="flex-1" />
+                              <button
+                                type="button"
+                                onClick={() => deleteMutation.mutate(bill.id)}
+                                disabled={deleteMutation.isPending}
+                                className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
+                                data-testid={`button-delete-bill-${bill.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" style={{ color: EXPENSE_COLOR }} />
+                              </button>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
