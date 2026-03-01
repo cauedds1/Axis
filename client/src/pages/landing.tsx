@@ -951,12 +951,34 @@ export default function Landing() {
               <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
                 Mande uma mensagem de texto ou áudio pro bot do AXIS. Ele transcreve, entende e registra tudo automaticamente. Consulte saldo, veja tarefas pendentes, crie compromissos — tudo na conversa.
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-8">
                 {["Áudio → Texto", "Registrar gastos", "Consultar saldo", "Criar tarefas", "Foto de recibo"].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: "rgba(78,205,196,0.1)", color: GREEN, border: "1px solid rgba(78,205,196,0.15)" }}>
                     {tag}
                   </span>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { cmd: "Gastei 30 no uber", result: "Transporte registrado", color: CORAL },
+                  { cmd: "Reunião amanhã 14h", result: "Evento criado", color: GOLD },
+                  { cmd: "Como tá meu saldo?", result: "R$ 3.280 disponível", color: GREEN },
+                ].map((ex, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -15 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`panel-whatsapp-example-${i}`}
+                  >
+                    <span className="text-sm text-white/50 flex-1">"{ex.cmd}"</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />
+                    <span className="text-sm font-medium flex-shrink-0" style={{ color: ex.color }}>{ex.result}</span>
+                  </motion.div>
                 ))}
               </div>
             </motion.div>
