@@ -140,30 +140,30 @@
   --opaque-button-border-intensity: 10;
   --elevate-1: rgba(0,230,255, .04);
   --elevate-2: rgba(0,230,255, .08);
-  --background: 224 55% 5%;
+  --background: 224 30% 5%;
   --foreground: 187 20% 96%;
-  --border: 218 32% 15%;
-  --card: 222 42% 7%;
+  --border: 218 20% 15%;
+  --card: 222 25% 7%;
   --card-foreground: 190 12% 93%;
-  --card-border: 218 30% 13%;
-  --sidebar: 224 55% 5%;
+  --card-border: 218 18% 13%;
+  --sidebar: 224 30% 5%;
   --sidebar-foreground: 190 12% 91%;
-  --sidebar-border: 218 28% 12%;
+  --sidebar-border: 218 18% 12%;
   --sidebar-primary: 187 100% 52%;
   --sidebar-primary-foreground: 220 40% 4%;
-  --sidebar-accent: 218 32% 12%;
+  --sidebar-accent: 218 20% 12%;
   --sidebar-accent-foreground: 190 10% 88%;
   --sidebar-ring: 187 100% 52%;
-  --popover: 222 42% 8%;
+  --popover: 222 25% 8%;
   --popover-foreground: 190 12% 91%;
-  --popover-border: 218 30% 16%;
+  --popover-border: 218 18% 16%;
   --primary: 187 100% 52%;
   --primary-foreground: 220 40% 4%;
-  --secondary: 218 28% 15%;
+  --secondary: 218 18% 15%;
   --secondary-foreground: 190 10% 82%;
-  --muted: 218 30% 11%;
+  --muted: 218 18% 11%;
   --muted-foreground: 210 14% 54%;
-  --accent: 218 32% 13%;
+  --accent: 218 20% 13%;
   --accent-foreground: 190 10% 84%;
   --destructive: 0 75% 42%;
   --destructive-foreground: 0 0% 98%;
@@ -260,7 +260,7 @@
 /* Ambient background breathing */
 .high body {
   position: relative;
-  background-color: hsl(224, 55%, 5%);
+  background-color: hsl(224, 30%, 5%);
 }
 .high body::before {
   content: "";
@@ -269,9 +269,9 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 70% 55% at 10% 10%, rgba(0,230,255,0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 88% 82%, rgba(255,107,71,0.07) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 45% at 55% 90%, rgba(167,139,250,0.06) 0%, transparent 50%);
+    radial-gradient(ellipse 70% 55% at 10% 10%, rgba(0,230,255,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 88% 82%, rgba(255,107,71,0.035) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 45% at 55% 90%, rgba(167,139,250,0.03) 0%, transparent 50%);
   animation: high-bg-breathe 8s ease-in-out infinite, high-orb-drift-a 14s ease-in-out infinite;
 }
 
@@ -282,9 +282,9 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 55% 50% at 80% 18%, rgba(30,80,220,0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 45% 40% at 20% 75%, rgba(90,40,200,0.07) 0%, transparent 50%),
-    radial-gradient(ellipse 35% 35% at 50% 45%, rgba(0,180,255,0.04) 0%, transparent 45%);
+    radial-gradient(ellipse 55% 50% at 80% 18%, rgba(30,80,220,0.045) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 40% at 20% 75%, rgba(90,40,200,0.035) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 35% at 50% 45%, rgba(0,180,255,0.02) 0%, transparent 45%);
   animation: high-bg-breathe 11s ease-in-out infinite reverse, high-orb-drift-b 18s ease-in-out infinite;
 }
 
