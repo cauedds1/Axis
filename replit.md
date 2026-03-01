@@ -84,6 +84,7 @@ shared/
 - **Env vars obrigatórias**: `DATABASE_URL`, `SESSION_SECRET`
 - **Env vars opcionais**: `OPENAI_API_KEY`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `APP_URL`, `ADMIN_EMAIL`
 - **Admin control**: apenas a conta com email = `ADMIN_EMAIL` pode conectar/desconectar/resetar o WhatsApp Bot; `isAdminUser()` helper em `server/routes.ts`; endpoint `GET /api/auth/is-admin`; frontend esconde botões de controle para não-admins
+- **WhatsApp auto-start**: só inicializa automaticamente em `NODE_ENV === "production"` (Railway); no Replit dev não auto-inicia para evitar conflito de sessão com o Railway (ambos usam o mesmo PostgreSQL)
 - **Build/Start**: `npm run build` (Vite + esbuild → `dist/`) → `npm run start` (`drizzle-kit push --force && node dist/index.cjs`)
 
 ## Email Alert System

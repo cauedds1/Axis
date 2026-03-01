@@ -119,9 +119,11 @@ app.use((req, res, next) => {
         runPeriodicAlertsForAll().catch(() => {});
       }, 30_000);
 
-      whatsappManager.hasSessionAsync().then(has => {
-        if (has) whatsappManager.initialize().catch(() => {});
-      });
+      if (process.env.NODE_ENV === "production") {
+        whatsappManager.hasSessionAsync().then(has => {
+          if (has) whatsappManager.initialize().catch(() => {});
+        });
+      }
 
       setInterval(() => {
         runPeriodicAlertsForAll().catch(() => {});
