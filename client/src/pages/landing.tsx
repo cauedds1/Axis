@@ -769,11 +769,6 @@ export default function Landing() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-6"
-                style={{ background: "rgba(255,107,107,0.08)", borderColor: "rgba(255,107,107,0.2)" }}>
-                <Zap className="w-3.5 h-3.5" style={{ color: CORAL }} />
-                <span className="text-xs font-medium" style={{ color: CORAL }}>Seu assistente de vida com IA</span>
-              </div>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-hero-title">
                 Organize{" "}
                 <span className="landing-gradient-text">sua vida.</span>
