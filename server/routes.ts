@@ -35,8 +35,10 @@ const DISCIPLINE_POINTS = {
   TASK_LOW:            3,   // tarefa baixa prioridade concluída
   HABIT_CHECK:         2,   // hábito diário marcado como feito
   TASK_OVERDUE:       -4,   // tarefa em atraso detectada
-  SPENDING_LEVE:      -2,   // gastos com besteiras leves (10-20% da renda)
-  SPENDING_MODERADO:  -4,   // gastos com besteiras moderados (20-35% da renda)
+  SPENDING_OTIMO:     +4,   // finanças excelentes: gastos supérfluos < 5% da renda
+  SPENDING_BOM:       +2,   // finanças boas: gastos supérfluos 5-10% da renda
+  SPENDING_LEVE:      -2,   // gastos com besteiras leves (15-25% da renda)
+  SPENDING_MODERADO:  -4,   // gastos com besteiras moderados (25-35% da renda)
   SPENDING_GRAVE:     -6,   // gastos com besteiras graves (>35% da renda)
 } as const;
 const DISCIPLINE_THRESHOLD = 8; // pontos para subir/descer 1 nível
@@ -132,10 +134,16 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       monthlyIncome
     );
 
-    if (result.verdict === "neutro" || result.penalty === 0) return;
+    if (result.penalty === 0) return;
 
-    const categoryList = result.badCategories.slice(0, 3).join(", ") || "gastos desnecessários";
-    const reason = `💸 Gastos imprudentes detectados (${result.badPercentage}% da renda): ${categoryList} — ${result.penalty} pts`;
+    let reason: string;
+    if (result.penalty > 0) {
+      const emoji = result.verdict === "ótimo" ? "💰" : "✅";
+      reason = `${emoji} Finanças bem geridas — gastos controlados (${result.message || result.verdict}) — +${result.penalty} pts`;
+    } else {
+      const categoryList = result.badCategories.slice(0, 3).join(", ") || "gastos desnecessários";
+      reason = `💸 Gastos imprudentes detectados (${result.badPercentage}% da renda): ${categoryList} — ${result.penalty} pts`;
+    }
     await adjustDisciplinePoints(userId, result.penalty, reason);
   } catch {
     // silently fail

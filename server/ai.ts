@@ -836,17 +836,22 @@ Categorias problemáticas: fast food, delivery de comida (iFood/UberEats/Rappi),
 
 Retorne um JSON com:
 {
-  "badCategories": ["lista das categorias/itens problemáticos encontrados"],
+  "badCategories": ["lista das categorias/itens problemáticos encontrados, vazia se não houver"],
   "badAmount": <total gasto em categorias problemáticas como número>,
-  "verdict": "leve" | "moderado" | "grave" | "neutro",
+  "verdict": "ótimo" | "bom" | "neutro" | "leve" | "moderado" | "grave",
   "message": "<mensagem curta e direta em pt-BR sobre o padrão de gastos, máx 80 chars>"
 }
 
-Regras:
-- "neutro": gastos problemáticos < 10% da renda
-- "leve": 10-20% da renda
-- "moderado": 20-35% da renda
-- "grave": > 35% da renda
+Regras de veredito (baseadas nos gastos problemáticos como % da renda):
+- "ótimo": < 5% — gastos essenciais e controlados, dinheiro bem gerido
+- "bom": 5-10% — algumas besteiras mas dentro do razoável
+- "neutro": 10-15% — nível aceitável, mas atenção
+- "leve": 15-25% — excesso leve de gastos supérfluos
+- "moderado": 25-35% — padrão preocupante de gastos
+- "grave": > 35% — gastos descontrolados
+
+Também considere: se total de gastos < 70% da renda (boa poupança) tende a "ótimo" ou "bom".
+Se total de gastos > 100% da renda (gastou mais do que ganha) penalize um nível a mais.
 
 Retorne APENAS o JSON, sem markdown.`;
 
@@ -865,9 +870,12 @@ Retorne APENAS o JSON, sem markdown.`;
     const verdict = parsed.verdict ?? "neutro";
 
     let penalty = 0;
-    if (verdict === "leve") penalty = -2;
+    if (verdict === "ótimo")    penalty = +4;
+    else if (verdict === "bom") penalty = +2;
+    else if (verdict === "neutro") penalty = 0;
+    else if (verdict === "leve") penalty = -2;
     else if (verdict === "moderado") penalty = -4;
-    else if (verdict === "grave") penalty = -6;
+    else if (verdict === "grave")    penalty = -6;
 
     return {
       penalty,
