@@ -14,6 +14,9 @@ import type { IntentResult } from "./ai";
 import { log } from "./index";
 import * as fs from "fs";
 import * as path from "path";
+import { db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -271,9 +274,18 @@ class WhatsAppManager {
     const base64 = buffer.toString("base64");
     const dataUrl = `data:${mimetype};base64,${base64}`;
 
+    // Fetch user's full name so the AI can detect who is the sender/receiver
+    let userName: string | undefined;
+    try {
+      const [userRow] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, userId));
+      if (userRow) {
+        userName = [userRow.firstName, userRow.lastName].filter(Boolean).join(" ");
+      }
+    } catch {}
+
     let receipt: any;
     try {
-      receipt = await processReceiptPhoto(dataUrl, userId);
+      receipt = await processReceiptPhoto(dataUrl, userId, userName);
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise de imagem pela IA — ${aiErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente descrever o gasto em texto, por exemplo: *gastei 50 reais no almoço*");
@@ -283,6 +295,33 @@ class WhatsAppManager {
     if (!receipt || !receipt.totalAmount) {
       await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida ou descreva o gasto em texto.");
       return;
+    }
+
+    // Safety net: cross-check receiver/sender name against user's name
+    // Normalize a string: lowercase, remove accents, keep only letters
+    const normName = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").trim();
+
+    if (userName && (receipt.imageType === "pix_sent" || receipt.imageType === "pix_received")) {
+      const userNorm = normName(userName);
+      const userWords = userNorm.split(/\s+/).filter(w => w.length > 2);
+      const receiverNorm = receipt.receiverName ? normName(receipt.receiverName) : "";
+      const senderNorm = receipt.senderName ? normName(receipt.senderName) : "";
+
+      // If receiverName matches user's name but AI said pix_sent → correct to pix_received
+      const receiverIsUser = userWords.some(w => receiverNorm.includes(w));
+      // If senderName matches user's name but AI said pix_received → correct to pix_sent
+      const senderIsUser = userWords.some(w => senderNorm.includes(w));
+
+      if (receiverIsUser && receipt.imageType === "pix_sent") {
+        log(`WhatsApp: corrigindo classificação pix_sent→pix_received (receiverName="${receipt.receiverName}" bate com userName="${userName}")`, "whatsapp");
+        receipt.imageType = "pix_received";
+        receipt.transactionType = "income";
+      } else if (senderIsUser && receipt.imageType === "pix_received") {
+        log(`WhatsApp: corrigindo classificação pix_received→pix_sent (senderName="${receipt.senderName}" bate com userName="${userName}")`, "whatsapp");
+        receipt.imageType = "pix_sent";
+        receipt.transactionType = "expense";
+      }
     }
 
     const amount = Number(receipt.totalAmount);

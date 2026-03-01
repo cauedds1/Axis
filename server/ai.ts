@@ -115,9 +115,17 @@ REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
   return { intent: parsed.intent, data: parsed, rawText: text };
 }
 
-export async function processReceiptPhoto(imageBase64: string, userId: string): Promise<any> {
+export async function processReceiptPhoto(imageBase64: string, userId: string, userName?: string): Promise<any> {
   const openai = getOpenAIClient();
   const todayDate = new Date().toISOString().split("T")[0];
+
+  const userNameRule = userName
+    ? `\nNOME DO USUÁRIO DONO DESTA CONTA: "${userName}"
+REGRA CRÍTICA DE DIREÇÃO DO PIX:
+- Se o campo "Quem recebeu", "Destinatário", "Para", "Recebedor" ou similar contiver o nome do usuário (ou parte dele) → classifique como "pix_received" (transactionType: "income"), independente do que diz o cabeçalho.
+- Se o campo "Quem pagou", "Remetente", "De", "Pagador" ou similar contiver o nome do usuário → classifique como "pix_sent" (transactionType: "expense").
+- O cabeçalho "Pix enviado" pode estar na perspectiva de quem ENVIOU o comprovante, não necessariamente do dono da conta.`
+    : "";
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -128,29 +136,29 @@ export async function processReceiptPhoto(imageBase64: string, userId: string): 
         content: `Você é o AXIS, um assistente financeiro. Analise esta imagem e retorne um JSON com os dados financeiros extraídos — pode ser uma nota fiscal física, cupom fiscal ou comprovante digital (Pix, TED, DOC, transferência bancária, boleto pago).
 
 DATA DE HOJE: ${todayDate}
+${userNameRule}
 
 PRIMEIRO identifique o tipo da imagem em "imageType":
 - "receipt": nota fiscal, cupom fiscal, ticket de compra
-- "pix_sent": comprovante de Pix ENVIADO, transferência enviada, pagamento enviado
-- "pix_received": comprovante de Pix RECEBIDO, transferência recebida
+- "pix_sent": comprovante de Pix ENVIADO pelo usuário, pagamento feito pelo usuário
+- "pix_received": comprovante de Pix RECEBIDO pelo usuário, valor creditado para o usuário
 - "unknown": não é possível identificar
 
-DICAS PARA IDENTIFICAR PIX:
+DICAS PARA IDENTIFICAR PIX (quando não há nome do usuário disponível):
 - "Pix enviado", "Você enviou", "Transferência realizada", "Pagamento realizado", "Debitado" → pix_sent
 - "Pix recebido", "Você recebeu", "Transferência recebida", "Creditado" → pix_received
-- Se houver nome do pagador/recebedor e valor, identifique pela direção do fluxo
 
 EXTRAIA o seguinte JSON:
 {
   "imageType": "receipt" | "pix_sent" | "pix_received" | "unknown",
   "transactionType": "expense" (se receipt ou pix_sent) | "income" (se pix_received),
-  "senderName": "nome COMPLETO de quem ENVIOU o dinheiro (para pix_received: quem pagou; para pix_sent: quem pagou, ou seja, o dono da conta)",
-  "receiverName": "nome COMPLETO de quem RECEBEU o dinheiro (para pix_sent: destinatário; para pix_received: dono da conta)",
+  "senderName": "nome COMPLETO de quem ENVIOU o dinheiro (pagador)",
+  "receiverName": "nome COMPLETO de quem RECEBEU o dinheiro (destinatário)",
   "establishment": "nome do estabelecimento (para receipts) ou nome da outra parte na transação Pix",
   "description": "descrição curta e clara do que foi pago/recebido",
   "location": "endereço/cidade se visível, ou null",
   "date": "YYYY-MM-DD (data da transação, não de hoje)",
-  "time": "HH:MM (horário da transação no formato 24h, ou null se não visível)",
+  "time": "HH:MM (horário da transação no formato 24h — ex: '10h23' → '10:23', ou null se não visível)",
   "items": [{ "description": "item", "amount": número }],
   "totalAmount": número (valor total da transação),
   "categoryName": "categoria: alimentação | transporte | lazer | saúde | moradia | educação | trabalho | transferência | outros",
@@ -159,10 +167,9 @@ EXTRAIA o seguinte JSON:
 
 REGRAS:
 - Para Pix: categoryName = "transferência" a menos que haja pista clara do motivo (ex: "iFood" → alimentação)
-- Para pix_received: senderName = quem enviou (o pagador), receiverName = dono da conta (quem recebeu)
-- Para pix_sent: senderName = dono da conta (quem enviou), receiverName = destinatário (quem recebeu)
+- senderName = nome de quem PAGOU, receiverName = nome de quem RECEBEU (sempre, independente do tipo)
 - Para receipt: establishment = nome do estabelecimento/loja
-- Sempre extraia o horário se estiver visível (ex: "10h23" → "10:23", "14:05" → "14:05")
+- Sempre extraia o horário se estiver visível
 - Se não conseguir ler algo, coloque null. Nunca invente dados.
 - Se a imagem não for financeira, retorne totalAmount: null`
       },
