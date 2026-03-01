@@ -1,0 +1,82 @@
+You reached the start of the range
+Feb 19, 2026, 7:35 PM
+Starting Container
+> rest-express@1.0.0 start
+> NODE_ENV=production node dist/index.cjs
+npm warn config production Use `--omit=dev` instead.
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Seed error: error: relation "meetings" does not exist
+    at async /app/dist/index.cjs:74:28668
+    at /app/dist/index.cjs:74:13330
+    at async BX (/app/dist/index.cjs:82:73477)
+    at async /app/dist/index.cjs:382:22492 {
+  length: 107,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '22',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+10:37:23 PM [express] serving on port 5000
+10:37:37 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+Register error: error: relation "users" does not exist
+    at /app/dist/index.cjs:74:13330
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:74:28668
+    at async bb.getUserByEmail (/app/dist/index.cjs:82:79005)
+    at async /app/dist/index.cjs:82:79858 {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '115',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+10:51:03 PM [express] POST /api/auth/register 500 in 83ms :: {"message":"Erro ao criar conta"}
+Register error: error: relation "users" does not exist
+    at /app/dist/index.cjs:74:13330
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async /app/dist/index.cjs:74:28668
+    at async bb.getUserByEmail (/app/dist/index.cjs:82:79005)
+    at async /app/dist/index.cjs:82:79858 {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '115',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+10:51:09 PM [express] POST /api/auth/register 500 in 84ms :: {"message":"Erro ao criar conta"}

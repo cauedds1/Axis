@@ -1,0 +1,202 @@
+Objetivo
+Reformular completamente o sistema VoiceCRM, criando o AXIS — um assistente de vida pessoal por voz. Nova identidade visual, nova landing page, novo onboarding conversacional, novo dashboard e novos módulos (finanças, agenda, tarefas, hábitos, chatbot). Aproveitar apenas o esqueleto do backend: auth, banco de dados, infraestrutura de áudio e serviço de IA.
+
+Decisões fechadas
+Nome: AXIS
+Multi-tenant / SaaS
+Agenda: calendário próprio
+Finanças: gastos + receitas + metas
+Notificações: push + e-mail (SendGrid) + dentro do app
+Todos os inputs de voz têm equivalente em texto
+Dois temas: Slim e High
+Filosofia: simples na superfície, poderoso por baixo
+Tasks
+T001: Atualizar schema do banco de dados
+Blocked By: []
+Details:
+Manter: users, sessions
+Remover: meetings, contacts, companies, tasks, decisions, meeting_folders, meeting_attachments
+Adicionar campo onboardingCompleted (boolean) e activeModules (text array) e theme (text) e aiPersonality (text) em users
+Criar novas tabelas:
+transactions (id, userId, amount, description, category, type: income/expense, date, source: voice/text/pdf/photo, establishment, location)
+categories (id, userId, name, icon, color, type: income/expense)
+financial_goals (id, userId, title, targetAmount, currentAmount, deadline, status)
+schedule_items (id, userId, title, description, startTime, endTime, status: pending/approved/done, suggestedByAi)
+personal_tasks (id, userId, title, description, status, priority, dueDate, category)
+habits (id, userId, name, frequency, streak, lastChecked)
+habit_logs (id, habitId, userId, date, completed)
+chat_messages (id, userId, role: user/assistant, content, createdAt)
+user_context (id, userId, key, value) — memória de longo prazo do chatbot
+user_profile (id, userId, age, profession, workType, city, disciplineScore, mainGoal, feelingStatus, incomeGoal, focusArea, timeAvailable)
+Rodar npm run db:push ao final
+Arquivo: shared/schema.ts
+Acceptance: Schema atualizado sem erros, db:push executado com sucesso
+T002: Atualizar backend — storage, rotas e IA
+Blocked By: [T001]
+Details:
+Remover rotas: meetings, contacts, companies, folders, attachments
+Manter e adaptar: auth routes, audio processing
+Atualizar server/storage.ts com métodos para todas as novas tabelas
+Criar novas rotas em server/routes.ts:
+POST /api/input/process — processa input (voz ou texto), detecta intenção e roteia (gasto, agenda, tarefa, ideia)
+POST /api/finance/pdf — upload e leitura de extrato PDF via IA
+POST /api/finance/photo — upload de foto de nota fiscal via IA
+GET/POST /api/transactions — CRUD de transações
+GET/POST /api/categories — categorias
+GET/POST/PATCH /api/goals — metas financeiras
+GET/POST/PATCH /api/schedule — agenda com aprovação
+GET/POST/PATCH /api/tasks — tarefas pessoais
+GET/POST/PATCH /api/habits — hábitos e streaks
+POST /api/habits/:id/check — check diário de hábito
+POST /api/chat — chatbot com contexto completo do usuário
+GET /api/dashboard — dados consolidados
+POST /api/onboarding — salvar perfil do onboarding
+Atualizar server/ai.ts para: detecção de intenção, leitura de PDF, análise de foto de nota fiscal, chatbot com contexto
+Acceptance: Todas as rotas respondendo, IA interpretando intenções corretamente
+T003: Sistema de design — temas Slim e High
+Blocked By: []
+Details:
+Criar ThemeProvider com suporte a: slim (dark minimalista) e high (dark agressivo)
+Paleta Slim: preto profundo, tipografia limpa, sem gradientes, acento branco/cinza, zero distrações
+Paleta High: preto profundo + cor de acento vibrante (ciano elétrico ou verde neon), gradientes com propósito, elementos com energia e personalidade
+Foge do "padrão IA" — sem gradiente roxo genérico, sem glassmorphism, sem ícones de ✨
+Visual que parece desenhado, não gerado
+Definir todas as variáveis CSS em client/src/index.css
+Componente de troca de tema acessível nas configurações e no onboarding
+Microinterações: feedback visual satisfatório em ações (streak batido, gasto registrado, meta atingida)
+Hierarquia tipográfica clara, espaçamento generoso, máximo 3 cliques para qualquer funcionalidade
+Acceptance: Dois temas funcionais, visual marcante e distinto, troca instantânea
+T004: Nova landing page
+Blocked By: [T003]
+Details:
+Página client/src/pages/Landing.tsx
+Identidade AXIS — nome, slogan, proposta de valor clara
+Seções: hero (impacto emocional), como funciona (voz/texto → IA → organização), módulos principais, CTA
+Design editorial/brutalismo refinado — foge do padrão IA
+Animações com framer-motion com propósito, não decorativas
+Responsivo mobile/desktop
+SEO: title, meta description, Open Graph tags
+Acceptance: Página visualmente marcante, diferente do padrão, CTA funcional
+T005: Onboarding conversacional
+Blocked By: [T003]
+Details:
+Fluxo completo em client/src/pages/Onboarding.tsx
+Uma pergunta por vez com animação suave e transição progressiva
+Barra de progresso discreta
+Qualquer pergunta pode ser pulada sem punição
+Feedback inteligente após cada resposta
+Suporte a input por voz E texto em todas as perguntas
+Estrutura em 4 camadas (8–15 perguntas no total):
+Dados básicos (nome, idade, profissão, cidade, tipo de trabalho)
+Momento atual (disciplina 1–10, maior problema, como se sente)
+Ambição (onde quer estar em 1 ano, quanto quer ganhar, qual área melhorar)
+Personalidade da IA (calmo/direto/motivador/rigoroso)
+Seleção de módulos: Finanças / Rotina / Tarefas / Hábitos / Tudo — define quais módulos ficam visíveis
+Seleção de tema: Slim ou High — com preview visual real dos dois
+Mensagens de confiança antes de perguntas sensíveis: "Seus dados ficam criptografados e são só seus."
+Diagnóstico automático ao final gerado pela IA com base nas respostas
+Salvar tudo em user_profile e atualizar activeModules e theme em users
+Acceptance: Fluxo completo funcionando, perfil salvo, tema e módulos aplicados ao entrar no dashboard
+T006: Nova página de autenticação
+Blocked By: [T003]
+Details:
+Substituir client/src/pages/AuthPage.tsx
+Login e cadastro com design alinhado ao AXIS
+Após cadastro, redirecionar para onboarding
+Após login (com onboarding já feito), redirecionar para dashboard
+Aproveitar rotas de auth existentes do backend
+Acceptance: Login e cadastro funcionando com novo visual, fluxo de redirecionamento correto
+T007: Nova sidebar e layout autenticado
+Blocked By: [T003]
+Details:
+Reconstruir client/src/components/AppSidebar.tsx
+Exibir apenas os módulos que o usuário ativou no onboarding
+Navegação principal (máximo 5 itens): Início, + módulos ativos, Chat
+Botão de captura por voz/texto sempre visível como ação principal
+Score de disciplina e streak visíveis no perfil do usuário na sidebar
+Responsivo: colapsável no mobile
+Acceptance: Navegação mostrando apenas módulos ativos, visual alinhado ao tema
+T008: Dashboard principal
+Blocked By: [T002, T007]
+Details:
+Página client/src/pages/Dashboard.tsx
+Visão de 30 segundos — só o que importa hoje:
+Saudação personalizada por horário (bom dia/tarde/noite + nome)
+Resumo financeiro do mês (só se módulo ativo)
+Próximos compromissos (só se módulo ativo)
+Tarefas pendentes (só se módulo ativo)
+Hábitos do dia (só se módulo ativo)
+Score de disciplina
+Nunca dois alertas ao mesmo tempo — sistema prioriza
+Botão central de captura por voz/texto
+Uma mensagem do assistente baseada no contexto do usuário
+Acceptance: Dashboard carregando dados reais, visual limpo, adaptado aos módulos ativos
+T009: Módulo de finanças
+Blocked By: [T002, T007]
+Details:
+Página client/src/pages/Finance.tsx
+Listagem de transações com filtros (período, categoria, tipo)
+Upload de extrato PDF com prévia do resultado antes de confirmar
+Foto de nota fiscal com prévia (estabelecimento, data, valor, categoria, localização)
+Input manual por voz ou texto
+Gráficos: gastos por categoria, evolução mensal, receitas vs despesas (recharts)
+Metas financeiras: criar, acompanhar progresso, cálculo automático de quanto guardar por mês
+Alertas preditivos
+Acceptance: CRUD de transações funcionando, PDF e foto processados pela IA, metas com cálculo
+T010: Módulo de agenda
+Blocked By: [T002, T007]
+Details:
+Página client/src/pages/Agenda.tsx
+Calendário próprio com visualização semanal e mensal
+IA sugere horário livre após input por voz ou texto — usuário aprova/rejeita/edita
+Lista de sugestões pendentes de aprovação
+Criação manual de compromissos
+Indicação visual de horários livres vs ocupados
+Acceptance: Agenda funcionando com fluxo completo de sugestão e aprovação
+T011: Módulo de tarefas e hábitos
+Blocked By: [T002, T007]
+Details:
+Página client/src/pages/Tasks.tsx
+Tarefas: lista com status, prioridade e prazo — criação por voz ou texto
+Hábitos: lista com streak, check diário e histórico
+Score de disciplina calculado e visível
+Acceptance: CRUD de tarefas e hábitos funcionando, streak atualizado diariamente
+T012: Chatbot com contexto completo
+Blocked By: [T002, T007]
+Details:
+Página client/src/pages/Chat.tsx
+Interface de chat limpa com histórico de mensagens
+Input por texto e por voz no mesmo campo
+IA recebe como contexto todos os dados do usuário antes de responder
+Respostas personalizadas com dados reais: "Você gastou R$340 com lazer esse mês"
+Ações pelo chat: registrar gastos, cancelar compromissos, adicionar tarefas
+Memória de longo prazo via user_context
+Acceptance: Chat respondendo com dados reais, ações executadas corretamente
+T013: Captura por voz/texto global
+Blocked By: [T002, T007]
+Details:
+Componente flutuante client/src/components/CaptureButton.tsx
+Sempre acessível em qualquer página
+Botão de microfone + campo de texto lado a lado — sempre visíveis
+IA detecta intenção e roteia: gasto → finanças, compromisso → agenda, tarefa → tarefas
+Feedback visual do resultado após processamento
+Aproveitar lógica de gravação do projeto atual (Web Audio API, waveform)
+Acceptance: Captura funcionando em qualquer tela, roteamento correto por intenção nos dois modos (voz e texto)
+T014: PWA com service worker real
+Blocked By: [T003]
+Details:
+Criar service worker real com cache offline completo
+Atualizar client/public/manifest.json com nome AXIS, novas cores e ícones
+Novos ícones 192px e 512px com identidade do AXIS
+Infraestrutura de push notifications com web-push
+Reaproveitar client/src/lib/offline-audio.ts com adaptações para novos endpoints
+Splash screen recriada com identidade AXIS
+Acceptance: App instalável, funciona offline, push notifications configuradas
+T015: Atualizar App.tsx, rotas e replit.md
+Blocked By: [T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014]
+Details:
+Atualizar client/src/App.tsx com todas as novas rotas
+Remover rotas antigas (meetings, contacts, etc.)
+Garantir proteção de rotas autenticadas e redirecionamento de onboarding
+Atualizar replit.md com nome, visão, módulos, stack, decisões de design e arquitetura
+Acceptance: Navegação completa sem erros, replit.md atualizado
