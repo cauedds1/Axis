@@ -981,6 +981,29 @@ export default function Landing() {
                   </motion.div>
                 ))}
               </div>
+
+              <div className="grid grid-cols-3 gap-3 mt-6">
+                {[
+                  { value: 24, suffix: "h", label: "Disponível", color: GREEN },
+                  { value: 2, suffix: "s", prefix: "< ", label: "Resposta", color: GOLD },
+                  { value: 0, suffix: "", label: "Downloads", color: LAVANDA },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
+                    className="text-center rounded-lg py-3 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`panel-whatsapp-stat-${i}`}
+                  >
+                    <div className="text-2xl font-bold tabular-nums" style={{ color: stat.color }}>
+                      <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix || ""} />
+                    </div>
+                    <p className="text-[11px] text-white/35 mt-0.5">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
 
             <motion.div
