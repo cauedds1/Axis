@@ -162,6 +162,7 @@ class WhatsAppManager {
     });
 
     this.sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
+      log(`WhatsApp raw event type=${type} msgs=${messages.length}`, "whatsapp");
       if (type !== "notify" && type !== "append") return;
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
