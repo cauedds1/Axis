@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export default function Finance() {
   const [pdfPreview, setPdfPreview] = useState<any>(null);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -322,7 +323,7 @@ export default function Finance() {
                   const pmLabel = paymentLabel((tx as any).paymentMethod);
                   const PMIcon = pmLabel ? (PM_ICONS[(tx as any).paymentMethod] || Wallet) : null;
                   return (
-                    <div key={tx.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group" data-testid={`row-transaction-${tx.id}`}>
+                    <div key={tx.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 group cursor-pointer" onClick={() => setSelectedTx(tx)} data-testid={`row-transaction-${tx.id}`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`h-2 w-2 rounded-full flex-shrink-0 ${tx.type === "income" ? "bg-green-500" : "bg-destructive"}`} />
                         <div className="min-w-0">
@@ -346,7 +347,7 @@ export default function Finance() {
                         <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
                           {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
                         </span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => deleteTxMutation.mutate(tx.id)} data-testid={`button-delete-tx-${tx.id}`}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteTxMutation.mutate(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
                           <Trash2 className="h-3 w-3 text-destructive" />
                         </Button>
                       </div>
@@ -545,6 +546,130 @@ export default function Finance() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Transaction Detail Dialog */}
+      {selectedTx && (() => {
+        const tx = selectedTx as any;
+        const txDate = tx.date ? new Date(tx.date) : null;
+        const hasTime = txDate && (txDate.getHours() !== 0 || txDate.getMinutes() !== 0);
+        const dateStr = txDate
+          ? txDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+          : null;
+        const timeStr = hasTime
+          ? txDate!.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+          : null;
+        const pmLabel = paymentLabel(tx.paymentMethod);
+        const PMIcon = pmLabel ? (PM_ICONS[tx.paymentMethod] || Wallet) : null;
+        const SOURCE_LABELS: Record<string, { label: string; Icon: any }> = {
+          manual: { label: "Cadastro manual", Icon: Hash },
+          voice: { label: "Voz", Icon: Mic },
+          text: { label: "Texto", Icon: FileText },
+          photo: { label: "Foto / comprovante", Icon: Image },
+          whatsapp: { label: "WhatsApp", Icon: MessageCircle },
+          pdf: { label: "PDF / extrato", Icon: FileText },
+        };
+        const srcInfo = SOURCE_LABELS[tx.source] ?? null;
+        const isIncome = tx.type === "income";
+
+        return (
+          <Dialog open onOpenChange={() => setSelectedTx(null)}>
+            <DialogContent className="max-w-sm" data-testid="dialog-tx-detail">
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold leading-snug pr-6">{tx.description}</DialogTitle>
+              </DialogHeader>
+
+              {/* Amount */}
+              <div className={`text-3xl font-bold ${isIncome ? "text-green-500" : "text-destructive"}`}>
+                {isIncome ? "+" : "-"}R$ {fmtBRL(tx.amount)}
+              </div>
+
+              <div className="space-y-3 pt-1">
+                {/* Type */}
+                <div className="flex items-center gap-2.5 text-sm">
+                  {isIncome
+                    ? <ArrowDownCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    : <ArrowUpCircle className="h-4 w-4 text-destructive shrink-0" />}
+                  <span className="text-muted-foreground">Tipo</span>
+                  <span className="ml-auto font-medium">{isIncome ? "Receita" : "Despesa"}</span>
+                </div>
+
+                {/* Category */}
+                {tx.categoryName && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">Categoria</span>
+                    <span className="ml-auto font-medium capitalize">{tx.categoryName}</span>
+                  </div>
+                )}
+
+                {/* Establishment */}
+                {tx.establishment && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Store className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">{isIncome ? "Remetente" : "Destinatário"}</span>
+                    <span className="ml-auto font-medium text-right max-w-[55%] leading-tight">{tx.establishment}</span>
+                  </div>
+                )}
+
+                {/* Date */}
+                {dateStr && (
+                  <div className="flex items-start gap-2.5 text-sm">
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground">Data</span>
+                    <span className="ml-auto font-medium text-right max-w-[60%] leading-tight capitalize">{dateStr}</span>
+                  </div>
+                )}
+
+                {/* Time */}
+                {timeStr && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">Horário</span>
+                    <span className="ml-auto font-medium">{timeStr}</span>
+                  </div>
+                )}
+
+                {/* Payment method */}
+                {pmLabel && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    {PMIcon ? <PMIcon className="h-4 w-4 text-muted-foreground shrink-0" /> : <Wallet className="h-4 w-4 text-muted-foreground shrink-0" />}
+                    <span className="text-muted-foreground">Pagamento</span>
+                    <span className="ml-auto font-medium">{pmLabel}</span>
+                  </div>
+                )}
+
+                {/* Location */}
+                {tx.location && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">Local</span>
+                    <span className="ml-auto font-medium text-right max-w-[55%] leading-tight">{tx.location}</span>
+                  </div>
+                )}
+
+                {/* Source */}
+                {srcInfo && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <srcInfo.Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">Origem</span>
+                    <span className="ml-auto font-medium">{srcInfo.label}</span>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => { deleteTxMutation.mutate(tx.id); setSelectedTx(null); }}
+                data-testid="button-delete-tx-detail"
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Excluir transação
+              </Button>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
