@@ -5,10 +5,9 @@ import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 function getOpenAIClient(): OpenAI {
-  return new OpenAI({
-    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  });
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
+  return new OpenAI({ apiKey, baseURL });
 }
 
 export interface IntentResult {
