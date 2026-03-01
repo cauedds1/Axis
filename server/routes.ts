@@ -2291,9 +2291,18 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       if (whatsappManager.getStatus() === "connected") {
         return res.json({ status: "connected", phone: whatsappManager.getConnectedPhone() });
       }
-      whatsappManager.initialize().catch(err => console.error("WhatsApp init error:", err));
-      res.json({ status: "initializing" });
+      log(`WhatsApp connect requested — current status: ${whatsappManager.getStatus()}`, "whatsapp");
+      whatsappManager.resetRetryCount();
+      whatsappManager.initialize().catch(err => {
+        log(`WhatsApp init error: ${err?.message || err}`, "whatsapp");
+        console.error("WhatsApp init error:", err);
+      });
+      await new Promise(r => setTimeout(r, 2000));
+      const newStatus = whatsappManager.getStatus();
+      log(`WhatsApp connect result — new status: ${newStatus}, hasQR: ${!!whatsappManager.getQrCode()}`, "whatsapp");
+      res.json({ status: newStatus, qrCode: whatsappManager.getQrCode() });
     } catch (error: any) {
+      log(`WhatsApp connect error: ${error.message}`, "whatsapp");
       res.status(500).json({ message: error.message });
     }
   });

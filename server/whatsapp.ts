@@ -116,6 +116,7 @@ class WhatsAppManager {
 
   getStatus(): WhatsAppStatus { return this.status; }
   getQrCode(): string | null { return this.qrCode; }
+  resetRetryCount(): void { this.retryCount = 0; }
   getConnectedPhone(): string | null { return this.connectedPhone; }
 
   async resolveJidToStoredPhone(jid: string): Promise<string> {
@@ -174,6 +175,7 @@ class WhatsAppManager {
 
   async initialize(): Promise<void> {
     if (this.status === "connected") return;
+    log(`WhatsApp initialize() called — retryCount: ${this.retryCount}`, "whatsapp");
 
     let state: any;
     let saveCreds: () => Promise<void>;
