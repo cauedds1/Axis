@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare, Pencil } from "lucide-react";
+import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare, Pencil, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -400,9 +400,13 @@ export default function Tasks() {
   const [justifyText, setJustifyText] = useState("");
   const [justifyResult, setJustifyResult] = useState<{ verdict: string; feedback: string; score: number; creditPoints: number; netPenalty: number } | null>(null);
   const [detailTask, setDetailTask] = useState<PersonalTask | null>(null);
+  const [editTask, setEditTask] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: "", description: "", priority: "medium" as string, dueDate: "", category: "" });
   const [detailHabit, setDetailHabit] = useState<Habit | null>(null);
   const [editHabit, setEditHabit] = useState(false);
   const [habitForm, setHabitForm] = useState({ name: "", frequency: "daily" as "daily" | "weekly", emoji: "⚡", targetTime: "", description: "", weekdays: [] as number[] });
+  const [manageTasks, setManageTasks] = useState(false);
+  const [manageHabits, setManageHabits] = useState(false);
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
@@ -447,6 +451,33 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
   });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiRequest("PATCH", `/api/tasks/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setEditTask(false);
+      setDetailTask(null);
+      toast({ title: "Tarefa atualizada" });
+    },
+    onError: () => toast({ title: "Erro ao atualizar tarefa", variant: "destructive" }),
+  });
+
+  function openTaskForEdit(task: PersonalTask) {
+    setDetailTask(task);
+    setEditTask(true);
+    setTaskForm({
+      title: task.title,
+      description: task.description || "",
+      priority: task.priority,
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "",
+      category: task.category || "",
+    });
+  }
 
   const updateHabitMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
@@ -591,9 +622,14 @@ export default function Tasks() {
             <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <CheckSquare className="h-4 w-4" /> Tarefas ({pending.length} pendentes)
             </h2>
-            <Button size="sm" variant="outline" onClick={() => setShowAddTask(true)} data-testid="button-add-task">
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => setManageTasks(true)} data-testid="button-manage-tasks">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddTask(true)} data-testid="button-add-task">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -653,9 +689,14 @@ export default function Tasks() {
             <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
               <Flame className="h-4 w-4" /> Compromissos
             </h2>
-            <Button size="sm" variant="outline" onClick={() => setShowAddHabit(true)} data-testid="button-add-habit">
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={() => setManageHabits(true)} data-testid="button-manage-habits">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddHabit(true)} data-testid="button-add-habit">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -738,6 +779,118 @@ export default function Tasks() {
 
       <TaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} accent={accent} />
       <HabitSheet open={showAddHabit} onClose={() => setShowAddHabit(false)} accent={accent} />
+
+      <Sheet open={manageTasks} onOpenChange={v => { if (!v) setManageTasks(false); }}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[460px] p-0 flex flex-col border-0"
+          style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <SheetHeader title="Gerenciar tarefas" onClose={() => setManageTasks(false)} />
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+            {tasks.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa</p>}
+            {tasks.map((task) => {
+              const due = formatDueDate(task.dueDate);
+              return (
+                <div
+                  key={task.id}
+                  className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  onClick={() => { setManageTasks(false); openTaskForEdit(task); }}
+                  data-testid={`manage-task-${task.id}`}
+                >
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-sm font-medium truncate">{task.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: priorityColor[task.priority] }} />
+                      <span className="text-[10px] text-muted-foreground capitalize">
+                        {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Média" : "Baixa"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground capitalize">{task.status === "completed" ? "Concluída" : "Pendente"}</span>
+                      {due && (
+                        <span className="text-[10px] text-white/30 flex items-center gap-0.5">
+                          <Clock className="h-2.5 w-2.5" />{due}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Pencil className="h-3.5 w-3.5 text-white/30" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => { e.stopPropagation(); deleteTaskMutation.mutate(task.id); }}
+                      data-testid={`manage-delete-task-${task.id}`}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={manageHabits} onOpenChange={v => { if (!v) setManageHabits(false); }}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[460px] p-0 flex flex-col border-0"
+          style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <SheetHeader title="Gerenciar compromissos" onClose={() => setManageHabits(false)} />
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+            {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum compromisso</p>}
+            {habits.map((habit) => {
+              const habitEmoji = (habit as any).emoji || "⚡";
+              const habitTime = (habit as any).targetTime as string | null;
+              let wp: number[] = [];
+              if ((habit as any).weekdays) { try { wp = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {} }
+              const dayLabel = habit.frequency === "weekly" && wp.length > 0 ? wp.map(d => DAYS[d]).join(", ") : "Diário";
+              return (
+                <div
+                  key={habit.id}
+                  className="rounded-xl p-3.5 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  onClick={() => { setManageHabits(false); openHabitDetail(habit); }}
+                  data-testid={`manage-habit-${habit.id}`}
+                >
+                  <div className="flex items-center gap-3 min-w-0 mr-3">
+                    <span className="text-lg shrink-0">{habitEmoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{habit.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Flame className="h-3 w-3" /> {habit.streak} dias
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
+                        {habitTime && (
+                          <span className="text-[10px] text-white/30 flex items-center gap-0.5">
+                            <Clock className="h-2.5 w-2.5" />{habitTime}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Pencil className="h-3.5 w-3.5 text-white/30" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => { e.stopPropagation(); deleteHabitMutation.mutate(habit.id); }}
+                      data-testid={`manage-delete-habit-${habit.id}`}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={!!detailHabit} onOpenChange={v => { if (!v) { setDetailHabit(null); setEditHabit(false); } }}>
         <DialogContent className="max-w-md border-0 p-0 max-h-[85vh] overflow-y-auto" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
