@@ -482,7 +482,7 @@ export function BillsTab() {
         <div>
           <h2 className="text-lg font-bold text-white">Contas a Pagar / Receber</h2>
           <p className="text-xs text-white/35 mt-0.5">
-            {new Date().toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase())}
+            {getPeriodLabel(filterPeriod, periodMonths)}
           </p>
         </div>
         <button
@@ -495,14 +495,65 @@ export function BillsTab() {
         </button>
       </div>
 
+      {/* Period filter */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          {PERIOD_OPTS.map(opt => {
+            const isActive = filterPeriod === opt.id;
+            return (
+              <button
+                key={opt.id}
+                data-testid={`filter-period-${opt.id}`}
+                onClick={() => {
+                  setFilterPeriod(opt.id);
+                  setShowCustomDates(opt.id === "custom");
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200"
+                style={isActive
+                  ? { background: `${accent}18`, color: accent, borderColor: `${accent}40` }
+                  : { background: "transparent", color: "rgba(255,255,255,0.35)", borderColor: "rgba(255,255,255,0.07)" }
+                }
+              >
+                <CalendarDays className="h-3 w-3" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {showCustomDates && (
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/[0.02]">
+            <span className="text-xs text-white/40 font-medium">De</span>
+            <input
+              type="date"
+              data-testid="input-bill-custom-start"
+              value={customStart}
+              onChange={e => setCustomStart(e.target.value)}
+              className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
+            />
+            <span className="text-xs text-white/40 font-medium">até</span>
+            <input
+              type="date"
+              data-testid="input-bill-custom-end"
+              value={customEnd}
+              onChange={e => setCustomEnd(e.target.value)}
+              className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SummaryCard label="A Pagar" value={`R$ ${totalPagar.toFixed(2)}`} sub={`${activeBills.filter(b => b.type === "expense" && !isBillPaidThisMonth(b)).length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
-        <SummaryCard label="A Receber" value={`R$ ${totalReceber.toFixed(2)}`} sub={`${activeBills.filter(b => b.type === "income" && !isBillPaidThisMonth(b)).length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
+        <SummaryCard label="A Pagar" value={`R$ ${totalPagar.toFixed(2)}`} sub={`${unpaidExpenses.length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
+        <SummaryCard label="A Receber" value={`R$ ${totalReceber.toFixed(2)}`} sub={`${unpaidIncomes.length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label="Saldo Previsto" value={`R$ ${saldoPrevisto.toFixed(2)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
         <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${vencidas.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={vencidas.length > 0 ? "#FF1744" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
-        <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${proximos7.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
-        <SummaryCard label="Pago este Mês" value={`R$ ${totalPagoMes.toFixed(2)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
+        {isSingleCurrentMonth ? (
+          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${proximos7.reduce((s, b) => s + b.amount, 0).toFixed(2)}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
+        ) : (
+          <SummaryCard label="Total Contas" value={`${activeBills.length}`} sub={`no período`} accent="rgba(255,255,255,0.5)" icon={Clock} />
+        )}
+        <SummaryCard label={isSingleCurrentMonth ? "Pago este Mês" : "Pago no Período"} value={`R$ ${totalPagoMes.toFixed(2)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
       </div>
 
       {/* Filters */}
