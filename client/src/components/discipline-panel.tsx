@@ -176,14 +176,15 @@ export function DisciplinePanel({
 
             {/* Como funciona — compact table */}
             <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-              <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-1.5">Como funciona</div>
-              <div className="space-y-0.5">
+              <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-2">Como funciona</div>
+
+              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Tarefas</div>
+              <div className="space-y-0.5 mb-2">
                 {[
-                  { label: "Tarefa alta prioridade concluída", pts: "+6", color: "#00E5C8" },
-                  { label: "Tarefa média prioridade concluída", pts: "+4", color: "#00E5C8" },
-                  { label: "Tarefa baixa prioridade concluída", pts: "+3", color: "#00E5C8" },
-                  { label: "Hábito diário marcado como feito",  pts: "+2", color: "#00E5C8" },
-                  { label: "Tarefa em atraso detectada",        pts: "−4", color: "#FF1744" },
+                  { label: "Alta prioridade concluída", pts: "+6", color: "#00E5C8" },
+                  { label: "Média prioridade concluída", pts: "+4", color: "#00E5C8" },
+                  { label: "Baixa prioridade concluída", pts: "+3", color: "#00E5C8" },
+                  { label: "Tarefa em atraso (+48h)", pts: "−4", color: "#FF1744" },
                 ].map(({ label: l, pts: p, color: c }) => (
                   <div key={l} className="flex items-center justify-between py-0.5">
                     <span className="text-[10px] text-white/40">{l}</span>
@@ -191,8 +192,55 @@ export function DisciplinePanel({
                   </div>
                 ))}
               </div>
+
+              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Hábitos</div>
+              <div className="space-y-0.5 mb-2">
+                {[
+                  { label: "Hábito diário marcado como feito", pts: "+2", color: "#00E5C8" },
+                ].map(({ label: l, pts: p, color: c }) => (
+                  <div key={l} className="flex items-center justify-between py-0.5">
+                    <span className="text-[10px] text-white/40">{l}</span>
+                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Gastos (análise a cada 3 dias)</div>
+              <div className="space-y-0.5 mb-2">
+                {[
+                  { label: "Gastos controlados (ótimo)", pts: "+4", color: "#00E5C8" },
+                  { label: "Gastos razoáveis (bom)", pts: "+2", color: "#00E5C8" },
+                  { label: "Gastos neutros", pts: "0", color: "rgba(255,255,255,0.3)" },
+                  { label: "Excesso leve (20-30%)", pts: "−2", color: "#FFA000" },
+                  { label: "Excesso moderado (30-40%)", pts: "−4", color: "#FF1744" },
+                  { label: "Excesso grave (>40%)", pts: "−6", color: "#FF1744" },
+                ].map(({ label: l, pts: p, color: c }) => (
+                  <div key={l} className="flex items-center justify-between py-0.5">
+                    <span className="text-[10px] text-white/40">{l}</span>
+                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-1">Justificativas (IA)</div>
+              <div className="space-y-0.5 mb-1.5">
+                {[
+                  { label: "Justificativa excelente", pts: "+3", color: "#00E5C8" },
+                  { label: "Justificativa boa", pts: "+2", color: "#00E5C8" },
+                  { label: "Justificativa aceitável", pts: "+1", color: "#00E5C8" },
+                ].map(({ label: l, pts: p, color: c }) => (
+                  <div key={l} className="flex items-center justify-between py-0.5">
+                    <span className="text-[10px] text-white/40">{l}</span>
+                    <span className="text-[10px] font-bold tabular-nums shrink-0 ml-2" style={{ color: c }}>{p} pts</span>
+                  </div>
+                ))}
+                <div className="py-0.5">
+                  <span className="text-[9px] text-white/20">Ao justificar atraso, a IA avalia e pode devolver pontos</span>
+                </div>
+              </div>
+
               <div className="pt-1.5 mt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                <span className="text-[9px] text-white/20">A cada 8 pts acumulados a disciplina sobe ou desce 1 nível</span>
+                <span className="text-[9px] text-white/20">A cada 8 pts acumulados a disciplina sobe ou desce 1 nível (máx 10, mín 1)</span>
               </div>
             </div>
 
