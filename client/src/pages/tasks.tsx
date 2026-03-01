@@ -399,6 +399,7 @@ export default function Tasks() {
   const [justifyTask, setJustifyTask] = useState<PersonalTask | null>(null);
   const [justifyText, setJustifyText] = useState("");
   const [justifyResult, setJustifyResult] = useState<{ verdict: string; feedback: string; score: number; creditPoints: number; netPenalty: number } | null>(null);
+  const [detailTask, setDetailTask] = useState<PersonalTask | null>(null);
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
@@ -564,9 +565,9 @@ export default function Tasks() {
               const due = formatDueDate(task.dueDate);
               const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
               return (
-                <div key={task.id} className="flex items-start gap-2 p-3 rounded-lg hover:bg-muted/50 group" data-testid={`row-task-${task.id}`}>
+                <div key={task.id} className="flex items-start gap-2 p-3 rounded-lg hover:bg-muted/50 group cursor-pointer" onClick={() => setDetailTask(task)} data-testid={`row-task-${task.id}`}>
                   <button
-                    onClick={() => toggleTaskMutation.mutate({ id: task.id, status: "completed" })}
+                    onClick={(e) => { e.stopPropagation(); toggleTaskMutation.mutate({ id: task.id, status: "completed" }); }}
                     className="h-5 w-5 mt-0.5 rounded border border-border flex items-center justify-center shrink-0 hover:border-primary transition-colors"
                     data-testid={`button-complete-task-${task.id}`}
                   >
@@ -585,7 +586,7 @@ export default function Tasks() {
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                     <div className="h-2 w-2 rounded-full" style={{ background: priorityColor[task.priority] }} />
-                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => deleteTaskMutation.mutate(task.id)} data-testid={`button-delete-task-${task.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteTaskMutation.mutate(task.id); }} data-testid={`button-delete-task-${task.id}`}>
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   </div>
@@ -677,6 +678,88 @@ export default function Tasks() {
 
       <TaskSheet open={showAddTask} onClose={() => setShowAddTask(false)} accent={accent} />
       <HabitSheet open={showAddHabit} onClose={() => setShowAddHabit(false)} accent={accent} />
+
+      <Dialog open={!!detailTask} onOpenChange={v => { if (!v) setDetailTask(null); }}>
+        <DialogContent className="max-w-md border-0 p-0" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
+          {detailTask && (
+            <>
+              <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4" style={{ color: accent }} />
+                    Detalhes da tarefa
+                  </DialogTitle>
+                </DialogHeader>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <div>
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Título</p>
+                  <p className="text-sm text-white leading-relaxed" data-testid="text-task-detail-title">{detailTask.title}</p>
+                </div>
+
+                {detailTask.description && (
+                  <div>
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Descrição</p>
+                    <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap" data-testid="text-task-detail-desc">{detailTask.description}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Prioridade</p>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ background: priorityColor[detailTask.priority] }} />
+                      <p className="text-sm font-medium text-white capitalize">{detailTask.priority === "high" ? "Alta" : detailTask.priority === "medium" ? "Média" : "Baixa"}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Status</p>
+                    <p className="text-sm font-medium text-white capitalize">{detailTask.status === "completed" ? "Concluída" : "Pendente"}</p>
+                  </div>
+                </div>
+
+                {detailTask.category && (
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Categoria</p>
+                    <p className="text-sm font-medium text-white">{detailTask.category}</p>
+                  </div>
+                )}
+
+                {detailTask.dueDate && (
+                  <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Prazo</p>
+                    <p className="text-sm font-medium text-white flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-white/40" />
+                      {formatDueDate(detailTask.dueDate)}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  {detailTask.status === "pending" && (
+                    <button
+                      onClick={() => { toggleTaskMutation.mutate({ id: detailTask.id, status: "completed" }); setDetailTask(null); }}
+                      className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                      style={{ background: accent, color: "#060608" }}
+                      data-testid="button-complete-task-detail"
+                    >
+                      <Check className="h-4 w-4" /> Concluir tarefa
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { deleteTaskMutation.mutate(detailTask.id); setDetailTask(null); }}
+                    className="py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                    style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+                    data-testid="button-delete-task-detail"
+                  >
+                    <Trash2 className="h-4 w-4" /> Excluir
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!justifyTask} onOpenChange={v => { if (!v) closeJustifyDialog(); }}>
         <DialogContent className="max-w-md border-0 p-0" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.09)" }}>
