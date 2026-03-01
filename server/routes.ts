@@ -301,6 +301,132 @@ export async function registerRoutes(
     }
   });
 
+  async function filterNewTxns(userId: string, txns: any[]): Promise<{ toCreate: any[]; skipped: number }> {
+    if (txns.length === 0) return { toCreate: [], skipped: 0 };
+    const dates = txns.filter(t => t.date).map((t: any) => new Date(t.date));
+    const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((d: Date) => d.getTime()))) : new Date();
+    const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map((d: Date) => d.getTime()))) : new Date();
+    minDate.setDate(minDate.getDate() - 1);
+    maxDate.setDate(maxDate.getDate() + 1);
+    const existing = await storage.getTransactions(userId, { startDate: minDate, endDate: maxDate });
+    const toCreate = txns.filter((t: any) => {
+      const tDate = t.date ? t.date.substring(0, 10) : null;
+      const tAmount = Number(t.amount);
+      const tDesc = (t.description || "").toLowerCase().trim();
+      return !existing.some((e: any) => {
+        const eDate = e.date ? new Date(e.date).toISOString().substring(0, 10) : null;
+        const eAmount = Number(e.amount);
+        const eDesc = (e.description || "").toLowerCase().trim();
+        if (Math.abs(eAmount - tAmount) > 0.01 || e.type !== t.type) return false;
+        if (tDate && eDate && tDate !== eDate) return false;
+        const tShort = tDesc.substring(0, 15);
+        const eShort = eDesc.substring(0, 15);
+        return tShort.length > 3 && eShort.length > 3 && (tDesc.includes(eShort) || eDesc.includes(tShort));
+      });
+    });
+    return { toCreate, skipped: txns.length - toCreate.length };
+  }
+
+  app.post("/api/chat/upload", isAuthenticated, upload.single("file"), async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!req.file) return res.status(400).json({ message: "Nenhum arquivo enviado" });
+      const file = req.file;
+      const isImage = file.mimetype.startsWith("image/");
+      let imported = 0;
+      let skipped = 0;
+      let botMessage = "";
+
+      if (isImage) {
+        const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        const result = await processReceiptPhoto(base64, userId);
+        if (!result.totalAmount || result.imageType === "unknown") {
+          botMessage = "🤔 Não consegui identificar transações nessa imagem. Tente uma foto mais clara do comprovante ou nota fiscal.";
+        } else {
+          const txDate = result.date ? new Date(result.date) : new Date();
+          if (result.time && result.time !== "00:00") {
+            const [h, m] = result.time.split(":").map(Number);
+            txDate.setHours(h, m, 0, 0);
+          }
+          const txType = result.transactionType === "income" ? "income" : "expense";
+          const txAmount = Number(result.totalAmount);
+          const txEstablishment = result.establishment || null;
+          const txDesc = result.items?.[0]?.description || result.receiverName || result.senderName || (txEstablishment ?? "Comprovante");
+
+          const dayStart = new Date(txDate); dayStart.setHours(0, 0, 0, 0);
+          const dayEnd = new Date(txDate); dayEnd.setHours(23, 59, 59, 999);
+          const existing = await storage.getTransactions(userId, { startDate: dayStart, endDate: dayEnd });
+          const isDuplicate = existing.some((e: any) =>
+            Math.abs(Number(e.amount) - txAmount) < 0.01 && e.type === txType
+          );
+
+          if (isDuplicate) {
+            skipped = 1;
+            botMessage = `⚠️ Essa transação parece já estar cadastrada!\n\n${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}\n📅 ${txDate.toLocaleDateString("pt-BR")}\n\nNenhuma transação foi importada.`;
+          } else {
+            const items = result.items && result.items.length > 1 ? result.items : [{ description: txDesc, amount: txAmount }];
+            await storage.createManyTransactions(items.map((item: any) => ({
+              userId,
+              amount: Number(item.amount),
+              description: item.description || txDesc,
+              categoryName: result.categoryName || "outros",
+              type: txType as "expense" | "income",
+              date: txDate,
+              source: "photo" as const,
+              establishment: txEstablishment,
+              paymentMethod: result.paymentMethod || null,
+            })));
+            imported = items.length;
+            const totalShown = items.reduce((s: number, i: any) => s + Number(i.amount), 0);
+            botMessage = `✅ ${imported === 1 ? "Comprovante importado" : `${imported} itens importados`}!\n\n${txType === "income" ? "💰" : "💸"} R$ ${totalShown.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}\n🏷️ ${result.categoryName || "outros"}\n📅 ${txDate.toLocaleDateString("pt-BR")}`;
+          }
+        }
+      } else {
+        const pdfText = file.buffer.toString("utf-8");
+        const extracted = await processPDFExtract(pdfText, userId);
+        const txns: any[] = extracted?.transactions ?? [];
+        if (txns.length === 0) {
+          botMessage = "🤔 Nenhuma transação encontrada. Verifique se o arquivo é um extrato bancário em formato TXT ou CSV.";
+        } else {
+          const { toCreate, skipped: sk } = await filterNewTxns(userId, txns);
+          skipped = sk;
+          if (toCreate.length > 0) {
+            await storage.createManyTransactions(toCreate.map((t: any) => ({
+              userId,
+              amount: Number(t.amount),
+              description: t.description || "Sem descrição",
+              categoryName: t.categoryName || "outros",
+              type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
+              date: t.date ? new Date(t.date) : new Date(),
+              source: "pdf" as const,
+              establishment: null,
+              paymentMethod: null,
+            })));
+            imported = toCreate.length;
+          }
+          const totalExpense = toCreate.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const totalIncome = toCreate.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+          const parts: string[] = [];
+          if (extracted.bankName) parts.push(`🏦 ${extracted.bankName}`);
+          if (extracted.period) parts.push(`📅 ${extracted.period}`);
+          if (imported === 0 && skipped > 0) {
+            botMessage = `✅ Extrato analisado! Todas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
+          } else {
+            botMessage = `📊 *Extrato analisado!*${parts.length > 0 ? "\n" + parts.join("  ") : ""}\n\n✅ ${imported} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n💰 Receitas: R$ ${totalIncome.toFixed(2)}\n💸 Gastos: R$ ${totalExpense.toFixed(2)}`;
+          }
+        }
+      }
+
+      const userLabel = isImage ? "📷 [foto de comprovante enviada]" : "📄 [extrato enviado]";
+      await storage.createChatMessage({ userId, role: "user", content: userLabel });
+      await storage.createChatMessage({ userId, role: "assistant", content: botMessage });
+      res.json({ message: botMessage, imported, skipped });
+    } catch (error: any) {
+      console.error("Error processing chat upload:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/transactions", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

@@ -598,7 +598,29 @@ class WhatsAppManager {
       return;
     }
 
-    const toCreate = txns.map((t: any) => ({
+    // Deduplicate against existing transactions
+    const dates = txns.filter((t: any) => t.date).map((t: any) => new Date(t.date));
+    const minDate = dates.length > 0 ? new Date(Math.min(...dates.map((d: Date) => d.getTime()))) : new Date();
+    const maxDate = dates.length > 0 ? new Date(Math.max(...dates.map((d: Date) => d.getTime()))) : new Date();
+    minDate.setDate(minDate.getDate() - 1);
+    maxDate.setDate(maxDate.getDate() + 1);
+    const existingTxns = await storage.getTransactions(userId, { startDate: minDate, endDate: maxDate });
+
+    const toCreate = txns.filter((t: any) => {
+      const tDate = t.date ? t.date.substring(0, 10) : null;
+      const tAmount = Number(t.amount);
+      const tDesc = (t.description || "").toLowerCase().trim();
+      return !existingTxns.some((e: any) => {
+        const eDate = e.date ? new Date(e.date).toISOString().substring(0, 10) : null;
+        const eAmount = Number(e.amount);
+        const eDesc = (e.description || "").toLowerCase().trim();
+        if (Math.abs(eAmount - tAmount) > 0.01 || e.type !== t.type) return false;
+        if (tDate && eDate && tDate !== eDate) return false;
+        const tShort = tDesc.substring(0, 15);
+        const eShort = eDesc.substring(0, 15);
+        return tShort.length > 3 && eShort.length > 3 && (tDesc.includes(eShort) || eDesc.includes(tShort));
+      });
+    }).map((t: any) => ({
       userId,
       amount: Number(t.amount),
       description: t.description || "Sem descrição",
@@ -610,21 +632,31 @@ class WhatsAppManager {
       paymentMethod: null,
     }));
 
-    await storage.createManyTransactions(toCreate);
+    const skipped = txns.length - toCreate.length;
+
+    if (toCreate.length > 0) {
+      await storage.createManyTransactions(toCreate);
+    }
 
     const totalExpense = toCreate.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
     const totalIncome = toCreate.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
     const period = extracted.period ? `\n📅 Período: ${extracted.period}` : "";
     const bank = extracted.bankName ? `\n🏦 Banco: ${extracted.bankName}` : "";
 
-    const summary =
-      `✅ *${toCreate.length} transações importadas!*${bank}${period}\n\n` +
-      `💰 Receitas: R$ ${totalIncome.toFixed(2)}\n` +
-      `💸 Gastos: R$ ${totalExpense.toFixed(2)}\n\n` +
-      `_Todas as transações estão disponíveis no AXIS._`;
+    let summary: string;
+    if (toCreate.length === 0 && skipped > 0) {
+      summary = `✅ Extrato analisado!${bank}${period}\n\nTodas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
+    } else {
+      summary =
+        `📊 *Extrato analisado!*${bank}${period}\n\n` +
+        `✅ ${toCreate.length} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n` +
+        `💰 Receitas: R$ ${totalIncome.toFixed(2)}\n` +
+        `💸 Gastos: R$ ${totalExpense.toFixed(2)}\n\n` +
+        `_Disponíveis no AXIS._`;
+    }
 
     await this.sendMessage(jid, summary);
-    log(`WhatsApp PDF: ${toCreate.length} transações importadas para userId=${userId}`, "whatsapp");
+    log(`WhatsApp PDF: ${toCreate.length} importadas, ${skipped} duplicadas (userId=${userId})`, "whatsapp");
   }
 
   private async buildReply(result: IntentResult, userId: string): Promise<string> {

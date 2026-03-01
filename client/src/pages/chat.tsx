@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Mic, Square, Loader2, Check, X, HelpCircle, Trash2 } from "lucide-react";
+import { Send, Mic, Square, Loader2, Check, X, HelpCircle, Trash2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +38,7 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
@@ -122,6 +123,24 @@ export default function Chat() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+    },
+  });
+
+  const uploadFileMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/chat/upload", { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) throw new Error("Erro ao processar arquivo");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+    },
+    onError: () => {
+      toast({ title: "Erro ao processar arquivo", variant: "destructive" });
     },
   });
 
@@ -430,12 +449,34 @@ export default function Chat() {
       </AnimatePresence>
 
       <div className="border-t border-border p-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.txt,.csv"
+          className="hidden"
+          data-testid="input-chat-file"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) { uploadFileMutation.mutate(file); e.target.value = ""; }
+          }}
+        />
         <form onSubmit={handleSubmit} className="flex items-center gap-2" data-testid="form-chat">
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadFileMutation.isPending || sendMutation.isPending}
+            title="Enviar comprovante ou extrato"
+            data-testid="button-chat-attach"
+          >
+            {uploadFileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+          </Button>
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Digite sua mensagem..."
-            disabled={sendMutation.isPending || voiceMutation.isPending || isRecording}
+            disabled={sendMutation.isPending || voiceMutation.isPending || isRecording || uploadFileMutation.isPending}
             className="flex-1"
             data-testid="input-chat-message"
           />
@@ -444,7 +485,7 @@ export default function Chat() {
             size="icon"
             variant={isRecording ? "destructive" : "secondary"}
             onClick={isRecording ? stopRecording : startRecording}
-            disabled={sendMutation.isPending || voiceMutation.isPending}
+            disabled={sendMutation.isPending || voiceMutation.isPending || uploadFileMutation.isPending}
             className={isRecording ? "animate-pulse" : ""}
             data-testid="button-chat-mic"
           >
@@ -454,6 +495,9 @@ export default function Chat() {
             {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
+        {uploadFileMutation.isPending && (
+          <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">🔍 Analisando arquivo...</p>
+        )}
       </div>
     </div>
   );
