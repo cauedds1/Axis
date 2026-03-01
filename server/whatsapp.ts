@@ -252,17 +252,33 @@ class WhatsAppManager {
   ): Promise<void> {
     await this.sendMessage(jid, "🔍 Analisando comprovante...");
 
-    const buffer = await downloadMediaMessage(
-      msg,
-      "buffer",
-      {},
-      { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
-    ) as Buffer;
+    let buffer: Buffer;
+    try {
+      buffer = await downloadMediaMessage(
+        msg,
+        "buffer",
+        {},
+        { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
+      ) as Buffer;
+    } catch (dlErr: any) {
+      log(`WhatsApp: falha ao baixar mídia — ${dlErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui baixar a imagem. Tente enviar novamente.");
+      return;
+    }
+
+    log(`WhatsApp: imagem baixada — ${buffer.length} bytes, tipo ${mimetype}`, "whatsapp");
 
     const base64 = buffer.toString("base64");
     const dataUrl = `data:${mimetype};base64,${base64}`;
 
-    const receipt = await processReceiptPhoto(dataUrl, userId);
+    let receipt: any;
+    try {
+      receipt = await processReceiptPhoto(dataUrl, userId);
+    } catch (aiErr: any) {
+      log(`WhatsApp: falha na análise de imagem pela IA — ${aiErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente descrever o gasto em texto, por exemplo: *gastei 50 reais no almoço*");
+      return;
+    }
 
     if (!receipt || !receipt.totalAmount) {
       await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida ou descreva o gasto em texto.");

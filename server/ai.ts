@@ -120,7 +120,7 @@ export async function processReceiptPhoto(imageBase64: string, userId: string): 
   const todayDate = new Date().toISOString().split("T")[0];
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4o-mini",
     response_format: { type: "json_object" },
     messages: [
       {
