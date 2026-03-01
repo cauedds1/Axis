@@ -22,6 +22,10 @@ const PAYMENT_METHODS = [
 
 type PaymentMethodValue = typeof PAYMENT_METHODS[number]["value"];
 
+function fmtBRL(value: number): string {
+  return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function paymentLabel(method: string | null | undefined): string {
   if (!method) return "";
   const found = PAYMENT_METHODS.find(m => m.value === method);
@@ -228,20 +232,20 @@ export default function Finance() {
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> Gastos</p>
-            <p className="text-xl font-bold mt-1">R$ {totalExpenses.toFixed(2)}</p>
+            <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalExpenses)}</p>
           </CardContent>
         </Card>
         <Card className="border-border" data-testid="card-total-income">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3 text-green-500" /> Receitas</p>
-            <p className="text-xl font-bold mt-1">R$ {totalIncome.toFixed(2)}</p>
+            <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalIncome)}</p>
           </CardContent>
         </Card>
         <Card className="border-border relative" data-testid="card-balance">
           <CardContent className="pt-4 pb-10">
             <p className="text-xs text-muted-foreground">Saldo</p>
             <p className={`text-xl font-bold mt-1 ${initialBalance + totalIncome - totalExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
-              R$ {(initialBalance + totalIncome - totalExpenses).toFixed(2)}
+              R$ {fmtBRL(initialBalance + totalIncome - totalExpenses)}
             </p>
           </CardContent>
           <button
@@ -273,10 +277,10 @@ export default function Finance() {
                 {photoPreview.items?.map((item: any, i: number) => (
                   <div key={i} className="flex justify-between text-sm">
                     <span>{item.description}</span>
-                    <span>R$ {item.amount?.toFixed(2)}</span>
+                    <span>R$ {fmtBRL(item.amount ?? 0)}</span>
                   </div>
                 ))}
-                {photoPreview.totalAmount && <p className="text-sm font-bold border-t pt-2">Total: R$ {photoPreview.totalAmount.toFixed(2)}</p>}
+                {photoPreview.totalAmount && <p className="text-sm font-bold border-t pt-2">Total: R$ {fmtBRL(photoPreview.totalAmount)}</p>}
                 <Button onClick={() => confirmPhotoMutation.mutate()} disabled={confirmPhotoMutation.isPending} className="w-full" data-testid="button-confirm-photo">
                   {confirmPhotoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Confirmar
                 </Button>
@@ -296,7 +300,7 @@ export default function Finance() {
                 {pdfPreview.transactions?.map((t: any, i: number) => (
                   <div key={i} className="flex justify-between text-xs py-1 border-b border-border/50">
                     <span className="truncate flex-1">{t.description}</span>
-                    <span className={`ml-2 ${t.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {t.amount?.toFixed(2)}</span>
+                    <span className={`ml-2 ${t.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {fmtBRL(t.amount ?? 0)}</span>
                   </div>
                 ))}
                 <Button onClick={() => confirmPdfMutation.mutate()} disabled={confirmPdfMutation.isPending} className="w-full mt-2" data-testid="button-confirm-pdf">
@@ -340,7 +344,7 @@ export default function Finance() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
-                          {tx.type === "income" ? "+" : "-"}R$ {tx.amount.toFixed(2)}
+                          {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
                         </span>
                         <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => deleteTxMutation.mutate(tx.id)} data-testid={`button-delete-tx-${tx.id}`}>
                           <Trash2 className="h-3 w-3 text-destructive" />

@@ -253,7 +253,7 @@ export default function Dashboard() {
               style={{ color: data.finance.balance >= 0 ? P.positive : P.negative }}
               data-testid="text-balance"
             >
-              R$ {data.finance.balance.toFixed(2)}
+              R$ {data.finance.balance.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-muted-foreground mb-4">saldo atual</p>
 
@@ -263,7 +263,7 @@ export default function Dashboard() {
                   <TrendingDown className="h-3 w-3" style={{ color: P.negative }} /> Gastos
                 </span>
                 <span className="font-semibold" data-testid="text-total-expenses">
-                  R$ {data.finance.totalExpenses.toFixed(2)}
+                  R$ {data.finance.totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <ProgressBar
@@ -278,7 +278,7 @@ export default function Dashboard() {
                   <TrendingUp className="h-3 w-3" style={{ color: P.positive }} /> Receitas
                 </span>
                 <span className="font-semibold" data-testid="text-total-income">
-                  R$ {data.finance.totalIncome.toFixed(2)}
+                  R$ {data.finance.totalIncome.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <ProgressBar
