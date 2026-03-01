@@ -708,15 +708,11 @@ function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
         data-testid={`button-faq-${index}`}
       >
         <span className="text-base font-medium text-white/80 group-hover:text-white transition-colors pr-4">{item.q}</span>
-        <div className="flex-shrink-0 transition-transform duration-200" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
-          <ChevronDown className="w-4 h-4 text-white/30" />
-        </div>
+        <ChevronDown className={`w-4 h-4 text-white/30 flex-shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </button>
-      <div className="grid transition-[grid-template-rows] duration-200 ease-out" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
-        <div className="overflow-hidden">
-          <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
-        </div>
-      </div>
+      {open && (
+        <p className="text-sm text-white/50 leading-relaxed pb-5">{item.a}</p>
+      )}
     </motion.div>
   );
 }
