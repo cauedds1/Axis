@@ -1103,12 +1103,17 @@ export async function registerRoutes(
       const result: any = { activeModules, theme: user?.theme };
 
       if (activeModules.includes("finance") || activeModules.length === 0) {
-        const transactions = await storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfDay });
-        const totalExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-        const totalIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-        const profile = await storage.getUserProfile(userId);
+        const [monthTx, allTx, profile] = await Promise.all([
+          storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfDay }),
+          storage.getTransactions(userId),
+          storage.getUserProfile(userId),
+        ]);
+        const totalExpenses = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+        const totalIncome = monthTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+        const allExpenses = allTx.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+        const allIncome = allTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
         const initialBalance = profile?.initialBalance ?? 0;
-        result.finance = { totalExpenses, totalIncome, balance: initialBalance + totalIncome - totalExpenses, initialBalance, transactionCount: transactions.length };
+        result.finance = { totalExpenses, totalIncome, balance: initialBalance + allIncome - allExpenses, initialBalance, transactionCount: allTx.length };
         result.goals = await storage.getFinancialGoals(userId);
       }
 

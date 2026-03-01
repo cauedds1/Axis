@@ -109,7 +109,7 @@ function TrendBadge({ value, invertColor = false }: { value: number | null; inve
   );
 }
 
-type DateFilter = "current" | "last" | "last3" | "custom";
+type DateFilter = "current" | "last" | "last3" | "last6" | "custom";
 
 function getFilterDates(filter: DateFilter, customStart: string, customEnd: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -131,12 +131,17 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return { startDate: fmt(start), endDate: fmt(end) };
   }
+  if (filter === "last6") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: fmt(start), endDate: fmt(end) };
+  }
   return { startDate: customStart, endDate: customEnd };
 }
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
-  const [filter, setFilter] = useState<DateFilter>("current");
+  const [filter, setFilter] = useState<DateFilter>("last6");
   const [customStart, setCustomStart] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -157,7 +162,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const FILTER_OPTS: { id: DateFilter; label: string }[] = [
     { id: "current", label: "Mês atual" },
     { id: "last", label: "Mês passado" },
-    { id: "last3", label: "Últimos 3 meses" },
+    { id: "last3", label: "3 meses" },
+    { id: "last6", label: "6 meses" },
     { id: "custom", label: "Personalizado" },
   ];
 
