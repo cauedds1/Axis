@@ -3,12 +3,13 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
+  downloadMediaMessage,
   proto,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode";
 import { storage } from "./storage";
-import { detectIntentAndProcess, chatWithContext } from "./ai";
+import { detectIntentAndProcess, chatWithContext, processReceiptPhoto } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./index";
 import * as fs from "fs";
@@ -99,15 +100,21 @@ class WhatsAppManager {
     if (!jid) return;
 
     const senderPhone = jid.replace("@s.whatsapp.net", "").replace(/[^0-9]/g, "");
+
+    const imageMsg =
+      msg.message?.imageMessage ||
+      msg.message?.ephemeralMessage?.message?.imageMessage ||
+      msg.message?.viewOnceMessage?.message?.imageMessage ||
+      msg.message?.viewOnceMessageV2?.message?.imageMessage ||
+      null;
+
     const text =
       msg.message?.conversation ||
       msg.message?.extendedTextMessage?.text ||
       msg.message?.ephemeralMessage?.message?.conversation ||
-      "";
+      (imageMsg?.caption ?? "");
 
-    if (!text.trim()) return;
-
-    log(`WhatsApp message from ${senderPhone}: ${text}`, "whatsapp");
+    if (!text.trim() && !imageMsg) return;
 
     try {
       const profile = await storage.getUserProfileByPhone(senderPhone);
@@ -116,6 +123,13 @@ class WhatsAppManager {
         return;
       }
 
+      if (imageMsg) {
+        log(`WhatsApp image from ${senderPhone}`, "whatsapp");
+        await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
+        return;
+      }
+
+      log(`WhatsApp message from ${senderPhone}: ${text}`, "whatsapp");
       const result = await detectIntentAndProcess(text, profile.userId);
       const reply = await this.buildReply(result, profile.userId);
       await this.sendMessage(jid, reply);
@@ -123,6 +137,59 @@ class WhatsAppManager {
       log(`WhatsApp error handling message: ${err.message}`, "whatsapp");
       await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
     }
+  }
+
+  private async handleReceiptImage(
+    msg: proto.IWebMessageInfo,
+    jid: string,
+    userId: string,
+    mimetype: string
+  ): Promise<void> {
+    await this.sendMessage(jid, "🔍 Lendo nota fiscal...");
+
+    const buffer = await downloadMediaMessage(
+      msg,
+      "buffer",
+      {},
+      { logger: { level: "silent", trace: () => {}, debug: () => {}, info: () => {}, warn: () => {}, error: () => {}, fatal: () => {}, child: () => ({}) } as any, reuploadRequest: this.sock.updateMediaMessage }
+    ) as Buffer;
+
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${mimetype};base64,${base64}`;
+
+    const receipt = await processReceiptPhoto(dataUrl, userId);
+
+    if (!receipt || !receipt.totalAmount) {
+      await this.sendMessage(jid, "😕 Não consegui ler a nota fiscal. Tente uma foto mais nítida e bem iluminada.");
+      return;
+    }
+
+    const amount = Number(receipt.totalAmount);
+    const categoryName = receipt.categoryName || "outros";
+    const establishment = receipt.establishment || null;
+    const date = receipt.date || new Date().toISOString().split("T")[0];
+
+    await storage.createTransaction({
+      userId,
+      type: "expense",
+      amount: String(amount),
+      categoryName,
+      description: establishment ? `${establishment}` : "Nota fiscal",
+      date,
+      paymentMethod: receipt.paymentMethod || null,
+      establishment: establishment,
+    });
+
+    let reply = `✅ *Nota fiscal registrada!*\n`;
+    if (establishment) reply += `🏪 ${establishment}\n`;
+    reply += `💰 R$ ${amount.toFixed(2)} em *${categoryName}*`;
+    if (receipt.items && receipt.items.length > 1) {
+      reply += `\n📋 ${receipt.items.length} itens`;
+    }
+    if (receipt.paymentMethod) reply += `\n💳 ${receipt.paymentMethod}`;
+
+    await this.sendMessage(jid, reply);
+    log(`WhatsApp receipt processed — R$ ${amount} at ${establishment}`, "whatsapp");
   }
 
   private async buildReply(result: IntentResult, userId: string): Promise<string> {
