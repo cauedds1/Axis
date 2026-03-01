@@ -36,6 +36,7 @@ const DISCIPLINE_POINTS = {
   TASK_MEDIUM:         4,   // tarefa média prioridade concluída
   TASK_LOW:            3,   // tarefa baixa prioridade concluída
   HABIT_CHECK:         2,   // hábito diário marcado como feito
+  HABIT_MISSED:       -3,   // hábito não feito no dia programado
   TASK_OVERDUE:       -4,   // tarefa em atraso detectada
   SPENDING_OTIMO:     +4,   // finanças excelentes: gastos supérfluos < 5% da renda
   SPENDING_BOM:       +2,   // finanças boas: gastos supérfluos 5-10% da renda
@@ -100,6 +101,83 @@ async function penalizeOverdueTasks(userId: string): Promise<void> {
     }
   } catch {
     // silently fail
+  }
+}
+
+async function penalizeMissedHabits(userId: string): Promise<void> {
+  try {
+    const allHabits = await storage.getHabits(userId);
+    if (allHabits.length === 0) return;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    for (const habit of allHabits) {
+      const createdDate = habit.createdAt ? new Date(habit.createdAt).toISOString().split("T")[0] : todayStr;
+
+      let weekdays: number[] | null = null;
+      if (habit.weekdays) {
+        try { weekdays = typeof habit.weekdays === "string" ? JSON.parse(habit.weekdays) : habit.weekdays; } catch {}
+      }
+
+      const startDateStr = habit.lastPenalizedDate || habit.lastChecked || createdDate;
+      const startDate = new Date(startDateStr + "T00:00:00");
+      const checkDate = new Date(startDate);
+      checkDate.setDate(checkDate.getDate() + 1);
+
+      const logs = await storage.getHabitLogs(habit.id, userId);
+      let missedDays = 0;
+      const maxCheck = 14;
+      let iterations = 0;
+
+      while (checkDate.toISOString().split("T")[0] < todayStr && iterations < maxCheck) {
+        iterations++;
+        const dateStr = checkDate.toISOString().split("T")[0];
+        const dayOfWeek = checkDate.getDay();
+
+        let shouldHaveDone = false;
+        if (habit.frequency === "daily") {
+          shouldHaveDone = true;
+        } else if (habit.frequency === "weekly" && weekdays && weekdays.length > 0) {
+          shouldHaveDone = weekdays.includes(dayOfWeek);
+        }
+
+        if (shouldHaveDone) {
+          const didIt = logs.some(l => l.date === dateStr && l.completed);
+          if (!didIt) {
+            missedDays++;
+          }
+        }
+
+        checkDate.setDate(checkDate.getDate() + 1);
+      }
+
+      if (missedDays > 0) {
+        const totalPenalty = DISCIPLINE_POINTS.HABIT_MISSED * missedDays;
+        await adjustDisciplinePoints(
+          userId,
+          totalPenalty,
+          `❌ Compromisso "${habit.name}" perdido ${missedDays}x — ${totalPenalty} pts`
+        );
+
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+        await storage.updateHabit(habit.id, userId, {
+          lastPenalizedDate: yesterdayStr,
+          streak: 0,
+        });
+      } else if (iterations > 0) {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        await storage.updateHabit(habit.id, userId, {
+          lastPenalizedDate: yesterday.toISOString().split("T")[0],
+        });
+      }
+    }
+  } catch (err: any) {
+    console.error("[discipline] Error penalizing missed habits:", err.message);
   }
 }
 
@@ -980,10 +1058,12 @@ export async function registerRoutes(
       const userId = getUserId(req);
       const date = (req.body.date as string) || new Date().toISOString().split("T")[0];
       const log = await storage.checkHabit(paramId(req), userId, date);
-      const habit = (await storage.getHabits(userId)).find(h => h.id === paramId(req));
-      if (habit) {
-        saveEventToMemory(userId, `Compromisso "${habit.name}" registrado — streak atual: ${habit.streak} dias`).catch(() => {});
-        adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, `⚡ Compromisso "${habit.name}" feito — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`).catch(() => {});
+      if (log.completed) {
+        const habit = (await storage.getHabits(userId)).find(h => h.id === paramId(req));
+        if (habit) {
+          saveEventToMemory(userId, `Compromisso "${habit.name}" registrado — streak atual: ${habit.streak} dias`).catch(() => {});
+          adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, `⚡ Compromisso "${habit.name}" feito — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`).catch(() => {});
+        }
       }
       res.json(log);
     } catch (error: any) {
@@ -1515,6 +1595,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       checkAndSendLowDisciplineAlert(userId).catch(() => {});
 
       penalizeOverdueTasks(userId).catch(() => {});
+      penalizeMissedHabits(userId).catch(() => {});
       analyzeSpendingForDiscipline(userId).catch(() => {});
       const profile = await storage.getUserProfile(userId);
       result.disciplineScore = profile?.disciplineScore || 5;

@@ -82,6 +82,7 @@ export const habits = pgTable("habits", {
   targetTime: text("target_time"),
   description: text("description"),
   weekdays: text("weekdays"),
+  lastPenalizedDate: date("last_penalized_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

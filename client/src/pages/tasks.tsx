@@ -664,18 +664,31 @@ export default function Tasks() {
               const checkedToday = habit.lastChecked === today;
               const habitEmoji = (habit as any).emoji || "⚡";
               const habitTime = (habit as any).targetTime as string | null;
+              let weekdaysParsed: number[] = [];
+              if ((habit as any).weekdays) {
+                try { weekdaysParsed = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {}
+              }
+              const todayDow = new Date().getDay();
+              const isScheduledToday = habit.frequency === "daily" || (habit.frequency === "weekly" && weekdaysParsed.includes(todayDow));
+              const dayLabel = habit.frequency === "weekly" && weekdaysParsed.length > 0
+                ? weekdaysParsed.map(d => DAYS[d]).join(", ")
+                : "Diário";
               return (
                 <div
                   key={habit.id}
                   className="rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: `1px solid ${checkedToday ? "rgba(78,205,196,0.25)" : "rgba(255,255,255,0.07)"}`,
+                    background: checkedToday ? "rgba(78,205,196,0.04)" : isScheduledToday ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+                    border: `1px solid ${checkedToday ? "rgba(78,205,196,0.25)" : isScheduledToday ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.05)"}`,
+                    opacity: isScheduledToday || checkedToday ? 1 : 0.5,
                   }}
                   onClick={() => openHabitDetail(habit)}
                   data-testid={`card-habit-${habit.id}`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
+                    {isScheduledToday && !checkedToday && (
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: "#FFA000" }} />
+                    )}
                     <span className="text-xl shrink-0">{habitEmoji}</span>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{habit.name}</p>
@@ -683,7 +696,7 @@ export default function Tasks() {
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Flame className="h-3 w-3" /> {habit.streak} dias
                         </span>
-                        <span className="text-[10px] text-muted-foreground">{habit.frequency === "daily" ? "Diário" : "Semanal"}</span>
+                        <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
                         {habitTime && (
                           <span className="text-[10px] text-white/30 flex items-center gap-0.5">
                             <Clock className="h-2.5 w-2.5" />{habitTime}
