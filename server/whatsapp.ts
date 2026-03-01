@@ -87,9 +87,12 @@ class WhatsAppManager {
     this.sock.ev.on("creds.update", saveCreds);
 
     this.sock.ev.on("messages.upsert", async ({ messages, type }: any) => {
-      if (type !== "notify") return;
+      log(`WhatsApp raw event — type=${type} msgs=${messages.length}`, "whatsapp");
+      if (type !== "notify" && type !== "append") return;
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
+        const jid = msg.key.remoteJid ?? "";
+        if (jid.endsWith("@g.us") || jid === "status@broadcast") continue;
         await this.handleIncomingMessage(msg);
       }
     });
