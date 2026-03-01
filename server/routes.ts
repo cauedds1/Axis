@@ -1498,6 +1498,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         userId,
         amount: income.amount,
         description: income.name,
+        categoryName: income.categoryName || "trabalho",
         type: "income",
         source: "auto",
         date: now,

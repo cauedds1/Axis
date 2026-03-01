@@ -226,6 +226,7 @@ function SectionRenda({
   const [riName, setRiName] = useState("");
   const [riAmount, setRiAmount] = useState("");
   const [riDay, setRiDay] = useState("5");
+  const [riCategory, setRiCategory] = useState("trabalho");
 
   const currentMonth = (() => {
     const n = new Date();
@@ -262,12 +263,13 @@ function SectionRenda({
       const day = parseInt(riDay);
       if (!riName.trim() || isNaN(amt) || amt <= 0) throw new Error("Preencha nome e valor");
       if (day < 1 || day > 31) throw new Error("Dia inválido");
-      await apiRequest("POST", "/api/recurring-incomes", { name: riName.trim(), amount: amt, dayOfMonth: day, active: true });
+      await apiRequest("POST", "/api/recurring-incomes", { name: riName.trim(), amount: amt, dayOfMonth: day, active: true, categoryName: riCategory });
     },
     onSuccess: () => {
       setRiName("");
       setRiAmount("");
       setRiDay("5");
+      setRiCategory("trabalho");
       queryClient.invalidateQueries({ queryKey: ["/api/recurring-incomes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Renda recorrente adicionada!" });
@@ -368,6 +370,19 @@ function SectionRenda({
             onChange={e => setRiName(e.target.value)}
             data-testid="input-recurring-name"
           />
+          <select
+            value={riCategory}
+            onChange={e => setRiCategory(e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none appearance-none cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+            data-testid="select-recurring-category"
+          >
+            <option value="trabalho">💼 Trabalho / Salário</option>
+            <option value="freelance">🧑‍💻 Freelance / Autônomo</option>
+            <option value="investimentos">📈 Investimentos</option>
+            <option value="aluguel">🏠 Aluguel</option>
+            <option value="outros">📦 Outros</option>
+          </select>
           <div className="flex gap-2">
             <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
               <span className="text-white/40 text-sm font-medium flex-shrink-0">R$</span>

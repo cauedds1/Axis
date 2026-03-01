@@ -169,6 +169,7 @@ export const recurringIncomes = pgTable("recurring_incomes", {
   dayOfMonth: integer("day_of_month").notNull(),
   active: boolean("active").notNull().default(true),
   lastPostedMonth: text("last_posted_month"),
+  categoryName: text("category_name"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
