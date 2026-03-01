@@ -301,23 +301,70 @@ class WhatsAppManager {
 
     switch (intent) {
       case "expense":
-        return `✅ Gasto de R$ ${Number(data.amount).toFixed(2)} em *${data.categoryName || "outros"}* registrado!`;
-      case "income":
-        return `✅ Receita de R$ ${Number(data.amount).toFixed(2)} registrada!`;
+      case "income": {
+        const amount = Number(data.amount);
+        const categoryName = data.categoryName || "outros";
+        await storage.createTransaction({
+          userId,
+          type: intent,
+          amount: amount as any,
+          description: data.description || categoryName,
+          categoryName,
+          establishment: data.establishment || null,
+          date: data.date ? new Date(data.date) : new Date(),
+          source: "whatsapp",
+          paymentMethod: null,
+        });
+        if (intent === "income") {
+          return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
+        }
+        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado!`;
+      }
+
       case "task": {
-        const p = data.priority === "high" ? "alta" : data.priority === "medium" ? "média" : "baixa";
+        const priority = data.priority || "medium";
+        await storage.createPersonalTask({
+          userId,
+          title: data.title,
+          description: data.description || null,
+          status: "pending",
+          priority,
+          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          category: data.category || null,
+        });
+        const p = priority === "high" ? "alta" : priority === "medium" ? "média" : "baixa";
         return `✅ Tarefa *${data.title}* criada com prioridade ${p}!`;
       }
+
       case "schedule": {
-        const dt = data.startTime ? new Date(data.startTime).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
-        return `✅ Compromisso *${data.title}* agendado${dt ? ` para ${dt}` : ""}!`;
+        const startTime = data.startTime ? new Date(data.startTime) : new Date();
+        await storage.createScheduleItem({
+          userId,
+          title: data.title,
+          description: data.description || null,
+          startTime,
+          endTime: data.endTime ? new Date(data.endTime) : null,
+          status: "pending",
+        });
+        const dt = startTime.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        return `✅ Compromisso *${data.title}* agendado para ${dt}!`;
       }
-      case "habit":
+
+      case "habit": {
+        await storage.createHabit({
+          userId,
+          name: data.name,
+          frequency: data.frequency || "daily",
+          emoji: "⚡",
+        });
         return `✅ Hábito *${data.name}* criado!`;
+      }
+
       case "chat": {
         const chatReply = await chatWithContext(result.rawText, userId).catch(() => null);
         return chatReply || "💬 Mensagem recebida!";
       }
+
       default:
         return "🤔 Não entendi. Tente:\n• *gastei 50 no almoço*\n• *criar tarefa reunião*\n• *hábito academia todo dia*\n• *agendar consulta sexta 10h*";
     }
