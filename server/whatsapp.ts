@@ -612,6 +612,41 @@ class WhatsAppManager {
       return;
     }
 
+    if (extracted?.docType === "bill") {
+      const title = extracted.title || fileName;
+      const amount = Number(extracted.amount) || 0;
+      const dueDay = Number(extracted.dueDay) || new Date().getDate();
+      const billType = extracted.type === "income" ? "income" : "expense";
+      const categoryName = extracted.categoryName || "outros";
+      const notes = extracted.notes || null;
+
+      await storage.createBill({
+        userId,
+        title,
+        amount,
+        type: billType,
+        dueDay,
+        categoryName,
+        recurrenceType: "this_month",
+        active: true,
+        paidMonths: "[]",
+        notes,
+      });
+
+      const amountStr = amount.toFixed(2).replace(".", ",");
+      const reply =
+        `📋 Conta registrada!\n\n` +
+        `*${title}*\n` +
+        `💰 R$ ${amountStr}\n` +
+        `📅 Vence dia ${dueDay}\n` +
+        `${notes ? notes + "\n" : ""}` +
+        `\nVeja em Contas no app.`;
+
+      await this.sendMessage(jid, reply);
+      log(`WhatsApp PDF bill: "${title}" R$ ${amount} criada (userId=${userId})`, "whatsapp");
+      return;
+    }
+
     const txns: any[] = extracted?.transactions ?? [];
     if (txns.length === 0) {
       await this.sendMessage(jid, "🤔 Nenhuma transação encontrada no arquivo. Verifique se o extrato está no formato correto.");

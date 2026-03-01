@@ -15,7 +15,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - Dual input: every voice input has text equivalent (mic + text field always visible)
 - AI intent detection: "gastei 45 no almoço" → expense R$45, alimentação
 - Receipt photo upload: AI extracts items, establishment, total → preview before confirming
-- PDF bank statement import: AI parses transactions → preview before confirming
+- PDF smart import: AI classifies document type (extrato vs conta/NFS-e/boleto) → extratos geram transações, contas/notas fiscais geram bills com campos editáveis
 - Smart agenda: AI suggests time slots, user approves/rejects/edits
 - Habits with streaks and daily check-in
 - Discipline score visible on sidebar and dashboard
@@ -86,7 +86,7 @@ shared/
 - `POST /api/finance/photo` - Upload receipt photo → AI extracts data
 - `POST /api/finance/photo/confirm` - Confirm receipt data → create transactions
 - `POST /api/finance/pdf` - Upload bank statement → AI parses transactions
-- `POST /api/finance/pdf/confirm` - Confirm parsed transactions
+- `POST /api/finance/pdf/confirm` - Confirm parsed transactions OR create bill (docType: "bill")
 - `GET/POST/DELETE /api/transactions` - Transaction CRUD
 - `GET/POST/DELETE /api/categories` - Category CRUD
 - `GET/POST/PATCH/DELETE /api/goals` - Financial goals

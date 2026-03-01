@@ -315,7 +315,7 @@ export async function processPDFExtract(pdfInput: Buffer | string, userId: strin
   }
 
   if (!pdfText || pdfText.length < 20) {
-    return { transactions: [] };
+    return { docType: "statement", transactions: [] };
   }
 
   const response = await openai.chat.completions.create({
@@ -324,10 +324,17 @@ export async function processPDFExtract(pdfInput: Buffer | string, userId: strin
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, assistente financeiro. Analise o extrato bancário abaixo e retorne um JSON com TODAS as transações encontradas.
+        content: `Você é o AXIS, assistente financeiro brasileiro. Analise o documento abaixo e retorne um JSON.
 
-Retorne APENAS o seguinte JSON:
+PASSO 1 — CLASSIFIQUE o tipo do documento:
+- "statement" → extrato bancário com MÚLTIPLAS transações de débito/crédito (ex: extrato Nubank, Itaú, fatura de cartão)
+- "bill" → conta/nota fiscal/boleto/NFS-e/fatura de serviço — um ÚNICO documento de cobrança ou prestação de serviço
+
+PASSO 2 — EXTRAIA os dados de acordo com o tipo:
+
+Se docType = "statement", retorne este JSON:
 {
+  "docType": "statement",
   "bankName": "nome do banco se identificável",
   "period": "período do extrato se identificável",
   "transactions": [
@@ -341,10 +348,30 @@ Retorne APENAS o seguinte JSON:
   ]
 }
 
+Se docType = "bill", retorne este JSON:
+{
+  "docType": "bill",
+  "title": "nome curto e descritivo da conta (ex: 'TRUSTCOTA — Serviços administrativos')",
+  "amount": número positivo (valor total/líquido),
+  "type": "expense" se o documento indica que alguém precisa PAGAR, ou "income" se indica que alguém vai RECEBER,
+  "dueDate": "YYYY-MM-DD" (data de vencimento, ou data de emissão se vencimento não constar),
+  "dueDay": número 1-31 (dia do mês do vencimento),
+  "categoryName": "categoria mais adequada",
+  "entity": "nome da empresa/pessoa principal (prestador ou emissor)",
+  "notes": "dados de pagamento encontrados: Pix, banco, agência, conta, favorecido, código de barras, etc."
+}
+
+REGRAS PARA CLASSIFICAÇÃO:
+- NFS-e (Nota Fiscal de Serviço Eletrônica) → SEMPRE "bill"
+- Boleto bancário → SEMPRE "bill"
+- Fatura de serviço (internet, telefone, energia) → SEMPRE "bill"
+- Nota fiscal de produto avulso → SEMPRE "bill"
+- Extrato com lista de transações de débito e crédito → SEMPRE "statement"
+
 REGRAS GERAIS:
 - Débitos/saídas são "expense", créditos/entradas são "income"
-- Nunca invente transações que não estão no extrato
-- Se não houver transações, retorne JSON com transactions vazio
+- Nunca invente dados que não estão no documento
+- Se não conseguir classificar, use docType "statement" com transactions vazio
 
 ${CATEGORY_RULES}`
       },
@@ -352,7 +379,9 @@ ${CATEGORY_RULES}`
     ],
   });
 
-  return JSON.parse(response.choices[0]?.message?.content || '{"transactions":[]}');
+  const result = JSON.parse(response.choices[0]?.message?.content || '{"docType":"statement","transactions":[]}');
+  if (!result.docType) result.docType = "statement";
+  return result;
 }
 
 export async function chatWithContext(message: string, userId: string, executedActionContext?: string): Promise<string> {

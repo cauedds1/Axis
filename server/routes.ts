@@ -370,21 +370,51 @@ export async function registerRoutes(
   app.post("/api/finance/pdf/confirm", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { transactions: txns } = req.body;
-      const created = await storage.createManyTransactions(
-        (txns || []).map((t: any) => ({
+      const { docType } = req.body;
+
+      if (docType === "bill") {
+        const { title, amount, type, dueDay, categoryName, notes, recurrenceType } = req.body;
+        const parsedAmount = Number(amount);
+        const parsedDueDay = Number(dueDay);
+        if (!title || typeof title !== "string" || title.trim().length === 0) {
+          return res.status(400).json({ message: "Título da conta é obrigatório" });
+        }
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          return res.status(400).json({ message: "Valor deve ser maior que zero" });
+        }
+        if (isNaN(parsedDueDay) || parsedDueDay < 1 || parsedDueDay > 31) {
+          return res.status(400).json({ message: "Dia de vencimento deve ser entre 1 e 31" });
+        }
+        const bill = await storage.createBill({
           userId,
-          amount: t.amount,
-          description: t.description,
-          categoryName: t.categoryName || null,
-          type: t.type || "expense",
-          date: t.date ? new Date(t.date) : new Date(),
-          source: "pdf",
-          establishment: null,
-          location: null,
-        }))
-      );
-      res.json(created);
+          title: title.trim(),
+          amount: parsedAmount,
+          type: type === "income" ? "income" : "expense",
+          dueDay: parsedDueDay,
+          categoryName: categoryName || "outros",
+          recurrenceType: recurrenceType || "this_month",
+          active: true,
+          paidMonths: "[]",
+          notes: notes || null,
+        });
+        res.json({ created: "bill", bill });
+      } else {
+        const { transactions: txns } = req.body;
+        const created = await storage.createManyTransactions(
+          (txns || []).map((t: any) => ({
+            userId,
+            amount: t.amount,
+            description: t.description,
+            categoryName: t.categoryName || null,
+            type: t.type || "expense",
+            date: t.date ? new Date(t.date) : new Date(),
+            source: "pdf",
+            establishment: null,
+            location: null,
+          }))
+        );
+        res.json(created);
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -486,35 +516,54 @@ export async function registerRoutes(
         }
       } else {
         const extracted = await processPDFExtract(file.buffer, userId);
-        const txns: any[] = extracted?.transactions ?? [];
-        if (txns.length === 0) {
-          botMessage = "🤔 Nenhuma transação encontrada. Verifique se o arquivo é um extrato bancário em formato TXT ou CSV.";
+
+        if (extracted?.docType === "bill") {
+          const bill = await storage.createBill({
+            userId,
+            title: extracted.title || "Conta importada",
+            amount: Number(extracted.amount) || 0,
+            type: extracted.type === "income" ? "income" : "expense",
+            dueDay: Number(extracted.dueDay) || new Date().getDate(),
+            categoryName: extracted.categoryName || "outros",
+            recurrenceType: "this_month",
+            active: true,
+            paidMonths: "[]",
+            notes: extracted.notes || null,
+          });
+          imported = 1;
+          const typeLabel = bill.type === "income" ? "💰 A receber" : "💸 A pagar";
+          botMessage = `📋 *Conta registrada!*\n\n*${bill.title}*\n${typeLabel}: R$ ${Number(bill.amount).toFixed(2)}\n📅 Vence dia ${bill.dueDay}\n${extracted.notes ? `\n📝 ${extracted.notes}` : ""}\n\nVeja em Contas no app.`;
         } else {
-          const { toCreate, skipped: sk } = await filterNewTxns(userId, txns);
-          skipped = sk;
-          if (toCreate.length > 0) {
-            await storage.createManyTransactions(toCreate.map((t: any) => ({
-              userId,
-              amount: Number(t.amount),
-              description: t.description || "Sem descrição",
-              categoryName: t.categoryName || "outros",
-              type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
-              date: t.date ? new Date(t.date) : new Date(),
-              source: "pdf" as const,
-              establishment: null,
-              paymentMethod: null,
-            })));
-            imported = toCreate.length;
-          }
-          const totalExpense = toCreate.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-          const totalIncome = toCreate.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-          const parts: string[] = [];
-          if (extracted.bankName) parts.push(`🏦 ${extracted.bankName}`);
-          if (extracted.period) parts.push(`📅 ${extracted.period}`);
-          if (imported === 0 && skipped > 0) {
-            botMessage = `✅ Extrato analisado! Todas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
+          const txns: any[] = extracted?.transactions ?? [];
+          if (txns.length === 0) {
+            botMessage = "🤔 Nenhuma transação encontrada. Verifique se o arquivo é um extrato bancário em formato TXT ou CSV.";
           } else {
-            botMessage = `📊 *Extrato analisado!*${parts.length > 0 ? "\n" + parts.join("  ") : ""}\n\n✅ ${imported} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n💰 Receitas: R$ ${totalIncome.toFixed(2)}\n💸 Gastos: R$ ${totalExpense.toFixed(2)}`;
+            const { toCreate, skipped: sk } = await filterNewTxns(userId, txns);
+            skipped = sk;
+            if (toCreate.length > 0) {
+              await storage.createManyTransactions(toCreate.map((t: any) => ({
+                userId,
+                amount: Number(t.amount),
+                description: t.description || "Sem descrição",
+                categoryName: t.categoryName || "outros",
+                type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
+                date: t.date ? new Date(t.date) : new Date(),
+                source: "pdf" as const,
+                establishment: null,
+                paymentMethod: null,
+              })));
+              imported = toCreate.length;
+            }
+            const totalExpense = toCreate.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const totalIncome = toCreate.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+            const parts: string[] = [];
+            if (extracted.bankName) parts.push(`🏦 ${extracted.bankName}`);
+            if (extracted.period) parts.push(`📅 ${extracted.period}`);
+            if (imported === 0 && skipped > 0) {
+              botMessage = `✅ Extrato analisado! Todas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
+            } else {
+              botMessage = `📊 *Extrato analisado!*${parts.length > 0 ? "\n" + parts.join("  ") : ""}\n\n✅ ${imported} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n💰 Receitas: R$ ${totalIncome.toFixed(2)}\n💸 Gastos: R$ ${totalExpense.toFixed(2)}`;
+            }
           }
         }
       }

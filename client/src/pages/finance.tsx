@@ -4,6 +4,7 @@ import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -51,6 +52,7 @@ export default function Finance() {
   const [photoResults, setPhotoResults] = useState<any[] | null>(null);
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
+  const [billForm, setBillForm] = useState({ title: "", amount: "", type: "expense", dueDay: "", recurrenceType: "this_month", categoryName: "", notes: "" });
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [balanceInput, setBalanceInput] = useState("");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -155,19 +157,42 @@ export default function Finance() {
       const res = await fetch("/api/finance/pdf", { method: "POST", body: formData, credentials: "include" });
       return res.json();
     },
-    onSuccess: (data) => setPdfPreview(data),
+    onSuccess: (data) => {
+      setPdfPreview(data);
+      if (data?.docType === "bill") {
+        setBillForm({
+          title: data.title || "",
+          amount: data.amount != null ? String(data.amount) : "",
+          type: data.type || "expense",
+          dueDay: data.dueDay != null ? String(data.dueDay) : "",
+          recurrenceType: "this_month",
+          categoryName: data.categoryName || "",
+          notes: data.notes || "",
+        });
+      }
+    },
   });
 
   const confirmPdfMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/finance/pdf/confirm", pdfPreview);
+    mutationFn: async (payload?: any) => {
+      const body = payload || pdfPreview;
+      const res = await apiRequest("POST", "/api/finance/pdf/confirm", body);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      setPdfPreview(null);
-      toast({ title: "Extrato importado" });
+    onSuccess: (_data, variables) => {
+      const docType = variables?.docType || pdfPreview?.docType;
+      if (docType === "bill") {
+        queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        setPdfPreview(null);
+        setBillForm({ title: "", amount: "", type: "expense", dueDay: "", recurrenceType: "this_month", categoryName: "", notes: "" });
+        toast({ title: "Conta registrada" });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        setPdfPreview(null);
+        toast({ title: "Extrato importado" });
+      }
     },
   });
 
@@ -345,12 +370,106 @@ export default function Finance() {
             </Card>
           )}
 
-          {pdfPreview && (
+          {pdfPreview && pdfPreview.docType === "bill" && (
+            <Card className="border-primary" data-testid="card-bill-preview">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Receipt className="h-4 w-4" />
+                    Conta detectada
+                  </CardTitle>
+                  <Button variant="ghost" size="icon" onClick={() => setPdfPreview(null)} data-testid="button-close-bill-preview"><X className="h-4 w-4" /></Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Título</label>
+                  <Input
+                    value={billForm.title}
+                    onChange={(e) => setBillForm(p => ({ ...p, title: e.target.value }))}
+                    data-testid="input-bill-title"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={billForm.amount}
+                    onChange={(e) => setBillForm(p => ({ ...p, amount: e.target.value }))}
+                    data-testid="input-bill-amount"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
+                  <Select value={billForm.type} onValueChange={(v) => setBillForm(p => ({ ...p, type: v }))}>
+                    <SelectTrigger data-testid="select-bill-type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expense">A Pagar</SelectItem>
+                      <SelectItem value="income">A Receber</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Dia de vencimento (1-31)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={billForm.dueDay}
+                    onChange={(e) => setBillForm(p => ({ ...p, dueDay: e.target.value }))}
+                    data-testid="input-bill-due-day"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Recorrência</label>
+                  <Select value={billForm.recurrenceType} onValueChange={(v) => setBillForm(p => ({ ...p, recurrenceType: v }))}>
+                    <SelectTrigger data-testid="select-bill-recurrence"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="this_month">Este mês</SelectItem>
+                      <SelectItem value="permanent">Permanente</SelectItem>
+                      <SelectItem value="three_months">3 meses</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
+                  <Textarea
+                    value={billForm.notes}
+                    onChange={(e) => setBillForm(p => ({ ...p, notes: e.target.value }))}
+                    className="resize-none text-sm"
+                    rows={3}
+                    data-testid="textarea-bill-notes"
+                  />
+                </div>
+                <Button
+                  onClick={() => confirmPdfMutation.mutate({
+                    docType: "bill",
+                    title: billForm.title,
+                    amount: parseFloat(billForm.amount) || 0,
+                    type: billForm.type,
+                    dueDay: parseInt(billForm.dueDay) || 1,
+                    recurrenceType: billForm.recurrenceType,
+                    categoryName: billForm.categoryName || pdfPreview.categoryName || "outros",
+                    notes: billForm.notes,
+                  })}
+                  disabled={confirmPdfMutation.isPending}
+                  className="w-full"
+                  data-testid="button-confirm-bill"
+                >
+                  {confirmPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                  Registrar Conta
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {pdfPreview && pdfPreview.docType !== "bill" && (
             <Card className="border-primary" data-testid="card-pdf-preview">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Extrato detectado — {pdfPreview.transactions?.length || 0} transações</CardTitle>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setPdfPreview(null)}><X className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => setPdfPreview(null)}><X className="h-4 w-4" /></Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-1 max-h-60 overflow-auto">
@@ -360,7 +479,7 @@ export default function Finance() {
                     <span className={`ml-2 ${t.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {fmtBRL(t.amount ?? 0)}</span>
                   </div>
                 ))}
-                <Button onClick={() => confirmPdfMutation.mutate()} disabled={confirmPdfMutation.isPending} className="w-full mt-2" data-testid="button-confirm-pdf">
+                <Button onClick={() => confirmPdfMutation.mutate(pdfPreview)} disabled={confirmPdfMutation.isPending} className="w-full mt-2" data-testid="button-confirm-pdf">
                   {confirmPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Importar tudo
                 </Button>
               </CardContent>
