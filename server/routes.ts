@@ -109,16 +109,19 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
 
     if (lastAnalysis) {
       const daysSince = (now.getTime() - new Date(lastAnalysis).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSince < 7) return;
+      if (daysSince < 3) return;
     }
-
-    await storage.upsertUserProfile(userId, { lastSpendingAnalysis: now });
 
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const [transactions, recurringIncomes] = await Promise.all([
       storage.getTransactions(userId, { startDate: thirtyDaysAgo, endDate: now }),
       storage.getRecurringIncomes(userId),
     ]);
+
+    const expenses = transactions.filter(t => t.type === "expense");
+
+    // Exige mínimo de 5 despesas para análise ser significativa
+    if (expenses.length < 5) return;
 
     const monthlyIncome = recurringIncomes.reduce((s: number, r: any) => {
       const amount = Number(r.amount);
@@ -127,22 +130,26 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       return s + amount;
     }, 0);
 
-    if (monthlyIncome <= 0 || transactions.length === 0) return;
+    if (monthlyIncome <= 0) return;
+
+    await storage.upsertUserProfile(userId, { lastSpendingAnalysis: now });
 
     const result = await analyzeSpendingDiscipline(
       transactions.map(t => ({ title: t.title, amount: Number(t.amount), category: t.category, type: t.type })),
       monthlyIncome
     );
 
-    if (result.penalty === 0) return;
-
     let reason: string;
     if (result.penalty > 0) {
       const emoji = result.verdict === "ótimo" ? "💰" : "✅";
-      reason = `${emoji} Finanças bem geridas — gastos controlados (${result.message || result.verdict}) — +${result.penalty} pts`;
+      reason = `${emoji} Finanças ${result.verdict} — ${result.message || "gastos controlados"} (+${result.penalty} pts)`;
+    } else if (result.penalty < 0) {
+      const details = result.badCategories.length > 0
+        ? result.badCategories.slice(0, 3).join("; ")
+        : "padrão de gastos supérfluos";
+      reason = `💸 ${result.message || "Gastos imprudentes"} — ${details} (${result.penalty} pts)`;
     } else {
-      const categoryList = result.badCategories.slice(0, 3).join(", ") || "gastos desnecessários";
-      reason = `💸 Gastos imprudentes detectados (${result.badPercentage}% da renda): ${categoryList} — ${result.penalty} pts`;
+      return;
     }
     await adjustDisciplinePoints(userId, result.penalty, reason);
   } catch {

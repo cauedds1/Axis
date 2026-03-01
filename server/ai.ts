@@ -865,6 +865,11 @@ export interface SpendingAnalysisResult {
   message: string;
 }
 
+// Categorias essenciais — nunca penalizadas independente do valor
+const ESSENTIAL_CATEGORIES = new Set([
+  "mercado", "combustível", "moradia", "saúde", "farmácia", "educação", "trabalho", "transferência",
+]);
+
 export async function analyzeSpendingDiscipline(
   transactions: { title: string; amount: number; category?: string | null; type: string }[],
   monthlyIncome: number
@@ -877,48 +882,92 @@ export async function analyzeSpendingDiscipline(
     return { penalty: 0, verdict: "neutro", badCategories: [], badPercentage: 0, message: "Sem dados suficientes para análise." };
   }
 
-  const txSummary = expenses
-    .map(t => `- ${t.title} (${t.category || "sem categoria"}): R$ ${t.amount.toFixed(2)}`)
-    .slice(0, 60)
+  // Agrupar por categoria com contagem, total e lista de itens
+  const byCategory: Record<string, { count: number; total: number; items: string[] }> = {};
+  for (const t of expenses) {
+    const cat = (t.category || "outros").toLowerCase().trim();
+    if (!byCategory[cat]) byCategory[cat] = { count: 0, total: 0, items: [] };
+    byCategory[cat].count++;
+    byCategory[cat].total += t.amount;
+    byCategory[cat].items.push(t.title);
+  }
+
+  const savingsPct = totalExpenses < monthlyIncome
+    ? Math.round(((monthlyIncome - totalExpenses) / monthlyIncome) * 100)
+    : 0;
+  const spendingPct = Math.round((totalExpenses / monthlyIncome) * 100);
+
+  // Montar bloco estruturado por categoria para o prompt
+  const categorySummary = Object.entries(byCategory)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([cat, data]) => {
+      const pct = ((data.total / monthlyIncome) * 100).toFixed(1);
+      const isEssential = ESSENTIAL_CATEGORIES.has(cat);
+      const preview = data.items.slice(0, 4).join(", ") + (data.items.length > 4 ? ` ... (+${data.items.length - 4} itens)` : "");
+      return `  • ${cat}${isEssential ? " [ESSENCIAL]" : ""}: ${data.count}x | R$ ${data.total.toFixed(2)} | ${pct}% renda | ex: ${preview}`;
+    })
     .join("\n");
 
-  const prompt = `Você é um coach de disciplina financeira. Analise os gastos do usuário dos últimos 30 dias e avalie o impacto na disciplina.
+  const prompt = `Você é um coach de disciplina financeira. Avalie com EXTREMA PRECISÃO os gastos do usuário dos últimos 30 dias e determine o impacto real na disciplina.
 
-Renda mensal declarada: R$ ${monthlyIncome.toFixed(2)}
-Total de gastos: R$ ${totalExpenses.toFixed(2)}
+══ CONTEXTO FINANCEIRO ══
+Renda mensal: R$ ${monthlyIncome.toFixed(2)}
+Total gasto: R$ ${totalExpenses.toFixed(2)} (${spendingPct}% da renda)
+Taxa de poupança: ${savingsPct}% da renda${totalExpenses > monthlyIncome ? "\n⚠️ ATENÇÃO: gastou MAIS do que ganha este mês" : ""}
 
-Gastos:
-${txSummary}
+══ GASTOS POR CATEGORIA ══
+${categorySummary}
 
-Categorias problemáticas: fast food, delivery de comida (iFood/UberEats/Rappi), bares, baladas, festas, apostas, jogos, assinaturas de entretenimento excessivas, compras por impulso, vestuário não essencial.
+══ REGRAS DE ANÁLISE ══
 
-Retorne um JSON com:
+CATEGORIAS ESSENCIAIS (marcadas [ESSENCIAL]) — NUNCA penalize, não importa o valor. São gastos necessários à vida.
+
+CATEGORIAS DISCRICIONÁRIAS — avalie padrão e frequência:
+
+alimentação:
+- Delivery (iFood/Rappi/UberEats): >8 pedidos no mês OU >20% da renda = problemático. 1-3 pedidos = normal.
+- Restaurante/lanchonete frequente: avaliar proporção. Comer fora todo dia = excessivo.
+- Padaria/café esporádico = normal.
+
+lazer:
+- Bar/balada/festa frequente OU >15% da renda = leve/moderado.
+- Streaming básico (1-2 serviços) = normal.
+- Múltiplos streamings + lazer físico constante = preocupante.
+
+vestuário:
+- 1-2 compras/mês = normal. Compras repetitivas por impulso OU >15% da renda = problemático.
+
+outros/sem categoria:
+- Avaliar pelo padrão (frequência e valores).
+
+ANÁLISE DE PADRÃO:
+- Não penalize por UMA compra isolada de qualquer categoria discricionária.
+- Penalize pelo PADRÃO: muitas compras repetidas, frequência excessiva, valor desproporcional à renda.
+- Se os gastos discricionários são baixos mas a poupança é alta → "ótimo" ou "bom".
+- Se gastou mais do que ganha → sempre pelo menos "leve", provavelmente "moderado" ou "grave".
+
+══ VEREDITO (baseado nos gastos discricionários problemáticos como % da renda) ══
+- "ótimo": padrão exemplar — gastos discricionários < 5% renda OU poupou >30%
+- "bom": controle razoável — gastos problemáticos 5-12% renda
+- "neutro": aceitável mas pode melhorar — 12-20% em supérfluos
+- "leve": excesso leve — 20-30% em supérfluos OU padrão de impulso pontual
+- "moderado": padrão preocupante — 30-40% em supérfluos OU gastou quase toda a renda
+- "grave": descontrolado — >40% em supérfluos OU gastou mais do que ganha
+
+Retorne APENAS este JSON (sem markdown):
 {
-  "badCategories": ["lista das categorias/itens problemáticos encontrados, vazia se não houver"],
-  "badAmount": <total gasto em categorias problemáticas como número>,
+  "badCategories": ["lista das categorias/padrões problemáticos — seja específico, ex: 'delivery excessivo (12x)', 'lazer alto (R$680)'. Vazio se não houver problema real"],
+  "badAmount": <soma em R$ gasto nas categorias/itens problemáticos, como número>,
   "verdict": "ótimo" | "bom" | "neutro" | "leve" | "moderado" | "grave",
-  "message": "<mensagem curta e direta em pt-BR sobre o padrão de gastos, máx 80 chars>"
-}
-
-Regras de veredito (baseadas nos gastos problemáticos como % da renda):
-- "ótimo": < 5% — gastos essenciais e controlados, dinheiro bem gerido
-- "bom": 5-10% — algumas besteiras mas dentro do razoável
-- "neutro": 10-15% — nível aceitável, mas atenção
-- "leve": 15-25% — excesso leve de gastos supérfluos
-- "moderado": 25-35% — padrão preocupante de gastos
-- "grave": > 35% — gastos descontrolados
-
-Também considere: se total de gastos < 70% da renda (boa poupança) tende a "ótimo" ou "bom".
-Se total de gastos > 100% da renda (gastou mais do que ganha) penalize um nível a mais.
-
-Retorne APENAS o JSON, sem markdown.`;
+  "message": "<frase direta em pt-BR sobre o padrão real observado, máx 90 chars>"
+}`;
 
   try {
     const resp = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 300,
+      temperature: 0.2,
+      max_tokens: 400,
     });
     const raw = resp.choices[0].message.content?.trim() ?? "{}";
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
@@ -928,10 +977,10 @@ Retorne APENAS o JSON, sem markdown.`;
     const verdict = parsed.verdict ?? "neutro";
 
     let penalty = 0;
-    if (verdict === "ótimo")    penalty = +4;
-    else if (verdict === "bom") penalty = +2;
+    if (verdict === "ótimo")       penalty = +4;
+    else if (verdict === "bom")    penalty = +2;
     else if (verdict === "neutro") penalty = 0;
-    else if (verdict === "leve") penalty = -2;
+    else if (verdict === "leve")   penalty = -2;
     else if (verdict === "moderado") penalty = -4;
     else if (verdict === "grave")    penalty = -6;
 
