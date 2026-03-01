@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatTxDescription } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
 import { BillsTab } from "@/components/bills-tab";
@@ -734,7 +735,7 @@ export default function Finance() {
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`h-2 w-2 rounded-full flex-shrink-0 ${tx.type === "income" ? "bg-green-500" : "bg-destructive"}`} />
                           <div className="min-w-0">
-                            <p className="text-sm truncate">{tx.description}</p>
+                            <p className="text-sm truncate">{formatTxDescription(tx.description)}</p>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                               <span>{tx.categoryName || "Sem categoria"}</span>
                               {tx.establishment && <><span>·</span><span>{tx.establishment}</span></>}
@@ -1008,7 +1009,7 @@ export default function Finance() {
           <Dialog open onOpenChange={() => setSelectedTx(null)}>
             <DialogContent className="max-w-sm" data-testid="dialog-tx-detail">
               <DialogHeader>
-                <DialogTitle className="text-base font-semibold leading-snug pr-6">{tx.description}</DialogTitle>
+                <DialogTitle className="text-base font-semibold leading-snug pr-6">{formatTxDescription(tx.description)}</DialogTitle>
               </DialogHeader>
 
               {/* Amount */}

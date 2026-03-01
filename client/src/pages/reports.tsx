@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatTxDescription } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -570,7 +571,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                       {isIncome ? <ArrowUpRight className="h-4 w-4" style={{ color: txColor }} /> : <Receipt className="h-4 w-4" style={{ color: txColor }} />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{tx.description}</p>
+                      <p className="text-sm font-medium truncate">{formatTxDescription(tx.description)}</p>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
                         {tx.establishment && <><span className="font-medium text-foreground/60">{tx.establishment}</span><span>·</span></>}
                         <span>{tx.categoryName || "Sem categoria"}</span>
