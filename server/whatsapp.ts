@@ -22,6 +22,12 @@ export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
 const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
 
+interface PendingDuplicate {
+  transactionData: any;
+  replyText: string;
+  expiresAt: number;
+}
+
 class WhatsAppManager {
   private sock: any = null;
   private status: WhatsAppStatus = "disconnected";
@@ -29,6 +35,7 @@ class WhatsAppManager {
   private connectedPhone: string | null = null;
   private retryCount = 0;
   private lidCache: Map<string, string> = new Map();
+  private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
 
   getStatus(): WhatsAppStatus { return this.status; }
   getQrCode(): string | null { return this.qrCode; }
@@ -255,6 +262,27 @@ class WhatsAppManager {
 
       log(`WhatsApp: usuário encontrado — userId=${profile.userId}`, "whatsapp");
 
+      // Check for pending duplicate confirmation
+      const pending = this.pendingDuplicates.get(jid);
+      if (pending && !imageMsg) {
+        if (Date.now() > pending.expiresAt) {
+          this.pendingDuplicates.delete(jid);
+        } else {
+          const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (answer === "sim" || answer === "s" || answer === "yes" || answer.startsWith("sim ") || answer === "cadastrar") {
+            this.pendingDuplicates.delete(jid);
+            await storage.createTransaction(pending.transactionData);
+            await this.sendMessage(jid, `✅ Cadastrado!\n${pending.replyText}`);
+          } else if (answer === "nao" || answer === "n" || answer === "no" || answer.startsWith("nao ") || answer === "cancelar") {
+            this.pendingDuplicates.delete(jid);
+            await this.sendMessage(jid, "🚫 Ok, transação não cadastrada.");
+          } else {
+            await this.sendMessage(jid, `⚠️ Responda *sim* para cadastrar ou *não* para cancelar.\n${pending.replyText}`);
+          }
+          return;
+        }
+      }
+
       if (imageMsg) {
         await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
         return;
@@ -386,7 +414,7 @@ class WhatsAppManager {
       description = receipt.establishment || receipt.description || "Comprovante";
     }
 
-    await storage.createTransaction({
+    const transactionData = {
       userId,
       type: transactionType,
       amount: amount as any,
@@ -397,12 +425,9 @@ class WhatsAppManager {
       establishment,
       location: receipt.location || null,
       source: "whatsapp",
-    });
+    };
 
-    const isPix = imageType === "pix_sent" || imageType === "pix_received";
     const emoji = transactionType === "income" ? "📥" : "📤";
-
-    // Format date/time for reply
     const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = receipt.time ? ` às ${receipt.time}` : "";
 
@@ -422,6 +447,40 @@ class WhatsAppManager {
     if (receipt.paymentMethod) reply += `\n💳 ${receipt.paymentMethod}`;
     if (receipt.items && receipt.items.length > 1) reply += `\n📋 ${receipt.items.length} itens`;
 
+    // Duplicate detection: check for transactions with same amount + description/establishment within last 7 days
+    const windowStart = new Date(date.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const windowEnd = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const recent = await storage.getTransactions(userId, { startDate: windowStart, endDate: windowEnd });
+
+    const isDuplicate = recent.some(tx => {
+      if (Math.abs(Number(tx.amount) - amount) > 0.01) return false;
+      if (tx.type !== transactionType) return false;
+      const txDate = new Date(tx.date);
+      const diffMs = Math.abs(txDate.getTime() - date.getTime());
+      const withinTwoHours = diffMs < 2 * 60 * 60 * 1000;
+      const sameDay = txDate.toDateString() === date.toDateString();
+      if (!withinTwoHours && !sameDay) return false;
+      const descMatch = tx.description?.toLowerCase() === description.toLowerCase();
+      const estMatch = establishment && tx.establishment?.toLowerCase() === establishment.toLowerCase();
+      return descMatch || estMatch;
+    });
+
+    if (isDuplicate) {
+      log(`WhatsApp: transação duplicada detectada — R$ ${amount} "${description}"`, "whatsapp");
+      this.pendingDuplicates.set(jid, {
+        transactionData,
+        replyText: reply,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+      await this.sendMessage(jid,
+        `⚠️ *Transação já cadastrada!*\n${reply}\n\n` +
+        `Essa transação parece já ter sido registrada. Deseja cadastrar novamente?\n` +
+        `Responda *sim* para cadastrar ou *não* para cancelar.`
+      );
+      return;
+    }
+
+    await storage.createTransaction(transactionData);
     await this.sendMessage(jid, reply);
     log(`WhatsApp image processed — ${transactionType} R$ ${amount} (${imageType})`, "whatsapp");
   }
