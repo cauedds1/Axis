@@ -36,16 +36,18 @@ export default function Agenda() {
   const { theme } = useTheme();
   const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
 
-  const weekStart = new Date(selectedDate);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-  weekEnd.setHours(23, 59, 59);
+  const periodStart = new Date(selectedDate);
+  const dayOfMonth = periodStart.getDate();
+  periodStart.setDate(dayOfMonth <= 15 ? 1 : 16);
+  periodStart.setHours(0, 0, 0, 0);
+  const periodEnd = new Date(periodStart);
+  periodEnd.setDate(periodEnd.getDate() + 14);
+  periodEnd.setHours(23, 59, 59, 999);
 
   const { data: items = [], isLoading } = useQuery<ScheduleItem[]>({
-    queryKey: ["/api/schedule", weekStart.toISOString(), weekEnd.toISOString()],
+    queryKey: ["/api/schedule", periodStart.toISOString(), periodEnd.toISOString()],
     queryFn: async () => {
-      const res = await fetch(`/api/schedule?startDate=${weekStart.toISOString()}&endDate=${weekEnd.toISOString()}`, { credentials: "include" });
+      const res = await fetch(`/api/schedule?startDate=${periodStart.toISOString()}&endDate=${periodEnd.toISOString()}`, { credentials: "include" });
       return res.json();
     },
   });
@@ -202,21 +204,21 @@ export default function Agenda() {
     onError: () => toast({ title: "Erro ao criar compromisso", variant: "destructive" }),
   });
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
+  const periodDays = Array.from({ length: 15 }, (_, i) => {
+    const d = new Date(periodStart);
     d.setDate(d.getDate() + i);
     return d;
   });
 
-  const prevWeek = () => {
+  const prev15 = () => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 7);
+    d.setDate(d.getDate() - 15);
     setSelectedDate(d);
   };
 
-  const nextWeek = () => {
+  const next15 = () => {
     const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 7);
+    d.setDate(d.getDate() + 15);
     setSelectedDate(d);
   };
 
@@ -279,19 +281,19 @@ export default function Agenda() {
       )}
 
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={prevWeek} data-testid="button-prev-week">
+        <Button variant="ghost" size="icon" onClick={prev15} data-testid="button-prev-period">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium">
-          {weekStart.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })} — {weekEnd.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
+          {periodStart.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })} — {periodEnd.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
         </span>
-        <Button variant="ghost" size="icon" onClick={nextWeek} data-testid="button-next-week">
+        <Button variant="ghost" size="icon" onClick={next15} data-testid="button-next-period">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
-        {weekDays.map((day) => {
+      <div className="grid grid-cols-5 gap-1.5">
+        {periodDays.map((day) => {
           const isToday = day.toDateString() === new Date().toDateString();
           const dayStr = day.toISOString().split("T")[0];
           const dayItems = items.filter(i => new Date(i.startTime).toDateString() === day.toDateString());
@@ -320,7 +322,7 @@ export default function Agenda() {
                   style={{
                     background: item.status === "done" ? "rgba(78,205,196,0.08)" :
                       item.suggestedByAi ? `${accent}15` : "rgba(255,255,255,0.05)",
-                    color: item.status === "done" ? "#4ECDC4" :
+                    color: item.status === "done" ? "#00E5C8" :
                       item.suggestedByAi ? accent : "rgba(255,255,255,0.7)",
                   }}
                   onClick={(e) => { e.stopPropagation(); updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" }); }}
@@ -341,7 +343,7 @@ export default function Agenda() {
                     className="text-[10px] p-1 rounded mb-1 truncate cursor-pointer transition-all flex items-center gap-1"
                     style={{
                       background: isDone ? "rgba(78,205,196,0.08)" : "rgba(255,255,255,0.03)",
-                      color: isDone ? "#4ECDC4" : "rgba(255,255,255,0.45)",
+                      color: isDone ? "#00E5C8" : "rgba(255,255,255,0.45)",
                       border: `1px solid ${isDone ? "rgba(78,205,196,0.2)" : "rgba(255,255,255,0.06)"}`,
                       textDecoration: isDone ? "line-through" : "none",
                     }}
@@ -359,7 +361,7 @@ export default function Agenda() {
               {dayBills.map((bill) => {
                 const paid = isBillPaid(bill);
                 const isExpense = bill.type === "expense";
-                const billColor = isExpense ? "#FF6B6B" : "#4ECDC4";
+                const billColor = isExpense ? "#FF1744" : "#00E5C8";
                 return (
                   <div
                     key={`bill-${bill.id}`}
@@ -441,8 +443,8 @@ export default function Agenda() {
                             onClick={() => updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" })}
                             data-testid={`panel-schedule-${item.id}`}>
                             <div className="w-4 h-4 rounded-full border flex items-center justify-center shrink-0"
-                              style={{ borderColor: item.status === "done" ? "#4ECDC4" : "rgba(255,255,255,0.2)", background: item.status === "done" ? "#4ECDC450" : "transparent" }}>
-                              {item.status === "done" && <Check className="h-2.5 w-2.5 text-[#4ECDC4]" />}
+                              style={{ borderColor: item.status === "done" ? "#00E5C8" : "rgba(255,255,255,0.2)", background: item.status === "done" ? "#00E5C850" : "transparent" }}>
+                              {item.status === "done" && <Check className="h-2.5 w-2.5 text-[#00E5C8]" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className={`text-xs ${item.status === "done" ? "line-through text-white/30" : "text-white/80"}`}>{item.title}</div>
@@ -474,7 +476,7 @@ export default function Agenda() {
                                 <div className={`text-xs ${isDone ? "line-through text-white/30" : "text-white/80"}`}>{habit.name}</div>
                                 {(habit as any).targetTime && <div className="text-[10px] text-white/30">{(habit as any).targetTime}</div>}
                               </div>
-                              {isDone && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "#4ECDC4" }} />}
+                              {isDone && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: "#00E5C8" }} />}
                             </div>
                           );
                         })}
@@ -490,7 +492,7 @@ export default function Agenda() {
                         {panelBills.map(bill => {
                           const paid = isBillPaid(bill);
                           const isExpense = bill.type === "expense";
-                          const billColor = isExpense ? "#FF6B6B" : "#4ECDC4";
+                          const billColor = isExpense ? "#FF1744" : "#00E5C8";
                           return (
                             <div key={bill.id} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer"
                               style={{ background: paid ? `${billColor}08` : `${billColor}10`, border: `1px solid ${paid ? `${billColor}15` : `${billColor}25`}` }}
@@ -542,7 +544,7 @@ export default function Agenda() {
                     <div className="flex gap-1.5">
                       {(["high","medium","low"] as const).map(p => {
                         const label = p === "high" ? "Alta" : p === "medium" ? "Média" : "Baixa";
-                        const col = p === "high" ? "#FF6B6B" : p === "medium" ? "#FFB347" : "#A78BFA";
+                        const col = p === "high" ? "#FF1744" : p === "medium" ? "#FFA000" : "#AE73FF";
                         return (
                           <button key={p} onClick={() => setTaskPriority(p)}
                             className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all"
