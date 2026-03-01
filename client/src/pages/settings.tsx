@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -25,6 +26,14 @@ function WhatsAppSection() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
+  const { data: profile } = useQuery<any>({ queryKey: ["/api/user/profile"] });
+
+  useEffect(() => {
+    const saved = profile?.profile?.whatsappPhone;
+    if (saved && !phone) setPhone(saved);
+  }, [profile]);
 
   const { data: status, refetch } = useQuery<{ status: string; qrCode?: string; phone?: string }>({
     queryKey: ["/api/whatsapp/status"],
@@ -37,10 +46,14 @@ function WhatsAppSection() {
     onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
   });
 
-  const disconnectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/whatsapp/disconnect"),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] }); refetch(); },
-    onError: () => toast({ title: "Erro ao desconectar", variant: "destructive" }),
+  const unlinkMutation = useMutation({
+    mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone: "" }),
+    onSuccess: () => {
+      setPhone("");
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+      toast({ title: "Número desvinculado com sucesso!" });
+    },
+    onError: () => toast({ title: "Erro ao desvincular número", variant: "destructive" }),
   });
 
   const resetMutation = useMutation({
@@ -53,6 +66,7 @@ function WhatsAppSection() {
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
     onSuccess: () => {
       setPhoneSaved(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       toast({ title: "Número vinculado com sucesso!" });
       setTimeout(() => setPhoneSaved(false), 2500);
     },
@@ -60,6 +74,7 @@ function WhatsAppSection() {
   });
 
   const wStatus = status?.status || "disconnected";
+  const botPhoneDigits = (status?.phone || "").replace(/\D/g, "");
   const statusMap: Record<string, { label: string; color: string; Icon: any }> = {
     disconnected: { label: "Desconectado", color: "#FF1744", Icon: WifiOff },
     qr_pending:   { label: "Aguardando QR", color: "#FFA000", Icon: QrCode },
@@ -68,7 +83,8 @@ function WhatsAppSection() {
   const { label, color, Icon } = statusMap[wStatus] ?? statusMap.disconnected;
 
   return (
-    <Card className="border-border" data-testid="card-whatsapp-settings">
+    <>
+      <Card className="border-border" data-testid="card-whatsapp-settings">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <MessageCircle className="h-4 w-4" /> WhatsApp Bot
@@ -92,15 +108,29 @@ function WhatsAppSection() {
             </div>
           </div>
           {wStatus === "connected" ? (
-            <button
-              onClick={() => disconnectMutation.mutate()}
-              disabled={disconnectMutation.isPending}
-              className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
-              style={{ color: "#FF1744", borderColor: "rgba(255,23,68,0.3)", background: "rgba(255,23,68,0.08)" }}
-              data-testid="button-whatsapp-disconnect"
-            >
-              {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
-            </button>
+            <div className="flex items-center gap-2">
+              {botPhoneDigits && (
+                <a
+                  href={`https://wa.me/${botPhoneDigits}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                  style={{ color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" }}
+                  data-testid="button-whatsapp-open-chat"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir chat
+                </a>
+              )}
+              <button
+                onClick={() => setConfirmDisconnect(true)}
+                disabled={unlinkMutation.isPending}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+                style={{ color: "#FF1744", borderColor: "rgba(255,23,68,0.3)", background: "rgba(255,23,68,0.08)" }}
+                data-testid="button-whatsapp-disconnect"
+              >
+                {unlinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
+              </button>
+            </div>
           ) : wStatus === "disconnected" ? (
             <button
               onClick={() => connectMutation.mutate()}
@@ -203,6 +233,28 @@ function WhatsAppSection() {
         </div>
       </CardContent>
     </Card>
+
+      <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
+        <AlertDialogContent data-testid="dialog-confirm-whatsapp-disconnect">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular número?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seu número de WhatsApp será removido e o bot não reconhecerá mais suas mensagens. Você poderá vincular novamente quando quiser.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-whatsapp-disconnect">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setConfirmDisconnect(false); unlinkMutation.mutate(); }}
+              data-testid="button-confirm-whatsapp-disconnect"
+            >
+              Desvincular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
