@@ -72,6 +72,7 @@ function SheetHeader({ title, onClose }: { title: string; onClose: () => void })
 }
 
 function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => void; accent: string }) {
+  const { theme } = useTheme();
   const { toast } = useToast();
   const [form, setForm] = useState({
     title: "",
