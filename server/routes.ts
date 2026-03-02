@@ -2012,8 +2012,9 @@ Se algum dado não foi mencionado, use valores razoáveis.`
             selCatMap[cat].count++;
             const dayKey = d.toISOString().slice(0, 10);
             selDailyMap[dayKey] = (selDailyMap[dayKey] || 0) + amt;
-            // Establishment
-            const place = tx.establishment || tx.description || "Não identificado";
+            // Establishment — limpa prefixo [bill:uuid] de transações de contas fixas
+            const rawDesc = (tx.description || "").replace(/^\[bill:[^\]]+\]\s*/, "").trim();
+            const place = tx.establishment || rawDesc || "Não identificado";
             if (!establishmentMap[place]) establishmentMap[place] = { amount: 0, count: 0 };
             establishmentMap[place].amount += amt;
             establishmentMap[place].count++;

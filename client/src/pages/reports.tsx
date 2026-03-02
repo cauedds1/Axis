@@ -434,7 +434,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: `${barColor}18`, color: barColor }}>{i + 1}</div>
-                      <span className="text-sm font-medium truncate">{place.name}</span>
+                      <span className="text-sm font-medium truncate">{formatTxDescription(place.name)}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                       <span className="text-[10px] text-muted-foreground">{place.count}x</span>
