@@ -913,6 +913,38 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/goals/:id/withdraw", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({ amount: z.number().positive() });
+      const { amount } = schema.parse(req.body);
+      const goals = await storage.getFinancialGoals(userId);
+      const goal = goals.find(g => g.id === paramId(req));
+      if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
+      if (amount > goal.currentAmount) return res.status(400).json({ message: "Valor maior que o saldo da reserva" });
+      const [updatedGoal, tx] = await Promise.all([
+        storage.updateFinancialGoal(paramId(req), userId, { currentAmount: goal.currentAmount - amount }),
+        storage.createTransaction({
+          userId,
+          amount,
+          description: `Saque da reserva: ${goal.title}`,
+          type: "income",
+          categoryName: "reserva",
+          source: "manual",
+          date: new Date(),
+          establishment: null,
+          paymentMethod: null,
+          location: null,
+        }),
+      ]);
+      saveEventToMemory(userId, `Saque de R$${amount} da reserva "${goal.title}" — saldo restante: R$${updatedGoal?.currentAmount}`).catch(() => {});
+      res.json({ goal: updatedGoal, transaction: tx });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/goals/:id", isAuthenticated, async (req, res) => {
     try {
       await storage.deleteFinancialGoal(paramId(req), getUserId(req));
