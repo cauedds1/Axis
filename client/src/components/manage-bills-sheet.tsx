@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil, Power, PowerOff, Loader2, TrendingDown, TrendingUp, RotateCcw, Calendar, Tag, Check, Infinity, CalendarRange } from "lucide-react";
+import { Plus, Trash2, Pencil, Power, PowerOff, Loader2, TrendingDown, TrendingUp, RotateCcw, Calendar, Tag, Check, Infinity, CalendarRange, CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,7 @@ const RECURRENCE_OPTS: { type: RecurrenceType; label: string; icon: any }[] = [
   { type: "permanent", label: "Permanente", icon: Infinity },
   { type: "this_month", label: "Este mês", icon: Calendar },
   { type: "three_months", label: "3 meses", icon: CalendarRange },
+  { type: "custom", label: "Personalizado", icon: CalendarDays },
 ];
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
