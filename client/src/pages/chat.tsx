@@ -6,11 +6,8 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { ChatMessage } from "@shared/models/chat";
-
-const HIGH_PRIMARY = "#00E6FF";
-const SLIM_PRIMARY = "#7A9E8A";
 
 type PendingAction = { type: string; data: any };
 
@@ -41,7 +38,7 @@ export default function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { theme } = useTheme();
-  const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
+  const accent = getPrimaryHex(theme);
 
   const { data: messages = [], isLoading } = useQuery<ChatMessage[]>({ queryKey: ["/api/chat/messages"] });
 

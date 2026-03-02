@@ -11,11 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { Bill } from "@shared/schema";
-
-const HIGH_PRIMARY = "#00E6FF";
-const SLIM_PRIMARY = "#7A9E8A";
 const EXPENSE_COLOR = "#FF1744";
 const INCOME_COLOR = "#00E5C8";
 
@@ -561,8 +558,7 @@ const PERIOD_OPTS: { id: PeriodFilter; label: string }[] = [
 
 export function BillsTab() {
   const { theme } = useTheme();
-  const isHigh = theme === "high";
-  const accent = isHigh ? HIGH_PRIMARY : SLIM_PRIMARY;
+  const accent = getPrimaryHex(theme);
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);

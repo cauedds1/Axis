@@ -9,7 +9,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - **Database**: PostgreSQL (Neon) via Drizzle ORM
 - **AI**: OpenAI via Replit AI Integrations (transcription, intent detection, receipt/PDF analysis, contextual chat)
 - **Auth**: Native email/password (bcrypt + express-session)
-- **Themes**: Two dark themes — Slim (achromatic minimalist) and High (electric cyan accent with vivid palette)
+- **Themes**: 8-palette system — 4 Slim (sage, indigo, rose, amber) + 4 High (cyan, purple, gold, coral). CSS uses `--glow-rgb`/`--accent-rgb` vars per variant; components use `getPrimaryHex(theme)` from theme-provider
 
 ## Key Features
 - Dual input: every voice input has text equivalent (mic + text field always visible)
@@ -29,7 +29,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - Bills management (`/finance` → "Contas" tab): cadastro de contas a pagar/receber com recorrência (Permanente/Este mês/3 meses/Personalizado), marcar como pago por mês, cards de resumo (Total a Pagar, Total a Receber, Saldo Previsto, Vencidas, Próximos 7 Dias, Pago este Mês), filtros por tipo e status
 
 ## Design Principles
-- Two themes: Slim (deep black, zero distractions) and High (dark + electric cyan)
+- 8-palette theme system: Slim (sage/indigo/rose/amber) + High (cyan/purple/gold/coral) — all colors dynamic via CSS vars
 - No AI visual clichés (no purple gradients, no glassmorphism, no sparkle emoji)
 - Progressive disclosure: dashboard = 30-second view, max 3 clicks to any feature
 - Portuguese (pt-BR) interface

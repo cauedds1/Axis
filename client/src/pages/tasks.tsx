@@ -7,12 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AnimatePresence, motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import { CaptureButton } from "@/components/capture-button";
 import type { PersonalTask, Habit } from "@shared/schema";
-
-const HIGH_PRIMARY = "#00E6FF";
-const SLIM_PRIMARY = "#7A9E8A";
 
 const PRIORITY_OPTIONS = [
   { value: "high", label: "Alta", color: "#FF1744" },
@@ -475,7 +472,7 @@ export default function Tasks() {
   const [manageHabits, setManageHabits] = useState(false);
   const { toast } = useToast();
   const { theme } = useTheme();
-  const accent = theme === "high" ? HIGH_PRIMARY : SLIM_PRIMARY;
+  const accent = getPrimaryHex(theme);
 
   const { data: tasks = [] } = useQuery<PersonalTask[]>({ queryKey: ["/api/tasks"] });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"] });
