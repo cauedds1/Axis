@@ -875,6 +875,7 @@ class WhatsAppManager {
             return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!`;
           }
         }
+        const singleCard = data.creditCardId ? await storage.getCreditCard(data.creditCardId, userId) : null;
         await storage.createTransaction({
           userId,
           type: intent,
@@ -885,13 +886,13 @@ class WhatsAppManager {
           date: data.date ? new Date(data.date) : new Date(),
           source: "whatsapp",
           paymentMethod: null,
-          creditCardId: data.creditCardId || null,
+          creditCardId: singleCard ? singleCard.id : null,
         });
         if (intent === "income") {
           return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
         }
-        const cardName = data.creditCardId ? ` no cartão` : "";
-        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardName}!`;
+        const cardSuffix = singleCard ? ` no *${singleCard.name}*` : "";
+        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardSuffix}!`;
       }
 
       case "task": {

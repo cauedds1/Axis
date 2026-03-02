@@ -122,16 +122,17 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
   const todayDate = new Date().toISOString().split("T")[0];
   const openai = getOpenAIClient();
 
+  let userCards: any[] = [];
   let creditCardsContext = "";
   try {
     const { creditCards } = await import("@shared/schema");
     const { db } = await import("./db");
     const { eq } = await import("drizzle-orm");
-    const userCards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
+    userCards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
     if (userCards.length > 0) {
       creditCardsContext = `
 CARTÕES DE CRÉDITO DO USUÁRIO:
-${userCards.map(c => `- id: "${c.id}", nome: "${c.name}", banco: "${c.bank}", fechamento: dia ${c.closingDay}, vencimento: dia ${c.dueDay}`).join("\n")}
+${userCards.map((c: any) => `- id: "${c.id}", nome: "${c.name}", banco: "${c.bank}", fechamento: dia ${c.closingDay}, vencimento: dia ${c.dueDay}`).join("\n")}
 
 REGRAS PARA CARTÃO DE CRÉDITO:
 - Se o usuário mencionar um cartão pelo nome ou banco (ex: "no nubank", "no itaú", "no cartão"), identifique qual cartão é e inclua "creditCardId" na resposta
@@ -250,6 +251,25 @@ REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
   });
 
   const parsed = JSON.parse(response.choices[0]?.message?.content || '{"intent":"chat","message":""}');
+
+  if (parsed.creditCardId && userCards.length > 0) {
+    const exactMatch = userCards.find((c: any) => c.id === parsed.creditCardId);
+    if (!exactMatch) {
+      const needle = String(parsed.creditCardId).toLowerCase();
+      const fuzzy = userCards.find((c: any) =>
+        c.name.toLowerCase().includes(needle) ||
+        c.bank.toLowerCase().includes(needle) ||
+        needle.includes(c.name.toLowerCase()) ||
+        needle.includes(c.bank.toLowerCase())
+      );
+      if (fuzzy) {
+        parsed.creditCardId = fuzzy.id;
+      } else {
+        delete parsed.creditCardId;
+      }
+    }
+  }
+
   return { intent: parsed.intent, data: parsed, rawText: text };
 }
 
