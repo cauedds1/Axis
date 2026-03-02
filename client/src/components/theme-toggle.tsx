@@ -22,6 +22,7 @@ const HIGH_PALETTES: { id: AxisTheme; label: string }[] = [
   { id: "high-purple", label: "Violeta" },
   { id: "high-gold",   label: "Ouro" },
   { id: "high-coral",  label: "Coral" },
+  { id: "high-red",    label: "Vermelho" },
 ];
 
 export function ThemeToggle() {
