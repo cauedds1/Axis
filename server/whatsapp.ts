@@ -20,8 +20,8 @@ import { log } from "./log";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { users, whatsappAuth } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { users, whatsappAuth, transactions } from "@shared/schema";
+import { eq, and, gte } from "drizzle-orm";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -500,7 +500,9 @@ class WhatsAppManager {
       if (userRow) {
         userName = [userRow.firstName, userRow.lastName].filter(Boolean).join(" ");
       }
-    } catch {}
+    } catch (nameErr: any) {
+      log(`WhatsApp: erro ao buscar nome do usuário — ${nameErr?.message}`, "whatsapp");
+    }
 
     let multiResult: { count: number; receipts: any[] };
     try {
@@ -846,9 +848,6 @@ class WhatsAppManager {
       if (!limit || limit <= 0) return "";
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const { transactions } = await import("@shared/schema");
-      const { db } = await import("./db");
-      const { and, eq, gte } = await import("drizzle-orm");
       const cardTx = await db.select().from(transactions)
         .where(and(
           eq(transactions.userId, userId),
