@@ -99,6 +99,16 @@ function AuthenticatedLayout() {
 
 function AppRouter() {
   const { user, isLoading } = useAuth();
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      const publicPaths = ["/", "/auth", "/privacy"];
+      if (!publicPaths.includes(location)) {
+        setLocation("/");
+      }
+    }
+  }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
     return (
