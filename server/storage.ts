@@ -1,5 +1,5 @@
 import {
-  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices,
+  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, scheduleItemCancellations,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
   type Transaction, type InsertTransaction,
@@ -14,6 +14,7 @@ import {
   type EmailAlertLog, type InsertEmailAlertLog,
   type CreditCard, type InsertCreditCard,
   type CreditCardInvoice, type InsertCreditCardInvoice,
+  type ScheduleItemCancellation,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -93,6 +94,10 @@ export interface IStorage {
   getInvoiceByMonth(creditCardId: string, monthKey: string): Promise<CreditCardInvoice | undefined>;
   createInvoice(data: InsertCreditCardInvoice): Promise<CreditCardInvoice>;
   updateInvoice(id: string, data: Partial<CreditCardInvoice>): Promise<CreditCardInvoice | undefined>;
+
+  getScheduleCancellations(userId: string, startDate: string, endDate: string): Promise<ScheduleItemCancellation[]>;
+  createScheduleCancellation(data: { userId: string; scheduleItemId: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation>;
+  deleteScheduleCancellation(id: string, userId: string): Promise<void>;
 
   deleteUserAccount(userId: string): Promise<void>;
   resetUserData(userId: string): Promise<void>;
@@ -408,11 +413,32 @@ export class DatabaseStorage implements IStorage {
     return profile as (UserProfile & { userId: string }) | undefined;
   }
 
+  async getScheduleCancellations(userId: string, startDate: string, endDate: string): Promise<ScheduleItemCancellation[]> {
+    return db.select().from(scheduleItemCancellations)
+      .where(and(
+        eq(scheduleItemCancellations.userId, userId),
+        gte(scheduleItemCancellations.date, startDate),
+        lte(scheduleItemCancellations.date, endDate)
+      ))
+      .orderBy(scheduleItemCancellations.date);
+  }
+
+  async createScheduleCancellation(data: { userId: string; scheduleItemId: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation> {
+    const [rec] = await db.insert(scheduleItemCancellations).values(data).returning();
+    return rec;
+  }
+
+  async deleteScheduleCancellation(id: string, userId: string): Promise<void> {
+    await db.delete(scheduleItemCancellations)
+      .where(and(eq(scheduleItemCancellations.id, id), eq(scheduleItemCancellations.userId, userId)));
+  }
+
   async resetUserData(userId: string): Promise<void> {
     await db.delete(bills).where(eq(bills.userId, userId));
     await db.delete(habitLogs).where(eq(habitLogs.userId, userId));
     await db.delete(habits).where(eq(habits.userId, userId));
     await db.delete(personalTasks).where(eq(personalTasks.userId, userId));
+    await db.delete(scheduleItemCancellations).where(eq(scheduleItemCancellations.userId, userId));
     await db.delete(scheduleItems).where(eq(scheduleItems.userId, userId));
     await db.delete(creditCardInvoices).where(eq(creditCardInvoices.userId, userId));
     await db.delete(creditCards).where(eq(creditCards.userId, userId));

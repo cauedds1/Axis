@@ -1217,6 +1217,66 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/schedule/cancellations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const startDate = (req.query.startDate as string) || "";
+      const endDate = (req.query.endDate as string) || "";
+      res.json(await storage.getScheduleCancellations(userId, startDate, endDate));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/schedule/:id/cancel-today", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const scheduleItemId = paramId(req);
+      const schema = z.object({
+        date: z.string(),
+        type: z.enum(["holiday", "medical", "other"]),
+        reason: z.string().optional(),
+      });
+      const { date, type, reason } = schema.parse(req.body);
+
+      const item = await storage.updateScheduleItem(scheduleItemId, userId, {});
+      if (!item) return res.status(404).json({ message: "Compromisso não encontrado" });
+
+      const cancellation = await storage.createScheduleCancellation({ userId, scheduleItemId, date, reason, type });
+
+      let delta = 0;
+      let disciplineMsg = "";
+      if (type === "holiday") {
+        delta = 0;
+        disciplineMsg = `🏖️ Feriado em "${item.title}" — sem penalidade`;
+      } else if (type === "medical") {
+        delta = -1;
+        disciplineMsg = `🏥 Atestado em "${item.title}" — justificativa aceita (${delta} pt)`;
+      } else {
+        delta = -3;
+        disciplineMsg = `❌ Falta em "${item.title}" sem justificativa (${delta} pts)`;
+      }
+
+      if (delta !== 0) {
+        await adjustDisciplinePoints(userId, delta, disciplineMsg);
+      }
+
+      res.status(201).json({ cancellation, disciplineMsg });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/schedule/cancellations/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteScheduleCancellation(paramId(req), getUserId(req));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
       res.json(await storage.getPersonalTasks(getUserId(req)));

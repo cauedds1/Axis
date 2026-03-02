@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock } from "lucide-react";
+import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock, Ban, Stethoscope, PartyPopper, AlertCircle, Undo2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
 import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
-import type { ScheduleItem, Habit, Bill } from "@shared/schema";
+import { Textarea } from "@/components/ui/textarea";
+import type { ScheduleItem, Habit, Bill, ScheduleItemCancellation } from "@shared/schema";
 
 function parseWeekdays(raw: string | null | undefined): number[] {
   if (!raw) return [];
@@ -29,6 +30,10 @@ export default function Agenda() {
   const [recurrenceType, setRecurrenceType] = useState<"this_month" | "three_months" | "permanent" | "custom">("this_month");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("08:00");
+  const [panelItemMenuId, setPanelItemMenuId] = useState<string | null>(null);
+  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; item: ScheduleItem | null; date: string }>({ open: false, item: null, date: "" });
+  const [cancelType, setCancelType] = useState<"holiday" | "medical" | "other">("other");
+  const [cancelReason, setCancelReason] = useState("");
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
@@ -58,6 +63,20 @@ export default function Agenda() {
 
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"] });
   const { data: bills = [] } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
+
+  const { data: cancellations = [] } = useQuery<ScheduleItemCancellation[]>({
+    queryKey: ["/api/schedule/cancellations", periodStart.toISOString().split("T")[0], periodEnd.toISOString().split("T")[0]],
+    queryFn: async () => {
+      const s = periodStart.toISOString().split("T")[0];
+      const e = periodEnd.toISOString().split("T")[0];
+      const res = await fetch(`/api/schedule/cancellations?startDate=${s}&endDate=${e}`, { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  function getCancellation(itemId: string, dateStr: string): ScheduleItemCancellation | undefined {
+    return cancellations.find(c => c.scheduleItemId === itemId && c.date === dateStr);
+  }
 
   const currentMonthKey = (() => {
     const n = new Date();
@@ -145,6 +164,33 @@ export default function Agenda() {
       queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
+  });
+
+  const cancelTodayMutation = useMutation({
+    mutationFn: async ({ id, date, type, reason }: { id: string; date: string; type: string; reason: string }) => {
+      const res = await apiRequest("POST", `/api/schedule/${id}/cancel-today`, { date, type, reason: reason || undefined });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule/cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setCancelDialog({ open: false, item: null, date: "" });
+      setCancelReason("");
+      setCancelType("other");
+      setPanelItemMenuId(null);
+      toast({ title: "Ausência registrada", description: data.disciplineMsg });
+    },
+    onError: () => toast({ title: "Erro ao registrar cancelamento", variant: "destructive" }),
+  });
+
+  const removeCancellationMutation = useMutation({
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/schedule/cancellations/${id}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule/cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setPanelItemMenuId(null);
+    },
+    onError: () => toast({ title: "Erro ao desfazer cancelamento", variant: "destructive" }),
   });
 
   const createTaskMutation = useMutation({
@@ -317,26 +363,33 @@ export default function Agenda() {
                 <span className="ml-1">{day.getDate()}</span>
               </p>
 
-              {dayItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`text-[10px] p-1 rounded mb-1 truncate cursor-pointer transition-all ${
-                    item.status === "done" ? "line-through opacity-50" :
-                    item.suggestedByAi ? "opacity-90" : ""
-                  }`}
-                  style={{
-                    background: item.status === "done" ? "rgba(78,205,196,0.08)" :
-                      item.suggestedByAi ? `${accent}15` : "rgba(255,255,255,0.05)",
-                    color: item.status === "done" ? MP.positive :
-                      item.suggestedByAi ? accent : "rgba(255,255,255,0.7)",
-                  }}
-                  onClick={(e) => { e.stopPropagation(); updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" }); }}
-                  data-testid={`schedule-item-${item.id}`}
-                  data-no-panel
-                >
-                  {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} {item.title}
-                </div>
-              ))}
+              {dayItems.map((item) => {
+                const cancelled = getCancellation(item.id, dayStr);
+                return (
+                  <div
+                    key={item.id}
+                    className={`text-[10px] p-1 rounded mb-1 truncate cursor-pointer transition-all ${
+                      cancelled ? "line-through opacity-60" :
+                      item.status === "done" ? "line-through opacity-50" :
+                      item.suggestedByAi ? "opacity-90" : ""
+                    }`}
+                    style={{
+                      background: cancelled ? "rgba(251,146,60,0.10)" :
+                        item.status === "done" ? "rgba(78,205,196,0.08)" :
+                        item.suggestedByAi ? `${accent}15` : "rgba(255,255,255,0.05)",
+                      color: cancelled ? "#fb923c" :
+                        item.status === "done" ? MP.positive :
+                        item.suggestedByAi ? accent : "rgba(255,255,255,0.7)",
+                    }}
+                    onClick={(e) => { e.stopPropagation(); updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" }); }}
+                    data-testid={`schedule-item-${item.id}`}
+                    data-no-panel
+                  >
+                    {cancelled && <Ban className="inline h-2 w-2 mr-0.5 opacity-70" />}
+                    {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                  </div>
+                );
+              })}
 
               {dayHabits.map((habit) => {
                 const isDone = (habit as any).lastChecked === dayStr;
@@ -442,24 +495,63 @@ export default function Agenda() {
                     <div>
                       <p className={SECTION}>Agenda</p>
                       <div className="space-y-1.5">
-                        {panelItems.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer"
-                            style={{ background: item.status === "done" ? "rgba(78,205,196,0.08)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                            onClick={() => updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" })}
-                            data-testid={`panel-schedule-${item.id}`}>
-                            <div className="w-4 h-4 rounded-full border flex items-center justify-center shrink-0"
-                              style={{ borderColor: item.status === "done" ? MP.positive : "rgba(255,255,255,0.2)", background: item.status === "done" ? `${MP.positive}50` : "transparent" }}>
-                              {item.status === "done" && <Check className="h-2.5 w-2.5" style={{ color: MP.positive }} />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-xs ${item.status === "done" ? "line-through text-white/30" : "text-white/80"}`}>{item.title}</div>
-                              <div className="text-[10px] text-white/30 flex items-center gap-1">
-                                <Clock className="h-2.5 w-2.5" />
-                                {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        {panelItems.map(item => {
+                          const cancelled = getCancellation(item.id, dStr);
+                          const menuOpen = panelItemMenuId === item.id;
+                          const cancelIcon = cancelled?.type === "holiday" ? <PartyPopper className="h-2.5 w-2.5" /> : cancelled?.type === "medical" ? <Stethoscope className="h-2.5 w-2.5" /> : <Ban className="h-2.5 w-2.5" />;
+                          return (
+                            <div key={item.id} className="rounded-xl overflow-hidden"
+                              style={{ border: cancelled ? "1px solid rgba(251,146,60,0.25)" : menuOpen ? `1px solid ${accent}40` : "1px solid rgba(255,255,255,0.07)" }}
+                              data-testid={`panel-schedule-${item.id}`}>
+                              <div className="flex items-center gap-2 p-2 cursor-pointer"
+                                style={{ background: cancelled ? "rgba(251,146,60,0.07)" : item.status === "done" ? "rgba(78,205,196,0.08)" : menuOpen ? `${accent}08` : "rgba(255,255,255,0.04)" }}
+                                onClick={() => setPanelItemMenuId(menuOpen ? null : item.id)}>
+                                <div className="w-4 h-4 rounded-full border flex items-center justify-center shrink-0"
+                                  style={{ borderColor: cancelled ? "#fb923c" : item.status === "done" ? MP.positive : "rgba(255,255,255,0.2)", background: cancelled ? "rgba(251,146,60,0.2)" : item.status === "done" ? `${MP.positive}50` : "transparent" }}>
+                                  {cancelled ? cancelIcon : item.status === "done" ? <Check className="h-2.5 w-2.5" style={{ color: MP.positive }} /> : null}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-xs ${cancelled ? "line-through text-white/30" : item.status === "done" ? "line-through text-white/30" : "text-white/80"}`}>{item.title}</div>
+                                  <div className="text-[10px] flex items-center gap-1" style={{ color: cancelled ? "#fb923c80" : "rgba(255,255,255,0.3)" }}>
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                    {cancelled && <span className="ml-1 capitalize">· {cancelled.type === "holiday" ? "Feriado" : cancelled.type === "medical" ? "Atestado" : "Outro"}</span>}
+                                  </div>
+                                </div>
                               </div>
+                              {menuOpen && (
+                                <div className="px-2 pb-2 pt-1 flex gap-1.5" style={{ background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                                  {cancelled ? (
+                                    <button
+                                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
+                                      onClick={() => removeCancellationMutation.mutate(cancelled.id)}
+                                      data-testid={`button-undo-cancel-${item.id}`}>
+                                      <Undo2 className="h-3 w-3" /> Desfazer cancelamento
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: `${MP.positive}20`, color: MP.positive }}
+                                        onClick={() => { updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" }); setPanelItemMenuId(null); }}
+                                        data-testid={`button-done-${item.id}`}>
+                                        <Check className="h-3 w-3" /> {item.status === "done" ? "Desfazer" : "Feito"}
+                                      </button>
+                                      <button
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}
+                                        onClick={() => { setCancelDialog({ open: true, item, date: dStr }); setCancelType("other"); setCancelReason(""); }}
+                                        data-testid={`button-cancel-today-${item.id}`}>
+                                        <Ban className="h-3 w-3" /> Cancelar hoje
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -690,6 +782,73 @@ export default function Agenda() {
           );
         })()}
       </AnimatePresence>
+
+      {/* Cancel today dialog */}
+      <Dialog open={cancelDialog.open} onOpenChange={(o) => { if (!o) { setCancelDialog({ open: false, item: null, date: "" }); setCancelReason(""); } }}>
+        <DialogContent style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="dialog-cancel-today">
+          <DialogHeader>
+            <DialogTitle className="text-white text-base">Cancelar somente hoje?</DialogTitle>
+            {cancelDialog.item && (
+              <p className="text-[12px] text-white/40 mt-0.5">{cancelDialog.item.title} · {cancelDialog.date}</p>
+            )}
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Motivo</p>
+              <div className="flex gap-2">
+                {([
+                  { key: "holiday", label: "Feriado", icon: PartyPopper, color: "#34d399" },
+                  { key: "medical", label: "Atestado", icon: Stethoscope, color: "#60a5fa" },
+                  { key: "other",   label: "Outro",    icon: AlertCircle, color: "#fb923c" },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all text-[11px] font-medium"
+                    style={{
+                      background: cancelType === opt.key ? `${opt.color}20` : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${cancelType === opt.key ? opt.color + "60" : "rgba(255,255,255,0.07)"}`,
+                      color: cancelType === opt.key ? opt.color : "rgba(255,255,255,0.45)",
+                    }}
+                    onClick={() => setCancelType(opt.key)}
+                    data-testid={`cancel-type-${opt.key}`}>
+                    <opt.icon className="h-4 w-4" />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-white/30 px-1">
+                {cancelType === "holiday" && "Feriado: sem penalidade na disciplina."}
+                {cancelType === "medical" && "Atestado: -1 ponto de disciplina, justificativa aceita."}
+                {cancelType === "other" && "Sem justificativa: -3 pontos de disciplina."}
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Observação (opcional)</p>
+              <Textarea
+                placeholder="Ex: Dia de folga, consulta médica..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="resize-none text-xs"
+                rows={2}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)" }}
+                data-testid="input-cancel-reason"
+              />
+            </div>
+            <button
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#fb923c", color: "#fff" }}
+              disabled={cancelTodayMutation.isPending}
+              onClick={() => {
+                if (!cancelDialog.item) return;
+                cancelTodayMutation.mutate({ id: cancelDialog.item.id, date: cancelDialog.date, type: cancelType, reason: cancelReason });
+              }}
+              data-testid="button-confirm-cancel-today">
+              {cancelTodayMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : <Ban className="h-4 w-4 inline mr-1" />}
+              Cancelar somente hoje
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
