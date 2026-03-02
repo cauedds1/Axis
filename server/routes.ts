@@ -2907,6 +2907,13 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     const { phone } = req.body;
     const cleaned = (phone || "").replace(/[^0-9]/g, "");
     if (cleaned) {
+      const existing = await storage.getUserProfileByPhone(cleaned);
+      if (existing && existing.userId !== userId) {
+        const prevPhone = (existing as any).whatsappPhone as string | null;
+        await storage.clearWhatsappLink(existing.userId);
+        if (prevPhone) whatsappManager.unlinkPhone(prevPhone);
+        log(`WhatsApp: número ${cleaned} transferido de userId=${existing.userId} para userId=${userId}`, "whatsapp");
+      }
       await storage.upsertUserProfile(userId, { whatsappPhone: cleaned } as any);
       if (whatsappManager.getStatus() === "connected") {
         whatsappManager.resolveAndSaveJid(userId, cleaned).catch(() => {});

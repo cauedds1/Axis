@@ -88,6 +88,7 @@ function WhatsAppTab() {
     onSuccess: () => {
       setPhoneSaved(true);
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
       toast({ title: "Número vinculado com sucesso!" });
       setTimeout(() => setPhoneSaved(false), 2500);
     },
@@ -207,6 +208,15 @@ function WhatsAppTab() {
       <Block>
         <SectionLabel>Seu número de WhatsApp</SectionLabel>
         <p className="text-xs text-muted-foreground">Vincule seu número para que o bot reconheça suas mensagens.</p>
+        {wStatus === "connected" && !profile?.profile?.whatsappPhone && (
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+            style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", color: "#eab308" }}
+            data-testid="alert-whatsapp-no-phone"
+          >
+            <span>⚠ Nenhum número vinculado. O bot está conectado mas não reconhecerá suas mensagens.</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <input
             type="tel"
