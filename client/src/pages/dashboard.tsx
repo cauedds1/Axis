@@ -5,7 +5,7 @@ import { CaptureButton } from "@/components/capture-button";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import { SetupSheet } from "@/components/setup-sheet";
 
 const HIGH_PALETTE = {
@@ -143,9 +143,9 @@ export default function Dashboard() {
   const { data: setupStatus } = useQuery<{ completed: boolean }>({ queryKey: ["/api/onboarding/setup/status"] });
   const [showSetupModal, setShowSetupModal] = useState(false);
   const { theme } = useTheme();
-  const isHigh = theme === "high";
+  const isHigh = theme.startsWith("high");
   const setupPending = setupStatus !== undefined && !setupStatus.completed;
-  const P = isHigh ? HIGH_PALETTE : SLIM_PALETTE;
+  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
 
   const hour = new Date().getHours();
   const greetWord = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";

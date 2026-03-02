@@ -2389,7 +2389,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
   app.patch("/api/user/settings", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const schema = z.object({ theme: z.string().optional(), aiPersonality: z.string().optional(), activeModules: z.array(z.string()).optional() });
+      const schema = z.object({ theme: z.enum(["slim", "slim-indigo", "slim-rose", "slim-amber", "high", "high-purple", "high-gold", "high-coral"]).optional(), aiPersonality: z.string().optional(), activeModules: z.array(z.string()).optional() });
       const data = schema.parse(req.body);
       await db.update(users).set({ ...data, updatedAt: new Date() }).where(eq(users.id, userId));
       res.json({ success: true });

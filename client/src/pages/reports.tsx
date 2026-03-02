@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatTxDescription } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
 import {
@@ -851,8 +851,8 @@ type TabId = typeof TABS[number]["id"];
 export default function Reports() {
   const [activeTab, setActiveTab] = useState<TabId>("finance");
   const { theme } = useTheme();
-  const isHigh = theme === "high";
-  const P = isHigh ? HIGH_PALETTE : SLIM_PALETTE;
+  const isHigh = theme.startsWith("high");
+  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
 
   const tabColors: Record<TabId, string> = {
     finance: P.finance,

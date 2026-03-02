@@ -74,6 +74,41 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* ── Slim palette variants — override only primary/accent colors ── */
+.slim-indigo {
+  --primary: 234 52% 58%;
+  --primary-foreground: 234 15% 96%;
+  --ring: 234 52% 58%;
+  --chart-1: 234 52% 64%;
+  --chart-2: 220 45% 52%;
+  --sidebar-primary: 234 52% 58%;
+  --sidebar-primary-foreground: 234 15% 96%;
+  --sidebar-ring: 234 52% 58%;
+  --button-outline: rgba(107, 127, 217, .14);
+}
+.slim-rose {
+  --primary: 345 38% 52%;
+  --primary-foreground: 345 15% 96%;
+  --ring: 345 38% 52%;
+  --chart-1: 345 38% 58%;
+  --chart-2: 330 32% 46%;
+  --sidebar-primary: 345 38% 52%;
+  --sidebar-primary-foreground: 345 15% 96%;
+  --sidebar-ring: 345 38% 52%;
+  --button-outline: rgba(196, 107, 122, .14);
+}
+.slim-amber {
+  --primary: 35 65% 52%;
+  --primary-foreground: 35 20% 8%;
+  --ring: 35 65% 52%;
+  --chart-1: 35 65% 58%;
+  --chart-2: 22 58% 46%;
+  --sidebar-primary: 35 65% 52%;
+  --sidebar-primary-foreground: 35 20% 8%;
+  --sidebar-ring: 35 65% 52%;
+  --button-outline: rgba(212, 145, 58, .14);
+}
+
 /* ====== SLIM THEME RULES — clean, no animations, focus-first ====== */
 
 /* No ambient background glow */
@@ -203,6 +238,47 @@
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(var(--destructive));
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+/* ── High palette variants — override only primary/accent colors ── */
+.high-purple {
+  --primary: 270 80% 65%;
+  --primary-foreground: 270 40% 4%;
+  --ring: 270 80% 65%;
+  --chart-1: 270 80% 70%;
+  --chart-2: 290 70% 58%;
+  --sidebar-primary: 270 80% 65%;
+  --sidebar-primary-foreground: 270 40% 4%;
+  --sidebar-ring: 270 80% 65%;
+  --button-outline: rgba(176, 102, 255, .18);
+  --elevate-1: rgba(176, 102, 255, .04);
+  --elevate-2: rgba(176, 102, 255, .08);
+}
+.high-gold {
+  --primary: 44 95% 55%;
+  --primary-foreground: 44 40% 4%;
+  --ring: 44 95% 55%;
+  --chart-1: 44 95% 60%;
+  --chart-2: 32 88% 52%;
+  --sidebar-primary: 44 95% 55%;
+  --sidebar-primary-foreground: 44 40% 4%;
+  --sidebar-ring: 44 95% 55%;
+  --button-outline: rgba(255, 212, 38, .18);
+  --elevate-1: rgba(255, 212, 38, .04);
+  --elevate-2: rgba(255, 212, 38, .08);
+}
+.high-coral {
+  --primary: 12 90% 60%;
+  --primary-foreground: 12 40% 4%;
+  --ring: 12 90% 60%;
+  --chart-1: 12 90% 65%;
+  --chart-2: 28 82% 56%;
+  --sidebar-primary: 12 90% 60%;
+  --sidebar-primary-foreground: 12 40% 4%;
+  --sidebar-ring: 12 90% 60%;
+  --button-outline: rgba(255, 92, 58, .18);
+  --elevate-1: rgba(255, 92, 58, .04);
+  --elevate-2: rgba(255, 92, 58, .08);
 }
 
 /* ====== HIGH THEME ANIMATIONS ====== */

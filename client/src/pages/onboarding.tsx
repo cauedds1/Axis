@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeSelector } from "@/components/theme-toggle";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, type AxisTheme } from "@/components/theme-provider";
 
 const CORAL = "#FF6B6B";
 const GOLD = "#FFB347";
@@ -89,7 +89,7 @@ export default function Onboarding() {
   const [activeModules, setActiveModules] = useState<string[]>(["finance", "schedule", "tasks", "habits"]);
   const [disciplineScore, setDisciplineScore] = useState(5);
   const [aiPersonality, setAiPersonality] = useState("calm");
-  const [theme, setThemeVal] = useState("slim");
+  const [theme, setThemeVal] = useState<AxisTheme>("slim");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSetupSubmitting, setIsSetupSubmitting] = useState(false);
   const [phase, setPhase] = useState<Phase>("question");
