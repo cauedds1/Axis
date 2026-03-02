@@ -1,17 +1,73 @@
 import { Link } from "wouter";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
-import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Zap, ChevronDown, Volume2, Camera, FileText, Check } from "lucide-react";
+import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain, Smartphone, Zap, ChevronDown, Volume2, Camera, FileText, Check, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useTheme, ALL_THEMES, type AxisTheme } from "@/components/theme-provider";
 
-const CORAL = "#FF6B6B";
-const GOLD = "#FFB347";
-const LAVANDA = "#A78BFA";
-const CYAN = "#00E6FF";
-const GREEN = "#4ECDC4";
-const CORAL_MUTED = "rgba(255,107,107,0.15)";
-const GOLD_MUTED = "rgba(255,179,71,0.12)";
-const LAVANDA_MUTED = "rgba(167,139,250,0.12)";
+interface LandingPalette {
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  accent: string;
+  success: string;
+  primaryRgb: string;
+  secondaryRgb: string;
+  tertiaryRgb: string;
+  accentRgb: string;
+  successRgb: string;
+  primaryMuted: string;
+  secondaryMuted: string;
+  tertiaryMuted: string;
+}
+
+function getLandingPalette(theme: AxisTheme): LandingPalette {
+  const palettes: Record<AxisTheme, LandingPalette> = {
+    "high": {
+      primary: "#FF6B6B", secondary: "#FFB347", tertiary: "#A78BFA", accent: "#00E6FF", success: "#4ECDC4",
+      primaryRgb: "255,107,107", secondaryRgb: "255,179,71", tertiaryRgb: "167,139,250", accentRgb: "0,230,255", successRgb: "78,205,196",
+      primaryMuted: "rgba(255,107,107,0.15)", secondaryMuted: "rgba(255,179,71,0.12)", tertiaryMuted: "rgba(167,139,250,0.12)",
+    },
+    "high-purple": {
+      primary: "#B066FF", secondary: "#6478FF", tertiary: "#DC78C8", accent: "#E0A0FF", success: "#8BE0D0",
+      primaryRgb: "176,102,255", secondaryRgb: "100,120,255", tertiaryRgb: "220,120,200", accentRgb: "224,160,255", successRgb: "139,224,208",
+      primaryMuted: "rgba(176,102,255,0.15)", secondaryMuted: "rgba(100,120,255,0.12)", tertiaryMuted: "rgba(220,120,200,0.12)",
+    },
+    "high-gold": {
+      primary: "#FFD426", secondary: "#FF9632", tertiary: "#DCB450", accent: "#FFE880", success: "#A0D890",
+      primaryRgb: "255,212,38", secondaryRgb: "255,150,50", tertiaryRgb: "220,180,80", accentRgb: "255,232,128", successRgb: "160,216,144",
+      primaryMuted: "rgba(255,212,38,0.15)", secondaryMuted: "rgba(255,150,50,0.12)", tertiaryMuted: "rgba(220,180,80,0.12)",
+    },
+    "high-coral": {
+      primary: "#FF5C3A", secondary: "#FF8C32", tertiary: "#E66482", accent: "#FFB070", success: "#70D0B0",
+      primaryRgb: "255,92,58", secondaryRgb: "255,140,50", tertiaryRgb: "230,100,130", accentRgb: "255,176,112", successRgb: "112,208,176",
+      primaryMuted: "rgba(255,92,58,0.15)", secondaryMuted: "rgba(255,140,50,0.12)", tertiaryMuted: "rgba(230,100,130,0.12)",
+    },
+    "slim": {
+      primary: "#7A9E8A", secondary: "#9EAA8E", tertiary: "#8B9E7A", accent: "#B8C4A8", success: "#7A9E8A",
+      primaryRgb: "122,158,138", secondaryRgb: "158,170,142", tertiaryRgb: "139,158,122", accentRgb: "184,196,168", successRgb: "122,158,138",
+      primaryMuted: "rgba(122,158,138,0.15)", secondaryMuted: "rgba(158,170,142,0.12)", tertiaryMuted: "rgba(139,158,122,0.12)",
+    },
+    "slim-indigo": {
+      primary: "#6B7FD9", secondary: "#8B9BD0", tertiary: "#7B8FC0", accent: "#A0ADE0", success: "#6B7FD9",
+      primaryRgb: "107,127,217", secondaryRgb: "139,155,208", tertiaryRgb: "123,143,192", accentRgb: "160,173,224", successRgb: "107,127,217",
+      primaryMuted: "rgba(107,127,217,0.15)", secondaryMuted: "rgba(139,155,208,0.12)", tertiaryMuted: "rgba(123,143,192,0.12)",
+    },
+    "slim-rose": {
+      primary: "#C46B7A", secondary: "#D08B96", tertiary: "#B87A88", accent: "#E0A0AE", success: "#C46B7A",
+      primaryRgb: "196,107,122", secondaryRgb: "208,139,150", tertiaryRgb: "184,122,136", accentRgb: "224,160,174", successRgb: "196,107,122",
+      primaryMuted: "rgba(196,107,122,0.15)", secondaryMuted: "rgba(208,139,150,0.12)", tertiaryMuted: "rgba(184,122,136,0.12)",
+    },
+    "slim-amber": {
+      primary: "#D4913A", secondary: "#C8A060", tertiary: "#B89050", accent: "#E0C090", success: "#D4913A",
+      primaryRgb: "212,145,58", secondaryRgb: "200,160,96", tertiaryRgb: "184,144,80", accentRgb: "224,192,144", successRgb: "212,145,58",
+      primaryMuted: "rgba(212,145,58,0.15)", secondaryMuted: "rgba(200,160,96,0.12)", tertiaryMuted: "rgba(184,144,80,0.12)",
+    },
+  };
+  return palettes[theme] ?? palettes["high"];
+}
+
+const LPContext = createContext<LandingPalette>(getLandingPalette("high"));
 
 function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -35,34 +91,17 @@ function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number;
   return <span ref={ref} className="tabular-nums">{prefix}0{suffix}</span>;
 }
 
-const demoExamples = [
-  {
-    input: '"Gastei 45 reais no almoço"',
-    result: "R$ 45,00 · Alimentação · Almoço",
-    label: "Gasto registrado",
-    color: CORAL,
-    bg: CORAL_MUTED,
-    icon: <Mic className="w-4 h-4" />,
-  },
-  {
-    input: '"Reunião amanhã às 14h"',
-    result: "Amanhã, 14:00 – 15:00 · Reunião",
-    label: "Evento criado",
-    color: GOLD,
-    bg: GOLD_MUTED,
-    icon: <Calendar className="w-4 h-4" />,
-  },
-  {
-    input: '"Preciso estudar 2h por dia"',
-    result: "Hábito: Estudar · 2h/dia · Streak: 0",
-    label: "Hábito adicionado",
-    color: LAVANDA,
-    bg: LAVANDA_MUTED,
-    icon: <ListChecks className="w-4 h-4" />,
-  },
-];
+function getDemoExamples(LP: LandingPalette) {
+  return [
+    { input: '"Gastei 45 reais no almoço"', result: "R$ 45,00 · Alimentação · Almoço", label: "Gasto registrado", color: LP.primary, bg: LP.primaryMuted, icon: <Mic className="w-4 h-4" /> },
+    { input: '"Reunião amanhã às 14h"', result: "Amanhã, 14:00 – 15:00 · Reunião", label: "Evento criado", color: LP.secondary, bg: LP.secondaryMuted, icon: <Calendar className="w-4 h-4" /> },
+    { input: '"Preciso estudar 2h por dia"', result: "Hábito: Estudar · 2h/dia · Streak: 0", label: "Hábito adicionado", color: LP.tertiary, bg: LP.tertiaryMuted, icon: <ListChecks className="w-4 h-4" /> },
+  ];
+}
 
 function TypewriterDemo() {
+  const LP = useContext(LPContext);
+  const demoExamples = getDemoExamples(LP);
   const [exampleIdx, setExampleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [showResult, setShowResult] = useState(false);
@@ -161,41 +200,42 @@ function TypewriterDemo() {
 }
 
 function OrbitalGraphic() {
+  const LP = useContext(LPContext);
   return (
     <div className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[440px] md:h-[440px]">
-      <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${CORAL}08, transparent 70%)` }} />
-      <svg viewBox="0 0 420 420" className="w-full h-full" style={{ filter: "drop-shadow(0 0 60px rgba(255,107,107,0.12))" }}>
-        <circle cx="210" cy="210" r="180" fill="none" stroke="rgba(255,107,107,0.06)" strokeWidth="0.5" strokeDasharray="4 6" />
-        <circle cx="210" cy="210" r="140" fill="none" stroke="rgba(255,107,107,0.1)" strokeWidth="1" />
-        <circle cx="210" cy="210" r="100" fill="none" stroke="rgba(255,179,71,0.1)" strokeWidth="1" />
-        <circle cx="210" cy="210" r="60" fill="none" stroke="rgba(167,139,250,0.1)" strokeWidth="1" />
+      <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${LP.primary}08, transparent 70%)` }} />
+      <svg viewBox="0 0 420 420" className="w-full h-full" style={{ filter: `drop-shadow(0 0 60px rgba(${LP.primaryRgb},0.12))` }}>
+        <circle cx="210" cy="210" r="180" fill="none" stroke={`rgba(${LP.primaryRgb},0.06)`} strokeWidth="0.5" strokeDasharray="4 6" />
+        <circle cx="210" cy="210" r="140" fill="none" stroke={`rgba(${LP.primaryRgb},0.1)`} strokeWidth="1" />
+        <circle cx="210" cy="210" r="100" fill="none" stroke={`rgba(${LP.secondaryRgb},0.1)`} strokeWidth="1" />
+        <circle cx="210" cy="210" r="60" fill="none" stroke={`rgba(${LP.tertiaryRgb},0.1)`} strokeWidth="1" />
 
         <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="350" cy="210" r="9" fill={CORAL} opacity="0.9" />
-          <circle cx="350" cy="210" r="14" fill={CORAL} opacity="0.15" />
+          <circle cx="350" cy="210" r="9" fill={LP.primary} opacity="0.9" />
+          <circle cx="350" cy="210" r="14" fill={LP.primary} opacity="0.15" />
           <text x="350" y="237" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Finanças</text>
         </g>
 
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="310" cy="210" r="8" fill={GOLD} opacity="0.9" />
-          <circle cx="310" cy="210" r="12" fill={GOLD} opacity="0.15" />
+          <circle cx="310" cy="210" r="8" fill={LP.secondary} opacity="0.9" />
+          <circle cx="310" cy="210" r="12" fill={LP.secondary} opacity="0.15" />
           <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Agenda</text>
         </g>
 
         <g className="landing-orbit-slow" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="270" cy="210" r="7" fill={LAVANDA} opacity="0.9" />
-          <circle cx="270" cy="210" r="11" fill={LAVANDA} opacity="0.15" />
+          <circle cx="270" cy="210" r="7" fill={LP.tertiary} opacity="0.9" />
+          <circle cx="270" cy="210" r="11" fill={LP.tertiary} opacity="0.15" />
           <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Hábitos</text>
         </g>
 
         <g className="landing-orbit-mid" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="150" cy="120" r="5" fill="rgba(255,107,107,0.7)" />
+          <circle cx="150" cy="120" r="5" fill={`rgba(${LP.primaryRgb},0.7)`} />
         </g>
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="280" cy="300" r="4" fill="rgba(255,179,71,0.6)" />
+          <circle cx="280" cy="300" r="4" fill={`rgba(${LP.secondaryRgb},0.6)`} />
         </g>
         <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
-          <circle cx="130" cy="280" r="3" fill="rgba(167,139,250,0.5)" />
+          <circle cx="130" cy="280" r="3" fill={`rgba(${LP.tertiaryRgb},0.5)`} />
         </g>
 
         <defs>
@@ -203,12 +243,12 @@ function OrbitalGraphic() {
             <circle cx="210" cy="210" r="54" />
           </clipPath>
           <radialGradient id="logo-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,107,107,0.15)" />
+            <stop offset="0%" stopColor={`rgba(${LP.primaryRgb},0.15)`} />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
         <circle cx="210" cy="210" r="70" fill="url(#logo-glow)" />
-        <circle cx="210" cy="210" r="58" fill="rgba(255,107,107,0.1)" />
+        <circle cx="210" cy="210" r="58" fill={`rgba(${LP.primaryRgb},0.1)`} />
         <image href="/logo.png" x="152" y="152" width="116" height="116" clipPath="url(#orbital-logo-clip)" preserveAspectRatio="xMidYMid slice" />
       </svg>
     </div>
@@ -216,19 +256,20 @@ function OrbitalGraphic() {
 }
 
 function FloatingShapes() {
+  const LP = useContext(LPContext);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="landing-float-1 absolute top-[15%] left-[10%] w-4 h-4 rounded-full" style={{ background: CORAL, opacity: 0.15 }} />
-      <div className="landing-float-2 absolute top-[25%] right-[15%] w-3 h-3 rounded-full" style={{ background: GOLD, opacity: 0.12 }} />
-      <div className="landing-float-3 absolute top-[60%] left-[8%] w-5 h-5 rounded-full" style={{ background: LAVANDA, opacity: 0.1 }} />
-      <div className="landing-float-1 absolute top-[70%] right-[12%] w-3 h-3 rounded-full" style={{ background: CORAL, opacity: 0.12 }} />
-      <div className="landing-float-2 absolute top-[40%] left-[80%] w-2 h-2 rounded-full" style={{ background: GOLD, opacity: 0.18 }} />
-      <div className="landing-float-3 absolute top-[85%] left-[30%] w-4 h-4 rounded-full" style={{ background: LAVANDA, opacity: 0.08 }} />
-      <div className="landing-float-1 absolute top-[50%] left-[50%] w-2 h-2 rounded-full" style={{ background: GREEN, opacity: 0.1 }} />
+      <div className="landing-float-1 absolute top-[15%] left-[10%] w-4 h-4 rounded-full" style={{ background: LP.primary, opacity: 0.15 }} />
+      <div className="landing-float-2 absolute top-[25%] right-[15%] w-3 h-3 rounded-full" style={{ background: LP.secondary, opacity: 0.12 }} />
+      <div className="landing-float-3 absolute top-[60%] left-[8%] w-5 h-5 rounded-full" style={{ background: LP.tertiary, opacity: 0.1 }} />
+      <div className="landing-float-1 absolute top-[70%] right-[12%] w-3 h-3 rounded-full" style={{ background: LP.primary, opacity: 0.12 }} />
+      <div className="landing-float-2 absolute top-[40%] left-[80%] w-2 h-2 rounded-full" style={{ background: LP.secondary, opacity: 0.18 }} />
+      <div className="landing-float-3 absolute top-[85%] left-[30%] w-4 h-4 rounded-full" style={{ background: LP.tertiary, opacity: 0.08 }} />
+      <div className="landing-float-1 absolute top-[50%] left-[50%] w-2 h-2 rounded-full" style={{ background: LP.success, opacity: 0.1 }} />
 
-      <div className="landing-float-2 absolute top-[20%] left-[45%] w-px h-20 rotate-45" style={{ background: `linear-gradient(to bottom, transparent, ${CORAL}30, transparent)` }} />
-      <div className="landing-float-1 absolute top-[50%] right-[25%] w-px h-24 -rotate-12" style={{ background: `linear-gradient(to bottom, transparent, ${GOLD}25, transparent)` }} />
-      <div className="landing-float-3 absolute top-[75%] left-[60%] w-px h-16 rotate-[30deg]" style={{ background: `linear-gradient(to bottom, transparent, ${LAVANDA}25, transparent)` }} />
+      <div className="landing-float-2 absolute top-[20%] left-[45%] w-px h-20 rotate-45" style={{ background: `linear-gradient(to bottom, transparent, ${LP.primary}30, transparent)` }} />
+      <div className="landing-float-1 absolute top-[50%] right-[25%] w-px h-24 -rotate-12" style={{ background: `linear-gradient(to bottom, transparent, ${LP.secondary}25, transparent)` }} />
+      <div className="landing-float-3 absolute top-[75%] left-[60%] w-px h-16 rotate-[30deg]" style={{ background: `linear-gradient(to bottom, transparent, ${LP.tertiary}25, transparent)` }} />
     </div>
   );
 }
@@ -314,6 +355,7 @@ function WhatsAppSimulation() {
 }
 
 function DashboardPreview() {
+  const LP = useContext(LPContext);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -348,10 +390,10 @@ function DashboardPreview() {
                 animate={isInView ? { scale: 1 } : {}}
                 transition={{ delay: 0.6, type: "spring" }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                style={{ background: "rgba(78,205,196,0.1)", border: "1px solid rgba(78,205,196,0.2)" }}
+                style={{ background: `rgba(${LP.successRgb},0.1)`, border: `1px solid rgba(${LP.successRgb},0.2)` }}
               >
-                <Zap className="w-3.5 h-3.5" style={{ color: GREEN }} />
-                <span className="text-xs font-bold" style={{ color: GREEN }}>7.2</span>
+                <Zap className="w-3.5 h-3.5" style={{ color: LP.success }} />
+                <span className="text-xs font-bold" style={{ color: LP.success }}>7.2</span>
                 <span className="text-[10px] text-white/40">disciplina</span>
               </motion.div>
             </div>
@@ -359,9 +401,9 @@ function DashboardPreview() {
 
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
-              { label: "Saldo", value: "R$ 3.280", color: GREEN, change: "+12%" },
-              { label: "Gastos", value: "R$ 1.420", color: CORAL, change: "-8%" },
-              { label: "Receitas", value: "R$ 4.700", color: GOLD, change: "+5%" },
+              { label: "Saldo", value: "R$ 3.280", color: LP.success, change: "+12%" },
+              { label: "Gastos", value: "R$ 1.420", color: LP.primary, change: "-8%" },
+              { label: "Receitas", value: "R$ 4.700", color: LP.secondary, change: "+5%" },
             ].map((card, i) => (
               <motion.div
                 key={i}
@@ -390,7 +432,7 @@ function DashboardPreview() {
                     animate={isInView ? { height: `${h}%` } : {}}
                     transition={{ delay: 0.4 + i * 0.05, duration: 0.5, ease: "easeOut" }}
                     className="flex-1 rounded-t"
-                    style={{ background: i === bars.length - 1 ? CORAL : `rgba(255,107,107,${0.15 + (i / bars.length) * 0.4})` }}
+                    style={{ background: i === bars.length - 1 ? LP.primary : `rgba(${LP.primaryRgb},${0.15 + (i / bars.length) * 0.4})` }}
                   />
                 ))}
               </div>
@@ -400,9 +442,9 @@ function DashboardPreview() {
               <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Tarefas Pendentes</p>
               <div className="space-y-2">
                 {[
-                  { text: "Pagar fatura do cartão", priority: CORAL, done: false },
-                  { text: "Reunião com equipe", priority: GOLD, done: false },
-                  { text: "Enviar relatório", priority: LAVANDA, done: true },
+                  { text: "Pagar fatura do cartão", priority: LP.primary, done: false },
+                  { text: "Reunião com equipe", priority: LP.secondary, done: false },
+                  { text: "Enviar relatório", priority: LP.tertiary, done: true },
                 ].map((task, i) => (
                   <motion.div
                     key={i}
@@ -411,9 +453,9 @@ function DashboardPreview() {
                     transition={{ delay: 0.6 + i * 0.12 }}
                     className="flex items-center gap-2.5"
                   >
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${task.done ? "" : ""}`}
-                      style={{ borderColor: task.done ? GREEN : "rgba(255,255,255,0.15)", background: task.done ? `${GREEN}20` : "transparent" }}>
-                      {task.done && <Check className="w-2.5 h-2.5" style={{ color: GREEN }} />}
+                    <div className="w-4 h-4 rounded border flex items-center justify-center"
+                      style={{ borderColor: task.done ? LP.success : "rgba(255,255,255,0.15)", background: task.done ? `${LP.success}20` : "transparent" }}>
+                      {task.done && <Check className="w-2.5 h-2.5" style={{ color: LP.success }} />}
                     </div>
                     <span className={`text-xs ${task.done ? "line-through text-white/30" : "text-white/70"}`}>{task.text}</span>
                     <div className="w-1.5 h-1.5 rounded-full ml-auto" style={{ background: task.priority }} />
@@ -424,7 +466,7 @@ function DashboardPreview() {
               <div className="mt-4 pt-3 border-t border-white/[0.04]">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] text-white/30 uppercase tracking-wider">Hábitos hoje</span>
-                  <span className="text-[11px] font-mono" style={{ color: GREEN }}>2/3</span>
+                  <span className="text-[11px] font-mono" style={{ color: LP.success }}>2/3</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
                   <motion.div
@@ -432,7 +474,7 @@ function DashboardPreview() {
                     animate={isInView ? { width: "66%" } : {}}
                     transition={{ delay: 0.9, duration: 0.7, ease: "easeOut" }}
                     className="h-full rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${GREEN}, ${LAVANDA})` }}
+                    style={{ background: `linear-gradient(90deg, ${LP.success}, ${LP.tertiary})` }}
                   />
                 </div>
               </div>
@@ -445,6 +487,7 @@ function DashboardPreview() {
 }
 
 function MiniFinanceChart() {
+  const LP = useContext(LPContext);
   const bars = [35, 60, 45, 80, 55, 70, 90];
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
@@ -458,7 +501,7 @@ function MiniFinanceChart() {
           animate={isInView ? { height: `${h}%` } : {}}
           transition={{ delay: i * 0.08, duration: 0.5, ease: "easeOut" }}
           className="w-5 rounded-t"
-          style={{ background: i === bars.length - 1 ? CORAL : `rgba(255,107,107,${0.2 + i * 0.08})` }}
+          style={{ background: i === bars.length - 1 ? LP.primary : `rgba(${LP.primaryRgb},${0.2 + i * 0.08})` }}
         />
       ))}
     </div>
@@ -476,6 +519,7 @@ function MiniCalendar() {
     [0, 0, 0, 0],
     [0, 0, 0, 0],
   ];
+  const LP = useContext(LPContext);
   return (
     <div className="grid grid-cols-7 gap-1">
       {days.map((d, i) => (
@@ -487,7 +531,7 @@ function MiniCalendar() {
             key={`${ci}-${ri}`}
             className="h-3.5 rounded-sm"
             style={{
-              background: filled ? `${GOLD}60` : "rgba(255,255,255,0.04)",
+              background: filled ? `${LP.secondary}60` : "rgba(255,255,255,0.04)",
             }}
           />
         ))
@@ -497,6 +541,7 @@ function MiniCalendar() {
 }
 
 function MiniHabits() {
+  const LP = useContext(LPContext);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const habits = [
@@ -511,7 +556,7 @@ function MiniHabits() {
         <div key={i}>
           <div className="flex justify-between text-xs mb-1">
             <span className="text-white/60">{h.name}</span>
-            <span style={{ color: LAVANDA }} className="font-mono text-[11px]">{h.streak}d</span>
+            <span style={{ color: LP.tertiary }} className="font-mono text-[11px]">{h.streak}d</span>
           </div>
           <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
             <motion.div
@@ -519,7 +564,7 @@ function MiniHabits() {
               animate={isInView ? { width: `${h.pct}%` } : {}}
               transition={{ delay: 0.3 + i * 0.15, duration: 0.7, ease: "easeOut" }}
               className="h-full rounded-full"
-              style={{ background: `linear-gradient(90deg, ${LAVANDA}, ${LAVANDA}cc)` }}
+              style={{ background: `linear-gradient(90deg, ${LP.tertiary}, ${LP.tertiary}cc)` }}
             />
           </div>
         </div>
@@ -529,17 +574,18 @@ function MiniHabits() {
 }
 
 function MiniChat() {
+  const LP = useContext(LPContext);
   return (
     <div className="space-y-2.5">
       <div className="flex justify-end">
         <div className="rounded-xl rounded-tr-sm px-3 py-2 text-xs text-white/80 max-w-[70%]"
-          style={{ background: "rgba(255,107,107,0.15)", border: "1px solid rgba(255,107,107,0.1)" }}>
+          style={{ background: `rgba(${LP.primaryRgb},0.15)`, border: `1px solid rgba(${LP.primaryRgb},0.1)` }}>
           Quanto gastei esse mês?
         </div>
       </div>
       <div className="flex justify-start">
         <div className="rounded-xl rounded-tl-sm px-3 py-2 text-xs text-white/80 max-w-[80%]"
-          style={{ background: "rgba(255,179,71,0.12)", border: "1px solid rgba(255,179,71,0.08)" }}>
+          style={{ background: `rgba(${LP.secondaryRgb},0.12)`, border: `1px solid rgba(${LP.secondaryRgb},0.08)` }}>
           Você gastou R$ 2.340 em fevereiro. 42% foi em alimentação.
         </div>
       </div>
@@ -547,7 +593,7 @@ function MiniChat() {
   );
 }
 
-function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
+function StepIllustration({ type, LP }: { type: "voice" | "ai" | "done"; LP: LandingPalette }) {
   if (type === "voice") {
     return (
       <svg viewBox="0 0 60 60" className="w-14 h-14">
@@ -558,7 +604,7 @@ function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
             y={20}
             width={4}
             rx={2}
-            fill={CORAL}
+            fill={LP.primary}
             initial={{ height: 20 }}
             animate={{ height: [20, 10 + Math.random() * 30, 20] }}
             transition={{ duration: 0.8 + i * 0.1, repeat: Infinity, ease: "easeInOut" }}
@@ -571,16 +617,16 @@ function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
   if (type === "ai") {
     return (
       <svg viewBox="0 0 60 60" className="w-14 h-14">
-        <motion.circle cx="30" cy="30" r="18" fill="none" stroke={GOLD} strokeWidth="2"
+        <motion.circle cx="30" cy="30" r="18" fill="none" stroke={LP.secondary} strokeWidth="2"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1, rotate: 360 }}
           transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
         />
-        <motion.circle cx="30" cy="30" r="10" fill="none" stroke={GOLD} strokeWidth="1.5" opacity="0.5"
+        <motion.circle cx="30" cy="30" r="10" fill="none" stroke={LP.secondary} strokeWidth="1.5" opacity="0.5"
           animate={{ rotate: -360 }}
           transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
         />
-        <circle cx="30" cy="30" r="3" fill={GOLD} />
+        <circle cx="30" cy="30" r="3" fill={LP.secondary} />
       </svg>
     );
   }
@@ -590,7 +636,7 @@ function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
       <motion.path
         d="M 18 32 L 26 40 L 42 22"
         fill="none"
-        stroke={LAVANDA}
+        stroke={LP.tertiary}
         strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -602,69 +648,33 @@ function StepIllustration({ type }: { type: "voice" | "ai" | "done" }) {
   );
 }
 
-const moduleShowcase = [
-  {
-    title: "Finanças",
-    desc: "Registre gastos por voz, texto, foto de recibo ou PDF. A IA categoriza automaticamente e você acompanha pra onde vai cada real.",
-    color: CORAL,
-    bg: CORAL_MUTED,
-    visual: <MiniFinanceChart />,
-    icon: <TrendingUp className="w-5 h-5" />,
-    features: ["Foto de recibo", "PDF de extrato", "Categorização por IA", "Metas financeiras"],
-  },
-  {
-    title: "Agenda",
-    desc: "Diga o compromisso e a IA sugere o melhor horário. Aprove com um toque. Sem conflitos, sem esforço.",
-    color: GOLD,
-    bg: GOLD_MUTED,
-    visual: <MiniCalendar />,
-    icon: <Calendar className="w-5 h-5" />,
-    features: ["Sugestão inteligente", "Sem conflitos", "Aprovação rápida", "Lembretes"],
-  },
-  {
-    title: "Tarefas & Hábitos",
-    desc: "Streaks, progresso e score de disciplina automático. A IA avalia suas justificativas e te mantém no trilho.",
-    color: LAVANDA,
-    bg: LAVANDA_MUTED,
-    visual: <MiniHabits />,
-    icon: <ListChecks className="w-5 h-5" />,
-    features: ["Streaks diários", "Score de disciplina", "Justificativas IA", "Prioridades"],
-  },
-  {
-    title: "Chat Inteligente",
-    desc: "Pergunte qualquer coisa sobre seus dados. A IA tem memória de longo prazo e acesso total ao seu contexto.",
-    color: CORAL,
-    bg: "rgba(255,107,107,0.08)",
-    visual: <MiniChat />,
-    icon: <Brain className="w-5 h-5" />,
-    features: ["Memória longa", "Acesso total", "Análises", "Sugestões"],
-  },
-  {
-    title: "WhatsApp Bot",
-    desc: "Registre gastos, consulte saldo, crie tarefas e muito mais — tudo direto pelo WhatsApp. Manda áudio e o bot transcreve.",
-    color: GREEN,
-    bg: "rgba(78,205,196,0.1)",
-    visual: (
+function getModuleShowcase(LP: LandingPalette) {
+  return [
+    { title: "Finanças", desc: "Registre gastos por voz, texto, foto de recibo ou PDF. A IA categoriza automaticamente e você acompanha pra onde vai cada real.", color: LP.primary, bg: LP.primaryMuted, visual: <MiniFinanceChart />, icon: <TrendingUp className="w-5 h-5" />, features: ["Foto de recibo", "PDF de extrato", "Categorização por IA", "Metas financeiras"] },
+    { title: "Agenda", desc: "Diga o compromisso e a IA sugere o melhor horário. Aprove com um toque. Sem conflitos, sem esforço.", color: LP.secondary, bg: LP.secondaryMuted, visual: <MiniCalendar />, icon: <Calendar className="w-5 h-5" />, features: ["Sugestão inteligente", "Sem conflitos", "Aprovação rápida", "Lembretes"] },
+    { title: "Tarefas & Hábitos", desc: "Streaks, progresso e score de disciplina automático. A IA avalia suas justificativas e te mantém no trilho.", color: LP.tertiary, bg: LP.tertiaryMuted, visual: <MiniHabits />, icon: <ListChecks className="w-5 h-5" />, features: ["Streaks diários", "Score de disciplina", "Justificativas IA", "Prioridades"] },
+    { title: "Chat Inteligente", desc: "Pergunte qualquer coisa sobre seus dados. A IA tem memória de longo prazo e acesso total ao seu contexto.", color: LP.primary, bg: `rgba(${LP.primaryRgb},0.08)`, visual: <MiniChat />, icon: <Brain className="w-5 h-5" />, features: ["Memória longa", "Acesso total", "Análises", "Sugestões"] },
+    { title: "WhatsApp Bot", desc: "Registre gastos, consulte saldo, crie tarefas e muito mais — tudo direto pelo WhatsApp. Manda áudio e o bot transcreve.", color: LP.success, bg: `rgba(${LP.successRgb},0.1)`, visual: (
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.2)" }}>
-          <Smartphone className="w-6 h-6 text-green-400" />
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(${LP.successRgb},0.15)`, border: `1px solid rgba(${LP.successRgb},0.2)` }}>
+          <Smartphone className="w-6 h-6" style={{ color: LP.success }} />
         </div>
         <div className="space-y-1.5">
-          <div className="h-2 w-20 rounded-full bg-green-400/20" />
-          <div className="h-2 w-14 rounded-full bg-green-400/10" />
+          <div className="h-2 w-20 rounded-full" style={{ background: `rgba(${LP.successRgb},0.2)` }} />
+          <div className="h-2 w-14 rounded-full" style={{ background: `rgba(${LP.successRgb},0.1)` }} />
         </div>
       </div>
-    ),
-    icon: <MessageSquare className="w-5 h-5" />,
-    features: ["Áudio → texto", "Gastos por voz", "Consultar saldo", "Criar tarefas"],
-  },
-];
+    ), icon: <MessageSquare className="w-5 h-5" />, features: ["Áudio → texto", "Gastos por voz", "Consultar saldo", "Criar tarefas"] },
+  ];
+}
 
-const steps = [
-  { title: "Fale ou digite", desc: "Texto, voz, foto, PDF ou WhatsApp. Do jeito que for mais fácil.", type: "voice" as const, color: CORAL },
-  { title: "IA entende", desc: "Classifica, categoriza e organiza em milissegundos.", type: "ai" as const, color: GOLD },
-  { title: "Pronto", desc: "Tudo registrado. Zero esforço. Vida organizada.", type: "done" as const, color: LAVANDA },
-];
+function getSteps(LP: LandingPalette) {
+  return [
+    { title: "Fale ou digite", desc: "Texto, voz, foto, PDF ou WhatsApp. Do jeito que for mais fácil.", type: "voice" as const, color: LP.primary },
+    { title: "IA entende", desc: "Classifica, categoriza e organiza em milissegundos.", type: "ai" as const, color: LP.secondary },
+    { title: "Pronto", desc: "Tudo registrado. Zero esforço. Vida organizada.", type: "done" as const, color: LP.tertiary },
+  ];
+}
 
 const marqueeItems = [
   "Por voz ou texto",
@@ -718,20 +728,40 @@ function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
 }
 
 export default function Landing() {
+  const { theme, setTheme } = useTheme();
+  const LP = getLandingPalette(theme as AxisTheme);
+  const moduleShowcase = getModuleShowcase(LP);
+  const steps = getSteps(LP);
+
+  const cycleTheme = () => {
+    const idx = ALL_THEMES.indexOf(theme as AxisTheme);
+    const next = ALL_THEMES[(idx + 1) % ALL_THEMES.length];
+    setTheme(next);
+  };
+
   useEffect(() => {
     document.title = "AXIS — Organize sua vida. Por voz, texto ou WhatsApp.";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "AXIS organiza finanças, agenda, tarefas e hábitos com inteligência artificial. Por voz, texto ou WhatsApp.");
   }, []);
 
+  const cssVars = {
+    "--lp-primary-rgb": LP.primaryRgb,
+    "--lp-secondary-rgb": LP.secondaryRgb,
+    "--lp-tertiary-rgb": LP.tertiaryRgb,
+    "--lp-accent-rgb": LP.accentRgb,
+    "--lp-success-rgb": LP.successRgb,
+  } as React.CSSProperties;
+
   return (
-    <div className="min-h-screen landing-bg text-white overflow-hidden relative">
+    <LPContext.Provider value={LP}>
+    <div className="min-h-screen landing-bg text-white overflow-hidden relative" style={cssVars}>
       <div className="landing-grain" />
       <div className="landing-grid-dots" />
 
-      <div className="landing-blob absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.12) 0%, transparent 60%)`, filter: "blur(80px)" }} />
-      <div className="landing-blob-2 absolute top-[30%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
-      <div className="landing-blob-3 absolute top-[60%] left-[-8%] w-[450px] h-[450px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,179,71,0.08) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.12) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-2 absolute top-[30%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.tertiaryRgb},0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-3 absolute top-[60%] left-[-8%] w-[450px] h-[450px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.secondaryRgb},0.08) 0%, transparent 60%)`, filter: "blur(80px)" }} />
 
       <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -739,15 +769,27 @@ export default function Landing() {
             <img src="/logo.png" alt="AXIS" className="w-10 h-10 rounded-xl object-cover" />
             <span className="text-lg font-bold tracking-tight">AXIS</span>
           </div>
-          <Link href="/auth">
-            <Button
-              className="landing-cta-button border-0 text-sm font-semibold px-5"
-              size="sm"
-              data-testid="button-header-login"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={cycleTheme}
+              className="w-8 h-8 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"
+              style={{ background: `rgba(${LP.primaryRgb},0.15)` }}
+              title={`Tema: ${theme}`}
+              data-testid="button-cycle-theme"
             >
-              Começar grátis
-            </Button>
-          </Link>
+              <Palette className="w-3.5 h-3.5 transition-colors" style={{ color: LP.primary }} />
+              <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-[#08080f]" style={{ background: LP.primary }} />
+            </button>
+            <Link href="/auth">
+              <Button
+                className="landing-cta-button border-0 text-sm font-semibold px-5"
+                size="sm"
+                data-testid="button-header-login"
+              >
+                Começar grátis
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -791,7 +833,7 @@ export default function Landing() {
                 </button>
               </Link>
               <div className="flex items-center gap-2 text-sm text-white/30">
-                <Check className="w-4 h-4" style={{ color: GREEN }} />
+                <Check className="w-4 h-4" style={{ color: LP.success }} />
                 <span>Sem cartão de crédito</span>
               </div>
             </motion.div>
@@ -848,7 +890,7 @@ export default function Landing() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: CORAL }}>
+              <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.primary }}>
                 Veja na prática
               </p>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-demo-title">
@@ -869,9 +911,9 @@ export default function Landing() {
             >
               <div className="grid grid-cols-1 gap-4">
                 {[
-                  { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: CORAL },
-                  { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: GOLD },
-                  { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LAVANDA },
+                  { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: LP.primary },
+                  { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: LP.secondary },
+                  { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LP.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -892,11 +934,11 @@ export default function Landing() {
 
               <div className="flex flex-wrap gap-3 mt-2">
                 {[
-                  { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz", color: CORAL },
-                  { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto", color: GOLD },
-                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: LAVANDA },
-                  { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF", color: CYAN },
-                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: GREEN },
+                  { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz", color: LP.primary },
+                  { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto", color: LP.secondary },
+                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: LP.tertiary },
+                  { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF", color: LP.accent },
+                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: LP.success },
                 ].map((input, i) => (
                   <motion.div
                     key={i}
@@ -920,7 +962,7 @@ export default function Landing() {
       <div className="landing-section-divider max-w-4xl mx-auto" />
 
       <section className="py-20 md:py-28 px-6 relative">
-        <div className="landing-blob-2 absolute top-[20%] right-[-15%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(78,205,196,0.08) 0%, transparent 60%)`, filter: "blur(70px)" }} />
+        <div className="landing-blob-2 absolute top-[20%] right-[-15%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.successRgb},0.08) 0%, transparent 60%)`, filter: "blur(70px)" }} />
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             <motion.div
@@ -940,7 +982,7 @@ export default function Landing() {
               <div className="flex flex-wrap gap-2 mb-8">
                 {["Áudio → Texto", "Registrar gastos", "Consultar saldo", "Criar tarefas", "Foto de recibo"].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
-                    style={{ background: "rgba(78,205,196,0.1)", color: GREEN, border: "1px solid rgba(78,205,196,0.15)" }}>
+                    style={{ background: `rgba(${LP.successRgb},0.1)`, color: LP.success, border: `1px solid rgba(${LP.successRgb},0.15)` }}>
                     {tag}
                   </span>
                 ))}
@@ -948,9 +990,9 @@ export default function Landing() {
 
               <div className="space-y-3">
                 {[
-                  { cmd: "Gastei 30 no uber", result: "Transporte registrado", color: CORAL },
-                  { cmd: "Reunião amanhã 14h", result: "Evento criado", color: GOLD },
-                  { cmd: "Como tá meu saldo?", result: "R$ 3.280 disponível", color: GREEN },
+                  { cmd: "Gastei 30 no uber", result: "Transporte registrado", color: LP.primary },
+                  { cmd: "Reunião amanhã 14h", result: "Evento criado", color: LP.secondary },
+                  { cmd: "Como tá meu saldo?", result: "R$ 3.280 disponível", color: LP.success },
                 ].map((ex, i) => (
                   <motion.div
                     key={i}
@@ -970,9 +1012,9 @@ export default function Landing() {
 
               <div className="grid grid-cols-3 gap-3 mt-6">
                 {[
-                  { value: 24, suffix: "h", label: "Disponível", color: GREEN },
-                  { value: 2, suffix: "s", prefix: "< ", label: "Resposta", color: GOLD },
-                  { value: 0, suffix: "", label: "Downloads", color: LAVANDA },
+                  { value: 24, suffix: "h", label: "Disponível", color: LP.success },
+                  { value: 2, suffix: "s", prefix: "< ", label: "Resposta", color: LP.secondary },
+                  { value: 0, suffix: "", label: "Downloads", color: LP.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -1015,7 +1057,7 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-14"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
               Painel completo
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
@@ -1048,7 +1090,7 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LAVANDA }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.tertiary }}>
               Módulos
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
@@ -1066,7 +1108,7 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: 0.1, duration: 0.6, ease: "easeOut" }}
                 className="landing-module-card group relative rounded-2xl p-[1px]"
-                style={{ "--module-color": mod.color, "--module-color-rgb": mod.color === CORAL ? "255,107,107" : mod.color === GOLD ? "255,179,71" : mod.color === LAVANDA ? "167,139,250" : mod.color === GREEN ? "78,205,196" : "255,107,107" } as React.CSSProperties}
+                style={{ "--module-color": mod.color, "--module-color-rgb": mod.color === LP.primary ? LP.primaryRgb : mod.color === LP.secondary ? LP.secondaryRgb : mod.color === LP.tertiary ? LP.tertiaryRgb : mod.color === LP.success ? LP.successRgb : LP.primaryRgb } as React.CSSProperties}
                 data-testid={`panel-module-${mod.title.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 <div className="absolute inset-0 rounded-2xl opacity-40 group-hover:opacity-70 transition-opacity duration-500" style={{ background: `linear-gradient(135deg, ${mod.color}25, transparent 50%, ${mod.color}08)` }} />
@@ -1113,7 +1155,7 @@ export default function Landing() {
           <div className="landing-marquee">
             {[...marqueeItems, ...marqueeItems].map((item, i) => (
               <span key={i} className="landing-marquee-item">
-                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [CORAL, GOLD, LAVANDA, GREEN, CYAN][i % 5] }} />
+                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [LP.primary, LP.secondary, LP.tertiary, LP.success, LP.accent][i % 5] }} />
                 {item}
               </span>
             ))}
@@ -1121,7 +1163,7 @@ export default function Landing() {
           <div className="landing-marquee landing-marquee-reverse" style={{ marginTop: "12px" }}>
             {[...marqueeItems.slice().reverse(), ...marqueeItems.slice().reverse()].map((item, i) => (
               <span key={i} className="landing-marquee-item">
-                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [GREEN, LAVANDA, CORAL, CYAN, GOLD][i % 5] }} />
+                <span className="w-1.5 h-1.5 rounded-full inline-block mr-3" style={{ background: [LP.success, LP.tertiary, LP.primary, LP.accent, LP.secondary][i % 5] }} />
                 {item}
               </span>
             ))}
@@ -1141,7 +1183,7 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: GOLD }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
               Como funciona
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
@@ -1161,7 +1203,7 @@ export default function Landing() {
               >
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-5 border border-white/[0.08]"
                   style={{ background: `${step.color}10` }}>
-                  <StepIllustration type={step.type} />
+                  <StepIllustration type={step.type} LP={LP} />
                 </div>
                 <h3 className="text-lg font-bold mb-1" style={{ color: step.color }}>{step.title}</h3>
                 <p className="text-white/40 text-sm max-w-[200px]">{step.desc}</p>
@@ -1204,7 +1246,7 @@ export default function Landing() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LAVANDA }}>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.tertiary }}>
               Dúvidas frequentes
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="text-faq-title">
@@ -1222,7 +1264,7 @@ export default function Landing() {
 
       <section className="py-28 md:py-36 px-6 relative overflow-hidden">
         <div className="absolute inset-0 landing-cta-bg" />
-        <div className="landing-blob absolute top-[20%] left-[30%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+        <div className="landing-blob absolute top-[20%] left-[30%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
         <div className="relative z-10 max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -1248,9 +1290,9 @@ export default function Landing() {
             </Link>
 
             <div className="flex items-center justify-center gap-6 mt-6 text-xs text-white/25">
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> Grátis</span>
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> Sem cartão</span>
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: GREEN }} /> WhatsApp</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> Grátis</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> Sem cartão</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> WhatsApp</span>
             </div>
           </motion.div>
         </div>
@@ -1273,5 +1315,6 @@ export default function Landing() {
         </div>
       </footer>
     </div>
+    </LPContext.Provider>
   );
 }

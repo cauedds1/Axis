@@ -9,7 +9,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - **Database**: PostgreSQL (Neon) via Drizzle ORM
 - **AI**: OpenAI via Replit AI Integrations (transcription, intent detection, receipt/PDF analysis, contextual chat)
 - **Auth**: Native email/password (bcrypt + express-session)
-- **Themes**: 8-palette system — 4 Slim (sage, indigo, rose, amber) + 4 High (cyan, purple, gold, coral). CSS uses `--glow-rgb`/`--accent-rgb` vars per variant; components use `getPrimaryHex(theme)` from theme-provider
+- **Themes**: 8-palette system — 4 Slim (sage, indigo, rose, amber) + 4 High (cyan, purple, gold, coral). CSS uses `--glow-rgb`/`--accent-rgb` vars per variant; components use `getPrimaryHex(theme)` from theme-provider. Landing page has its own theme system via `getLandingPalette(theme)` returning 5-color palettes (primary/secondary/tertiary/accent/success + rgb/muted variants) per theme, with CSS vars `--lp-primary-rgb` etc. set via inline style on the container. Theme cycle button in header cycles through all 8 themes.
 
 ## Key Features
 - Dual input: every voice input has text equivalent (mic + text field always visible)
