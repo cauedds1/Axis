@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Home, DollarSign, Calendar, CheckSquare, MessageCircle, LogOut, Settings, Flame, Zap, BarChart2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import { DisciplinePanel } from "@/components/discipline-panel";
 
 const HIGH_PALETTE = {
@@ -119,8 +119,8 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { theme } = useTheme();
-  const isHigh = theme === "high";
-  const P = isHigh ? HIGH_PALETTE : SLIM_PALETTE;
+  const isHigh = theme.startsWith("high");
+  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
   const [showDiscipline, setShowDiscipline] = useState(false);
 
   const { data: dashData } = useQuery<any>({ queryKey: ["/api/dashboard"] });

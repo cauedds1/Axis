@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ThemeSelector } from "@/components/theme-toggle";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, type AxisTheme } from "@/components/theme-provider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { SetupSheet } from "@/components/setup-sheet";
@@ -299,7 +299,7 @@ export default function SettingsPage() {
     onError: () => toast({ title: "Erro ao zerar conta", variant: "destructive" }),
   });
 
-  const handleThemeChange = (t: "slim" | "high") => {
+  const handleThemeChange = (t: AxisTheme) => {
     setTheme(t);
     updateMutation.mutate({ theme: t });
   };
