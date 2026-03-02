@@ -131,6 +131,15 @@ class WhatsAppManager {
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
   private pgAuthClearAll: (() => Promise<void>) | null = null;
+  private lastRegisteredTx: Map<string, {
+    id: string;
+    description: string;
+    amount: number;
+    categoryName: string;
+    establishment: string | null;
+    type: string;
+    expiresAt: number;
+  }> = new Map();
 
   getStatus(): WhatsAppStatus { return this.status; }
   getQrCode(): string | null { return this.qrCode; }
@@ -405,7 +414,18 @@ class WhatsAppManager {
           const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (answer === "sim" || answer === "s" || answer === "yes" || answer.startsWith("sim ") || answer === "cadastrar") {
             this.pendingDuplicates.delete(jid);
-            await storage.createTransaction(pending.transactionData);
+            const confirmedTx = await storage.createTransaction(pending.transactionData);
+            if (confirmedTx?.id) {
+              this.lastRegisteredTx.set(jid, {
+                id: confirmedTx.id,
+                description: pending.transactionData.description || "",
+                amount: Number(pending.transactionData.amount),
+                categoryName: pending.transactionData.categoryName || "outros",
+                establishment: pending.transactionData.establishment || null,
+                type: pending.transactionData.type,
+                expiresAt: Date.now() + 30 * 60 * 1000,
+              });
+            }
             await this.sendMessage(jid, `✅ Cadastrado!\n${pending.replyText}`);
           } else if (answer === "nao" || answer === "n" || answer === "no" || answer.startsWith("nao ") || answer === "cancelar") {
             this.pendingDuplicates.delete(jid);
@@ -470,9 +490,58 @@ class WhatsAppManager {
         return;
       }
 
-      const result = await detectIntentAndProcess(text, profile.userId);
+      const lastTxEntry = this.lastRegisteredTx.get(jid);
+      if (lastTxEntry && Date.now() > lastTxEntry.expiresAt) {
+        this.lastRegisteredTx.delete(jid);
+      }
+      const lastTxContext = this.lastRegisteredTx.get(jid);
+
+      const result = await detectIntentAndProcess(text, profile.userId, lastTxContext);
       log(`WhatsApp: intent=${result.intent} para userId=${profile.userId}`, "whatsapp");
-      const reply = await this.buildReply(result, profile.userId);
+
+      if (result.intent === "edit_last") {
+        if (!lastTxContext) {
+          await this.sendMessage(jid, "Não encontrei uma transação recente para editar. Cadastre um gasto ou receita primeiro.");
+          return;
+        }
+        const changes = result.data;
+        const updateFields: Record<string, any> = {};
+        if (changes.amount != null) updateFields.amount = Number(changes.amount);
+        if (changes.description != null) updateFields.description = changes.description;
+        if (changes.categoryName != null) updateFields.categoryName = changes.categoryName;
+        if ("establishment" in changes) updateFields.establishment = changes.establishment;
+        if (changes.date != null) updateFields.date = new Date(changes.date);
+        if (changes.type != null) updateFields.type = changes.type;
+
+        if (Object.keys(updateFields).length === 0) {
+          await this.sendMessage(jid, "Não entendi o que você quer alterar. Pode descrever melhor?");
+          return;
+        }
+
+        await storage.updateTransaction(lastTxContext.id, profile.userId, updateFields);
+
+        const finalAmount = updateFields.amount ?? lastTxContext.amount;
+        const finalCategory = updateFields.categoryName ?? lastTxContext.categoryName;
+        const finalDesc = updateFields.description ?? lastTxContext.description;
+        const finalType = updateFields.type ?? lastTxContext.type;
+
+        this.lastRegisteredTx.set(jid, {
+          ...lastTxContext,
+          description: finalDesc,
+          amount: Number(finalAmount),
+          categoryName: finalCategory,
+          type: finalType,
+          establishment: "establishment" in updateFields ? updateFields.establishment : lastTxContext.establishment,
+          expiresAt: Date.now() + 30 * 60 * 1000,
+        });
+
+        const typeIcon = finalType === "income" ? "📥" : "💸";
+        await this.sendMessage(jid, `✅ *Transação atualizada!*\n${typeIcon} ${finalDesc} — R$ ${Number(finalAmount).toFixed(2).replace(".", ",")} em *${finalCategory}*`);
+        log(`WhatsApp: transação editada id=${lastTxContext.id} para userId=${profile.userId}`, "whatsapp");
+        return;
+      }
+
+      const reply = await this.buildReply(result, profile.userId, jid);
       await this.sendMessage(jid, reply);
       log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
     } catch (err: any) {
@@ -653,7 +722,18 @@ class WhatsAppManager {
         return;
       }
 
-      await storage.createTransaction(transactionData);
+      const savedImageTx = await storage.createTransaction(transactionData);
+      if (savedImageTx?.id) {
+        this.lastRegisteredTx.set(jid, {
+          id: savedImageTx.id,
+          description: transactionData.description || establishment || "",
+          amount,
+          categoryName: transactionData.categoryName || "outros",
+          establishment: establishment || null,
+          type: transactionType,
+          expiresAt: Date.now() + 30 * 60 * 1000,
+        });
+      }
       await this.sendMessage(jid, `✅ *Comprovante registrado!*\n${replyLine}`);
       log(`WhatsApp image processed — ${transactionType} R$ ${amount}`, "whatsapp");
       return;
@@ -722,7 +802,7 @@ class WhatsAppManager {
 
     const result = await detectIntentAndProcess(transcription, userId);
     log(`WhatsApp: intent=${result.intent} (áudio) para userId=${userId}`, "whatsapp");
-    const reply = await this.buildReply(result, userId);
+    const reply = await this.buildReply(result, userId, jid);
     await this.sendMessage(jid, reply);
   }
 
@@ -903,7 +983,7 @@ class WhatsAppManager {
     }
   }
 
-  private async buildReply(result: IntentResult, userId: string): Promise<string> {
+  private async buildReply(result: IntentResult, userId: string, jid: string): Promise<string> {
     const { intent, data } = result;
 
     switch (intent) {
@@ -960,6 +1040,17 @@ class WhatsAppManager {
         } catch (txErr: any) {
           log(`WhatsApp buildReply: ERRO ao salvar transação — ${txErr?.message} — stack: ${txErr?.stack}`, "whatsapp");
           throw txErr;
+        }
+        if (savedTx?.id) {
+          this.lastRegisteredTx.set(jid, {
+            id: savedTx.id,
+            description: data.description || categoryName,
+            amount,
+            categoryName,
+            establishment: data.establishment || null,
+            type: intent,
+            expiresAt: Date.now() + 30 * 60 * 1000,
+          });
         }
         if (intent === "income") {
           return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;

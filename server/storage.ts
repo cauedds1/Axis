@@ -35,6 +35,16 @@ export interface IStorage {
   getTransaction(id: string, userId: string): Promise<Transaction | undefined>;
   createTransaction(data: InsertTransaction): Promise<Transaction>;
   createManyTransactions(data: InsertTransaction[]): Promise<Transaction[]>;
+  updateTransaction(id: string, userId: string, fields: {
+    amount?: number;
+    description?: string;
+    categoryName?: string;
+    establishment?: string | null;
+    date?: Date;
+    type?: "expense" | "income";
+    paymentMethod?: string | null;
+    creditCardId?: string | null;
+  }): Promise<Transaction>;
   deleteTransaction(id: string, userId: string): Promise<void>;
   deleteTransactionsByBillId(userId: string, billId: string): Promise<void>;
 
@@ -160,6 +170,23 @@ export class DatabaseStorage implements IStorage {
   async createManyTransactions(data: InsertTransaction[]): Promise<Transaction[]> {
     if (data.length === 0) return [];
     return db.insert(transactions).values(data).returning();
+  }
+
+  async updateTransaction(id: string, userId: string, fields: {
+    amount?: number;
+    description?: string;
+    categoryName?: string;
+    establishment?: string | null;
+    date?: Date;
+    type?: "expense" | "income";
+    paymentMethod?: string | null;
+    creditCardId?: string | null;
+  }): Promise<Transaction> {
+    const [updated] = await db.update(transactions)
+      .set(fields)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+      .returning();
+    return updated;
   }
 
   async deleteTransaction(id: string, userId: string): Promise<void> {

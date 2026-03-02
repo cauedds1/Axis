@@ -88,7 +88,7 @@ EXEMPLOS CRÍTICOS:
 `;
 
 export interface IntentResult {
-  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown";
+  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last";
   data: any;
   rawText: string;
 }
@@ -118,7 +118,11 @@ export async function transcribeAudio(audioBuffer: Buffer, mimeType: string): Pr
   return transcription.text;
 }
 
-export async function detectIntentAndProcess(text: string, userId: string): Promise<IntentResult> {
+export async function detectIntentAndProcess(
+  text: string,
+  userId: string,
+  lastTxContext?: { id: string; description: string; amount: number; categoryName: string; establishment: string | null; type: string }
+): Promise<IntentResult> {
   const todayDate = new Date().toISOString().split("T")[0];
   const openai = getOpenAIClient();
 
@@ -158,7 +162,14 @@ REGRAS PARA CARTÃO DE CRÉDITO:
         content: `Você é o AXIS, um assistente de vida pessoal inteligente. Analise o texto do usuário e detecte a intenção.
 
 DATA DE HOJE: ${todayDate}
-
+${lastTxContext ? `
+ÚLTIMA TRANSAÇÃO REGISTRADA (pode ser relevante para correções):
+- Descrição: ${lastTxContext.description}
+- Valor: R$ ${lastTxContext.amount.toFixed(2)}
+- Categoria: ${lastTxContext.categoryName}
+- Estabelecimento: ${lastTxContext.establishment || "não informado"}
+- Tipo: ${lastTxContext.type === "expense" ? "gasto" : "receita"}
+` : ""}
 INTENÇÕES POSSÍVEIS:
 1. "expense" — O usuário registrou um GASTO ÚNICO/PONTUAL. Palavras: "gastei", "paguei", "comprei", "custou", etc.
 2. "income" — O usuário registrou uma RECEITA PONTUAL. Palavras: "recebi", "ganhei", "entrou", "salário", etc.
@@ -167,6 +178,7 @@ INTENÇÕES POSSÍVEIS:
 5. "schedule" — O usuário quer AGENDAR algo. Palavras: "marcar", "agendar", "reunião dia", "compromisso", etc.
 6. "habit" — O usuário quer criar um HÁBITO. Palavras: "quero começar a", "hábito de", "todo dia", etc.
 7. "chat" — Qualquer outra coisa que não se encaixa acima — uma pergunta, reflexão, ou conversa.
+8. "edit_last" — O usuário está CORRIGINDO ou AJUSTANDO a última transação registrada. Use SOMENTE quando existir uma "ÚLTIMA TRANSAÇÃO REGISTRADA" no contexto acima E a mensagem for claramente uma correção, não uma nova transação. Indicadores: menciona um valor diferente sem contexto de nova compra ("foi 50", "era 30 reais", "na verdade foi"), corrige o tipo ("era uma notinha de posto", "foi abastecimento"), corrige o estabelecimento/descrição ("era na padaria", "foi no mercado"), usa palavras como "editar", "corrigir", "muda", "altera", "na verdade", "não foi", "era". Mensagens curtas como "foi 50 reais" ou "era combustível" sem contexto de nova compra → "edit_last".
 
 RESPONDA EM JSON:
 
@@ -223,6 +235,17 @@ Para chat:
 {
   "intent": "chat",
   "message": "a mensagem original do usuário"
+}
+
+Para edit_last (inclua APENAS os campos que o usuário quer alterar):
+{
+  "intent": "edit_last",
+  "amount": número (novo valor, se mencionado),
+  "description": "nova descrição" (se mencionada),
+  "categoryName": "nova categoria" (se mencionada),
+  "establishment": "novo estabelecimento" (se mencionado),
+  "date": "YYYY-MM-DD" (nova data, se mencionada),
+  "type": "expense" ou "income" (se mudou o tipo)
 }
 
 ${CATEGORY_RULES}
