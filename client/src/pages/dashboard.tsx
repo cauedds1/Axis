@@ -165,21 +165,20 @@ export default function Dashboard() {
       >
         <div>
           <p className="text-sm text-muted-foreground mb-0.5">{greetWord}</p>
-          <h1
-            className="text-3xl font-bold tracking-tight"
-            style={
-              isHigh && name
-                ? {
-                    background: `linear-gradient(135deg, #fff 40%, ${P.primary})`,
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    backgroundClip: "text",
-                  }
-                : {}
-            }
-            data-testid="text-greeting"
-          >
-            {name || "Dashboard"}
+          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-greeting">
+            {isHigh && name ? (
+              <span style={{
+                background: `linear-gradient(135deg, #fff 40%, ${P.primary})`,
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                display: "inline",
+              }}>
+                {name}
+              </span>
+            ) : (
+              name || "Dashboard"
+            )}
           </h1>
         </div>
 
