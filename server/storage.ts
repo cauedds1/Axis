@@ -82,6 +82,7 @@ export interface IStorage {
   getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined>;
 
   deleteUserAccount(userId: string): Promise<void>;
+  resetUserData(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -391,6 +392,23 @@ export class DatabaseStorage implements IStorage {
   async getUserProfileByJid(jid: string): Promise<(UserProfile & { userId: string }) | undefined> {
     const [profile] = await db.select().from(userProfile).where(eq(userProfile.whatsappJid, jid));
     return profile as (UserProfile & { userId: string }) | undefined;
+  }
+
+  async resetUserData(userId: string): Promise<void> {
+    await db.delete(bills).where(eq(bills.userId, userId));
+    await db.delete(habitLogs).where(eq(habitLogs.userId, userId));
+    await db.delete(habits).where(eq(habits.userId, userId));
+    await db.delete(personalTasks).where(eq(personalTasks.userId, userId));
+    await db.delete(scheduleItems).where(eq(scheduleItems.userId, userId));
+    await db.delete(transactions).where(eq(transactions.userId, userId));
+    await db.delete(financialGoals).where(eq(financialGoals.userId, userId));
+    await db.delete(categories).where(eq(categories.userId, userId));
+    await db.delete(chatMessages).where(eq(chatMessages.userId, userId));
+    await db.delete(userContext).where(eq(userContext.userId, userId));
+    await db.delete(recurringIncomes).where(eq(recurringIncomes.userId, userId));
+    await db.delete(disciplineScoreHistory).where(eq(disciplineScoreHistory.userId, userId));
+    await db.delete(emailAlertLog).where(eq(emailAlertLog.userId, userId));
+    await db.delete(userProfile).where(eq(userProfile.userId, userId));
   }
 
   async deleteUserAccount(userId: string): Promise<void> {

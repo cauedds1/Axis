@@ -336,6 +336,16 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/user/reset-data", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      await storage.resetUserData(userId);
+      res.json({ ok: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/input/process", isAuthenticated, upload.single("audio"), async (req, res) => {
     try {
       const userId = getUserId(req);

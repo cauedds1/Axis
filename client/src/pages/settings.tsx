@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink } from "lucide-react";
+import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -262,6 +262,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const { data: userData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
 
@@ -274,6 +275,17 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Configurações salvas" });
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/user/reset-data"),
+    onSuccess: () => {
+      queryClient.clear();
+      toast({ title: "Conta zerada com sucesso", description: "Todos os seus dados foram apagados." });
+    },
+    onError: () => {
+      toast({ title: "Erro ao zerar conta", variant: "destructive" });
     },
   });
 
@@ -372,6 +384,56 @@ export default function SettingsPage() {
       </Card>
 
       <WhatsAppSection />
+
+      <Card className="border-destructive/40 bg-destructive/5" data-testid="card-danger-zone">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-destructive">
+            <TriangleAlert className="h-4 w-4" /> Zona de perigo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Apaga todas as transações, contas, hábitos, tarefas, metas, agenda e memória da IA. Sua conta de acesso é mantida, mas você começa do zero.
+          </p>
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => setShowResetConfirm(true)}
+            data-testid="button-reset-account"
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Zerar a conta
+          </Button>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent data-testid="dialog-reset-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Zerar a conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é <strong>irreversível</strong>. Todos os seus dados serão apagados permanentemente:<br /><br />
+              • Transações e extratos<br />
+              • Contas e cobranças<br />
+              • Hábitos e tarefas<br />
+              • Agenda e metas<br />
+              • Memória e contexto da IA<br /><br />
+              Sua conta de login será mantida.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-reset-cancel">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resetMutation.mutate()}
+              disabled={resetMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-reset-confirm"
+            >
+              {resetMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Sim, apagar tudo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <SetupSheet open={showSetupModal} onClose={() => setShowSetupModal(false)} />
     </div>
