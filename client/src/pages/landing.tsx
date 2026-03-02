@@ -43,6 +43,11 @@ function getLandingPalette(theme: AxisTheme): LandingPalette {
       primaryRgb: "255,92,58", secondaryRgb: "255,140,50", tertiaryRgb: "230,100,130", accentRgb: "255,176,112", successRgb: "112,208,176",
       primaryMuted: "rgba(255,92,58,0.15)", secondaryMuted: "rgba(255,140,50,0.12)", tertiaryMuted: "rgba(230,100,130,0.12)",
     },
+    "high-red": {
+      primary: "#E8001C", secondary: "#CC0033", tertiary: "#FF2244", accent: "#FF6666", success: "#00CC66",
+      primaryRgb: "232,0,28", secondaryRgb: "204,0,51", tertiaryRgb: "255,34,68", accentRgb: "255,102,102", successRgb: "0,204,102",
+      primaryMuted: "rgba(232,0,28,0.15)", secondaryMuted: "rgba(204,0,51,0.12)", tertiaryMuted: "rgba(255,34,68,0.12)",
+    },
     "slim": {
       primary: "#7A9E8A", secondary: "#9EAA8E", tertiary: "#8B9E7A", accent: "#B8C4A8", success: "#7A9E8A",
       primaryRgb: "122,158,138", secondaryRgb: "158,170,142", tertiaryRgb: "139,158,122", accentRgb: "184,196,168", successRgb: "122,158,138",

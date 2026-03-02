@@ -2,11 +2,11 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 
 export type AxisTheme =
   | "slim" | "slim-indigo" | "slim-rose" | "slim-amber"
-  | "high" | "high-purple" | "high-gold" | "high-coral";
+  | "high" | "high-purple" | "high-gold" | "high-coral" | "high-red";
 
 export const ALL_THEMES: AxisTheme[] = [
   "slim", "slim-indigo", "slim-rose", "slim-amber",
-  "high", "high-purple", "high-gold", "high-coral",
+  "high", "high-purple", "high-gold", "high-coral", "high-red",
 ];
 
 export function getPrimaryHex(theme: AxisTheme): string {
@@ -19,6 +19,7 @@ export function getPrimaryHex(theme: AxisTheme): string {
     "high-purple": "#B066FF",
     "high-gold":   "#FFD426",
     "high-coral":  "#FF5C3A",
+    "high-red":    "#E8001C",
   };
   return map[theme] ?? "#7A9E8A";
 }
@@ -69,6 +70,11 @@ export function getModulePalette(theme: AxisTheme): ModulePalette {
     "high-coral": {
       primary: p, finance: "#FF5C3A", agenda: "#FFB84D", tasks: "#A78BFA", habits: "#4DD8A4",
       chat: p, início: p, positive: "#4DD8A4", negative: "#FF5C3A",
+    },
+    "high-red": {
+      primary: "#E8001C", finance: "#E8001C", agenda: "#FF2244", tasks: "#CC0033",
+      habits: "#FF5533", chat: "#E8001C", início: "#E8001C",
+      positive: "#00CC66", negative: "#E8001C",
     },
   };
   return map[theme] ?? map["slim"];
