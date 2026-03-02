@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -13,23 +12,46 @@ import { SetupSheet } from "@/components/setup-sheet";
 
 function formatBotPhone(raw: string): string {
   const d = raw.replace(/\D/g, "");
-  if (d.startsWith("55") && d.length === 13) {
-    return `+55 ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
-  }
-  if (d.startsWith("55") && d.length === 12) {
-    return `+55 ${d.slice(2, 4)} ${d.slice(4, 8)}-${d.slice(8)}`;
-  }
+  if (d.startsWith("55") && d.length === 13) return `+55 ${d.slice(2, 4)} ${d.slice(4, 9)}-${d.slice(9)}`;
+  if (d.startsWith("55") && d.length === 12) return `+55 ${d.slice(2, 4)} ${d.slice(4, 8)}-${d.slice(8)}`;
   return `+${d}`;
 }
 
-function WhatsAppSection() {
+type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "conta";
+
+const TABS: { id: SettingsTab; label: string; Icon: any }[] = [
+  { id: "aparencia",  label: "Aparência",  Icon: Palette },
+  { id: "modulos",   label: "Módulos",    Icon: LayoutGrid },
+  { id: "cadastro",  label: "Cadastro",   Icon: UserCog },
+  { id: "whatsapp",  label: "WhatsApp",   Icon: Smartphone },
+  { id: "conta",     label: "Conta",      Icon: TriangleAlert },
+];
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{children}</p>;
+}
+
+function Block({ children, danger }: { children: React.ReactNode; danger?: boolean }) {
+  return (
+    <div
+      className="rounded-xl p-4 space-y-3"
+      style={{
+        background: danger ? "rgba(239,68,68,0.05)" : "rgba(255,255,255,0.02)",
+        border: `1px solid ${danger ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.07)"}`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function WhatsAppTab() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   const { data: profile } = useQuery<any>({ queryKey: ["/api/user/profile"] });
-
   useEffect(() => {
     const saved = profile?.profile?.whatsappPhone;
     if (saved && !phone) setPhone(saved);
@@ -45,7 +67,6 @@ function WhatsAppSection() {
     onSuccess: () => setTimeout(() => refetch(), 1500),
     onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
   });
-
   const unlinkMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone: "" }),
     onSuccess: () => {
@@ -55,13 +76,11 @@ function WhatsAppSection() {
     },
     onError: () => toast({ title: "Erro ao desvincular número", variant: "destructive" }),
   });
-
   const resetMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
     onSuccess: () => { toast({ title: "Gerando novo QR code..." }); setTimeout(() => refetch(), 1200); },
     onError: () => toast({ title: "Erro ao gerar QR", variant: "destructive" }),
   });
-
   const phoneMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
     onSuccess: () => {
@@ -83,19 +102,14 @@ function WhatsAppSection() {
   const { label, color, Icon } = statusMap[wStatus] ?? statusMap.disconnected;
 
   return (
-    <>
-      <Card className="border-border" data-testid="card-whatsapp-settings">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <MessageCircle className="h-4 w-4" /> WhatsApp Bot
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <p className="text-xs text-muted-foreground">
-          Envie mensagens ou fotos de nota fiscal pelo WhatsApp e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
-        </p>
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Envie mensagens ou fotos de nota fiscal pelo WhatsApp e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
+      </p>
 
-        <div className="flex items-center justify-between rounded-xl p-4 border border-border bg-card">
+      {/* Status */}
+      <Block>
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Icon className="h-5 w-5" style={{ color }} />
             <div>
@@ -143,38 +157,33 @@ function WhatsAppSection() {
             </button>
           ) : null}
         </div>
+      </Block>
 
-        {wStatus === "qr_pending" && status?.qrCode && (
-          <div className="rounded-xl p-4 border border-amber-500/20 bg-amber-500/5 flex flex-col items-center gap-3">
-            <p className="text-xs text-muted-foreground text-center">
-              Abra o WhatsApp → Aparelhos conectados → Escanear QR
-            </p>
-            <img
-              src={status.qrCode}
-              alt="QR Code WhatsApp"
-              className="w-48 h-48 rounded-xl"
-              data-testid="img-whatsapp-qr"
-            />
-            <div className="flex items-center gap-3 w-full justify-center">
-              <p className="text-[10px] text-muted-foreground">QR expira em 60s</p>
-              <button
-                onClick={() => resetMutation.mutate()}
-                disabled={resetMutation.isPending}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40"
-                style={{ color: "#FFA000", borderColor: "rgba(255,160,0,0.3)", background: "rgba(255,160,0,0.08)" }}
-                data-testid="button-whatsapp-new-qr"
-              >
-                {resetMutation.isPending
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : <RefreshCw className="h-3 w-3" />}
-                Gerar novo QR
-              </button>
-            </div>
+      {/* QR pending */}
+      {wStatus === "qr_pending" && status?.qrCode && (
+        <Block>
+          <p className="text-xs text-muted-foreground text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
+          <div className="flex justify-center">
+            <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
           </div>
-        )}
-
-        {wStatus === "qr_pending" && !status?.qrCode && (
-          <div className="flex flex-col items-center gap-3 py-3">
+          <div className="flex items-center gap-3 justify-center">
+            <p className="text-[10px] text-muted-foreground">QR expira em 60s</p>
+            <button
+              onClick={() => resetMutation.mutate()}
+              disabled={resetMutation.isPending}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40"
+              style={{ color: "#FFA000", borderColor: "rgba(255,160,0,0.3)", background: "rgba(255,160,0,0.08)" }}
+              data-testid="button-whatsapp-new-qr"
+            >
+              {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Gerar novo QR
+            </button>
+          </div>
+        </Block>
+      )}
+      {wStatus === "qr_pending" && !status?.qrCode && (
+        <Block>
+          <div className="flex flex-col items-center gap-3 py-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Gerando QR code...</span>
@@ -186,38 +195,41 @@ function WhatsAppSection() {
               style={{ color: "#FFA000", borderColor: "rgba(255,160,0,0.3)", background: "rgba(255,160,0,0.08)" }}
               data-testid="button-whatsapp-new-qr-fallback"
             >
-              <RefreshCw className="h-3 w-3" />
-              Tentar novamente
+              <RefreshCw className="h-3 w-3" /> Tentar novamente
             </button>
           </div>
-        )}
+        </Block>
+      )}
 
-        <div className="space-y-2">
-          <p className="text-xs font-medium">Seu número de WhatsApp</p>
-          <p className="text-xs text-muted-foreground">Vincule seu número para que o bot reconheça suas mensagens.</p>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="+55 11 99999-9999"
-              className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
-              data-testid="input-whatsapp-phone"
-            />
-            <button
-              onClick={() => phoneMutation.mutate()}
-              disabled={phoneMutation.isPending || !phone.trim()}
-              className="px-4 py-2 rounded-lg text-sm font-semibold border border-border transition-all disabled:opacity-40"
-              style={phoneSaved ? { color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" } : {}}
-              data-testid="button-save-whatsapp-phone"
-            >
-              {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : "Salvar"}
-            </button>
-          </div>
+      {/* Phone number */}
+      <Block>
+        <SectionLabel>Seu número de WhatsApp</SectionLabel>
+        <p className="text-xs text-muted-foreground">Vincule seu número para que o bot reconheça suas mensagens.</p>
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="+55 11 99999-9999"
+            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+            data-testid="input-whatsapp-phone"
+          />
+          <button
+            onClick={() => phoneMutation.mutate()}
+            disabled={phoneMutation.isPending || !phone.trim()}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border border-border transition-all disabled:opacity-40"
+            style={phoneSaved ? { color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" } : {}}
+            data-testid="button-save-whatsapp-phone"
+          >
+            {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : "Salvar"}
+          </button>
         </div>
+      </Block>
 
-        <div className="rounded-xl p-4 border border-border bg-card space-y-2">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Exemplos de mensagens</p>
+      {/* Examples */}
+      <Block>
+        <SectionLabel>Exemplos de mensagens</SectionLabel>
+        <div className="space-y-1.5">
           {[
             "gastei 50 no almoço",
             "criar tarefa reunião de equipe sexta",
@@ -231,8 +243,7 @@ function WhatsAppSection() {
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </Block>
 
       <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
         <AlertDialogContent data-testid="dialog-confirm-whatsapp-disconnect">
@@ -254,13 +265,14 @@ function WhatsAppSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("aparencia");
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -284,9 +296,7 @@ export default function SettingsPage() {
       queryClient.clear();
       toast({ title: "Conta zerada com sucesso", description: "Todos os seus dados foram apagados." });
     },
-    onError: () => {
-      toast({ title: "Erro ao zerar conta", variant: "destructive" });
-    },
+    onError: () => toast({ title: "Erro ao zerar conta", variant: "destructive" }),
   });
 
   const handleThemeChange = (t: "slim" | "high") => {
@@ -300,112 +310,187 @@ export default function SettingsPage() {
 
   const moduleList = ["finance", "schedule", "tasks", "habits"];
   const moduleLabels: Record<string, string> = { finance: "Finanças", schedule: "Agenda", tasks: "Tarefas", habits: "Compromissos" };
+  const moduleDescs: Record<string, string> = {
+    finance: "Gastos, receitas e reservas",
+    schedule: "Compromissos e calendário",
+    tasks: "To-do list inteligente",
+    habits: "Streaks e disciplina",
+  };
   const currentModules: string[] = userData?.user?.activeModules || [];
 
   const toggleModule = (mod: string) => {
-    const updated = currentModules.includes(mod) ? currentModules.filter(m => m !== mod) : [...currentModules, mod];
+    const updated = currentModules.includes(mod)
+      ? currentModules.filter(m => m !== mod)
+      : [...currentModules, mod];
     updateMutation.mutate({ activeModules: updated });
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="flex h-[calc(100vh-56px)] overflow-hidden" data-testid="page-settings">
       <title>AXIS - Configurações</title>
 
-      <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-settings-title">
-        <SettingsIcon className="h-5 w-5" /> Configurações
-      </h1>
+      {/* Sidebar */}
+      <div
+        className="w-48 flex-shrink-0 border-r border-border flex flex-col py-4 px-2 gap-1"
+        style={{ background: "rgba(255,255,255,0.01)" }}
+      >
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Configurações</p>
+        {TABS.map(({ id, label, Icon }) => {
+          const active = activeTab === id;
+          const isDanger = id === "conta";
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left"
+              style={{
+                background: active
+                  ? isDanger ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.07)"
+                  : "transparent",
+                color: active
+                  ? isDanger ? "rgb(239,68,68)" : "hsl(var(--foreground))"
+                  : isDanger ? "rgba(239,68,68,0.7)" : "hsl(var(--muted-foreground))",
+              }}
+              data-testid={`tab-settings-${id}`}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-      <Card className="border-border" data-testid="card-theme-settings">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Tema visual</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ThemeSelector value={theme} onChange={handleThemeChange} />
-        </CardContent>
-      </Card>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-xl">
 
-      <Card className="border-border" data-testid="card-personality-settings">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Personalidade da IA</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select value={userData?.user?.aiPersonality || "calm"} onValueChange={handlePersonalityChange}>
-            <SelectTrigger data-testid="select-personality"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="calm">Calmo</SelectItem>
-              <SelectItem value="direct">Direto</SelectItem>
-              <SelectItem value="motivator">Motivador</SelectItem>
-              <SelectItem value="strict">Rigoroso</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+          {/* ── Aparência ── */}
+          {activeTab === "aparencia" && (
+            <div className="space-y-6" data-testid="tab-content-aparencia">
+              <h2 className="text-base font-semibold">Aparência</h2>
 
-      <Card className="border-border" data-testid="card-modules-settings">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Módulos ativos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {moduleList.map((mod) => {
-            const active = currentModules.includes(mod);
-            return (
-              <button
-                key={mod}
-                onClick={() => toggleModule(mod)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${active ? "border-primary bg-primary/10" : "border-border"}`}
-                data-testid={`button-toggle-module-${mod}`}
-              >
-                <span className="text-sm font-medium">{moduleLabels[mod]}</span>
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
+              <div>
+                <SectionLabel>Tema visual</SectionLabel>
+                <ThemeSelector value={theme} onChange={handleThemeChange} />
+              </div>
 
-      <Card className="border-border" data-testid="card-edit-profile-settings">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <UserCog className="h-4 w-4" /> Editar cadastro
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Atualize sua renda, gastos fixos, rotina e preferências de alerta. Qualquer mudança é aplicada automaticamente no sistema.
-          </p>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => setShowSetupModal(true)}
-            data-testid="button-open-edit-profile"
-          >
-            Abrir cadastro
-          </Button>
-        </CardContent>
-      </Card>
+              <div>
+                <SectionLabel>Personalidade da IA</SectionLabel>
+                <p className="text-xs text-muted-foreground mb-3">Define o tom de todas as respostas e sugestões do assistente.</p>
+                <Select value={userData?.user?.aiPersonality || "calm"} onValueChange={handlePersonalityChange}>
+                  <SelectTrigger data-testid="select-personality"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="calm">🌊 Calmo — tranquilo e paciente</SelectItem>
+                    <SelectItem value="direct">⚡ Direto — sem rodeios</SelectItem>
+                    <SelectItem value="motivator">🚀 Motivador — sempre incentivando</SelectItem>
+                    <SelectItem value="strict">🎯 Rigoroso — cobra resultados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
-      <WhatsAppSection />
+          {/* ── Módulos ── */}
+          {activeTab === "modulos" && (
+            <div className="space-y-4" data-testid="tab-content-modulos">
+              <h2 className="text-base font-semibold">Módulos ativos</h2>
+              <p className="text-sm text-muted-foreground">Ative apenas os módulos que você usa — eles aparecem na navegação lateral.</p>
+              <div className="space-y-2">
+                {moduleList.map((mod) => {
+                  const active = currentModules.includes(mod);
+                  return (
+                    <button
+                      key={mod}
+                      onClick={() => toggleModule(mod)}
+                      className="w-full text-left px-4 py-3 rounded-xl border transition-colors flex items-center justify-between"
+                      style={{
+                        borderColor: active ? "hsl(var(--primary) / 0.5)" : "hsl(var(--border))",
+                        background: active ? "hsl(var(--primary) / 0.08)" : "transparent",
+                      }}
+                      data-testid={`button-toggle-module-${mod}`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{moduleLabels[mod]}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{moduleDescs[mod]}</p>
+                      </div>
+                      <div
+                        className="w-4 h-4 rounded-full border-2 flex-shrink-0 transition-all"
+                        style={{
+                          borderColor: active ? "hsl(var(--primary))" : "hsl(var(--border))",
+                          background: active ? "hsl(var(--primary))" : "transparent",
+                        }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-      <Card className="border-destructive/40 bg-destructive/5" data-testid="card-danger-zone">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2 text-destructive">
-            <TriangleAlert className="h-4 w-4" /> Zona de perigo
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Apaga todas as transações, contas, hábitos, tarefas, metas, agenda e memória da IA. Sua conta de acesso é mantida, mas você começa do zero.
-          </p>
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => setShowResetConfirm(true)}
-            data-testid="button-reset-account"
-          >
-            <Trash2 className="h-4 w-4 mr-2" /> Zerar a conta
-          </Button>
-        </CardContent>
-      </Card>
+          {/* ── Cadastro ── */}
+          {activeTab === "cadastro" && (
+            <div className="space-y-4" data-testid="tab-content-cadastro">
+              <h2 className="text-base font-semibold">Editar cadastro</h2>
+              <p className="text-sm text-muted-foreground">
+                Atualize sua renda, gastos fixos, rotina e preferências de alerta. Qualquer mudança é aplicada automaticamente no sistema.
+              </p>
+              <Block>
+                <div className="flex items-center gap-3 mb-2">
+                  <UserCog className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Configurar perfil</p>
+                    <p className="text-xs text-muted-foreground">Renda, gastos fixos, hábitos, alertas e WhatsApp</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowSetupModal(true)}
+                  data-testid="button-open-edit-profile"
+                >
+                  Abrir cadastro
+                </Button>
+              </Block>
+            </div>
+          )}
 
+          {/* ── WhatsApp ── */}
+          {activeTab === "whatsapp" && (
+            <div data-testid="tab-content-whatsapp">
+              <h2 className="text-base font-semibold mb-4">WhatsApp Bot</h2>
+              <WhatsAppTab />
+            </div>
+          )}
+
+          {/* ── Conta ── */}
+          {activeTab === "conta" && (
+            <div className="space-y-4" data-testid="tab-content-conta">
+              <h2 className="text-base font-semibold">Conta</h2>
+
+              <Block danger>
+                <div className="flex items-center gap-2 mb-1">
+                  <TriangleAlert className="h-4 w-4 text-destructive" />
+                  <p className="text-sm font-semibold text-destructive">Zona de perigo</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Apaga todas as transações, contas, hábitos, tarefas, metas, agenda e memória da IA. Sua conta de acesso é mantida, mas você começa do zero.
+                </p>
+                <Button
+                  variant="destructive"
+                  className="w-full mt-1"
+                  onClick={() => setShowResetConfirm(true)}
+                  data-testid="button-reset-account"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Zerar a conta
+                </Button>
+              </Block>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Dialogs */}
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent data-testid="dialog-reset-confirm">
           <AlertDialogHeader>
