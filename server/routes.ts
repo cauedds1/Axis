@@ -850,21 +850,7 @@ export async function registerRoutes(
         currentAmount: data.currentAmount ?? 0,
         deadline: data.deadline ? new Date(data.deadline) : null,
       });
-      if (data.currentAmount && data.currentAmount > 0) {
-        await storage.createTransaction({
-          userId,
-          amount: data.currentAmount,
-          description: `Reserva: ${data.title}`,
-          type: "expense",
-          categoryName: "reserva",
-          source: "manual",
-          date: new Date(),
-          establishment: null,
-          paymentMethod: null,
-          location: null,
-        });
-      }
-      saveEventToMemory(userId, `Nova reserva financeira criada: "${data.title}"${data.targetAmount ? ` — alvo R$${data.targetAmount}` : ""}`).catch(() => {});
+      saveEventToMemory(userId, `Nova reserva financeira criada: "${data.title}"${data.targetAmount ? ` — alvo R$${data.targetAmount}` : ""}${data.currentAmount ? ` — já guardado: R$${data.currentAmount}` : ""}`).catch(() => {});
       res.status(201).json(goal);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
