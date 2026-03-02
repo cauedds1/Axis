@@ -139,19 +139,12 @@ export function AppSidebar() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight leading-none">
-              {isHigh ? (
-                <span style={{
-                  background: `linear-gradient(135deg, #fff 30%, ${P.primary})`,
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  display: "inline",
-                }}>
-                  AXIS
-                </span>
-              ) : (
-                <span style={{ color: "hsl(var(--foreground))" }}>AXIS</span>
-              )}
+              <span
+                className={isHigh ? "high-gradient-title" : ""}
+                style={!isHigh ? { color: "hsl(var(--foreground))" } : undefined}
+              >
+                AXIS
+              </span>
             </h1>
             {isHigh ? (
               <div className="flex items-center gap-1 mt-0.5">

@@ -701,6 +701,14 @@
   animation: high-score-glow 3s ease-in-out infinite;
 }
 
+/* Gradient text — usa --glow-rgb atômico do browser, sem flash de re-render React */
+.high .high-gradient-title {
+  background: linear-gradient(135deg, #fff 30%, rgba(var(--glow-rgb), 1));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Input focus glow */
 .high input:focus,
 .high textarea:focus {
