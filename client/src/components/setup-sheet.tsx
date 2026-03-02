@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Clock,
   ChevronRight,
+  ChevronDown,
   Plus,
   Bell,
   Mail,
@@ -227,7 +228,19 @@ function SectionRenda({
   const [riAmount, setRiAmount] = useState("");
   const [riDay, setRiDay] = useState("5");
   const [riCategory, setRiCategory] = useState("trabalho");
+  const [riCategoryOpen, setRiCategoryOpen] = useState(false);
   const [riCustomCategory, setRiCustomCategory] = useState("");
+  const riCategoryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!riCategoryOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (riCategoryRef.current && !riCategoryRef.current.contains(e.target as Node)) {
+        setRiCategoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [riCategoryOpen]);
 
   const currentMonth = (() => {
     const n = new Date();
@@ -373,19 +386,51 @@ function SectionRenda({
             onChange={e => setRiName(e.target.value)}
             data-testid="input-recurring-name"
           />
-          <select
-            value={riCategory}
-            onChange={e => setRiCategory(e.target.value)}
-            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none appearance-none cursor-pointer"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-            data-testid="select-recurring-category"
-          >
-            <option value="trabalho">💼 Trabalho / Salário</option>
-            <option value="freelance">🧑‍💻 Freelance / Autônomo</option>
-            <option value="investimentos">📈 Investimentos</option>
-            <option value="aluguel">🏠 Aluguel</option>
-            <option value="outros">📦 Outros</option>
-          </select>
+          {(() => {
+            const riCategoryOptions = [
+              { value: "trabalho", label: "💼 Trabalho / Salário" },
+              { value: "freelance", label: "🧑‍💻 Freelance / Autônomo" },
+              { value: "investimentos", label: "📈 Investimentos" },
+              { value: "aluguel", label: "🏠 Aluguel" },
+              { value: "outros", label: "📦 Outros" },
+            ];
+            const selectedLabel = riCategoryOptions.find(o => o.value === riCategory)?.label ?? riCategory;
+            return (
+              <div ref={riCategoryRef} className="relative" data-testid="select-recurring-category">
+                <button
+                  type="button"
+                  onClick={() => setRiCategoryOpen(o => !o)}
+                  className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-white cursor-pointer"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+                >
+                  <span>{selectedLabel}</span>
+                  <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${riCategoryOpen ? "rotate-180" : ""}`} />
+                </button>
+                {riCategoryOpen && (
+                  <div
+                    className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-50"
+                    style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+                  >
+                    {riCategoryOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setRiCategory(opt.value); setRiCategoryOpen(false); }}
+                        className="w-full text-left px-3 py-2.5 text-sm text-white/85 transition-colors"
+                        style={{
+                          background: riCategory === opt.value ? "rgba(255,255,255,0.08)" : "transparent",
+                        }}
+                        onMouseEnter={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                        onMouseLeave={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {riCategory === "outros" && (
             <StyledInput
               placeholder="Nome da categoria (ex: Pensão, Bolsa...)"
