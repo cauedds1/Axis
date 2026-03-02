@@ -59,6 +59,7 @@ const DISCIPLINE_POINTS = {
   SPENDING_LEVE:      -2,   // gastos com besteiras leves (15-25% da renda)
   SPENDING_MODERADO:  -4,   // gastos com besteiras moderados (25-35% da renda)
   SPENDING_GRAVE:     -6,   // gastos com besteiras graves (>35% da renda)
+  BILL_PAID_LATE:     -2,   // conta paga com atraso — quebra a sequência
 } as const;
 const DISCIPLINE_THRESHOLD = 8; // pontos para subir/descer 1 nível
 
@@ -2347,9 +2348,24 @@ Se algum dado não foi mencionado, use valores razoáveis.`
             categoryName: bill.categoryName || null,
             date: new Date(),
           });
+
+          // Discipline: streak-based points for on-time payment
+          const today = new Date().getDate();
+          const onTime = today <= bill.dueDay;
+          const newStreak = onTime ? ((bill as any).billStreak ?? 0) + 1 : 0;
+          await storage.updateBill(bill.id, userId, { billStreak: newStreak } as any);
+          const pts = onTime ? Math.min(newStreak + 1, 5) : DISCIPLINE_POINTS.BILL_PAID_LATE;
+          const streakLabel = newStreak === 1 ? "1 mês" : `${newStreak} meses`;
+          const disciplineReason = onTime
+            ? `💳 "${bill.title}" paga em dia — sequência de ${streakLabel} (+${pts} pts)`
+            : `⚠️ "${bill.title}" paga com atraso — sequência zerada (${pts} pts)`;
+          await adjustDisciplinePoints(userId, pts, disciplineReason);
+
         } else if (removed.length > 0) {
-          // Unmarked — delete the linked transaction
+          // Unmarked — delete the linked transaction and revert streak
           await storage.deleteTransactionsByBillId(userId, bill.id);
+          const revertedStreak = Math.max(0, ((bill as any).billStreak ?? 1) - 1);
+          await storage.updateBill(bill.id, userId, { billStreak: revertedStreak } as any);
         }
       }
 

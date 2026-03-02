@@ -143,6 +143,7 @@ export const bills = pgTable("bills", {
   active: boolean("active").notNull().default(true),
   paidMonths: text("paid_months").notNull().default("[]"),
   notes: text("notes"),
+  billStreak: integer("bill_streak").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
