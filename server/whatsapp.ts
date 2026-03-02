@@ -930,19 +930,28 @@ class WhatsAppManager {
             return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!${warning}`;
           }
         }
+        log(`WhatsApp buildReply: intent=${intent} amount=${amount} creditCardId=${data.creditCardId || "none"} userId=${userId}`, "whatsapp");
         const singleCard = data.creditCardId ? await storage.getCreditCard(data.creditCardId, userId) : null;
-        await storage.createTransaction({
-          userId,
-          type: intent,
-          amount: amount as any,
-          description: data.description || categoryName,
-          categoryName,
-          establishment: data.establishment || null,
-          date: data.date ? new Date(data.date) : new Date(),
-          source: "whatsapp",
-          paymentMethod: null,
-          creditCardId: singleCard ? singleCard.id : null,
-        });
+        log(`WhatsApp buildReply: singleCard=${singleCard ? singleCard.name + " id=" + singleCard.id : "null"}`, "whatsapp");
+        let savedTx: any = null;
+        try {
+          savedTx = await storage.createTransaction({
+            userId,
+            type: intent,
+            amount: amount as any,
+            description: data.description || categoryName,
+            categoryName,
+            establishment: data.establishment || null,
+            date: data.date ? new Date(data.date) : new Date(),
+            source: "whatsapp",
+            paymentMethod: null,
+            creditCardId: singleCard ? singleCard.id : null,
+          });
+          log(`WhatsApp buildReply: transação salva id=${savedTx?.id} creditCardId=${savedTx?.creditCardId}`, "whatsapp");
+        } catch (txErr: any) {
+          log(`WhatsApp buildReply: ERRO ao salvar transação — ${txErr?.message} — stack: ${txErr?.stack}`, "whatsapp");
+          throw txErr;
+        }
         if (intent === "income") {
           return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
         }
