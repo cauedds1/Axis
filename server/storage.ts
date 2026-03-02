@@ -96,7 +96,7 @@ export interface IStorage {
   updateInvoice(id: string, data: Partial<CreditCardInvoice>): Promise<CreditCardInvoice | undefined>;
 
   getScheduleCancellations(userId: string, startDate: string, endDate: string): Promise<ScheduleItemCancellation[]>;
-  createScheduleCancellation(data: { userId: string; scheduleItemId: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation>;
+  createScheduleCancellation(data: { userId: string; entityType?: string; scheduleItemId?: string; habitId?: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation>;
   deleteScheduleCancellation(id: string, userId: string): Promise<void>;
 
   deleteUserAccount(userId: string): Promise<void>;
@@ -423,8 +423,8 @@ export class DatabaseStorage implements IStorage {
       .orderBy(scheduleItemCancellations.date);
   }
 
-  async createScheduleCancellation(data: { userId: string; scheduleItemId: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation> {
-    const [rec] = await db.insert(scheduleItemCancellations).values(data).returning();
+  async createScheduleCancellation(data: { userId: string; entityType?: string; scheduleItemId?: string; habitId?: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation> {
+    const [rec] = await db.insert(scheduleItemCancellations).values({ ...data, entityType: data.entityType ?? "schedule" }).returning();
     return rec;
   }
 

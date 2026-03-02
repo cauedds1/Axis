@@ -1459,6 +1459,64 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/habits/:id/cancel-today", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const habitId = paramId(req);
+      const schema = z.object({
+        date: z.string(),
+        type: z.enum(["holiday", "medical", "other"]),
+        reason: z.string().optional(),
+      });
+      const { date, type, reason } = schema.parse(req.body);
+
+      const habits = await storage.getHabits(userId);
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return res.status(404).json({ message: "Hábito não encontrado" });
+
+      const cancellation = await storage.createScheduleCancellation({ userId, habitId, entityType: "habit", date, reason, type });
+
+      let delta = 0;
+      let disciplineMsg = "";
+      if (type === "holiday") {
+        delta = 0;
+        disciplineMsg = `🏖️ Feriado — "${habit.name}" sem penalidade`;
+      } else if (type === "medical") {
+        delta = -1;
+        disciplineMsg = `🏥 Atestado — "${habit.name}" justificativa aceita (${delta} pt)`;
+      } else {
+        delta = -3;
+        disciplineMsg = `❌ Falta em "${habit.name}" sem justificativa (${delta} pts)`;
+      }
+
+      if (delta !== 0) {
+        await adjustDisciplinePoints(userId, delta, disciplineMsg);
+      }
+
+      res.status(201).json({ cancellation, disciplineMsg });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/schedule/:id/postpone", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({ newDateTime: z.string() });
+      const { newDateTime } = schema.parse(req.body);
+
+      const newStart = new Date(newDateTime);
+      const item = await storage.updateScheduleItem(paramId(req), userId, { startTime: newStart, status: "pending" });
+      if (!item) return res.status(404).json({ message: "Compromisso não encontrado" });
+
+      res.json(item);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/habits/:id/logs", isAuthenticated, async (req, res) => {
     try {
       res.json(await storage.getHabitLogs(paramId(req), getUserId(req)));

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock, Ban, Stethoscope, PartyPopper, AlertCircle, Undo2 } from "lucide-react";
+import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock, Ban, Stethoscope, PartyPopper, AlertCircle, Undo2, CalendarClock, Trash2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +31,12 @@ export default function Agenda() {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("08:00");
   const [panelItemMenuId, setPanelItemMenuId] = useState<string | null>(null);
-  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; item: ScheduleItem | null; date: string }>({ open: false, item: null, date: "" });
+  const [cancelDialog, setCancelDialog] = useState<{ open: boolean; entityType: "schedule" | "habit"; entityId: string; entityTitle: string; date: string }>({ open: false, entityType: "schedule", entityId: "", entityTitle: "", date: "" });
   const [cancelType, setCancelType] = useState<"holiday" | "medical" | "other">("other");
   const [cancelReason, setCancelReason] = useState("");
+  const [postponeDialog, setPostponeDialog] = useState<{ open: boolean; item: ScheduleItem | null }>({ open: false, item: null });
+  const [postponeDate, setPostponeDate] = useState("");
+  const [postponeTime, setPostponeTime] = useState("08:00");
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
@@ -76,6 +79,10 @@ export default function Agenda() {
 
   function getCancellation(itemId: string, dateStr: string): ScheduleItemCancellation | undefined {
     return cancellations.find(c => c.scheduleItemId === itemId && c.date === dateStr);
+  }
+
+  function getCancellationForHabit(habitId: string, dateStr: string): ScheduleItemCancellation | undefined {
+    return cancellations.find(c => c.habitId === habitId && c.date === dateStr);
   }
 
   const currentMonthKey = (() => {
@@ -167,14 +174,18 @@ export default function Agenda() {
   });
 
   const cancelTodayMutation = useMutation({
-    mutationFn: async ({ id, date, type, reason }: { id: string; date: string; type: string; reason: string }) => {
-      const res = await apiRequest("POST", `/api/schedule/${id}/cancel-today`, { date, type, reason: reason || undefined });
+    mutationFn: async ({ entityType, entityId, date, type, reason }: { entityType: "schedule" | "habit"; entityId: string; date: string; type: string; reason: string }) => {
+      const route = entityType === "habit"
+        ? `/api/habits/${entityId}/cancel-today`
+        : `/api/schedule/${entityId}/cancel-today`;
+      const res = await apiRequest("POST", route, { date, type, reason: reason || undefined });
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/schedule/cancellations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      setCancelDialog({ open: false, item: null, date: "" });
+      setCancelDialog({ open: false, entityType: "schedule", entityId: "", entityTitle: "", date: "" });
       setCancelReason("");
       setCancelType("other");
       setPanelItemMenuId(null);
@@ -191,6 +202,22 @@ export default function Agenda() {
       setPanelItemMenuId(null);
     },
     onError: () => toast({ title: "Erro ao desfazer cancelamento", variant: "destructive" }),
+  });
+
+  const postponeMutation = useMutation({
+    mutationFn: async ({ id, newDateTime }: { id: string; newDateTime: string }) => {
+      const res = await apiRequest("POST", `/api/schedule/${id}/postpone`, { newDateTime });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setPostponeDialog({ open: false, item: null });
+      setPostponeDate("");
+      setPanelItemMenuId(null);
+      toast({ title: "Compromisso adiado" });
+    },
+    onError: () => toast({ title: "Erro ao adiar compromisso", variant: "destructive" }),
   });
 
   const createTaskMutation = useMutation({
@@ -541,9 +568,23 @@ export default function Agenda() {
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}
-                                        onClick={() => { setCancelDialog({ open: true, item, date: dStr }); setCancelType("other"); setCancelReason(""); }}
+                                        onClick={() => { setCancelDialog({ open: true, entityType: "schedule", entityId: item.id, entityTitle: item.title, date: dStr }); setCancelType("other"); setCancelReason(""); }}
                                         data-testid={`button-cancel-today-${item.id}`}>
                                         <Ban className="h-3 w-3" /> Cancelar hoje
+                                      </button>
+                                      <button
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
+                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
+                                        data-testid={`button-postpone-${item.id}`}>
+                                        <CalendarClock className="h-3 w-3" /> Adiar
+                                      </button>
+                                      <button
+                                        className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}
+                                        onClick={() => { deleteMutation.mutate(item.id); setPanelItemMenuId(null); }}
+                                        data-testid={`button-delete-${item.id}`}>
+                                        <Trash2 className="h-3 w-3" />
                                       </button>
                                     </>
                                   )}
@@ -563,17 +604,57 @@ export default function Agenda() {
                       <div className="space-y-1.5">
                         {panelHabits.map(habit => {
                           const isDone = (habit as any).lastChecked === dStr;
+                          const habitCancelled = getCancellationForHabit(habit.id, dStr);
+                          const menuOpen = panelItemMenuId === `h-${habit.id}`;
+                          const cancelIcon = habitCancelled?.type === "holiday" ? <PartyPopper className="h-3 w-3" /> : habitCancelled?.type === "medical" ? <Stethoscope className="h-3 w-3" /> : <Ban className="h-3 w-3" />;
                           return (
-                            <div key={habit.id} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer"
-                              style={{ background: isDone ? "rgba(78,205,196,0.08)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                              onClick={() => isToday && checkHabitMutation.mutate(habit.id)}
+                            <div key={habit.id} className="rounded-xl overflow-hidden"
+                              style={{ border: habitCancelled ? "1px solid rgba(251,146,60,0.25)" : menuOpen ? `1px solid ${accent}40` : "1px solid rgba(255,255,255,0.07)" }}
                               data-testid={`panel-habit-${habit.id}`}>
-                              <span className="text-base">{(habit as any).emoji || "⚡"}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-xs ${isDone ? "line-through text-white/30" : "text-white/80"}`}>{habit.name}</div>
-                                {(habit as any).targetTime && <div className="text-[10px] text-white/30">{(habit as any).targetTime}</div>}
+                              <div className="flex items-center gap-2 p-2 cursor-pointer"
+                                style={{ background: habitCancelled ? "rgba(251,146,60,0.07)" : isDone ? "rgba(78,205,196,0.08)" : menuOpen ? `${accent}08` : "rgba(255,255,255,0.04)" }}
+                                onClick={() => setPanelItemMenuId(menuOpen ? null : `h-${habit.id}`)}>
+                                <span className="text-base">{(habit as any).emoji || "⚡"}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-xs ${habitCancelled ? "line-through text-white/30" : isDone ? "line-through text-white/30" : "text-white/80"}`}>{habit.name}</div>
+                                  <div className="text-[10px] flex items-center gap-1" style={{ color: habitCancelled ? "#fb923c80" : "rgba(255,255,255,0.3)" }}>
+                                    {(habit as any).targetTime && <><Clock className="h-2.5 w-2.5" />{(habit as any).targetTime}</>}
+                                    {habitCancelled && <span className="ml-1">· {habitCancelled.type === "holiday" ? "🏖️ Feriado" : habitCancelled.type === "medical" ? "🏥 Atestado" : "❌ Cancelado"}</span>}
+                                  </div>
+                                </div>
+                                {!habitCancelled && isDone && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: MP.positive }} />}
+                                {habitCancelled && cancelIcon}
                               </div>
-                              {isDone && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: MP.positive }} />}
+                              {menuOpen && (
+                                <div className="px-2 pb-2 pt-1 flex gap-1.5" style={{ background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                                  {habitCancelled ? (
+                                    <button
+                                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
+                                      onClick={() => removeCancellationMutation.mutate(habitCancelled.id)}
+                                      data-testid={`button-undo-cancel-habit-${habit.id}`}>
+                                      <Undo2 className="h-3 w-3" /> Desfazer cancelamento
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: `${MP.positive}20`, color: MP.positive, opacity: isDone ? 0.5 : 1 }}
+                                        onClick={() => { if (isToday && !isDone) { checkHabitMutation.mutate(habit.id); setPanelItemMenuId(null); } }}
+                                        data-testid={`button-done-habit-${habit.id}`}>
+                                        <Check className="h-3 w-3" /> {isDone ? "Feito ✓" : "Feito"}
+                                      </button>
+                                      <button
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                        style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}
+                                        onClick={() => { setCancelDialog({ open: true, entityType: "habit", entityId: habit.id, entityTitle: habit.name, date: dStr }); setCancelType("other"); setCancelReason(""); setPanelItemMenuId(null); }}
+                                        data-testid={`button-cancel-today-habit-${habit.id}`}>
+                                        <Ban className="h-3 w-3" /> Cancelar hoje
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -590,17 +671,34 @@ export default function Agenda() {
                           const paid = isBillPaid(bill);
                           const isExpense = bill.type === "expense";
                           const billColor = isExpense ? MP.negative : MP.positive;
+                          const menuOpen = panelItemMenuId === `b-${bill.id}`;
                           return (
-                            <div key={bill.id} className="flex items-center gap-2 p-2 rounded-xl cursor-pointer"
-                              style={{ background: paid ? `${billColor}08` : `${billColor}10`, border: `1px solid ${paid ? `${billColor}15` : `${billColor}25`}` }}
-                              onClick={() => toggleBillPaidMutation.mutate(bill)}
+                            <div key={bill.id} className="rounded-xl overflow-hidden"
+                              style={{ border: `1px solid ${menuOpen ? `${billColor}40` : paid ? `${billColor}15` : `${billColor}25`}` }}
                               data-testid={`panel-bill-${bill.id}`}>
-                              {isExpense ? <TrendingDown className="h-4 w-4 shrink-0" style={{ color: billColor }} /> : <TrendingUp className="h-4 w-4 shrink-0" style={{ color: billColor }} />}
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-xs ${paid ? "line-through text-white/30" : "text-white/80"}`}>{bill.title}</div>
-                                <div className="text-[10px]" style={{ color: `${billColor}80` }}>R${bill.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                              <div className="flex items-center gap-2 p-2 cursor-pointer"
+                                style={{ background: paid ? `${billColor}08` : menuOpen ? `${billColor}10` : `${billColor}10` }}
+                                onClick={() => setPanelItemMenuId(menuOpen ? null : `b-${bill.id}`)}>
+                                {isExpense ? <TrendingDown className="h-4 w-4 shrink-0" style={{ color: billColor }} /> : <TrendingUp className="h-4 w-4 shrink-0" style={{ color: billColor }} />}
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-xs ${paid ? "line-through text-white/30" : "text-white/80"}`}>{bill.title}</div>
+                                  <div className="text-[10px]" style={{ color: `${billColor}80` }}>
+                                    R$ {bill.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Vence dia {bill.dueDay}
+                                  </div>
+                                </div>
+                                {paid && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: billColor }} />}
                               </div>
-                              {paid && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: billColor }} />}
+                              {menuOpen && (
+                                <div className="px-2 pb-2 pt-1 flex gap-1.5" style={{ background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                                  <button
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                    style={{ background: `${billColor}20`, color: billColor }}
+                                    onClick={() => { toggleBillPaidMutation.mutate(bill); setPanelItemMenuId(null); }}
+                                    data-testid={`button-pay-bill-${bill.id}`}>
+                                    <DollarSign className="h-3 w-3" /> {paid ? "Desmarcar pagamento" : isExpense ? "Marcar como pago" : "Marcar como recebido"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -784,12 +882,12 @@ export default function Agenda() {
       </AnimatePresence>
 
       {/* Cancel today dialog */}
-      <Dialog open={cancelDialog.open} onOpenChange={(o) => { if (!o) { setCancelDialog({ open: false, item: null, date: "" }); setCancelReason(""); } }}>
+      <Dialog open={cancelDialog.open} onOpenChange={(o) => { if (!o) { setCancelDialog({ open: false, entityType: "schedule", entityId: "", entityTitle: "", date: "" }); setCancelReason(""); } }}>
         <DialogContent style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="dialog-cancel-today">
           <DialogHeader>
             <DialogTitle className="text-white text-base">Cancelar somente hoje?</DialogTitle>
-            {cancelDialog.item && (
-              <p className="text-[12px] text-white/40 mt-0.5">{cancelDialog.item.title} · {cancelDialog.date}</p>
+            {cancelDialog.entityTitle && (
+              <p className="text-[12px] text-white/40 mt-0.5">{cancelDialog.entityTitle} · {cancelDialog.date}</p>
             )}
           </DialogHeader>
           <div className="space-y-4 pt-1">
@@ -817,15 +915,15 @@ export default function Agenda() {
                 ))}
               </div>
               <div className="mt-2 text-[10px] text-white/30 px-1">
-                {cancelType === "holiday" && "Feriado: sem penalidade na disciplina."}
-                {cancelType === "medical" && "Atestado: -1 ponto de disciplina, justificativa aceita."}
-                {cancelType === "other" && "Sem justificativa: -3 pontos de disciplina."}
+                {cancelType === "holiday" && "🏖️ Feriado — sem penalidade na disciplina."}
+                {cancelType === "medical" && "🏥 Atestado — -1 ponto, justificativa aceita pela IA."}
+                {cancelType === "other" && "❌ Sem justificativa — -3 pontos de disciplina."}
               </div>
             </div>
             <div>
               <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Observação (opcional)</p>
               <Textarea
-                placeholder="Ex: Dia de folga, consulta médica..."
+                placeholder="Ex: Dia de folga, consulta médica, viagem..."
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 className="resize-none text-xs"
@@ -839,12 +937,49 @@ export default function Agenda() {
               style={{ background: "#fb923c", color: "#fff" }}
               disabled={cancelTodayMutation.isPending}
               onClick={() => {
-                if (!cancelDialog.item) return;
-                cancelTodayMutation.mutate({ id: cancelDialog.item.id, date: cancelDialog.date, type: cancelType, reason: cancelReason });
+                if (!cancelDialog.entityId) return;
+                cancelTodayMutation.mutate({ entityType: cancelDialog.entityType, entityId: cancelDialog.entityId, date: cancelDialog.date, type: cancelType, reason: cancelReason });
               }}
               data-testid="button-confirm-cancel-today">
               {cancelTodayMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : <Ban className="h-4 w-4 inline mr-1" />}
               Cancelar somente hoje
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Postpone dialog */}
+      <Dialog open={postponeDialog.open} onOpenChange={(o) => { if (!o) setPostponeDialog({ open: false, item: null }); }}>
+        <DialogContent style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="dialog-postpone">
+          <DialogHeader>
+            <DialogTitle className="text-white text-base">Adiar compromisso</DialogTitle>
+            {postponeDialog.item && <p className="text-[12px] text-white/40 mt-0.5">{postponeDialog.item.title}</p>}
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Nova data</p>
+              <Input type="date" value={postponeDate} onChange={e => setPostponeDate(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)" }}
+                data-testid="input-postpone-date" />
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Horário</p>
+              <Input type="time" value={postponeTime} onChange={e => setPostponeTime(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)" }}
+                data-testid="input-postpone-time" />
+            </div>
+            <button
+              className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+              style={{ background: "#60a5fa", color: "#fff" }}
+              disabled={postponeMutation.isPending || !postponeDate}
+              onClick={() => {
+                if (!postponeDialog.item || !postponeDate) return;
+                const newDateTime = new Date(`${postponeDate}T${postponeTime}:00`).toISOString();
+                postponeMutation.mutate({ id: postponeDialog.item.id, newDateTime });
+              }}
+              data-testid="button-confirm-postpone">
+              {postponeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : <CalendarClock className="h-4 w-4 inline mr-1" />}
+              Confirmar adiamento
             </button>
           </div>
         </DialogContent>

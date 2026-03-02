@@ -266,7 +266,9 @@ export type InsertCreditCardInvoice = z.infer<typeof insertCreditCardInvoiceSche
 export const scheduleItemCancellations = pgTable("schedule_item_cancellations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
-  scheduleItemId: varchar("schedule_item_id").notNull(),
+  entityType: text("entity_type").notNull().default("schedule"),
+  scheduleItemId: varchar("schedule_item_id"),
+  habitId: varchar("habit_id"),
   date: text("date").notNull(),
   reason: text("reason"),
   type: text("type").notNull().default("other"),
