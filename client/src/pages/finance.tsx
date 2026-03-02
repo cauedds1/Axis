@@ -94,7 +94,9 @@ export default function Finance() {
     paymentMethod: "" as PaymentMethodValue | "",
     paymentMethodOther: "",
   });
-  const [goalForm, setGoalForm] = useState({ title: "", targetAmount: "" });
+  const [goalForm, setGoalForm] = useState({ title: "", emoji: "💰", description: "", targetAmount: "", currentAmount: "" });
+  const [showDepositGoal, setShowDepositGoal] = useState<string | null>(null);
+  const [depositAmount, setDepositAmount] = useState("");
   const [photoResults, setPhotoResults] = useState<any[] | null>(null);
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
@@ -160,9 +162,32 @@ export default function Finance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setShowAddGoal(false);
-      setGoalForm({ title: "", targetAmount: "" });
+      setGoalForm({ title: "", emoji: "💰", description: "", targetAmount: "", currentAmount: "" });
     },
+  });
+
+  const depositMutation = useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+      const res = await apiRequest("POST", `/api/goals/${id}/deposit`, { amount });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setShowDepositGoal(null);
+      setDepositAmount("");
+      toast({ title: "Depósito realizado", description: "O valor foi debitado do saldo e adicionado à reserva." });
+    },
+    onError: () => toast({ title: "Erro ao depositar", variant: "destructive" }),
+  });
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/goals/${id}`); },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/goals"] }),
   });
 
   const uploadPhotoMutation = useMutation({
@@ -793,29 +818,61 @@ export default function Finance() {
           </div>
         </div>
 
-        {/* Right col (1/3): goals */}
+        {/* Right col (1/3): reservas */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">Metas financeiras</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">Reservas</h2>
             {goals.length > 0 && (
               <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowAddGoal(true)} data-testid="button-add-goal">
-                <Plus className="h-3 w-3 mr-1" /> Nova meta
+                <Plus className="h-3 w-3 mr-1" /> Nova reserva
               </Button>
             )}
           </div>
           {goals.length > 0 ? (
             <div className="space-y-2">
               {goals.map((g) => {
-                const pct = Math.min((g.currentAmount / g.targetAmount) * 100, 100);
+                const pct = g.targetAmount && g.targetAmount > 0
+                  ? Math.min((g.currentAmount / g.targetAmount) * 100, 100)
+                  : null;
                 return (
                   <Card key={g.id} className="border-border" data-testid={`card-goal-${g.id}`}>
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium">{g.title}</span>
-                        <span className="text-muted-foreground">R$ {g.currentAmount.toFixed(0)} / {g.targetAmount.toFixed(0)}</span>
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-lg flex-shrink-0">{g.emoji || "💰"}</span>
+                          <span className="font-medium text-sm truncate">{g.title}</span>
+                        </div>
+                        <button
+                          onClick={() => deleteGoalMutation.mutate(g.id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0 ml-2"
+                          data-testid={`button-delete-goal-${g.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                      {g.description && (
+                        <p className="text-xs text-muted-foreground mb-2 ml-7">{g.description}</p>
+                      )}
+                      <div className="ml-7">
+                        <p className="text-base font-semibold text-foreground">R$ {fmtBRL(g.currentAmount)}</p>
+                        {pct !== null && g.targetAmount && (
+                          <>
+                            <p className="text-xs text-muted-foreground mb-1.5">de R$ {fmtBRL(g.targetAmount)}</p>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% concluído</p>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs mt-2 w-full"
+                          onClick={() => { setShowDepositGoal(g.id); setDepositAmount(""); }}
+                          data-testid={`button-deposit-${g.id}`}
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> Depositar
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -824,7 +881,7 @@ export default function Finance() {
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setShowAddGoal(true)} className="w-full" data-testid="button-add-first-goal">
-              <Plus className="h-4 w-4 mr-1" /> Criar primeira meta financeira
+              <Plus className="h-4 w-4 mr-1" /> Criar primeira reserva
             </Button>
           )}
         </div>
@@ -920,19 +977,138 @@ export default function Finance() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog: Nova Meta ── */}
+      {/* ── Dialog: Nova Reserva ── */}
       <Dialog open={showAddGoal} onOpenChange={setShowAddGoal}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova meta financeira</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); createGoalMutation.mutate({ title: goalForm.title, targetAmount: parseFloat(goalForm.targetAmount) }); }} className="space-y-4" data-testid="form-add-goal">
-            <Input placeholder="Nome da meta" value={goalForm.title} onChange={(e) => setGoalForm(p => ({ ...p, title: e.target.value }))} required data-testid="input-goal-title" />
-            <Input type="number" step="0.01" placeholder="Valor alvo (R$)" value={goalForm.targetAmount} onChange={(e) => setGoalForm(p => ({ ...p, targetAmount: e.target.value }))} required data-testid="input-goal-amount" />
+          <DialogHeader><DialogTitle>Nova reserva</DialogTitle></DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              createGoalMutation.mutate({
+                title: goalForm.title,
+                emoji: goalForm.emoji,
+                description: goalForm.description || null,
+                targetAmount: goalForm.targetAmount ? parseFloat(goalForm.targetAmount) : null,
+                currentAmount: goalForm.currentAmount ? parseFloat(goalForm.currentAmount) : 0,
+              });
+            }}
+            className="space-y-4"
+            data-testid="form-add-goal"
+          >
+            {/* Emoji picker */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-2">Ícone</p>
+              <div className="flex flex-wrap gap-1.5">
+                {["💰","🏦","🚗","🏠","✈️","💊","📚","💍","🐾","🎓","🏋️","💻","🎯","🌴","🛒","⚡"].map(em => (
+                  <button
+                    key={em}
+                    type="button"
+                    onClick={() => setGoalForm(p => ({ ...p, emoji: em }))}
+                    className="w-9 h-9 rounded-lg text-lg flex items-center justify-center border transition-all"
+                    style={{
+                      borderColor: goalForm.emoji === em ? "hsl(var(--primary))" : "hsl(var(--border))",
+                      background: goalForm.emoji === em ? "hsl(var(--primary) / 0.1)" : "transparent",
+                    }}
+                    data-testid={`emoji-goal-${em}`}
+                  >{em}</button>
+                ))}
+              </div>
+            </div>
+
+            <Input
+              placeholder="Nome da reserva *"
+              value={goalForm.title}
+              onChange={(e) => setGoalForm(p => ({ ...p, title: e.target.value }))}
+              required
+              data-testid="input-goal-title"
+            />
+
+            <Input
+              placeholder="Descrição (opcional) — ex: Viagem para Europa"
+              value={goalForm.description}
+              onChange={(e) => setGoalForm(p => ({ ...p, description: e.target.value }))}
+              data-testid="input-goal-description"
+            />
+
+            <div>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Valor já guardado (R$) — opcional"
+                value={goalForm.currentAmount}
+                onChange={(e) => setGoalForm(p => ({ ...p, currentAmount: e.target.value }))}
+                data-testid="input-goal-current"
+              />
+              {goalForm.currentAmount && parseFloat(goalForm.currentAmount) > 0 && (
+                <p className="text-xs text-muted-foreground mt-1 ml-1">⚠ Será lançado como saída no seu saldo</p>
+              )}
+            </div>
+
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Valor alvo (R$) — opcional"
+              value={goalForm.targetAmount}
+              onChange={(e) => setGoalForm(p => ({ ...p, targetAmount: e.target.value }))}
+              data-testid="input-goal-amount"
+            />
+
             <Button type="submit" className="w-full" disabled={createGoalMutation.isPending} data-testid="button-submit-goal">
-              {createGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Criar meta
+              {createGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Criar reserva
             </Button>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Dialog: Depositar na reserva ── */}
+      {(() => {
+        const depositGoal = goals.find(g => g.id === showDepositGoal);
+        return (
+          <Dialog open={!!showDepositGoal} onOpenChange={(open) => { if (!open) { setShowDepositGoal(null); setDepositAmount(""); } }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {depositGoal ? `${depositGoal.emoji || "💰"} Depositar em ${depositGoal.title}` : "Depositar"}
+                </DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const amt = parseFloat(depositAmount);
+                  if (!showDepositGoal || isNaN(amt) || amt <= 0) return;
+                  depositMutation.mutate({ id: showDepositGoal, amount: amt });
+                }}
+                className="space-y-4"
+                data-testid="form-deposit-goal"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Este valor será debitado do seu saldo e adicionado à reserva.
+                </p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className="pl-9"
+                    autoFocus
+                    required
+                    data-testid="input-deposit-amount"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={depositMutation.isPending} data-testid="button-confirm-deposit">
+                  {depositMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Confirmar depósito
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
       </>}
 
       {/* ── Dialog: Adicionar Saldo ── */}

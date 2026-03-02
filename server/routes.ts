@@ -831,10 +831,39 @@ export async function registerRoutes(
   app.post("/api/goals", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const schema = z.object({ title: z.string().min(1), targetAmount: z.number().positive(), deadline: z.string().optional().nullable() });
+      const schema = z.object({
+        title: z.string().min(1),
+        emoji: z.string().optional().nullable(),
+        description: z.string().optional().nullable(),
+        targetAmount: z.number().positive().optional().nullable(),
+        currentAmount: z.number().min(0).optional(),
+        deadline: z.string().optional().nullable(),
+      });
       const data = schema.parse(req.body);
-      const goal = await storage.createFinancialGoal({ userId, title: data.title, targetAmount: data.targetAmount, deadline: data.deadline ? new Date(data.deadline) : null });
-      saveEventToMemory(userId, `Nova meta financeira criada: "${data.title}" — alvo R$${data.targetAmount}`).catch(() => {});
+      const goal = await storage.createFinancialGoal({
+        userId,
+        title: data.title,
+        emoji: data.emoji ?? null,
+        description: data.description ?? null,
+        targetAmount: data.targetAmount ?? null,
+        currentAmount: data.currentAmount ?? 0,
+        deadline: data.deadline ? new Date(data.deadline) : null,
+      });
+      if (data.currentAmount && data.currentAmount > 0) {
+        await storage.createTransaction({
+          userId,
+          amount: data.currentAmount,
+          description: `Reserva: ${data.title}`,
+          type: "expense",
+          categoryName: "reserva",
+          source: "manual",
+          date: new Date(),
+          establishment: null,
+          paymentMethod: null,
+          location: null,
+        });
+      }
+      saveEventToMemory(userId, `Nova reserva financeira criada: "${data.title}"${data.targetAmount ? ` — alvo R$${data.targetAmount}` : ""}`).catch(() => {});
       res.status(201).json(goal);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
@@ -845,14 +874,52 @@ export async function registerRoutes(
   app.patch("/api/goals/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const schema = z.object({ title: z.string().optional(), targetAmount: z.number().optional(), currentAmount: z.number().optional(), status: z.string().optional() });
+      const schema = z.object({
+        title: z.string().optional(),
+        emoji: z.string().optional().nullable(),
+        description: z.string().optional().nullable(),
+        targetAmount: z.number().optional().nullable(),
+        currentAmount: z.number().optional(),
+        status: z.string().optional(),
+      });
       const data = schema.parse(req.body);
       const goal = await storage.updateFinancialGoal(paramId(req), userId, data);
-      if (!goal) return res.status(404).json({ message: "Meta não encontrada" });
+      if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
       if (data.currentAmount !== undefined) {
-        saveEventToMemory(userId, `Progresso na meta "${goal.title}": R$${data.currentAmount}/${goal.targetAmount}`).catch(() => {});
+        saveEventToMemory(userId, `Depósito na reserva "${goal.title}": R$${data.currentAmount} guardados`).catch(() => {});
       }
       res.json(goal);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/goals/:id/deposit", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({ amount: z.number().positive() });
+      const { amount } = schema.parse(req.body);
+      const goals = await storage.getFinancialGoals(userId);
+      const goal = goals.find(g => g.id === paramId(req));
+      if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
+      const [updatedGoal, tx] = await Promise.all([
+        storage.updateFinancialGoal(paramId(req), userId, { currentAmount: goal.currentAmount + amount }),
+        storage.createTransaction({
+          userId,
+          amount,
+          description: `Reserva: ${goal.title}`,
+          type: "expense",
+          categoryName: "reserva",
+          source: "manual",
+          date: new Date(),
+          establishment: null,
+          paymentMethod: null,
+          location: null,
+        }),
+      ]);
+      saveEventToMemory(userId, `Depósito de R$${amount} na reserva "${goal.title}" — total: R$${updatedGoal?.currentAmount}`).catch(() => {});
+      res.json({ goal: updatedGoal, transaction: tx });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
       res.status(500).json({ message: error.message });
