@@ -215,7 +215,7 @@ export default function Dashboard() {
         >
           <Flame
             className={`h-4 w-4 mb-1 ${isHigh ? "high-flame" : ""}`}
-            style={{ color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.primary }}
+            style={{ color: isHigh ? HIGH_PALETTE.negative : P.primary }}
           />
           <span
             className={`text-2xl font-bold leading-none ${isHigh ? "high-score-text" : ""}`}
@@ -378,8 +378,8 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {data.habits.slice(0, 4).map((h: any) => {
                   const streakColor = isHigh
-                    ? h.streak >= 7 ? HIGH_PALETTE.primary : h.streak >= 3 ? HIGH_PALETTE.agenda : HIGH_PALETTE.negative
-                    : SLIM_PALETTE.primary;
+                    ? h.streak >= 7 ? P.primary : h.streak >= 3 ? HIGH_PALETTE.agenda : HIGH_PALETTE.negative
+                    : P.primary;
 
                   return (
                     <div key={h.id}>
