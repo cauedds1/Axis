@@ -175,7 +175,7 @@ export function DisciplinePanel({
             onClick={onClose}
           />
           <motion.div
-            className="fixed left-[var(--sidebar-width,240px)] top-0 bottom-0 z-50 w-72 flex flex-col overflow-hidden"
+            className="fixed left-0 md:left-[var(--sidebar-width,240px)] top-0 bottom-0 z-50 w-full md:w-72 flex flex-col overflow-hidden"
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -20, opacity: 0 }}

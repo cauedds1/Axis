@@ -328,12 +328,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden" data-testid="page-settings">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-56px)] overflow-hidden" data-testid="page-settings">
       <title>AXIS - Configurações</title>
 
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <div
-        className="w-48 flex-shrink-0 border-r border-border flex flex-col py-4 px-2 gap-1"
+        className="hidden md:flex w-48 flex-shrink-0 border-r border-border flex-col py-4 px-2 gap-1"
         style={{ background: "rgba(255,255,255,0.01)" }}
       >
         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Configurações</p>
@@ -362,8 +362,33 @@ export default function SettingsPage() {
         })}
       </div>
 
+      {/* Mobile Tab Bar */}
+      <div className="flex md:hidden overflow-x-auto border-b border-border flex-shrink-0" style={{ background: "rgba(255,255,255,0.01)" }}>
+        {TABS.map(({ id, label, Icon }) => {
+          const active = activeTab === id;
+          const isDanger = id === "conta";
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="flex flex-col items-center gap-1 px-4 py-3 text-[10px] font-semibold flex-shrink-0 transition-colors border-b-2"
+              style={{
+                borderBottomColor: active ? (isDanger ? "rgb(239,68,68)" : "hsl(var(--primary))") : "transparent",
+                color: active
+                  ? isDanger ? "rgb(239,68,68)" : "hsl(var(--foreground))"
+                  : isDanger ? "rgba(239,68,68,0.6)" : "hsl(var(--muted-foreground))",
+              }}
+              data-testid={`tab-settings-${id}`}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         <div className="max-w-xl">
 
           {/* ── Aparência ── */}

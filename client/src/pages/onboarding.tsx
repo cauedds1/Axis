@@ -260,22 +260,24 @@ export default function Onboarding() {
                   </button>
                 </div>
               ))}
-              <div className="flex gap-2 mt-1">
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
                 <div className="flex-1 rounded-xl border px-3 py-2" style={fieldBox}>
                   <input value={riName} onChange={e => setRiName(e.target.value)} placeholder="Salário, Freelance…" className={inputCls} data-testid="input-ri-name" onKeyDown={e => e.key === "Enter" && addIncome()} />
                 </div>
-                <div className="w-24 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                  <span className="text-white/30 text-xs">R$</span>
-                  <input value={riAmount} onChange={e => setRiAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-ri-amount" onKeyDown={e => e.key === "Enter" && addIncome()} />
+                <div className="flex gap-2">
+                  <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
+                    <span className="text-white/30 text-xs">R$</span>
+                    <input value={riAmount} onChange={e => setRiAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-ri-amount" onKeyDown={e => e.key === "Enter" && addIncome()} />
+                  </div>
+                  <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
+                    <span className="text-white/30 text-xs">dia</span>
+                    <input value={riDay} onChange={e => setRiDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-ri-day" onKeyDown={e => e.key === "Enter" && addIncome()} />
+                  </div>
+                  <button onClick={addIncome} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80 min-w-[44px]"
+                    style={{ background: "rgba(78,205,196,0.15)", border: "1px solid rgba(78,205,196,0.25)" }} data-testid="button-add-income">
+                    <Plus className="w-4 h-4" style={{ color: "#4ECDC4" }} />
+                  </button>
                 </div>
-                <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                  <span className="text-white/30 text-xs">dia</span>
-                  <input value={riDay} onChange={e => setRiDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-ri-day" onKeyDown={e => e.key === "Enter" && addIncome()} />
-                </div>
-                <button onClick={addIncome} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80"
-                  style={{ background: "rgba(78,205,196,0.15)", border: "1px solid rgba(78,205,196,0.25)" }} data-testid="button-add-income">
-                  <Plus className="w-4 h-4" style={{ color: "#4ECDC4" }} />
-                </button>
               </div>
             </div>
 
@@ -297,22 +299,24 @@ export default function Onboarding() {
                   </button>
                 </div>
               ))}
-              <div className="flex gap-2 mt-1">
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
                 <div className="flex-1 rounded-xl border px-3 py-2" style={fieldBox}>
                   <input value={bTitle} onChange={e => setBTitle(e.target.value)} placeholder="Aluguel, Netflix, Academia…" className={inputCls} data-testid="input-bill-title" onKeyDown={e => e.key === "Enter" && addBill()} />
                 </div>
-                <div className="w-24 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                  <span className="text-white/30 text-xs">R$</span>
-                  <input value={bAmount} onChange={e => setBAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-bill-amount" onKeyDown={e => e.key === "Enter" && addBill()} />
+                <div className="flex gap-2">
+                  <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
+                    <span className="text-white/30 text-xs">R$</span>
+                    <input value={bAmount} onChange={e => setBAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-bill-amount" onKeyDown={e => e.key === "Enter" && addBill()} />
+                  </div>
+                  <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
+                    <span className="text-white/30 text-xs">dia</span>
+                    <input value={bDay} onChange={e => setBDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-bill-day" onKeyDown={e => e.key === "Enter" && addBill()} />
+                  </div>
+                  <button onClick={addBill} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80 min-w-[44px]"
+                    style={{ background: "rgba(255,107,107,0.12)", border: "1px solid rgba(255,107,107,0.25)" }} data-testid="button-add-bill">
+                    <Plus className="w-4 h-4" style={{ color: "#FF6B6B" }} />
+                  </button>
                 </div>
-                <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                  <span className="text-white/30 text-xs">dia</span>
-                  <input value={bDay} onChange={e => setBDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-bill-day" onKeyDown={e => e.key === "Enter" && addBill()} />
-                </div>
-                <button onClick={addBill} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80"
-                  style={{ background: "rgba(255,107,107,0.12)", border: "1px solid rgba(255,107,107,0.25)" }} data-testid="button-add-bill">
-                  <Plus className="w-4 h-4" style={{ color: "#FF6B6B" }} />
-                </button>
               </div>
             </div>
 

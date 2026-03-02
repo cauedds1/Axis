@@ -382,7 +382,7 @@ export default function Finance() {
               {uploadPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             </Button>
             <Button size="sm" onClick={() => setShowAddTx(true)} data-testid="button-add-transaction">
-              <Plus className="h-4 w-4 mr-1" /> Adicionar
+              <Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Adicionar</span>
             </Button>
           </>)}
           <Button variant="outline" size="sm" onClick={() => setShowManageBills(true)} data-testid="button-manage-bills">
@@ -469,7 +469,7 @@ export default function Finance() {
         <p className="text-xs text-white/35">{getTxPeriodLabel(txPeriod, txDateRange)}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> Gastos</p>

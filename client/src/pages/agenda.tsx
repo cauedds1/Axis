@@ -297,7 +297,7 @@ export default function Agenda() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
         {periodDays.map((day) => {
           const isToday = day.toDateString() === new Date().toDateString();
           const dayStr = day.toISOString().split("T")[0];
@@ -416,7 +416,7 @@ export default function Agenda() {
                 onClick={() => setDayPanelDate(null)}
               />
               <motion.div
-                className="fixed right-0 top-0 bottom-0 z-50 w-80 flex flex-col overflow-hidden"
+                className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-80 flex flex-col overflow-hidden"
                 initial={{ x: 40, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 40, opacity: 0 }}

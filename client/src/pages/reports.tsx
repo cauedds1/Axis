@@ -269,7 +269,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Receitas</p>
                 <p className="text-xl font-bold" style={{ color: RP.positive }} data-testid="metric-receitas-mes">
