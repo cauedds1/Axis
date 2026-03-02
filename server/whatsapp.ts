@@ -840,6 +840,60 @@ class WhatsAppManager {
     log(`WhatsApp PDF: ${toCreate.length} importadas, ${skipped} duplicadas (userId=${userId})`, "whatsapp");
   }
 
+  private async buildCardWarning(card: any, userId: string): Promise<string> {
+    try {
+      const limit = Number(card.limit);
+      if (!limit || limit <= 0) return "";
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const { transactions } = await import("@shared/schema");
+      const { db } = await import("./db");
+      const { and, eq, gte } = await import("drizzle-orm");
+      const cardTx = await db.select().from(transactions)
+        .where(and(
+          eq(transactions.userId, userId),
+          eq(transactions.creditCardId, card.id),
+          eq(transactions.type, "expense"),
+          gte(transactions.date, startOfMonth)
+        ));
+      const used = cardTx.reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const pct = (used / limit) * 100;
+      if (pct < 50) return "";
+      const allTx = await db.select().from(transactions).where(eq(transactions.userId, userId));
+      const allExpenses = allTx.filter((t: any) => t.type === "expense" && !t.creditCardId).reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const allIncome = allTx.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const profile = await storage.getUserProfile(userId);
+      const bankBalance = (profile?.initialBalance ?? 0) + allIncome - allExpenses;
+      const recurringIncomes = await storage.getRecurringIncomes(userId);
+      const monthlyIncome = recurringIncomes.reduce((s: number, r: any) => {
+        const amt = Number(r.amount);
+        if (r.frequency === "weekly") return s + amt * 4.33;
+        if (r.frequency === "biweekly") return s + amt * 2;
+        return s + amt;
+      }, 0);
+      const balanceRatio = monthlyIncome > 0 ? bankBalance / monthlyIncome : 1;
+
+      if (pct >= 90) {
+        if (balanceRatio < 0.3) {
+          return `\n\n🚨 *Alerta AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está crítico (R$${bankBalance.toFixed(0)}). Risco de descontrole financeiro.`;
+        }
+        return `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite — próximo do teto. Avalie pausar os gastos.`;
+      }
+      if (pct >= 70) {
+        if (balanceRatio < 0.5) {
+          return `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está baixo. Cuidado com novos gastos no crédito.`;
+        }
+        return `\n\n💳 *AXIS:* Cartão *${card.name}* já está em ${pct.toFixed(0)}% do limite este mês.`;
+      }
+      if (pct >= 50) {
+        return `\n\n💳 *AXIS:* Cartão *${card.name}* atingiu ${pct.toFixed(0)}% do limite este mês.`;
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  }
+
   private async buildReply(result: IntentResult, userId: string): Promise<string> {
     const { intent, data } = result;
 
@@ -872,7 +926,8 @@ class WhatsAppManager {
               };
             });
             await storage.createManyTransactions(txList);
-            return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!`;
+            const warning = await this.buildCardWarning(card, userId);
+            return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!${warning}`;
           }
         }
         const singleCard = data.creditCardId ? await storage.getCreditCard(data.creditCardId, userId) : null;
@@ -892,7 +947,8 @@ class WhatsAppManager {
           return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
         }
         const cardSuffix = singleCard ? ` no *${singleCard.name}*` : "";
-        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardSuffix}!`;
+        const cardWarning = singleCard ? await this.buildCardWarning(singleCard, userId) : "";
+        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardSuffix}!${cardWarning}`;
       }
 
       case "task": {

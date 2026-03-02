@@ -210,9 +210,13 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
     }
 
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const [transactions, recurringIncomes] = await Promise.all([
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [transactions, recurringIncomes, allTimeTx, userCards] = await Promise.all([
       storage.getTransactions(userId, { startDate: thirtyDaysAgo, endDate: now }),
       storage.getRecurringIncomes(userId),
+      storage.getTransactions(userId),
+      storage.getCreditCards(userId),
     ]);
 
     const expenses = transactions.filter(t => t.type === "expense");
@@ -229,11 +233,41 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
 
     if (monthlyIncome <= 0) return;
 
+    // Compute bank balance (excluding credit card transactions since they don't reduce balance)
+    const allExpenses = allTimeTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((s, t) => s + Number(t.amount), 0);
+    const allIncome = allTimeTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
+    const bankBalance = (profile?.initialBalance ?? 0) + allIncome - allExpenses;
+
+    // Compute credit card utilization for this month
+    const monthTx = allTimeTx.filter(t => new Date(t.date!) >= startOfMonth);
+    const cardContext = userCards.filter(c => c.active && Number(c.limit) > 0).map(card => {
+      const cardTx = monthTx.filter(t => t.creditCardId === card.id && t.type === "expense");
+      const used = cardTx.reduce((s, t) => s + Number(t.amount), 0);
+      const limit = Number(card.limit);
+      const utilizationPct = (used / limit) * 100;
+
+      // Top categories on this card
+      const catMap: Record<string, number> = {};
+      for (const t of cardTx) {
+        const cat = (t.categoryName || "outros").toLowerCase();
+        catMap[cat] = (catMap[cat] || 0) + Number(t.amount);
+      }
+      const topCategories = Object.entries(catMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([cat, val]) => `${cat} R$${val.toFixed(0)}`)
+        .join(", ") || "nenhuma";
+
+      return { name: card.name, limit, used, utilizationPct, topCategories };
+    });
+
     await storage.upsertUserProfile(userId, { lastSpendingAnalysis: now });
 
     const result = await analyzeSpendingDiscipline(
-      transactions.map(t => ({ title: t.title, amount: Number(t.amount), category: t.category, type: t.type })),
-      monthlyIncome
+      transactions.map(t => ({ title: t.description || t.categoryName || "", amount: Number(t.amount), category: t.categoryName, type: t.type })),
+      monthlyIncome,
+      cardContext.length > 0 ? cardContext : undefined,
+      bankBalance
     );
 
     let reason: string;

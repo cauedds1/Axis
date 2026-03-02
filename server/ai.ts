@@ -1089,7 +1089,9 @@ const ESSENTIAL_CATEGORIES = new Set([
 
 export async function analyzeSpendingDiscipline(
   transactions: { title: string; amount: number; category?: string | null; type: string }[],
-  monthlyIncome: number
+  monthlyIncome: number,
+  cardContext?: { name: string; limit: number; used: number; utilizationPct: number; topCategories: string }[],
+  bankBalance?: number
 ): Promise<SpendingAnalysisResult> {
   const openai = getOpenAIClient();
   const expenses = transactions.filter(t => t.type === "expense");
@@ -1125,12 +1127,23 @@ export async function analyzeSpendingDiscipline(
     })
     .join("\n");
 
+  const cardSection = (cardContext && cardContext.length > 0)
+    ? `\n══ CARTÕES DE CRÉDITO ══\n${cardContext.map(c => {
+        const risk = c.utilizationPct >= 90 ? "🔴 CRÍTICO" : c.utilizationPct >= 70 ? "🟠 ALTO" : c.utilizationPct >= 50 ? "🟡 MÉDIO" : "🟢 OK";
+        return `  • ${c.name}: R$${c.used.toFixed(2)} / R$${c.limit.toFixed(2)} (${c.utilizationPct.toFixed(0)}% do limite) — ${risk}\n    Categorias no cartão: ${c.topCategories}`;
+      }).join("\n")}`
+    : "";
+
+  const balanceSection = (bankBalance !== undefined && monthlyIncome > 0)
+    ? `\nSaldo bancário atual: R$ ${bankBalance.toFixed(2)} (${((bankBalance / monthlyIncome) * 100).toFixed(0)}% da renda mensal)${bankBalance < 0 ? " — ⚠️ SALDO NEGATIVO" : bankBalance < monthlyIncome * 0.3 ? " — saldo muito baixo" : ""}`
+    : "";
+
   const prompt = `Você é um coach de disciplina financeira. Avalie com EXTREMA PRECISÃO os gastos do usuário dos últimos 30 dias e determine o impacto real na disciplina.
 
 ══ CONTEXTO FINANCEIRO ══
 Renda mensal: R$ ${monthlyIncome.toFixed(2)}
 Total gasto: R$ ${totalExpenses.toFixed(2)} (${spendingPct}% da renda)
-Taxa de poupança: ${savingsPct}% da renda${totalExpenses > monthlyIncome ? "\n⚠️ ATENÇÃO: gastou MAIS do que ganha este mês" : ""}
+Taxa de poupança: ${savingsPct}% da renda${totalExpenses > monthlyIncome ? "\n⚠️ ATENÇÃO: gastou MAIS do que ganha este mês" : ""}${balanceSection}${cardSection}
 
 ══ GASTOS POR CATEGORIA ══
 ${categorySummary}
@@ -1156,6 +1169,17 @@ vestuário:
 
 outros/sem categoria:
 - Avaliar pelo padrão (frequência e valores).
+
+MONITORAMENTO DE CARTÃO DE CRÉDITO:
+- Cartão ≥ 80% de utilização = comportamento preocupante; ≥ 90% = crítico
+- Cartão acima de 70% + categorias de lazer/vestuário predominantes no cartão = penalize mais
+- Múltiplos cartões acima de 70% simultaneamente = padrão grave de dependência de crédito
+- SALDO BANCÁRIO CRUZADO com cartão:
+  • Cartão alto (≥70%) + saldo bancário OK (≥80% da renda) = apenas leve advertência
+  • Cartão alto (≥70%) + saldo baixo (<50% da renda) = moderado — risco real
+  • Cartão alto (≥80%) + saldo baixo (<30% da renda) = grave — descontrole financeiro
+  • Saldo negativo + qualquer uso de cartão = sempre grave
+- Se não há dados de cartão, ignore esta seção
 
 ANÁLISE DE PADRÃO:
 - Não penalize por UMA compra isolada de qualquer categoria discricionária.
