@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 const pdfParse: (buffer: Buffer) => Promise<{ text: string }> = require("pdf-parse");
 import { storage } from "./storage";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, creditCards } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 let _openaiClient: OpenAI | null = null;
@@ -125,9 +125,6 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
   let userCards: any[] = [];
   let creditCardsContext = "";
   try {
-    const { creditCards } = await import("@shared/schema");
-    const { db } = await import("./db");
-    const { eq } = await import("drizzle-orm");
     userCards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
     if (userCards.length > 0) {
       creditCardsContext = `
@@ -148,7 +145,9 @@ REGRAS PARA CARTÃO DE CRÉDITO:
 - Se não conseguir identificar qual cartão, omita creditCardId
 `;
     }
-  } catch {}
+  } catch (cardErr: any) {
+    console.error(`[ai] Erro ao buscar cartões para userId=${userId}: ${cardErr?.message}`);
+  }
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
