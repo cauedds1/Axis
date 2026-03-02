@@ -16,6 +16,31 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const creditCards = pgTable("credit_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  bank: text("bank").notNull(),
+  limit: real("limit").notNull(),
+  closingDay: integer("closing_day").notNull(),
+  dueDay: integer("due_day").notNull(),
+  color: text("color").default("#7C3AED"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const creditCardInvoices = pgTable("credit_card_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  creditCardId: varchar("credit_card_id").notNull(),
+  monthKey: text("month_key").notNull(),
+  total: real("total").notNull().default(0),
+  status: text("status").notNull().default("open"),
+  billId: text("bill_id"),
+  closedAt: timestamp("closed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const transactions = pgTable("transactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
@@ -31,6 +56,8 @@ export const transactions = pgTable("transactions", {
   paymentMethod: text("payment_method"),
   receiptItems: text("receipt_items"),
   dateOnly: boolean("date_only").default(false).notNull(),
+  creditCardId: varchar("credit_card_id"),
+  installmentInfo: text("installment_info"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -187,6 +214,8 @@ export const disciplineScoreHistory = pgTable("discipline_score_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const insertCreditCardSchema = createInsertSchema(creditCards).omit({ id: true, createdAt: true });
+export const insertCreditCardInvoiceSchema = createInsertSchema(creditCardInvoices).omit({ id: true, createdAt: true });
 export const insertBillSchema = createInsertSchema(bills).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
@@ -227,3 +256,8 @@ export type InsertRecurringIncome = z.infer<typeof insertRecurringIncomeSchema>;
 export const insertEmailAlertLogSchema = createInsertSchema(emailAlertLog).omit({ id: true, sentAt: true });
 export type EmailAlertLog = typeof emailAlertLog.$inferSelect;
 export type InsertEmailAlertLog = z.infer<typeof insertEmailAlertLogSchema>;
+
+export type CreditCard = typeof creditCards.$inferSelect;
+export type InsertCreditCard = z.infer<typeof insertCreditCardSchema>;
+export type CreditCardInvoice = typeof creditCardInvoices.$inferSelect;
+export type InsertCreditCardInvoice = z.infer<typeof insertCreditCardInvoiceSchema>;

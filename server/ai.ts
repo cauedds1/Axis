@@ -122,6 +122,28 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
   const todayDate = new Date().toISOString().split("T")[0];
   const openai = getOpenAIClient();
 
+  let creditCardsContext = "";
+  try {
+    const { creditCards } = await import("@shared/schema");
+    const { db } = await import("./db");
+    const { eq } = await import("drizzle-orm");
+    const userCards = await db.select().from(creditCards).where(eq(creditCards.userId, userId));
+    if (userCards.length > 0) {
+      creditCardsContext = `
+CARTÕES DE CRÉDITO DO USUÁRIO:
+${userCards.map(c => `- id: "${c.id}", nome: "${c.name}", banco: "${c.bank}", fechamento: dia ${c.closingDay}, vencimento: dia ${c.dueDay}`).join("\n")}
+
+REGRAS PARA CARTÃO DE CRÉDITO:
+- Se o usuário mencionar um cartão pelo nome ou banco (ex: "no nubank", "no itaú", "no cartão"), identifique qual cartão é e inclua "creditCardId" na resposta
+- Se mencionar parcelamento (ex: "3x", "parcelado em 6 vezes", "12 parcelas"), inclua "installments" com o número de parcelas
+- Exemplos: "gastei 300 no nubank" → creditCardId: (id do Nubank), installments: 1
+- "comprei 1500 parcelado em 3x no itaú" → creditCardId: (id do Itaú), installments: 3
+- "parcelei 600 em 6 vezes no cartão" → use o cartão mais recentemente usado ou o único cadastrado, installments: 6
+- Se não identificar qual cartão, omita creditCardId
+`;
+    }
+  } catch {}
+
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
@@ -150,7 +172,9 @@ Para expense/income:
   "description": "descrição curta do gasto/receita",
   "categoryName": "categoria precisa — veja regras abaixo",
   "establishment": "nome do estabelecimento se mencionado, senão null",
-  "date": "${todayDate}" (ou data mencionada no formato YYYY-MM-DD)
+  "date": "${todayDate}" (ou data mencionada no formato YYYY-MM-DD),
+  "creditCardId": "id do cartão se mencionado, senão omitir",
+  "installments": número de parcelas se mencionado (mínimo 1), senão omitir
 }
 
 Para bill (conta fixa):
@@ -197,7 +221,7 @@ Para chat:
 }
 
 ${CATEGORY_RULES}
-
+${creditCardsContext}
 REGRAS GERAIS:
 - Se o valor não for mencionado explicitamente em um gasto, retorne intent "chat" e pergunte
 - Interprete datas relativas: "amanhã", "sexta", "semana que vem", etc.
@@ -433,7 +457,7 @@ export async function chatWithContext(message: string, userId: string, executedA
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const sevenDaysAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  const [profile, context, allTransactions, tasks, habitsData, schedule, goals, billsData, userRows] = await Promise.all([
+  const [profile, context, allTransactions, tasks, habitsData, schedule, goals, billsData, userRows, userCards] = await Promise.all([
     storage.getUserProfile(userId),
     storage.getUserContext(userId),
     storage.getTransactions(userId, { startDate: threeMonthsAgo }),
@@ -443,6 +467,7 @@ export async function chatWithContext(message: string, userId: string, executedA
     storage.getFinancialGoals(userId),
     storage.getBills(userId),
     db.select({ firstName: users.firstName }).from(users).where(eq(users.id, userId)),
+    storage.getCreditCards(userId),
   ]);
 
   const chatHistory = await storage.getChatMessages(userId, 20);
@@ -618,6 +643,15 @@ ${activeBills.length === 0 ? "Nenhuma conta recorrente cadastrada." :
 `Total fixo: R$${totalBillsFixed.toFixed(2)}  |  A pagar ainda: R$${totalBillsUnpaid.toFixed(2)}  |  Pagas: ${paidBills.length}/${activeBills.filter(b => b.type === "expense").length}
 Pendentes: ${unpaidBills.length === 0 ? "nenhuma" : unpaidBills.map(b => `"${b.title}" R$${b.amount.toFixed(0)} (dia ${b.dueDay})${billsOverdue.includes(b) ? " ⚠️ATRASADA" : billsDueSoon.includes(b) ? " 📅VENCE EM BREVE" : ""}`).join(", ")}
 Pagas este mês: ${paidBills.length === 0 ? "nenhuma" : paidBills.map(b => `"${b.title}" ✓`).join(", ")}`}
+
+═══ CARTÕES DE CRÉDITO ═══
+${userCards.length === 0 ? "Nenhum cartão cadastrado." :
+userCards.map(c => {
+  const used = allTransactions.filter(t => t.creditCardId === c.id && new Date(t.date) >= curMonthStart).reduce((s, t) => s + t.amount, 0);
+  const avail = c.limit - used;
+  const pct = Math.round((used / Math.max(c.limit, 1)) * 100);
+  return `  ${c.name} (${c.bank}): limite R$${c.limit.toFixed(0)}, usado R$${used.toFixed(0)} (${pct}%), disponível R$${avail.toFixed(0)} — fecha dia ${c.closingDay}, vence dia ${c.dueDay} — id: ${c.id}`;
+}).join("\n")}
 
 ═══ TAREFAS ═══
 Pendentes: ${pendingTasks.length}  |  Concluídas: ${doneTasks}  |  Atrasadas: ${overdueTasks.length}

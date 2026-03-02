@@ -254,6 +254,40 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
   }
 }
 
+async function autoCloseInvoices(userId: string): Promise<void> {
+  const now = new Date();
+  const today = now.getDate();
+  const cards = await storage.getCreditCards(userId);
+  for (const card of cards) {
+    if (!card.active) continue;
+    if (today < card.closingDay) continue;
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const existing = await storage.getInvoiceByMonth(card.id, monthKey);
+    if (existing && (existing.status === "closed" || existing.status === "paid")) continue;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const closingDate = new Date(now.getFullYear(), now.getMonth(), card.closingDay, 23, 59, 59);
+    const allCardTx = await storage.getTransactions(userId, { creditCardId: card.id, startDate: startOfMonth, endDate: closingDate });
+    const total = allCardTx.reduce((s, t) => s + Number(t.amount), 0);
+    const bill = await storage.createBill({
+      userId,
+      title: `Fatura ${card.name}`,
+      amount: total,
+      type: "expense",
+      dueDay: card.dueDay,
+      categoryName: "Cartão de Crédito",
+      recurrenceType: "this_month",
+      active: true,
+      paidMonths: "[]",
+      notes: `Fatura automática do cartão ${card.name} — ${monthKey}`,
+    });
+    if (existing) {
+      await storage.updateInvoice(existing.id, { status: "closed", total, billId: bill.id, closedAt: now });
+    } else {
+      await storage.createInvoice({ userId, creditCardId: card.id, monthKey, total, status: "closed", billId: bill.id, closedAt: now });
+    }
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -364,6 +398,34 @@ export async function registerRoutes(
       switch (result.intent) {
         case "expense":
         case "income":
+          if (result.data.creditCardId && result.data.installments && result.data.installments > 1) {
+            const card = await storage.getCreditCard(result.data.creditCardId, userId);
+            if (card) {
+              const groupId = crypto.randomUUID();
+              const baseDate = result.data.date ? new Date(result.data.date) : new Date();
+              const installAmt = Math.round((result.data.amount / result.data.installments) * 100) / 100;
+              const purchaseDay = baseDate.getDate();
+              const afterClosing = purchaseDay >= card.closingDay;
+              const txList = Array.from({ length: result.data.installments }, (_, i) => {
+                const offset = afterClosing ? i + 1 : i;
+                return {
+                  userId,
+                  amount: installAmt,
+                  description: `${result.data.description} (${i + 1}/${result.data.installments})`,
+                  categoryName: result.data.categoryName || null,
+                  type: "expense" as const,
+                  date: new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1),
+                  source: (req.file ? "voice" : "text") as string,
+                  establishment: result.data.establishment || null,
+                  location: null,
+                  creditCardId: result.data.creditCardId,
+                  installmentInfo: JSON.stringify({ current: i + 1, total: result.data.installments, groupId }),
+                };
+              });
+              created = await storage.createManyTransactions(txList);
+              break;
+            }
+          }
           created = await storage.createTransaction({
             userId,
             amount: result.data.amount,
@@ -374,6 +436,8 @@ export async function registerRoutes(
             source: req.file ? "voice" : "text",
             establishment: result.data.establishment || null,
             location: null,
+            creditCardId: result.data.creditCardId || null,
+            installmentInfo: null,
           });
           break;
         case "task":
@@ -735,11 +799,13 @@ export async function registerRoutes(
   app.get("/api/transactions", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      autoCloseInvoices(userId).catch(() => {});
       const filters: any = {};
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
       if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
       if (req.query.type) filters.type = req.query.type as string;
       if (req.query.categoryId) filters.categoryId = req.query.categoryId as string;
+      if (req.query.creditCardId) filters.creditCardId = req.query.creditCardId as string;
       const result = await storage.getTransactions(userId, filters);
       res.json(result);
     } catch (error: any) {
@@ -760,8 +826,44 @@ export async function registerRoutes(
         establishment: z.string().optional().nullable(),
         location: z.string().optional().nullable(),
         paymentMethod: z.string().optional().nullable(),
+        creditCardId: z.string().optional().nullable(),
+        installments: z.number().int().min(1).max(24).optional(),
       });
       const data = schema.parse(req.body);
+
+      if (data.creditCardId && data.installments && data.installments > 1) {
+        const card = await storage.getCreditCard(data.creditCardId, userId);
+        if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+        const groupId = crypto.randomUUID();
+        const baseDate = data.date ? new Date(data.date) : new Date();
+        const installmentAmount = Math.round((data.amount / data.installments) * 100) / 100;
+        const txList: any[] = [];
+        const purchaseDay = baseDate.getDate();
+        const afterClosing = purchaseDay >= card.closingDay;
+        for (let i = 0; i < data.installments; i++) {
+          const offset = afterClosing ? i + 1 : i;
+          const txDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1);
+          txList.push({
+            userId,
+            amount: installmentAmount,
+            description: `${data.description} (${i + 1}/${data.installments})`,
+            categoryName: data.categoryName || null,
+            categoryId: data.categoryId || null,
+            type: "expense" as const,
+            date: txDate,
+            source: "manual",
+            establishment: data.establishment || null,
+            location: data.location || null,
+            paymentMethod: "credit_card",
+            creditCardId: data.creditCardId,
+            installmentInfo: JSON.stringify({ current: i + 1, total: data.installments, groupId }),
+          });
+        }
+        const created = await storage.createManyTransactions(txList);
+        saveEventToMemory(userId, `Compra parcelada no cartão ${card.name}: R$${data.amount.toFixed(2)} em ${data.installments}x — "${data.description}"`).catch(() => {});
+        return res.status(201).json(created);
+      }
+
       const tx = await storage.createTransaction({
         userId,
         amount: data.amount,
@@ -774,11 +876,107 @@ export async function registerRoutes(
         establishment: data.establishment || null,
         location: data.location || null,
         paymentMethod: data.paymentMethod || null,
+        creditCardId: data.creditCardId || null,
+        installmentInfo: null,
       });
       saveEventToMemory(userId, `Nova transação registrada: ${data.type === "expense" ? "gasto" : "receita"} de R$${data.amount.toFixed(2)} em ${data.categoryName || "sem categoria"} — "${data.description}"`).catch(() => {});
       res.status(201).json(tx);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/credit-cards", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      res.json(await storage.getCreditCards(userId));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/credit-cards", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({
+        name: z.string().min(1),
+        bank: z.string().min(1),
+        limit: z.number().positive(),
+        closingDay: z.number().int().min(1).max(31),
+        dueDay: z.number().int().min(1).max(31),
+        color: z.string().optional().nullable(),
+      });
+      const data = schema.parse(req.body);
+      const card = await storage.createCreditCard({ ...data, userId, active: true, color: data.color || "#7C3AED" });
+      res.status(201).json(card);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/credit-cards/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({
+        name: z.string().optional(),
+        bank: z.string().optional(),
+        limit: z.number().positive().optional(),
+        closingDay: z.number().int().min(1).max(31).optional(),
+        dueDay: z.number().int().min(1).max(31).optional(),
+        color: z.string().optional().nullable(),
+        active: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const card = await storage.updateCreditCard(req.params.id, userId, data as any);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+      res.json(card);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/credit-cards/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteCreditCard(req.params.id, getUserId(req));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/credit-cards/:id/invoices", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const card = await storage.getCreditCard(cardId, userId);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+      const invoices = await storage.getInvoices(userId, cardId);
+      const now = new Date();
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const openInvoice = invoices.find(i => i.status === "open" && i.monthKey === currentMonthKey);
+      const allTx = await storage.getTransactions(userId, { creditCardId: cardId });
+      const result = invoices.map(inv => {
+        const txForInvoice = allTx.filter(tx => {
+          const txDate = new Date(tx.date!);
+          const txMonthKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, "0")}`;
+          return txMonthKey === inv.monthKey;
+        });
+        return { ...inv, transactions: txForInvoice };
+      });
+      if (!openInvoice) {
+        const openTx = allTx.filter(tx => {
+          const txDate = new Date(tx.date!);
+          const txMonthKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, "0")}`;
+          return txMonthKey === currentMonthKey;
+        });
+        const openTotal = openTx.reduce((s, t) => s + Number(t.amount), 0);
+        result.unshift({ id: "open", userId, creditCardId: cardId, monthKey: currentMonthKey, total: openTotal, status: "open", billId: null, closedAt: null, createdAt: null, transactions: openTx } as any);
+      }
+      res.json({ card, invoices: result });
+    } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
@@ -1487,6 +1685,36 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       switch (type) {
         case "expense":
         case "income": {
+          if (data.creditCardId && data.installments && data.installments > 1) {
+            const card = await storage.getCreditCard(data.creditCardId, userId);
+            if (card) {
+              const groupId = crypto.randomUUID();
+              const baseDate = data.date ? new Date(data.date) : new Date();
+              const installAmt = Math.round((data.amount / data.installments) * 100) / 100;
+              const purchaseDay = baseDate.getDate();
+              const afterClosing = purchaseDay >= card.closingDay;
+              const txList = Array.from({ length: data.installments }, (_: unknown, i: number) => {
+                const offset = afterClosing ? i + 1 : i;
+                return {
+                  userId,
+                  amount: installAmt,
+                  description: `${data.description} (${i + 1}/${data.installments})`,
+                  categoryName: data.categoryName || null,
+                  type: "expense" as const,
+                  date: new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1),
+                  source: "chat" as string,
+                  establishment: data.establishment || null,
+                  location: null,
+                  creditCardId: data.creditCardId,
+                  installmentInfo: JSON.stringify({ current: i + 1, total: data.installments, groupId }),
+                };
+              });
+              await storage.createManyTransactions(txList);
+              summary = `Pronto! ${data.installments}x de R$${installAmt.toFixed(2)} no ${card.name} registrado.`;
+              saveEventToMemory(userId, `Chat confirmado: parcelado ${data.installments}x R$${installAmt} "${data.description}" no ${card.name}`).catch(() => {});
+              break;
+            }
+          }
           await storage.createTransaction({
             userId,
             amount: data.amount,
@@ -1497,9 +1725,12 @@ Se algum dado não foi mencionado, use valores razoáveis.`
             source: "chat",
             establishment: data.establishment || null,
             location: null,
+            creditCardId: data.creditCardId || null,
+            installmentInfo: null,
           });
           const label = type === "expense" ? "gasto" : "receita";
-          summary = `Pronto! ${label} de R$${Number(data.amount).toFixed(2)} registrado.`;
+          const cardSuffix = data.creditCardId ? ` no cartão` : "";
+          summary = `Pronto! ${label} de R$${Number(data.amount).toFixed(2)} registrado${cardSuffix}.`;
           saveEventToMemory(userId, `Chat confirmado: ${label} R$${data.amount} "${data.description}"`).catch(() => {});
           break;
         }
@@ -1676,17 +1907,23 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       const result: any = { activeModules, theme: user?.theme };
 
       if (activeModules.includes("finance") || activeModules.length === 0) {
-        const [monthTx, allTx, profile] = await Promise.all([
+        const [monthTx, allTx, profile, userCards] = await Promise.all([
           storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfDay }),
           storage.getTransactions(userId),
           storage.getUserProfile(userId),
+          storage.getCreditCards(userId),
         ]);
-        const totalExpenses = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+        const totalExpenses = monthTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((s, t) => s + Number(t.amount), 0);
         const totalIncome = monthTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
-        const allExpenses = allTx.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+        const allExpenses = allTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((s, t) => s + Number(t.amount), 0);
         const allIncome = allTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
         const initialBalance = profile?.initialBalance ?? 0;
-        result.finance = { totalExpenses, totalIncome, balance: initialBalance + allIncome - allExpenses, initialBalance, transactionCount: allTx.length };
+        const cardSummary = await Promise.all(userCards.filter(c => c.active).map(async (card) => {
+          const cardTxMonth = monthTx.filter(t => t.creditCardId === card.id && t.type === "expense");
+          const usedThisMonth = cardTxMonth.reduce((s, t) => s + Number(t.amount), 0);
+          return { id: card.id, name: card.name, bank: card.bank, limit: card.limit, usedThisMonth, color: card.color };
+        }));
+        result.finance = { totalExpenses, totalIncome, balance: initialBalance + allIncome - allExpenses, initialBalance, transactionCount: allTx.length, cardSummary };
         result.goals = await storage.getFinancialGoals(userId);
       }
 
@@ -1706,6 +1943,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       }
 
       // Fire-and-forget: process recurring incomes + income-type bills + alerts
+      autoCloseInvoices(userId).catch(() => {});
       processRecurringIncomes(userId).catch(() => {});
       updateLastLogin(userId).catch(() => {});
       checkAndSendBillAlerts(userId).catch(() => {});

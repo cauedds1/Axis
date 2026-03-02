@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
 import { BillsTab } from "@/components/bills-tab";
 import { ManageBillsSheet } from "@/components/manage-bills-sheet";
+import { CreditCardsTab } from "@/components/credit-cards-tab";
 import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { Transaction, FinancialGoal } from "@shared/schema";
 
@@ -79,7 +80,7 @@ function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Dat
 export default function Finance() {
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
-  const [activeTab, setActiveTab] = useState<"transactions" | "bills">("transactions");
+  const [activeTab, setActiveTab] = useState<"transactions" | "bills" | "cards">("transactions");
   const [showManageBills, setShowManageBills] = useState(false);
   const [showAddTx, setShowAddTx] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -96,6 +97,8 @@ export default function Finance() {
     categoryName: "",
     paymentMethod: "" as PaymentMethodValue | "",
     paymentMethodOther: "",
+    creditCardId: "",
+    installments: "1",
   });
   const [goalForm, setGoalForm] = useState({ title: "", emoji: "💰", description: "", targetAmount: "", currentAmount: "" });
   const [showDepositGoal, setShowDepositGoal] = useState<string | null>(null);
@@ -121,6 +124,7 @@ export default function Finance() {
   const { data: transactions = [], isLoading: txLoading } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: goals = [] } = useQuery<FinancialGoal[]>({ queryKey: ["/api/goals"] });
   const { data: profileData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
+  const { data: creditCards = [] } = useQuery<any[]>({ queryKey: ["/api/credit-cards"] });
   const initialBalance: number = profileData?.profile?.initialBalance ?? 0;
 
   const setInitialBalanceMutation = useMutation({
@@ -138,7 +142,7 @@ export default function Finance() {
     onError: () => toast({ title: "Erro ao atualizar saldo", variant: "destructive" }),
   });
 
-  const resetTxForm = () => setTxForm({ amount: "", description: "", type: "expense", categoryName: "", paymentMethod: "", paymentMethodOther: "" });
+  const resetTxForm = () => setTxForm({ amount: "", description: "", type: "expense", categoryName: "", paymentMethod: "", paymentMethodOther: "", creditCardId: "", installments: "1" });
 
   const createTxMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -339,12 +343,13 @@ export default function Finance() {
 
   const txDateRange = getTxDateRange(txPeriod, txCustomStart, txCustomEnd);
   const filteredTx = transactions.filter(t => {
-    const d = new Date(t.date);
+    const d = new Date(t.date!);
     return d >= txDateRange.start && d <= txDateRange.end;
   });
-  const totalExpenses = filteredTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = filteredTx.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
   const totalIncome = filteredTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const allExpenses = transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalCardExpenses = filteredTx.filter(t => t.type === "expense" && !!(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
+  const allExpenses = transactions.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
   const allIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
 
   function handleSubmitTx(e: React.FormEvent) {
@@ -353,13 +358,16 @@ export default function Finance() {
       toast({ title: "Categoria obrigatória", description: "Informe uma categoria para classificar a transação.", variant: "destructive" });
       return;
     }
-    const resolvedPayment = txForm.paymentMethod === "other" ? txForm.paymentMethodOther || "Outro" : txForm.paymentMethod;
+    const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || "Outro" : txForm.paymentMethod);
+    const installmentsNum = parseInt(txForm.installments) || 1;
     createTxMutation.mutate({
       amount: parseFloat(txForm.amount),
       description: txForm.description,
       type: txForm.type,
       categoryName: txForm.categoryName.trim(),
       paymentMethod: resolvedPayment || null,
+      creditCardId: txForm.creditCardId || null,
+      installments: txForm.creditCardId && installmentsNum > 1 ? installmentsNum : undefined,
     });
   }
 
@@ -397,12 +405,13 @@ export default function Finance() {
         {([
           { id: "transactions", label: "Transações", icon: DollarSign },
           { id: "bills", label: "Contas", icon: Receipt },
+          { id: "cards", label: "Cartões", icon: CreditCard },
         ] as const).map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150"
             style={{
               background: activeTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
               color: activeTab === tab.id ? "white" : "rgba(255,255,255,0.35)",
@@ -416,6 +425,7 @@ export default function Finance() {
       </div>
 
       {activeTab === "bills" && <BillsTab />}
+      {activeTab === "cards" && <CreditCardsTab />}
 
       {activeTab === "transactions" && <>
 
@@ -472,8 +482,13 @@ export default function Finance() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> Gastos</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> Gastos (débito/pix)</p>
             <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalExpenses)}</p>
+            {totalCardExpenses > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                <CreditCard className="h-3 w-3" /> No cartão: R$ {fmtBRL(totalCardExpenses)}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card className="border-border" data-testid="card-total-income">
@@ -800,7 +815,21 @@ export default function Finance() {
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                               <span>{tx.categoryName || "Sem categoria"}</span>
                               {tx.establishment && <><span>·</span><span>{tx.establishment}</span></>}
-                              {pmLabel && (
+                              {(tx as any).creditCardId && (() => {
+                                const card = creditCards.find((c: any) => c.id === (tx as any).creditCardId);
+                                const installInfo = (() => { try { return (tx as any).installmentInfo ? JSON.parse((tx as any).installmentInfo) : null; } catch { return null; } })();
+                                return card ? (
+                                  <>
+                                    <span>·</span>
+                                    <span className="flex items-center gap-0.5 font-medium" style={{ color: card.color || "#7C3AED" }}>
+                                      <CreditCard className="h-2.5 w-2.5" />
+                                      {card.name}
+                                      {installInfo && <span className="ml-0.5 text-muted-foreground">({installInfo.current}/{installInfo.total})</span>}
+                                    </span>
+                                  </>
+                                ) : null;
+                              })()}
+                              {!(tx as any).creditCardId && pmLabel && (
                                 <>
                                   <span>·</span>
                                   <span className="flex items-center gap-0.5">
@@ -1010,7 +1039,7 @@ export default function Finance() {
             </div>
 
             {/* Campo "Outro" quando selecionado */}
-            {txForm.paymentMethod === "other" && (
+            {txForm.paymentMethod === "other" && !txForm.creditCardId && (
               <Input
                 placeholder="Especifique a forma de pagamento"
                 value={txForm.paymentMethodOther}
@@ -1018,6 +1047,48 @@ export default function Finance() {
                 data-testid="input-tx-payment-other"
                 autoFocus
               />
+            )}
+
+            {/* Cartão de crédito — exibido apenas para despesas */}
+            {txForm.type === "expense" && creditCards.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cartão de crédito (opcional)</label>
+                <Select value={txForm.creditCardId || "_none"} onValueChange={(v) => setTxForm(p => ({ ...p, creditCardId: v === "_none" ? "" : v, paymentMethod: v !== "_none" ? "credit" as PaymentMethodValue : p.paymentMethod, installments: "1" }))}>
+                  <SelectTrigger data-testid="select-tx-credit-card">
+                    <SelectValue placeholder="Selecionar cartão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Nenhum cartão</SelectItem>
+                    {creditCards.map((card: any) => (
+                      <SelectItem key={card.id} value={card.id}>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full" style={{ background: card.color || "#7C3AED" }} />
+                          {card.name} · {card.bank}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Parcelamento — somente quando cartão selecionado */}
+            {txForm.creditCardId && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Parcelar em quantas vezes?</label>
+                <Select value={txForm.installments} onValueChange={(v) => setTxForm(p => ({ ...p, installments: v }))}>
+                  <SelectTrigger data-testid="select-tx-installments">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n === 1 ? "À vista" : `${n}x`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
 
             <Button

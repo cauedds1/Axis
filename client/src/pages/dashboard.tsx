@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, Calendar, CheckSquare, Flame, TrendingUp, TrendingDown, ArrowRight, Target, Sparkles, ChevronRight } from "lucide-react";
+import { DollarSign, Calendar, CheckSquare, Flame, TrendingUp, TrendingDown, ArrowRight, Target, Sparkles, ChevronRight, CreditCard, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { CaptureButton } from "@/components/capture-button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -254,6 +254,31 @@ export default function Dashboard() {
                 color={P.positive}
                 isHigh={isHigh}
               />
+
+              {data.finance.cardSummary && data.finance.cardSummary.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <CreditCard className="h-3 w-3" /> Cartões
+                  </p>
+                  {data.finance.cardSummary.map((card: any) => {
+                    const pct = Math.min(100, (card.usedThisMonth / Math.max(card.limit, 1)) * 100);
+                    const isHighUsage = pct > 80;
+                    return (
+                      <div key={card.id} className="flex items-center justify-between text-xs" data-testid={`text-card-summary-${card.id}`}>
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <div className="h-2 w-2 rounded-full" style={{ background: card.color || "#7C3AED" }} />
+                          {card.name}
+                        </span>
+                        <span className={`font-semibold flex items-center gap-1 ${isHighUsage ? "text-destructive" : ""}`}>
+                          {isHighUsage && <AlertCircle className="h-3 w-3" />}
+                          R$ {card.usedThisMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <span className="text-muted-foreground font-normal">/{card.limit.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </ModuleCard>
         )}

@@ -1,5 +1,5 @@
 import {
-  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog,
+  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
   type Transaction, type InsertTransaction,
@@ -12,6 +12,8 @@ import {
   type DisciplineHistory, type InsertDisciplineHistory,
   type RecurringIncome, type InsertRecurringIncome,
   type EmailAlertLog, type InsertEmailAlertLog,
+  type CreditCard, type InsertCreditCard,
+  type CreditCardInvoice, type InsertCreditCardInvoice,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -81,6 +83,17 @@ export interface IStorage {
   getAllProfiles(): Promise<UserProfile[]>;
   getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined>;
 
+  getCreditCards(userId: string): Promise<CreditCard[]>;
+  getCreditCard(id: string, userId: string): Promise<CreditCard | undefined>;
+  createCreditCard(data: InsertCreditCard): Promise<CreditCard>;
+  updateCreditCard(id: string, userId: string, data: Partial<CreditCard>): Promise<CreditCard | undefined>;
+  deleteCreditCard(id: string, userId: string): Promise<void>;
+
+  getInvoices(userId: string, creditCardId?: string): Promise<CreditCardInvoice[]>;
+  getInvoiceByMonth(creditCardId: string, monthKey: string): Promise<CreditCardInvoice | undefined>;
+  createInvoice(data: InsertCreditCardInvoice): Promise<CreditCardInvoice>;
+  updateInvoice(id: string, data: Partial<CreditCardInvoice>): Promise<CreditCardInvoice | undefined>;
+
   deleteUserAccount(userId: string): Promise<void>;
   resetUserData(userId: string): Promise<void>;
 }
@@ -118,12 +131,13 @@ export class DatabaseStorage implements IStorage {
     await db.delete(categories).where(and(eq(categories.id, id), eq(categories.userId, userId)));
   }
 
-  async getTransactions(userId: string, filters?: { startDate?: Date; endDate?: Date; type?: string; categoryId?: string }): Promise<Transaction[]> {
+  async getTransactions(userId: string, filters?: { startDate?: Date; endDate?: Date; type?: string; categoryId?: string; creditCardId?: string }): Promise<Transaction[]> {
     const conditions = [eq(transactions.userId, userId)];
     if (filters?.startDate) conditions.push(gte(transactions.date, filters.startDate));
     if (filters?.endDate) conditions.push(lte(transactions.date, filters.endDate));
     if (filters?.type) conditions.push(eq(transactions.type, filters.type));
     if (filters?.categoryId) conditions.push(eq(transactions.categoryId, filters.categoryId));
+    if (filters?.creditCardId) conditions.push(eq(transactions.creditCardId, filters.creditCardId));
     return db.select().from(transactions).where(and(...conditions)).orderBy(desc(transactions.date));
   }
 
@@ -400,6 +414,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(habits).where(eq(habits.userId, userId));
     await db.delete(personalTasks).where(eq(personalTasks.userId, userId));
     await db.delete(scheduleItems).where(eq(scheduleItems.userId, userId));
+    await db.delete(creditCardInvoices).where(eq(creditCardInvoices.userId, userId));
+    await db.delete(creditCards).where(eq(creditCards.userId, userId));
     await db.delete(transactions).where(eq(transactions.userId, userId));
     await db.delete(financialGoals).where(eq(financialGoals.userId, userId));
     await db.delete(categories).where(eq(categories.userId, userId));
@@ -409,6 +425,53 @@ export class DatabaseStorage implements IStorage {
     await db.delete(disciplineScoreHistory).where(eq(disciplineScoreHistory.userId, userId));
     await db.delete(emailAlertLog).where(eq(emailAlertLog.userId, userId));
     await db.delete(userProfile).where(eq(userProfile.userId, userId));
+  }
+
+  async getCreditCards(userId: string): Promise<CreditCard[]> {
+    return db.select().from(creditCards).where(eq(creditCards.userId, userId)).orderBy(creditCards.name);
+  }
+
+  async getCreditCard(id: string, userId: string): Promise<CreditCard | undefined> {
+    const [card] = await db.select().from(creditCards).where(and(eq(creditCards.id, id), eq(creditCards.userId, userId)));
+    return card;
+  }
+
+  async createCreditCard(data: InsertCreditCard): Promise<CreditCard> {
+    const [card] = await db.insert(creditCards).values(data).returning();
+    return card;
+  }
+
+  async updateCreditCard(id: string, userId: string, data: Partial<CreditCard>): Promise<CreditCard | undefined> {
+    const [card] = await db.update(creditCards).set(data)
+      .where(and(eq(creditCards.id, id), eq(creditCards.userId, userId))).returning();
+    return card;
+  }
+
+  async deleteCreditCard(id: string, userId: string): Promise<void> {
+    await db.delete(creditCards).where(and(eq(creditCards.id, id), eq(creditCards.userId, userId)));
+  }
+
+  async getInvoices(userId: string, creditCardId?: string): Promise<CreditCardInvoice[]> {
+    const conditions = [eq(creditCardInvoices.userId, userId)];
+    if (creditCardId) conditions.push(eq(creditCardInvoices.creditCardId, creditCardId));
+    return db.select().from(creditCardInvoices).where(and(...conditions)).orderBy(desc(creditCardInvoices.monthKey));
+  }
+
+  async getInvoiceByMonth(creditCardId: string, monthKey: string): Promise<CreditCardInvoice | undefined> {
+    const [invoice] = await db.select().from(creditCardInvoices)
+      .where(and(eq(creditCardInvoices.creditCardId, creditCardId), eq(creditCardInvoices.monthKey, monthKey)));
+    return invoice;
+  }
+
+  async createInvoice(data: InsertCreditCardInvoice): Promise<CreditCardInvoice> {
+    const [invoice] = await db.insert(creditCardInvoices).values(data).returning();
+    return invoice;
+  }
+
+  async updateInvoice(id: string, data: Partial<CreditCardInvoice>): Promise<CreditCardInvoice | undefined> {
+    const [invoice] = await db.update(creditCardInvoices).set(data)
+      .where(eq(creditCardInvoices.id, id)).returning();
+    return invoice;
   }
 
   async deleteUserAccount(userId: string): Promise<void> {

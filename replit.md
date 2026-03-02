@@ -27,6 +27,7 @@ Multi-tenant SaaS personal life assistant with voice and text input. Organizes f
 - Theme selection with live preview
 - Reports page (`/reports`) with 4 tabs (Finance, Tasks, Habits, Schedule), recharts charts (AreaChart, PieChart, BarChart), MetricCards, theme-aware design
 - Bills management (`/finance` → "Contas" tab): cadastro de contas a pagar/receber com recorrência (Permanente/Este mês/3 meses/Personalizado), marcar como pago por mês, cards de resumo (Total a Pagar, Total a Receber, Saldo Previsto, Vencidas, Próximos 7 Dias, Pago este Mês), filtros por tipo e status
+- Credit Cards system (`/finance` → "Cartões" tab): cadastro de cartões com banco, limite, dia de fechamento e vencimento; gastos no cartão descontam do limite (não do saldo bancário); fatura fecha automaticamente no closingDay criando uma Conta a Pagar; suporte a compras parceladas (N transações mensais com installmentInfo JSON {current, total, groupId}); dashboard exibe resumo de uso por cartão com alerta visual >80%; IA (chat e WhatsApp) reconhece cartões e parcelamentos ("gastei 300 parcelado em 3x no nubank") e cria automaticamente as N transações vinculadas ao cartão correto
 
 ## Design Principles
 - 8-palette theme system: Slim (sage/indigo/rose/amber) + High (cyan/purple/gold/coral) — all colors dynamic via CSS vars

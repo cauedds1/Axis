@@ -848,6 +848,33 @@ class WhatsAppManager {
       case "income": {
         const amount = Number(data.amount);
         const categoryName = data.categoryName || "outros";
+        if (data.creditCardId && data.installments && data.installments > 1) {
+          const card = await storage.getCreditCard(data.creditCardId, userId);
+          if (card) {
+            const groupId = crypto.randomUUID();
+            const baseDate = data.date ? new Date(data.date) : new Date();
+            const installAmt = Math.round((amount / data.installments) * 100) / 100;
+            const afterClosing = baseDate.getDate() >= card.closingDay;
+            const txList = Array.from({ length: data.installments }, (_: unknown, i: number) => {
+              const offset = afterClosing ? i + 1 : i;
+              return {
+                userId,
+                amount: installAmt as any,
+                description: `${data.description || categoryName} (${i + 1}/${data.installments})`,
+                categoryName,
+                type: "expense" as const,
+                date: new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1),
+                source: "whatsapp",
+                establishment: data.establishment || null,
+                location: null,
+                creditCardId: data.creditCardId,
+                installmentInfo: JSON.stringify({ current: i + 1, total: data.installments, groupId }),
+              };
+            });
+            await storage.createManyTransactions(txList);
+            return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!`;
+          }
+        }
         await storage.createTransaction({
           userId,
           type: intent,
@@ -858,11 +885,13 @@ class WhatsAppManager {
           date: data.date ? new Date(data.date) : new Date(),
           source: "whatsapp",
           paymentMethod: null,
+          creditCardId: data.creditCardId || null,
         });
         if (intent === "income") {
           return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
         }
-        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado!`;
+        const cardName = data.creditCardId ? ` no cartão` : "";
+        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardName}!`;
       }
 
       case "task": {
