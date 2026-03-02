@@ -188,14 +188,17 @@ function CardDetailSheet({
   let limitHistory: Array<{ date: string; limit: number }> = [];
   try { limitHistory = card.limitHistory ? JSON.parse(card.limitHistory) : []; } catch {}
 
-  const pct = Math.min(100, (card.usedThisMonth ?? 0) / Math.max(card.limit, 1) * 100);
-  const isHigh = pct > 80;
-  const available = Math.max(0, card.limit - (card.usedThisMonth ?? 0));
   const daysLeft = daysUntilClosing(card.closingDay);
 
   // Current month invoice
   const currentInvoice = invoiceData?.invoices?.find((i: any) => i.monthKey === currentMonthKey);
   const currentTx: any[] = currentInvoice?.transactions ?? (invoiceData?.openTransactions ?? []);
+  const computedUsed = currentTx.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const displayUsed = invoiceData ? computedUsed : (card.usedThisMonth ?? 0);
+
+  const pct = Math.min(100, displayUsed / Math.max(card.limit, 1) * 100);
+  const isHigh = pct > 80;
+  const available = Math.max(0, card.limit - displayUsed);
 
   return (
     <div
@@ -405,7 +408,7 @@ function CardDetailSheet({
                   Aberta
                 </span>
               </div>
-              <p className="text-2xl font-bold text-white mb-0.5">R$ {fmtBRL(card.usedThisMonth ?? 0)}</p>
+              <p className="text-2xl font-bold text-white mb-0.5">R$ {fmtBRL(displayUsed)}</p>
               <p className="text-[11px] text-white/30">Fecha dia {card.closingDay} · Vence dia {card.dueDay}</p>
             </div>
 

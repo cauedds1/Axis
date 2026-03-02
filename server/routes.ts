@@ -924,7 +924,18 @@ export async function registerRoutes(
   app.get("/api/credit-cards", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      res.json(await storage.getCreditCards(userId));
+      const cards = await storage.getCreditCards(userId);
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      const monthTx = await storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfMonth });
+      const enriched = cards.map(card => {
+        const usedThisMonth = monthTx
+          .filter(t => t.creditCardId === card.id && t.type === "expense")
+          .reduce((s, t) => s + Number(t.amount), 0);
+        return { ...card, usedThisMonth };
+      });
+      res.json(enriched);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -1010,7 +1021,8 @@ export async function registerRoutes(
           const txMonthKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, "0")}`;
           return txMonthKey === inv.monthKey;
         });
-        return { ...inv, transactions: txForInvoice };
+        const computedTotal = txForInvoice.reduce((s, t) => s + Number(t.amount), 0);
+        return { ...inv, total: computedTotal, transactions: txForInvoice };
       });
       if (!openInvoice) {
         const openTx = allTx.filter(tx => {
