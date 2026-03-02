@@ -5,7 +5,14 @@ async function throwIfResNotOk(res: Response) {
     let message = res.statusText;
     try {
       const data = await res.json();
-      message = data.message || data.error || JSON.stringify(data);
+      const raw = data.message ?? data.error ?? data;
+      if (typeof raw === "string") {
+        message = raw;
+      } else if (Array.isArray(raw)) {
+        message = raw.map((e: any) => e.message || JSON.stringify(e)).join("; ");
+      } else {
+        message = JSON.stringify(raw);
+      }
     } catch (e) {
       const text = await res.text();
       if (text) message = text;
