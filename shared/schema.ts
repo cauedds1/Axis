@@ -26,6 +26,7 @@ export const creditCards = pgTable("credit_cards", {
   dueDay: integer("due_day").notNull(),
   color: text("color").default("#7C3AED"),
   active: boolean("active").notNull().default(true),
+  limitHistory: text("limit_history"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

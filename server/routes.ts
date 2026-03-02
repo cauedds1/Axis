@@ -929,7 +929,19 @@ export async function registerRoutes(
         active: z.boolean().optional(),
       });
       const data = schema.parse(req.body);
-      const card = await storage.updateCreditCard(req.params.id, userId, data as any);
+      const existing = await storage.getCreditCard(req.params.id, userId);
+      if (!existing) return res.status(404).json({ message: "Cartão não encontrado" });
+      let updatePayload: any = { ...data };
+      if (data.limit !== undefined && data.limit !== existing.limit) {
+        let history: Array<{ date: string; limit: number }> = [];
+        try { history = existing.limitHistory ? JSON.parse(existing.limitHistory) : []; } catch {}
+        if (history.length === 0) {
+          history.push({ date: existing.createdAt ? new Date(existing.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0], limit: existing.limit });
+        }
+        history.push({ date: new Date().toISOString().split("T")[0], limit: data.limit });
+        updatePayload.limitHistory = JSON.stringify(history);
+      }
+      const card = await storage.updateCreditCard(req.params.id, userId, updatePayload);
       if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
       res.json(card);
     } catch (error: any) {
