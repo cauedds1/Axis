@@ -132,15 +132,20 @@ export async function detectIntentAndProcess(text: string, userId: string): Prom
     if (userCards.length > 0) {
       creditCardsContext = `
 CARTÕES DE CRÉDITO DO USUÁRIO:
-${userCards.map((c: any) => `- id: "${c.id}", nome: "${c.name}", banco: "${c.bank}", fechamento: dia ${c.closingDay}, vencimento: dia ${c.dueDay}`).join("\n")}
+${userCards.map((c: any) => `- id: "${c.id}", nome: "${c.name}", banco: "${c.bank}", fechamento: dia ${c.closingDay}, vencimento: dia ${c.dueDay}
+  (o usuário pode mencionar este cartão como: "${c.name.toLowerCase()}", "${c.bank.toLowerCase()}", ou abreviações/partes desses nomes)`).join("\n")}
 
 REGRAS PARA CARTÃO DE CRÉDITO:
-- Se o usuário mencionar um cartão pelo nome ou banco (ex: "no nubank", "no itaú", "no cartão"), identifique qual cartão é e inclua "creditCardId" na resposta
+- Combine o que o usuário disse com o NOME ou BANCO de cada cartão acima — não com o id
+- O id correto do cartão identificado deve ir em "creditCardId"
+- Exemplos de correspondência:
+  • usuário diz "mercado pago" → procure cartão com banco "Mercado Pago" → use o id desse cartão
+  • usuário diz "cartão mp" → procure cartão com nome "Cartão MP" → use o id desse cartão
+  • usuário diz "nubank" → procure cartão com banco ou nome contendo "Nubank"
+  • usuário diz "cartão 1" → procure cartão com nome "Cartão 1"
 - Se mencionar parcelamento (ex: "3x", "parcelado em 6 vezes", "12 parcelas"), inclua "installments" com o número de parcelas
-- Exemplos: "gastei 300 no nubank" → creditCardId: (id do Nubank), installments: 1
-- "comprei 1500 parcelado em 3x no itaú" → creditCardId: (id do Itaú), installments: 3
-- "parcelei 600 em 6 vezes no cartão" → use o cartão mais recentemente usado ou o único cadastrado, installments: 6
-- Se não identificar qual cartão, omita creditCardId
+- Se o usuário mencionar só "cartão" sem especificar qual, e há apenas 1 cartão cadastrado, use esse cartão
+- Se não conseguir identificar qual cartão, omita creditCardId
 `;
     }
   } catch {}
@@ -267,6 +272,29 @@ REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
       } else {
         delete parsed.creditCardId;
       }
+    }
+  }
+
+  // Fallback: if GPT didn't identify a card, scan the original text for card name/bank mentions
+  // Only activate when user explicitly used a card-related keyword to avoid false positives
+  if (!parsed.creditCardId && userCards.length > 0 && ["expense", "income"].includes(parsed.intent)) {
+    const cardKeywords = ["cartão", "cartao", "crédito", "credito", "fatura", "card"];
+    const lowerText = text.toLowerCase();
+    const userMentionedCard = cardKeywords.some(k => lowerText.includes(k));
+    if (userMentionedCard) {
+      const matched = userCards.find((c: any) => {
+        const nameLower = c.name.toLowerCase();
+        const bankLower = c.bank.toLowerCase();
+        // Full name/bank match
+        if (lowerText.includes(nameLower) || lowerText.includes(bankLower)) return true;
+        // Word-by-word match (each meaningful word ≥4 chars from name or bank)
+        const nameWords = nameLower.split(/\s+/).filter((w: string) => w.length >= 4);
+        const bankWords = bankLower.split(/\s+/).filter((w: string) => w.length >= 4);
+        return [...nameWords, ...bankWords].some((w: string) => lowerText.includes(w));
+      });
+      if (matched) parsed.creditCardId = matched.id;
+      // If user said "cartão" and there's only one card, default to it
+      else if (userCards.length === 1) parsed.creditCardId = userCards[0].id;
     }
   }
 
