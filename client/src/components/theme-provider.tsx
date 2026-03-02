@@ -23,6 +23,57 @@ export function getPrimaryHex(theme: AxisTheme): string {
   return map[theme] ?? "#7A9E8A";
 }
 
+export interface ModulePalette {
+  primary: string;
+  finance: string;
+  agenda: string;
+  tasks: string;
+  habits: string;
+  positive: string;
+  negative: string;
+  chat: string;
+  início: string;
+}
+
+export function getModulePalette(theme: AxisTheme): ModulePalette {
+  const p = getPrimaryHex(theme);
+  const map: Record<AxisTheme, ModulePalette> = {
+    "slim": {
+      primary: p, finance: p, agenda: p, tasks: p, habits: p,
+      chat: p, início: p, positive: "#5A8F70", negative: "#9E7575",
+    },
+    "slim-indigo": {
+      primary: p, finance: "#7B8FC9", agenda: "#8B9FD9", tasks: "#6B7FD9", habits: "#5A89B0",
+      chat: p, início: p, positive: "#5A89B0", negative: "#B07575",
+    },
+    "slim-rose": {
+      primary: p, finance: "#C46B7A", agenda: "#B07A8A", tasks: "#B07A9A", habits: "#9A8A7A",
+      chat: p, início: p, positive: "#8A9A7A", negative: "#C46B7A",
+    },
+    "slim-amber": {
+      primary: p, finance: "#D4913A", agenda: "#C4A05A", tasks: "#C49A5A", habits: "#A4A06A",
+      chat: p, início: p, positive: "#8A9A6A", negative: "#C47A5A",
+    },
+    "high": {
+      primary: p, finance: "#FF1744", agenda: "#FFA000", tasks: "#AE73FF", habits: "#00E5C8",
+      chat: p, início: p, positive: "#00E5C8", negative: "#FF1744",
+    },
+    "high-purple": {
+      primary: p, finance: "#FF5C8A", agenda: "#E0A0FF", tasks: "#B066FF", habits: "#7CE5A0",
+      chat: p, início: p, positive: "#7CE5A0", negative: "#FF5C8A",
+    },
+    "high-gold": {
+      primary: p, finance: "#FF8A50", agenda: "#FFD426", tasks: "#C49BFF", habits: "#5CD9A0",
+      chat: p, início: p, positive: "#5CD9A0", negative: "#FF8A50",
+    },
+    "high-coral": {
+      primary: p, finance: "#FF5C3A", agenda: "#FFB84D", tasks: "#A78BFA", habits: "#4DD8A4",
+      chat: p, início: p, positive: "#4DD8A4", negative: "#FF5C3A",
+    },
+  };
+  return map[theme] ?? map["slim"];
+}
+
 interface ThemeContextType {
   theme: AxisTheme;
   setTheme: (theme: AxisTheme) => void;

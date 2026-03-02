@@ -4,10 +4,8 @@ import { Plus, Trash2, Pencil, Power, PowerOff, Loader2, TrendingDown, TrendingU
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme, getModulePalette } from "@/components/theme-provider";
 import type { Bill } from "@shared/schema";
-
-const EXPENSE_COLOR = "#FF1744";
-const INCOME_COLOR = "#00E5C8";
 
 function fmtBRL(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -51,6 +49,10 @@ function BillFormModal({
   initialBill?: Bill;
 }) {
   const { toast } = useToast();
+  const { theme: _t } = useTheme();
+  const _MP = getModulePalette(_t as any);
+  const EXPENSE_COLOR = _MP.negative;
+  const INCOME_COLOR = _MP.positive;
   const isEdit = !!initialBill;
   const [form, setForm] = useState({
     title: initialBill?.title ?? "",
@@ -206,6 +208,10 @@ function BillFormModal({
 
 export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { toast } = useToast();
+  const { theme: _t2 } = useTheme();
+  const _MP2 = getModulePalette(_t2 as any);
+  const EXPENSE_COLOR = _MP2.negative;
+  const INCOME_COLOR = _MP2.positive;
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [filterType, setFilterType] = useState<"all" | "expense" | "income">("all");

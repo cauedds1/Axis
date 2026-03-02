@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import {
   Dialog,
   DialogContent,
@@ -1017,7 +1018,8 @@ function SectionNotificacoes() {
     });
   };
 
-  const HIGH = "#00E6FF";
+  const { theme } = useTheme();
+  const HIGH = getPrimaryHex(theme);
 
   const ToggleRow = ({
     label,
@@ -1145,6 +1147,8 @@ function formatBotPhone(raw: string): string {
 }
 
 function SectionWhatsApp() {
+  const { theme: _wt } = useTheme();
+  const _WMP = getModulePalette(_wt as any);
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
@@ -1196,10 +1200,10 @@ function SectionWhatsApp() {
   const wStatus = status?.status || "disconnected";
 
   const statusConfig = {
-    disconnected: { label: "Desconectado", color: "#FF1744", icon: WifiOff },
-    qr_pending:   { label: "Aguardando QR", color: "#FFA000", icon: QrCode },
-    connected:    { label: "Conectado", color: "#00E5C8", icon: Wifi },
-  }[wStatus] || { label: "Desconectado", color: "#FF1744", icon: WifiOff };
+    disconnected: { label: "Desconectado", color: _WMP.negative, icon: WifiOff },
+    qr_pending:   { label: "Aguardando QR", color: _WMP.agenda, icon: QrCode },
+    connected:    { label: "Conectado", color: _WMP.positive, icon: Wifi },
+  }[wStatus] || { label: "Desconectado", color: _WMP.negative, icon: WifiOff };
 
   const StatusIcon = statusConfig.icon;
 
@@ -1218,7 +1222,7 @@ function SectionWhatsApp() {
           <div>
             <p className="text-sm font-semibold text-white">{statusConfig.label}</p>
             {wStatus === "connected" && status?.phone && (
-              <p className="text-[11px] font-medium" style={{ color: "#00E5C8" }}>
+              <p className="text-[11px] font-medium" style={{ color: _WMP.positive }}>
                 Bot conectado em {formatBotPhone(status.phone)}
               </p>
             )}
@@ -1229,7 +1233,7 @@ function SectionWhatsApp() {
             onClick={() => disconnectMutation.mutate()}
             disabled={disconnectMutation.isPending}
             className="text-xs px-3 py-1.5 rounded-lg transition-colors"
-            style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+            style={{ background: `${_WMP.negative}1A`, color: _WMP.negative, border: `1px solid ${_WMP.negative}33` }}
             data-testid="button-whatsapp-disconnect"
           >
             {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
@@ -1239,7 +1243,7 @@ function SectionWhatsApp() {
             onClick={() => { connectMutation.mutate(); }}
             disabled={connectMutation.isPending}
             className="text-xs px-3 py-1.5 rounded-lg transition-colors"
-            style={{ background: "rgba(0,229,200,0.1)", color: "#00E5C8", border: "1px solid rgba(0,229,200,0.2)" }}
+            style={{ background: `${_WMP.positive}1A`, color: _WMP.positive, border: `1px solid ${_WMP.positive}33` }}
             data-testid="button-whatsapp-connect"
           >
             {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : wStatus === "qr_pending" ? "Reconectar" : "Conectar"}
@@ -1257,7 +1261,7 @@ function SectionWhatsApp() {
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
               className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
-              style={{ color: "#FFA000", background: "rgba(255,160,0,0.1)", border: "1px solid rgba(255,160,0,0.25)" }}
+              style={{ color: _WMP.agenda, background: `${_WMP.agenda}1A`, border: `1px solid ${_WMP.agenda}40` }}
               data-testid="button-whatsapp-new-qr"
             >
               {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
@@ -1277,7 +1281,7 @@ function SectionWhatsApp() {
             onClick={() => resetMutation.mutate()}
             disabled={resetMutation.isPending}
             className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
-            style={{ color: "#FFA000", background: "rgba(255,160,0,0.1)", border: "1px solid rgba(255,160,0,0.25)" }}
+            style={{ color: _WMP.agenda, background: `${_WMP.agenda}1A`, border: `1px solid ${_WMP.agenda}40` }}
             data-testid="button-whatsapp-new-qr-fallback"
           >
             <RefreshCw className="h-3 w-3" />
@@ -1302,7 +1306,7 @@ function SectionWhatsApp() {
             onClick={() => phoneMutation.mutate()}
             disabled={phoneMutation.isPending || !phone.trim()}
             className="px-4 py-2.5 rounded-xl text-xs font-semibold disabled:opacity-40 transition-all"
-            style={{ background: phoneSaved ? "rgba(0,229,200,0.15)" : "rgba(255,255,255,0.06)", color: phoneSaved ? "#00E5C8" : "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+            style={{ background: phoneSaved ? `${_WMP.positive}26` : "rgba(255,255,255,0.06)", color: phoneSaved ? _WMP.positive : "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
             data-testid="button-save-whatsapp-phone"
           >
             {phoneMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : phoneSaved ? <Check className="h-3.5 w-3.5" /> : "Salvar"}
@@ -1332,7 +1336,7 @@ const TAB_META: { id: Tab; label: string; description: string; icon: any; accent
   { id: "renda",        label: "Renda",        description: "Salário e receitas",    icon: DollarSign,   accent: MINT },
   { id: "gastos",       label: "Gastos Fixos", description: "Contas recorrentes",    icon: ClipboardList, accent: CORAL },
   { id: "rotina",       label: "Rotina",       description: "Hábitos e horários",    icon: Calendar,      accent: LAVANDA },
-  { id: "notificacoes", label: "Alertas",      description: "Avisos por e-mail",     icon: Bell,          accent: "#00E6FF" },
+  { id: "notificacoes", label: "Alertas",      description: "Avisos por e-mail",     icon: Bell,          accent: "PRIMARY" },
   { id: "whatsapp",     label: "WhatsApp",     description: "Integração com bot",    icon: MessageCircle, accent: "#25D366" },
 ];
 
@@ -1340,6 +1344,9 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
   const [activeTab, setActiveTab] = useState<Tab>("renda");
   const [savedIncome, setSavedIncome] = useState("");
   const { toast } = useToast();
+  const { theme } = useTheme();
+  const primaryHex = getPrimaryHex(theme);
+  const resolvedTabs = TAB_META.map(t => t.accent === "PRIMARY" ? { ...t, accent: primaryHex } : t);
 
   const finishMutation = useMutation({
     mutationFn: async () => {
@@ -1360,7 +1367,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
     },
   });
 
-  const activeMeta = TAB_META.find(t => t.id === activeTab)!;
+  const activeMeta = resolvedTabs.find(t => t.id === activeTab)!;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -1390,7 +1397,7 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             <nav className="flex flex-col gap-1 flex-1">
-              {TAB_META.map((tab, idx) => {
+              {resolvedTabs.map((tab, idx) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (

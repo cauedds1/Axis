@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CaptureButton } from "@/components/capture-button";
 import { BillsTab } from "@/components/bills-tab";
 import { ManageBillsSheet } from "@/components/manage-bills-sheet";
+import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { Transaction, FinancialGoal } from "@shared/schema";
 
 const PAYMENT_METHODS = [
@@ -76,6 +77,8 @@ function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Dat
 }
 
 export default function Finance() {
+  const { theme } = useTheme();
+  const accent = getPrimaryHex(theme);
   const [activeTab, setActiveTab] = useState<"transactions" | "bills">("transactions");
   const [showManageBills, setShowManageBills] = useState(false);
   const [showAddTx, setShowAddTx] = useState(false);
@@ -400,7 +403,7 @@ export default function Finance() {
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-200"
                 style={isActive
-                  ? { background: "rgba(0,230,255,0.09)", color: "#00E6FF", borderColor: "rgba(0,230,255,0.25)" }
+                  ? { background: `${accent}17`, color: accent, borderColor: `${accent}40` }
                   : { background: "transparent", color: "rgba(255,255,255,0.35)", borderColor: "rgba(255,255,255,0.07)" }
                 }
               >
@@ -779,7 +782,7 @@ export default function Finance() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setExpandedItemsTxId(isExpanded ? null : tx.id); }}
                                     className="flex items-center gap-0.5 text-xs font-medium hover:text-foreground transition-colors"
-                                    style={{ color: "rgba(0,230,255,0.7)" }}
+                                    style={{ color: `${accent}B3` }}
                                     data-testid={`button-items-${tx.id}`}
                                   >
                                     <Package className="h-2.5 w-2.5" />
@@ -1284,7 +1287,7 @@ export default function Finance() {
                           <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-muted-foreground">Itens</span>
                         </span>
-                        <span className="flex items-center gap-1 font-medium" style={{ color: "rgba(0,230,255,0.8)" }}>
+                        <span className="flex items-center gap-1 font-medium" style={{ color: `${accent}CC` }}>
                           {items.length} {items.length === 1 ? "item" : "itens"}
                           {showDetailItems ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                         </span>

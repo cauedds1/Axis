@@ -13,33 +13,13 @@ import {
 } from "@/components/ui/sidebar";
 import { Home, DollarSign, Calendar, CheckSquare, MessageCircle, LogOut, Settings, Flame, Zap, BarChart2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import { DisciplinePanel } from "@/components/discipline-panel";
 
-const HIGH_PALETTE = {
-  primary: "#00E6FF",
-  finance: "#FF1744",
-  agenda: "#FFA000",
-  tasks: "#AE73FF",
-  habits: "#00E5C8",
-  chat: "#00E6FF",
-  início: "#00E6FF",
-};
-
-const SLIM_PALETTE = {
-  primary: "#7A9E8A",
-  finance: "#7A9E8A",
-  agenda: "#7A9E8A",
-  tasks: "#7A9E8A",
-  habits: "#7A9E8A",
-  chat: "#7A9E8A",
-  início: "#7A9E8A",
-};
-
-function ScoreBar({ score, isHigh }: { score: number; isHigh: boolean }) {
+function ScoreBar({ score, isHigh, palette }: { score: number; isHigh: boolean; palette: { primary: string; positive: string; negative: string } }) {
   const pct = (score / 10) * 100;
 
-  const color = score <= 4 ? "#FF1744" : score <= 7 ? "#2979FF" : "#00E5C8";
+  const color = score <= 4 ? palette.negative : score <= 7 ? palette.primary : palette.positive;
 
   return (
     <div className="mt-3 px-1">
@@ -47,7 +27,7 @@ function ScoreBar({ score, isHigh }: { score: number; isHigh: boolean }) {
         <div className="flex items-center gap-1.5">
           <Flame
             className={`h-3 w-3 ${isHigh ? "high-flame" : ""}`}
-            style={{ color: isHigh ? "#FF1744" : "#7A9E8A" }}
+            style={{ color: isHigh ? palette.negative : palette.primary }}
           />
           <span className="text-[11px] text-muted-foreground font-medium">Disciplina</span>
         </div>
@@ -88,7 +68,7 @@ function NavIconSlim({ icon: Icon, color }: { icon: any; color: string }) {
   return <Icon className="h-4 w-4 flex-shrink-0" style={{ color }} />;
 }
 
-function UserAvatar({ name, email, isHigh }: { name?: string; email?: string; isHigh: boolean }) {
+function UserAvatar({ name, email, isHigh, primaryHex }: { name?: string; email?: string; isHigh: boolean; primaryHex: string }) {
   const initials = name
     ? name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : (email?.[0] ?? "U").toUpperCase();
@@ -96,19 +76,11 @@ function UserAvatar({ name, email, isHigh }: { name?: string; email?: string; is
   return (
     <div
       className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
-      style={
-        isHigh
-          ? {
-              background: "linear-gradient(135deg, rgba(0,230,255,0.3), rgba(167,139,250,0.3))",
-              border: "1px solid rgba(0,230,255,0.2)",
-              color: "#00E6FF",
-            }
-          : {
-              background: "rgba(122,158,138,0.12)",
-              border: "1px solid rgba(122,158,138,0.18)",
-              color: "#7A9E8A",
-            }
-      }
+      style={{
+        background: `${primaryHex}${isHigh ? "30" : "14"}`,
+        border: `1px solid ${primaryHex}${isHigh ? "28" : "20"}`,
+        color: primaryHex,
+      }}
     >
       {initials}
     </div>
@@ -120,7 +92,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { theme } = useTheme();
   const isHigh = theme.startsWith("high");
-  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
+  const P = getModulePalette(theme);
   const [showDiscipline, setShowDiscipline] = useState(false);
 
   const { data: dashData } = useQuery<any>({ queryKey: ["/api/dashboard"] });
@@ -199,7 +171,7 @@ export function AppSidebar() {
           title="Ver histórico de disciplina"
           data-testid="button-open-discipline"
         >
-          <ScoreBar score={disciplineScore} isHigh={isHigh} />
+          <ScoreBar score={disciplineScore} isHigh={isHigh} palette={P} />
         </div>
       </SidebarHeader>
 
@@ -252,7 +224,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="flex items-center gap-2.5 mb-3">
-          <UserAvatar name={user?.firstName} email={user?.email} isHigh={isHigh} />
+          <UserAvatar name={user?.firstName} email={user?.email} isHigh={isHigh} primaryHex={P.primary} />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-sidebar-foreground truncate">
               {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}` : user?.email}

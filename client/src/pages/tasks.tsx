@@ -7,15 +7,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AnimatePresence, motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import { CaptureButton } from "@/components/capture-button";
 import type { PersonalTask, Habit } from "@shared/schema";
 
-const PRIORITY_OPTIONS = [
-  { value: "high", label: "Alta", color: "#FF1744" },
-  { value: "medium", label: "Média", color: "#FFA000" },
-  { value: "low", label: "Baixa", color: "#00E5C8" },
-] as const;
+function getPriorityOptions(theme: string) {
+  const MP = getModulePalette(theme as any);
+  return [
+    { value: "high" as const, label: "Alta", color: MP.negative },
+    { value: "medium" as const, label: "Média", color: MP.agenda },
+    { value: "low" as const, label: "Baixa", color: MP.positive },
+  ];
+}
 
 const HABIT_EMOJIS = ["⚡", "🏋️", "📚", "💧", "🧘", "🍎", "😴", "💊", "🚶", "✍️"];
 const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -130,7 +133,7 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
           <div>
             <FieldLabel>Prioridade</FieldLabel>
             <div className="flex gap-2">
-              {PRIORITY_OPTIONS.map(opt => (
+              {getPriorityOptions(theme).map(opt => (
                 <button
                   key={opt.value}
                   type="button"
@@ -473,6 +476,7 @@ export default function Tasks() {
   const { toast } = useToast();
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
+  const MP = getModulePalette(theme as any);
 
   const { data: tasks = [] } = useQuery<PersonalTask[]>({ queryKey: ["/api/tasks"] });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"] });
@@ -603,9 +607,9 @@ export default function Tasks() {
   const completed = tasks.filter(t => t.status === "completed");
 
   const priorityColor: Record<string, string> = {
-    high: "#FF1744",
-    medium: "#FFA000",
-    low: "#00E5C8",
+    high: MP.negative,
+    medium: MP.agenda,
+    low: MP.positive,
   };
 
   function formatDueDate(dueDate: Date | string | null | undefined): string | null {
@@ -629,7 +633,7 @@ export default function Tasks() {
     setJustifyResult(null);
   }
 
-  const scoreColors: Record<number, string> = { 1: "#FF1744", 2: "#FF5722", 3: "#FFA000", 4: "#8BC34A", 5: "#00E5C8" };
+  const scoreColors: Record<number, string> = { 1: MP.negative, 2: MP.negative, 3: MP.agenda, 4: MP.positive, 5: MP.positive };
 
   return (
     <div className="px-6 py-6 space-y-6 pb-28">
@@ -646,8 +650,8 @@ export default function Tasks() {
       {needsJustification.length > 0 && (
         <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,170,0,0.07)", border: "1px solid rgba(255,170,0,0.2)" }}>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" style={{ color: "#FFA000" }} />
-            <p className="text-sm font-semibold" style={{ color: "#FFA000" }}>
+            <AlertTriangle className="h-4 w-4" style={{ color: MP.agenda }} />
+            <p className="text-sm font-semibold" style={{ color: MP.agenda }}>
               {needsJustification.length} tarefa{needsJustification.length > 1 ? "s" : ""} em atraso — justifique o atraso
             </p>
           </div>
@@ -668,7 +672,7 @@ export default function Tasks() {
                   size="sm"
                   onClick={() => { setJustifyTask(task); setJustifyText(""); setJustifyResult(null); }}
                   className="shrink-0 text-xs font-semibold gap-1"
-                  style={{ background: "rgba(255,170,0,0.15)", color: "#FFA000", border: "1px solid rgba(255,170,0,0.3)" }}
+                  style={{ background: `${MP.agenda}26`, color: MP.agenda, border: `1px solid ${MP.agenda}4D` }}
                   data-testid={`button-justify-task-${task.id}`}
                 >
                   <MessageSquare className="h-3.5 w-3.5" /> Justificar
@@ -714,7 +718,7 @@ export default function Tasks() {
                     <div className="flex items-center gap-2 flex-wrap mt-0.5">
                       {task.category && <span className="text-[10px] text-muted-foreground">{task.category}</span>}
                       {due && (
-                        <span className="text-[10px] flex items-center gap-0.5" style={{ color: isOverdue ? "#FF1744" : "rgba(255,255,255,0.3)" }}>
+                        <span className="text-[10px] flex items-center gap-0.5" style={{ color: isOverdue ? MP.negative : "rgba(255,255,255,0.3)" }}>
                           <Clock className="h-2.5 w-2.5" />{due}
                         </span>
                       )}
@@ -797,7 +801,7 @@ export default function Tasks() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {!checkedToday && (
-                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: "#FFA000" }} />
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ background: MP.agenda }} />
                     )}
                     <span className="text-xl shrink-0">{habitEmoji}</span>
                     <div className="min-w-0">
@@ -978,7 +982,7 @@ export default function Tasks() {
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                     <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Sequência</p>
                     <p className="text-sm font-medium text-white flex items-center gap-1">
-                      <Flame className="h-3.5 w-3.5" style={{ color: "#FFA000" }} />
+                      <Flame className="h-3.5 w-3.5" style={{ color: MP.agenda }} />
                       {detailHabit.streak} dias
                     </p>
                   </div>
@@ -1053,7 +1057,7 @@ export default function Tasks() {
                   <button
                     onClick={() => { deleteHabitMutation.mutate(detailHabit.id); setDetailHabit(null); }}
                     className="py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-                    style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+                    style={{ background: `${MP.negative}1A`, color: MP.negative, border: `1px solid ${MP.negative}33` }}
                     data-testid="button-delete-habit-detail"
                   >
                     <Trash2 className="h-4 w-4" /> Excluir
@@ -1292,7 +1296,7 @@ export default function Tasks() {
                   <button
                     onClick={() => { deleteTaskMutation.mutate(detailTask.id); setDetailTask(null); }}
                     className="py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-                    style={{ background: "rgba(255,23,68,0.1)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.2)" }}
+                    style={{ background: `${MP.negative}1A`, color: MP.negative, border: `1px solid ${MP.negative}33` }}
                     data-testid="button-delete-task-detail"
                   >
                     <Trash2 className="h-4 w-4" /> Excluir
@@ -1309,7 +1313,7 @@ export default function Tasks() {
           <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" style={{ color: "#FFA000" }} />
+                <AlertTriangle className="h-4 w-4" style={{ color: MP.agenda }} />
                 Justificativa de atraso
               </DialogTitle>
             </DialogHeader>
@@ -1346,7 +1350,7 @@ export default function Tasks() {
                     onClick={() => justifyMutation.mutate({ id: justifyTask.id, justification: justifyText })}
                     disabled={justifyMutation.isPending || justifyText.trim().length < 5}
                     className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-                    style={{ background: "#FFA000", color: "#060608" }}
+                    style={{ background: MP.agenda, color: "#060608" }}
                     data-testid="button-submit-justification"
                   >
                     {justifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar para a IA"}
@@ -1358,19 +1362,19 @@ export default function Tasks() {
             {justifyResult && (
               <div className="space-y-4">
                 <div className="text-center py-2">
-                  <p className="text-4xl font-black" style={{ color: scoreColors[justifyResult.score] ?? "#FFA000" }}>
+                  <p className="text-4xl font-black" style={{ color: scoreColors[justifyResult.score] ?? MP.agenda }}>
                     {justifyResult.score}/5
                   </p>
-                  <p className="text-sm font-semibold mt-1 capitalize" style={{ color: scoreColors[justifyResult.score] ?? "#FFA000" }}>
+                  <p className="text-sm font-semibold mt-1 capitalize" style={{ color: scoreColors[justifyResult.score] ?? MP.agenda }}>
                     Justificativa {justifyResult.verdict}
                   </p>
                 </div>
                 <div className="rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <p className="text-sm text-white/80 italic">"{justifyResult.feedback}"</p>
                 </div>
-                <div className="rounded-xl px-4 py-3 text-center" style={{ background: `${justifyResult.netPenalty >= 0 ? "rgba(0,229,200,0.06)" : "rgba(255,23,68,0.06)"}`, border: `1px solid ${justifyResult.netPenalty >= 0 ? "rgba(0,229,200,0.15)" : "rgba(255,23,68,0.15)"}` }}>
+                <div className="rounded-xl px-4 py-3 text-center" style={{ background: `${justifyResult.netPenalty >= 0 ? MP.positive : MP.negative}0F`, border: `1px solid ${justifyResult.netPenalty >= 0 ? MP.positive : MP.negative}26` }}>
                   <p className="text-xs text-white/40 mb-0.5">Impacto na disciplina</p>
-                  <p className="text-sm font-bold" style={{ color: justifyResult.netPenalty >= 0 ? "#00E5C8" : "#FF1744" }}>
+                  <p className="text-sm font-bold" style={{ color: justifyResult.netPenalty >= 0 ? MP.positive : MP.negative }}>
                     {justifyResult.creditPoints > 0 ? `${justifyResult.netPenalty} pts (${justifyResult.creditPoints} de crédito aplicado)` : `${justifyResult.netPenalty} pts`}
                   </p>
                 </div>

@@ -11,10 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import type { Bill } from "@shared/schema";
-const EXPENSE_COLOR = "#FF1744";
-const INCOME_COLOR = "#00E5C8";
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 
@@ -238,6 +236,10 @@ function SummaryCard({ label, value, sub, accent, icon: Icon }: { label: string;
 }
 
 function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () => void; accent: string }) {
+  const { theme: _theme } = useTheme();
+  const _MP = getModulePalette(_theme as any);
+  const EXPENSE_COLOR = _MP.negative;
+  const INCOME_COLOR = _MP.positive;
   const { toast } = useToast();
   const [form, setForm] = useState({
     title: "",
@@ -394,6 +396,10 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
 }
 
 function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => void; accent: string }) {
+  const { theme: _theme } = useTheme();
+  const _MP = getModulePalette(_theme as any);
+  const EXPENSE_COLOR = _MP.negative;
+  const INCOME_COLOR = _MP.positive;
   const { toast } = useToast();
   const [form, setForm] = useState({
     title: bill.title,
@@ -559,6 +565,9 @@ const PERIOD_OPTS: { id: PeriodFilter; label: string }[] = [
 export function BillsTab() {
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
+  const MP = getModulePalette(theme as any);
+  const EXPENSE_COLOR = MP.negative;
+  const INCOME_COLOR = MP.positive;
   const { toast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
@@ -709,9 +718,9 @@ export function BillsTab() {
         <SummaryCard label="A Pagar" value={`R$ ${fmtBRL(totalPagar)}`} sub={`${unpaidExpenses.length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
         <SummaryCard label="A Receber" value={`R$ ${fmtBRL(totalReceber)}`} sub={`${unpaidIncomes.length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label="Saldo Previsto" value={`R$ ${fmtBRL(saldoPrevisto)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
-        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${fmtBRL(vencidas.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={vencidas.length > 0 ? "#FF1744" : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
+        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${fmtBRL(vencidas.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
         {isSingleCurrentMonth ? (
-          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${fmtBRL(proximos7.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={proximos7.length > 0 ? "#FFA000" : "rgba(255,255,255,0.3)"} icon={Clock} />
+          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${fmtBRL(proximos7.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={proximos7.length > 0 ? MP.agenda : "rgba(255,255,255,0.3)"} icon={Clock} />
         ) : (
           <SummaryCard label="Total Contas" value={`${activeBills.length}`} sub={`no período`} accent="rgba(255,255,255,0.5)" icon={Clock} />
         )}
@@ -767,7 +776,7 @@ export function BillsTab() {
               const today = new Date().getDate();
               const daysUntilDue = bill.dueDay - today;
               const isUpcomingSoon = !paid && !overdue && daysUntilDue >= 0 && daysUntilDue <= 5;
-              const WARN_COLOR = "#FFA000";
+              const WARN_COLOR = MP.agenda;
               const statusColor = paid ? INCOME_COLOR : overdue ? EXPENSE_COLOR : isUpcomingSoon ? WARN_COLOR : "rgba(255,255,255,0.25)";
               const statusLabel = paid ? "Pago" : overdue ? "Vencido" : isUpcomingSoon ? (daysUntilDue === 0 ? "Vence hoje!" : `Vence em ${daysUntilDue}d`) : `Dia ${bill.dueDay}`;
 

@@ -592,8 +592,8 @@
 }
 
 @keyframes high-flame-pulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(255,107,71,0.5)); }
-  50%       { transform: scale(1.15); filter: drop-shadow(0 0 7px rgba(255,107,71,0.8)); }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(var(--glow-rgb),0.5)); }
+  50%       { transform: scale(1.15); filter: drop-shadow(0 0 7px rgba(var(--glow-rgb),0.8)); }
 }
 
 @keyframes high-score-glow {

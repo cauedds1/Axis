@@ -5,30 +5,8 @@ import { CaptureButton } from "@/components/capture-button";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { SetupSheet } from "@/components/setup-sheet";
-
-const HIGH_PALETTE = {
-  primary: "#00E6FF",
-  finance: "#FF1744",
-  agenda: "#FFA000",
-  tasks: "#AE73FF",
-  habits: "#00E5C8",
-  positive: "#00E5C8",
-  negative: "#FF1744",
-};
-
-const SLIM_PALETTE = {
-  primary: "#7A9E8A",
-  finance: "#7A9E8A",
-  agenda: "#7A9E8A",
-  tasks: "#7A9E8A",
-  habits: "#7A9E8A",
-  positive: "#5A8F70",
-  negative: "#9E7575",
-};
-
-const MINT = "#00E5C8";
 
 
 function SkeletonCard() {
@@ -145,14 +123,14 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const isHigh = theme.startsWith("high");
   const setupPending = setupStatus !== undefined && !setupStatus.completed;
-  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
+  const P = getModulePalette(theme);
 
   const hour = new Date().getHours();
   const greetWord = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
   const name = data?.userName || "";
   const disciplineScore = data?.disciplineScore || 5;
 
-  const scoreColor = disciplineScore <= 4 ? "#FF1744" : disciplineScore <= 7 ? "#2979FF" : "#00E5C8";
+  const scoreColor = disciplineScore <= 4 ? P.negative : disciplineScore <= 7 ? P.primary : P.positive;
 
   const activeModules: string[] = data?.activeModules || [];
   const showAll = activeModules.length === 0;
@@ -215,7 +193,7 @@ export default function Dashboard() {
         >
           <Flame
             className={`h-4 w-4 mb-1 ${isHigh ? "high-flame" : ""}`}
-            style={{ color: isHigh ? HIGH_PALETTE.negative : P.primary }}
+            style={{ color: isHigh ? P.negative : P.primary }}
           />
           <span
             className={`text-2xl font-bold leading-none ${isHigh ? "high-score-text" : ""}`}
@@ -378,7 +356,7 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {data.habits.slice(0, 4).map((h: any) => {
                   const streakColor = isHigh
-                    ? h.streak >= 7 ? P.primary : h.streak >= 3 ? HIGH_PALETTE.agenda : HIGH_PALETTE.negative
+                    ? h.streak >= 7 ? P.primary : h.streak >= 3 ? P.agenda : P.negative
                     : P.primary;
 
                   return (
@@ -424,26 +402,26 @@ export default function Dashboard() {
             transition={{ duration: 0.35, delay: 0.3 }}
             onClick={() => setShowSetupModal(true)}
             className="rounded-2xl border bg-card overflow-hidden text-left transition-all duration-200 hover:opacity-80 group"
-            style={{ borderColor: `${MINT}18` }}
+            style={{ borderColor: `${P.positive}18` }}
             data-testid="button-setup-pending-card"
           >
-            <div className="h-[3px] w-full" style={{ background: isHigh ? `linear-gradient(90deg, ${MINT}, ${MINT}55)` : MINT, opacity: isHigh ? 1 : 0.6 }} />
+            <div className="h-[3px] w-full" style={{ background: isHigh ? `linear-gradient(90deg, ${P.positive}, ${P.positive}55)` : P.positive, opacity: isHigh ? 1 : 0.6 }} />
             <div className="p-5 flex flex-col h-full">
               <div className="flex items-center gap-2 mb-4">
                 {isHigh ? (
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${MINT}18` }}>
-                    <Sparkles className="h-4 w-4" style={{ color: MINT }} />
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${P.positive}18` }}>
+                    <Sparkles className="h-4 w-4" style={{ color: P.positive }} />
                   </div>
                 ) : (
-                  <Sparkles className="h-4 w-4 opacity-50" style={{ color: MINT }} />
+                  <Sparkles className="h-4 w-4 opacity-50" style={{ color: P.positive }} />
                 )}
                 <span className="text-sm font-semibold text-muted-foreground">Perfil incompleto</span>
               </div>
-              <p className="text-lg font-bold mb-1" style={{ color: MINT }}>Finalize seu cadastro</p>
+              <p className="text-lg font-bold mb-1" style={{ color: P.positive }}>Finalize seu cadastro</p>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                 Adicione sua renda, gastos fixos e rotina para que o AXIS configure tudo automaticamente desde agora.
               </p>
-              <div className="mt-auto flex items-center gap-1.5 text-xs font-medium" style={{ color: isHigh ? MINT : "hsl(var(--muted-foreground))" }}>
+              <div className="mt-auto flex items-center gap-1.5 text-xs font-medium" style={{ color: isHigh ? P.positive : "hsl(var(--muted-foreground))" }}>
                 Completar agora <ChevronRight className="h-3 w-3" />
               </div>
             </div>

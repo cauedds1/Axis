@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, TrendingUp, TrendingDown, Minus, Flame, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme, getModulePalette } from "@/components/theme-provider";
 
 interface DisciplineEntry {
   id: string;
@@ -12,10 +13,10 @@ interface DisciplineEntry {
   createdAt: string;
 }
 
-function scoreColor(score: number): string {
-  if (score <= 4) return "#FF1744";
-  if (score <= 7) return "#2979FF";
-  return "#00E5C8";
+function scoreColor(score: number, negative: string, primary: string, positive: string): string {
+  if (score <= 4) return negative;
+  if (score <= 7) return primary;
+  return positive;
 }
 
 function scoreLabel(score: number): string {
@@ -26,16 +27,16 @@ function scoreLabel(score: number): string {
   return "Elite";
 }
 
-function DeltaBadge({ delta }: { delta: number }) {
+function DeltaBadge({ delta, positive, negative }: { delta: number; positive: string; negative: string }) {
   if (delta > 0)
     return (
-      <span className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: "#00E5C8" }}>
+      <span className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: positive }}>
         <TrendingUp className="h-3 w-3" />+{delta}
       </span>
     );
   if (delta < 0)
     return (
-      <span className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: "#FF1744" }}>
+      <span className="flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: negative }}>
         <TrendingDown className="h-3 w-3" />{delta}
       </span>
     );
@@ -56,7 +57,7 @@ function formatDate(iso: string): string {
   });
 }
 
-function HowItWorks() {
+function HowItWorks({ positive, negative, warn }: { positive: string; negative: string; warn: string }) {
   const [expanded, setExpanded] = useState(false);
 
   const Row = ({ label, pts, color }: { label: string; pts: string; color: string }) => (
@@ -71,10 +72,10 @@ function HowItWorks() {
       <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-1.5">Como funciona</div>
 
       <div className="space-y-0.5">
-        <Row label="Tarefas concluídas" pts="+3 a +6" color="#00E5C8" />
-        <Row label="Hábitos feitos" pts="+2" color="#00E5C8" />
-        <Row label="Gastos controlados / excesso" pts="+4 a −6" color="#FFA000" />
-        <Row label="Atrasos (justificativa devolve até +3)" pts="−4" color="#FF1744" />
+        <Row label="Tarefas concluídas" pts="+3 a +6" color={positive} />
+        <Row label="Hábitos feitos" pts="+2" color={positive} />
+        <Row label="Gastos controlados / excesso" pts="+4 a −6" color={warn} />
+        <Row label="Atrasos (justificativa devolve até +3)" pts="−4" color={negative} />
       </div>
 
       <button
@@ -98,25 +99,25 @@ function HowItWorks() {
             <div className="pt-2 space-y-2">
               <div>
                 <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Tarefas</div>
-                <Row label="Alta prioridade" pts="+6" color="#00E5C8" />
-                <Row label="Média prioridade" pts="+4" color="#00E5C8" />
-                <Row label="Baixa prioridade" pts="+3" color="#00E5C8" />
-                <Row label="Atraso (+48h sem justificativa)" pts="−4" color="#FF1744" />
+                <Row label="Alta prioridade" pts="+6" color={positive} />
+                <Row label="Média prioridade" pts="+4" color={positive} />
+                <Row label="Baixa prioridade" pts="+3" color={positive} />
+                <Row label="Atraso (+48h sem justificativa)" pts="−4" color={negative} />
               </div>
               <div>
                 <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Gastos (a cada 3 dias)</div>
-                <Row label="Controlados (ótimo)" pts="+4" color="#00E5C8" />
-                <Row label="Razoáveis (bom)" pts="+2" color="#00E5C8" />
+                <Row label="Controlados (ótimo)" pts="+4" color={positive} />
+                <Row label="Razoáveis (bom)" pts="+2" color={positive} />
                 <Row label="Neutros" pts="0" color="rgba(255,255,255,0.3)" />
-                <Row label="Excesso leve (20-30%)" pts="−2" color="#FFA000" />
-                <Row label="Excesso moderado (30-40%)" pts="−4" color="#FF1744" />
-                <Row label="Excesso grave (>40%)" pts="−6" color="#FF1744" />
+                <Row label="Excesso leve (20-30%)" pts="−2" color={warn} />
+                <Row label="Excesso moderado (30-40%)" pts="−4" color={negative} />
+                <Row label="Excesso grave (>40%)" pts="−6" color={negative} />
               </div>
               <div>
                 <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Justificativas (IA)</div>
-                <Row label="Excelente" pts="+3" color="#00E5C8" />
-                <Row label="Boa" pts="+2" color="#00E5C8" />
-                <Row label="Aceitável" pts="+1" color="#00E5C8" />
+                <Row label="Excelente" pts="+3" color={positive} />
+                <Row label="Boa" pts="+2" color={positive} />
+                <Row label="Aceitável" pts="+1" color={positive} />
                 <div className="text-[9px] text-white/20 mt-0.5">A IA avalia sua justificativa e pode devolver pontos</div>
               </div>
             </div>
@@ -142,12 +143,14 @@ export function DisciplinePanel({
   score: number;
   disciplinePoints?: number;
 }) {
+  const { theme } = useTheme();
+  const MP = getModulePalette(theme as any);
   const { data: history = [], isLoading } = useQuery<DisciplineEntry[]>({
     queryKey: ["/api/discipline/history"],
     enabled: open,
   });
 
-  const color = scoreColor(score);
+  const color = scoreColor(score, MP.negative, MP.primary, MP.positive);
   const label = scoreLabel(score);
   const latest = history[0];
   const delta = latest?.delta ?? 0;
@@ -155,7 +158,7 @@ export function DisciplinePanel({
 
   const pts = disciplinePoints;
   const isPositive = pts >= 0;
-  const barColor = isPositive ? "#00E5C8" : "#FF1744";
+  const barColor = isPositive ? MP.positive : MP.negative;
   const barPct = Math.min(Math.abs(pts) / 8 * 100, 100);
   const nextAction = isPositive ? "subir" : "descer";
   const ptsLeft = 8 - Math.abs(pts);
@@ -212,7 +215,7 @@ export function DisciplinePanel({
                 <div>
                   <div className="text-sm font-bold leading-tight" style={{ color }}>{label}</div>
                   <div className="text-[10px] text-muted-foreground leading-tight">de 10 pontos</div>
-                  <div className="mt-0.5"><DeltaBadge delta={delta} /></div>
+                  <div className="mt-0.5"><DeltaBadge delta={delta} positive={MP.positive} negative={MP.negative} /></div>
                 </div>
               </div>
 
@@ -251,7 +254,7 @@ export function DisciplinePanel({
             </div>
 
             {/* Como funciona — compact + expandable */}
-            <HowItWorks />
+            <HowItWorks positive={MP.positive} negative={MP.negative} warn={MP.agenda} />
 
             {/* Estado atual */}
             {currentReasons.length > 0 && (
@@ -296,7 +299,7 @@ export function DisciplinePanel({
               )}
 
               {history.map((entry) => {
-                const entryColor = scoreColor(entry.score);
+                const entryColor = scoreColor(entry.score, MP.negative, MP.primary, MP.positive);
                 const parsedReasons: string[] = Array.isArray(entry.reasons) ? entry.reasons : [];
                 return (
                   <div
@@ -322,7 +325,7 @@ export function DisciplinePanel({
                           <div className="text-[9px] text-muted-foreground">{formatDate(entry.createdAt)}</div>
                         </div>
                       </div>
-                      <DeltaBadge delta={entry.delta} />
+                      <DeltaBadge delta={entry.delta} positive={MP.positive} negative={MP.negative} />
                     </div>
 
                     {parsedReasons.length > 0 && (

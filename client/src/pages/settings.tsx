@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ThemeSelector } from "@/components/theme-toggle";
-import { useTheme, type AxisTheme } from "@/components/theme-provider";
+import { useTheme, type AxisTheme, getModulePalette } from "@/components/theme-provider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { SetupSheet } from "@/components/setup-sheet";
@@ -46,6 +46,8 @@ function Block({ children, danger }: { children: React.ReactNode; danger?: boole
 }
 
 function WhatsAppTab() {
+  const { theme } = useTheme();
+  const MP = getModulePalette(theme as any);
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
@@ -95,9 +97,9 @@ function WhatsAppTab() {
   const wStatus = status?.status || "disconnected";
   const botPhoneDigits = (status?.phone || "").replace(/\D/g, "");
   const statusMap: Record<string, { label: string; color: string; Icon: any }> = {
-    disconnected: { label: "Desconectado", color: "#FF1744", Icon: WifiOff },
-    qr_pending:   { label: "Aguardando QR", color: "#FFA000", Icon: QrCode },
-    connected:    { label: "Conectado",     color: "#00E5C8", Icon: Wifi },
+    disconnected: { label: "Desconectado", color: MP.negative, Icon: WifiOff },
+    qr_pending:   { label: "Aguardando QR", color: MP.agenda, Icon: QrCode },
+    connected:    { label: "Conectado",     color: MP.positive, Icon: Wifi },
   };
   const { label, color, Icon } = statusMap[wStatus] ?? statusMap.disconnected;
 
@@ -115,7 +117,7 @@ function WhatsAppTab() {
             <div>
               <p className="text-sm font-semibold">{label}</p>
               {wStatus === "connected" && status?.phone && (
-                <p className="text-[11px] font-medium" style={{ color: "#00E5C8" }}>
+                <p className="text-[11px] font-medium" style={{ color: MP.positive }}>
                   Bot conectado em {formatBotPhone(status.phone)}
                 </p>
               )}
@@ -129,7 +131,7 @@ function WhatsAppTab() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                  style={{ color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" }}
+                  style={{ color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` }}
                   data-testid="button-whatsapp-open-chat"
                 >
                   <ExternalLink className="h-3 w-3" /> Abrir chat
@@ -139,7 +141,7 @@ function WhatsAppTab() {
                 onClick={() => setConfirmDisconnect(true)}
                 disabled={unlinkMutation.isPending}
                 className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: "#FF1744", borderColor: "rgba(255,23,68,0.3)", background: "rgba(255,23,68,0.08)" }}
+                style={{ color: MP.negative, borderColor: `${MP.negative}4D`, background: `${MP.negative}14` }}
                 data-testid="button-whatsapp-disconnect"
               >
                 {unlinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
@@ -150,7 +152,7 @@ function WhatsAppTab() {
               onClick={() => connectMutation.mutate()}
               disabled={connectMutation.isPending}
               className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
-              style={{ color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" }}
+              style={{ color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` }}
               data-testid="button-whatsapp-connect"
             >
               {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Conectar"}
@@ -172,7 +174,7 @@ function WhatsAppTab() {
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40"
-              style={{ color: "#FFA000", borderColor: "rgba(255,160,0,0.3)", background: "rgba(255,160,0,0.08)" }}
+              style={{ color: MP.agenda, borderColor: `${MP.agenda}4D`, background: `${MP.agenda}14` }}
               data-testid="button-whatsapp-new-qr"
             >
               {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
@@ -192,7 +194,7 @@ function WhatsAppTab() {
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-40"
-              style={{ color: "#FFA000", borderColor: "rgba(255,160,0,0.3)", background: "rgba(255,160,0,0.08)" }}
+              style={{ color: MP.agenda, borderColor: `${MP.agenda}4D`, background: `${MP.agenda}14` }}
               data-testid="button-whatsapp-new-qr-fallback"
             >
               <RefreshCw className="h-3 w-3" /> Tentar novamente
@@ -218,7 +220,7 @@ function WhatsAppTab() {
             onClick={() => phoneMutation.mutate()}
             disabled={phoneMutation.isPending || !phone.trim()}
             className="px-4 py-2 rounded-lg text-sm font-semibold border border-border transition-all disabled:opacity-40"
-            style={phoneSaved ? { color: "#00E5C8", borderColor: "rgba(0,229,200,0.3)", background: "rgba(0,229,200,0.08)" } : {}}
+            style={phoneSaved ? { color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` } : {}}
             data-testid="button-save-whatsapp-phone"
           >
             {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : "Salvar"}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatTxDescription } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
 import {
@@ -14,11 +14,18 @@ import {
   ArrowUpRight, ArrowDownRight, Receipt, CalendarDays, ChevronDown,
 } from "lucide-react";
 
-const HIGH_PALETTE = { primary: "#00E6FF", finance: "#FF1744", tasks: "#AE73FF", habits: "#00E5C8", schedule: "#FFA000", positive: "#00E5C8", negative: "#FF1744" };
-const SLIM_PALETTE = { primary: "#7A9E8A", finance: "#7A9E8A", tasks: "#7A9E8A", habits: "#7A9E8A", schedule: "#7A9E8A", positive: "#5A8F70", negative: "#9E7575" };
+function getReportPalette(theme: string) {
+  const P = getModulePalette(theme as any);
+  return { ...P, schedule: P.agenda };
+}
 
-const PIE_COLORS = ["#00E6FF", "#FF1744", "#FFA000", "#AE73FF", "#00E5C8", "#F59E0B", "#EC4899", "#8B5CF6"];
-const PIE_COLORS_SLIM = ["#7A9E8A", "#8A9A7A", "#9A8A7A", "#7A8A9A", "#9A7A8A", "#8A7A9A", "#7A9A9A", "#9A9A7A"];
+function getPieColors(theme: string): string[] {
+  const P = getModulePalette(theme as any);
+  if (theme.startsWith("high")) {
+    return [P.primary, P.finance, P.agenda, P.tasks, P.habits, P.positive, P.negative, P.primary + "99"];
+  }
+  return [P.primary, P.finance, P.agenda, P.tasks, P.habits, P.primary + "CC", P.primary + "99", P.primary + "66"];
+}
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -141,6 +148,8 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
 }
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { theme } = useTheme();
+  const RP = getReportPalette(theme);
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
   const [filter, setFilter] = useState<DateFilter>("current");
   const [customStart, setCustomStart] = useState(() => {
@@ -158,7 +167,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const queryUrl = `/api/reports/finance?startDate=${startDate}&endDate=${endDate}`;
 
   const { data, isLoading } = useQuery<any>({ queryKey: [queryUrl] });
-  const pieColors = isHigh ? PIE_COLORS : PIE_COLORS_SLIM;
+  const pieColors = getPieColors(theme);
 
   const FILTER_OPTS: { id: DateFilter; label: string }[] = [
     { id: "current", label: "Mês atual" },
@@ -169,11 +178,11 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   ];
 
   const pmColors: Record<string, string> = {
-    debit: isHigh ? "#AE73FF" : "#7A8A9A",
-    credit: isHigh ? "#FF1744" : "#9E7575",
-    pix: isHigh ? "#00E5C8" : "#5A8F70",
-    cash: isHigh ? "#FFA000" : "#9A8A7A",
-    other: isHigh ? "#00E6FF" : "#7A9E8A",
+    debit: RP.tasks,
+    credit: RP.negative,
+    pix: RP.positive,
+    cash: RP.schedule,
+    other: RP.primary,
   };
 
   const { summary, currentMonth, monthly, byCategory, currentMonthByCategory, dailyThisMonth, groupByWeek, byPaymentMethod, byEstablishment, byHour, byTimePeriod, peakHour, recentTransactions, goals, periodLabel: backendPeriodLabel } = data || {};
@@ -263,21 +272,21 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Receitas</p>
-                <p className="text-xl font-bold" style={{ color: isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive }} data-testid="metric-receitas-mes">
+                <p className="text-xl font-bold" style={{ color: RP.positive }} data-testid="metric-receitas-mes">
                   R$ {currentMonth.income.toFixed(0)}
                 </p>
                 <TrendBadge value={currentMonth.incomeTrend} invertColor={false} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Gastos</p>
-                <p className="text-xl font-bold" style={{ color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative }} data-testid="metric-gastos-mes">
+                <p className="text-xl font-bold" style={{ color: RP.negative }} data-testid="metric-gastos-mes">
                   R$ {currentMonth.expenses.toFixed(0)}
                 </p>
                 <TrendBadge value={currentMonth.expenseTrend} invertColor={true} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Saldo</p>
-                <p className="text-xl font-bold" style={{ color: currentMonth.balance >= 0 ? (isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive) : (isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative) }} data-testid="metric-saldo-mes">
+                <p className="text-xl font-bold" style={{ color: currentMonth.balance >= 0 ? (RP.positive) : (RP.negative) }} data-testid="metric-saldo-mes">
                   R$ {currentMonth.balance.toFixed(0)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">{currentMonth.savingsRate}% economizado</p>
@@ -291,7 +300,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <span>{Math.min(100, Math.round((currentMonth.expenses / currentMonth.income) * 100))}% da renda</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (currentMonth.expenses / currentMonth.income) * 100)}%`, background: currentMonth.expenses <= currentMonth.income ? (isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive) : (isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative) }} />
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (currentMonth.expenses / currentMonth.income) * 100)}%`, background: currentMonth.expenses <= currentMonth.income ? (RP.positive) : (RP.negative) }} />
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
                   <span>R$ {currentMonth.expenses.toFixed(0)} gastos</span>
@@ -316,7 +325,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="expenses" name="Gastos" fill={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name="Gastos" fill={RP.negative} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -392,12 +401,12 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
               <AreaChart data={monthly} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} stopOpacity={0.2} />
-                    <stop offset="95%" stopColor={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} stopOpacity={0} />
+                    <stop offset="5%" stopColor={RP.positive} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={RP.positive} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} stopOpacity={0.2} />
-                    <stop offset="95%" stopColor={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} stopOpacity={0} />
+                    <stop offset="5%" stopColor={RP.negative} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={RP.negative} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.10)" />
@@ -405,8 +414,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="income" name="Receitas" stroke={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} fill="url(#colorIncome)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="expenses" name="Gastos" stroke={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} fill="url(#colorExpenses)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="income" name="Receitas" stroke={RP.positive} fill="url(#colorIncome)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="expenses" name="Gastos" stroke={RP.negative} fill="url(#colorExpenses)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -490,8 +499,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
           {/* 6-month summary metrics */}
           <div className="xl:col-span-2 grid grid-cols-2 gap-3 content-start">
-            <MetricCard icon={TrendingUp} label="Receitas" value={`R$ ${summary.totalIncome.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
-            <MetricCard icon={TrendingDown} label="Gastos" value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} />
+            <MetricCard icon={TrendingUp} label="Receitas" value={`R$ ${summary.totalIncome.toFixed(0)}`} color={RP.positive} />
+            <MetricCard icon={TrendingDown} label="Gastos" value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={RP.negative} />
             <MetricCard icon={ShoppingBag} label="Média/mês" value={`R$ ${summary.avgMonthlyExpense?.toFixed(0) ?? "0"}`} sub="em gastos" color={color} />
             <MetricCard icon={Target} label="Taxa de economia" value={`${summary.savingsRate}%`} sub={`${summary.transactionCount ?? 0} transações`} color={color} />
 
@@ -562,7 +571,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           <div className="grid grid-cols-1 xl:grid-cols-2">
             {filteredTx.map((tx: any, i: number) => {
               const isIncome = tx.type === "income";
-              const txColor = isIncome ? (isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive) : (isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative);
+              const txColor = isIncome ? (RP.positive) : (RP.negative);
               const isLastInCol = i === filteredTx.length - 1 || i === filteredTx.length - 2;
               return (
                 <div key={tx.id} className={`flex items-center justify-between px-4 py-3 border-b border-border xl:${i % 2 === 0 && i < filteredTx.length - 1 ? "border-r" : ""} ${isLastInCol ? "border-b-0" : ""}`} data-testid={`tx-row-${tx.id}`}>
@@ -597,6 +606,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== TASKS TAB ========================
 function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { theme } = useTheme();
+  const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/tasks"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
@@ -607,25 +618,25 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const barData = [
     { name: "Concluídas", value: summary.completed, color },
     { name: "Pendentes", value: summary.pending, color: "hsl(var(--muted-foreground))" },
-    { name: "Atrasadas", value: summary.overdue, color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative },
+    { name: "Atrasadas", value: summary.overdue, color: RP.negative },
   ];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <MetricCard icon={CheckSquare} label="Total" value={summary.total} color={color} />
-        <MetricCard icon={Star} label="Concluídas" value={summary.completed} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
+        <MetricCard icon={Star} label="Concluídas" value={summary.completed} color={RP.positive} />
         <MetricCard icon={Clock} label="Pendentes" value={summary.pending} color={color} />
-        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} sub={summary.overdue > 0 ? `${summary.overdue} atrasadas` : "Em dia"} color={summary.completionRate >= 70 ? (isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive) : (isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative)} />
+        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} sub={summary.overdue > 0 ? `${summary.overdue} atrasadas` : "Em dia"} color={summary.completionRate >= 70 ? (RP.positive) : (RP.negative)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mt-2">
         <div>
           <SectionTitle>Por prioridade</SectionTitle>
           <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
-            <PriorityBar label="Alta prioridade" total={byPriority.high.total} completed={byPriority.high.completed} color={isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative} />
-            <PriorityBar label="Média prioridade" total={byPriority.medium.total} completed={byPriority.medium.completed} color={isHigh ? HIGH_PALETTE.schedule : "#9A8A7A"} />
-            <PriorityBar label="Baixa prioridade" total={byPriority.low.total} completed={byPriority.low.completed} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
+            <PriorityBar label="Alta prioridade" total={byPriority.high.total} completed={byPriority.high.completed} color={RP.negative} />
+            <PriorityBar label="Média prioridade" total={byPriority.medium.total} completed={byPriority.medium.completed} color={RP.schedule} />
+            <PriorityBar label="Baixa prioridade" total={byPriority.low.total} completed={byPriority.low.completed} color={RP.positive} />
           </div>
         </div>
 
@@ -663,12 +674,12 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}12` }}>
           {urgentPending.map((t: any, i: number) => (
             <div key={t.id} className={`flex items-center gap-3 px-4 py-3 ${i < urgentPending.length - 1 ? "border-b border-border" : ""}`}>
-              <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative }} />
+              <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: RP.negative }} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" data-testid={`report-urgent-${t.id}`}>{t.title}</p>
                 {t.dueDate && <p className="text-[11px] text-muted-foreground">Prazo: {new Date(t.dueDate).toLocaleDateString("pt-BR")}</p>}
               </div>
-              <span className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ background: `${isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative}15`, color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative }}>Alta</span>
+              <span className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ background: `${RP.negative}15`, color: RP.negative }}>Alta</span>
             </div>
           ))}
         </div>
@@ -684,6 +695,8 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== HABITS TAB ========================
 function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { theme } = useTheme();
+  const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/habits"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
@@ -695,9 +708,9 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <MetricCard icon={Flame} label="Total de compromissos" value={summary.totalHabits} color={color} />
-        <MetricCard icon={Star} label="Melhor streak" value={`${summary.bestStreak}d`} sub={summary.bestHabit} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
+        <MetricCard icon={Star} label="Melhor streak" value={`${summary.bestStreak}d`} sub={summary.bestHabit} color={RP.positive} />
         <MetricCard icon={Target} label="Streak médio" value={`${summary.avgStreak}d`} color={color} />
-        <MetricCard icon={CheckSquare} label="Check-ins (30d)" value={summary.totalCheckinsMonth} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
+        <MetricCard icon={CheckSquare} label="Check-ins (30d)" value={summary.totalCheckinsMonth} color={RP.positive} />
       </div>
 
       <SectionTitle>Consistência semanal</SectionTitle>
@@ -718,8 +731,8 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}12` }}>
           {habits.map((h: any, i: number) => {
             const streakColor = isHigh
-              ? h.streak >= 7 ? HIGH_PALETTE.positive : h.streak >= 3 ? HIGH_PALETTE.schedule : HIGH_PALETTE.negative
-              : SLIM_PALETTE.primary;
+              ? h.streak >= 7 ? RP.positive : h.streak >= 3 ? RP.schedule : RP.negative
+              : RP.primary;
             return (
               <div key={h.id} className={`px-5 py-4 ${i < habits.length - 1 ? "border-b border-border" : ""}`}>
                 <div className="flex items-center justify-between mb-2">
@@ -747,6 +760,8 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== SCHEDULE TAB ========================
 function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { theme } = useTheme();
+  const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/schedule"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
@@ -758,8 +773,8 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
         <MetricCard icon={Calendar} label="Total de eventos" value={summary.total} color={color} />
-        <MetricCard icon={CheckSquare} label="Concluídos" value={summary.completed} color={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} />
-        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} color={summary.completionRate >= 70 ? (isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive) : color} />
+        <MetricCard icon={CheckSquare} label="Concluídos" value={summary.completed} color={RP.positive} />
+        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} color={summary.completionRate >= 70 ? (RP.positive) : color} />
         <MetricCard icon={Zap} label="Sugeridos por IA" value={summary.aiSuggested} sub={`${summary.manuallyAdded} manuais`} color={color} />
       </div>
 
@@ -785,7 +800,7 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="completed" name="Concluídos" fill={isHigh ? HIGH_PALETTE.positive : SLIM_PALETTE.positive} radius={[4, 4, 0, 0]} stackId="a" />
+            <Bar dataKey="completed" name="Concluídos" fill={RP.positive} radius={[4, 4, 0, 0]} stackId="a" />
             <Bar dataKey="pending" name="Pendentes" fill={`${color}50`} radius={[4, 4, 0, 0]} stackId="a" />
           </BarChart>
         </ResponsiveContainer>
@@ -816,10 +831,10 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         <div>
           <SectionTitle>Eventos não concluídos</SectionTitle>
           {overdue?.length > 0 ? (
-            <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative}20` }}>
+            <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${RP.negative}20` }}>
               {overdue.map((item: any, i: number) => (
                 <div key={item.id} className={`flex items-start gap-3 px-4 py-3 ${i < overdue.length - 1 ? "border-b border-border" : ""}`}>
-                  <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: isHigh ? HIGH_PALETTE.negative : SLIM_PALETTE.negative }} />
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: RP.negative }} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`report-overdue-${item.id}`}>{item.title}</p>
                     <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
@@ -852,7 +867,7 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState<TabId>("finance");
   const { theme } = useTheme();
   const isHigh = theme.startsWith("high");
-  const P = { ...(isHigh ? HIGH_PALETTE : SLIM_PALETTE), primary: getPrimaryHex(theme) };
+  const P = getReportPalette(theme);
 
   const tabColors: Record<TabId, string> = {
     finance: P.finance,
