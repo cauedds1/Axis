@@ -30,6 +30,7 @@ export const transactions = pgTable("transactions", {
   location: text("location"),
   paymentMethod: text("payment_method"),
   receiptItems: text("receipt_items"),
+  dateOnly: boolean("date_only").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

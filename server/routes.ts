@@ -624,6 +624,7 @@ export async function registerRoutes(
                 paymentMethod: result.paymentMethod || null,
                 location: result.location || null,
                 receiptItems: txItems ? JSON.stringify(txItems.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
+                dateOnly: !result.time || result.time === "00:00",
               });
               imported++;
               lines.push(`${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""} · ${result.categoryName || "outros"}`);
@@ -703,6 +704,7 @@ export async function registerRoutes(
                 source: "pdf" as const,
                 establishment: t.establishment || null,
                 paymentMethod: t.paymentMethod || null,
+                dateOnly: !t.time || t.time === "00:00",
               })));
               imported = toCreate.length;
             }
@@ -2018,11 +2020,13 @@ Se algum dado não foi mencionado, use valores razoáveis.`
             if (!establishmentMap[place]) establishmentMap[place] = { amount: 0, count: 0 };
             establishmentMap[place].amount += amt;
             establishmentMap[place].count++;
-            // Hour
-            const hour = d.getHours();
-            if (!hourMap[hour]) hourMap[hour] = { amount: 0, count: 0 };
-            hourMap[hour].amount += amt;
-            hourMap[hour].count++;
+            // Hour — só transações com horário real (dateOnly = false)
+            if (!tx.dateOnly) {
+              const hour = d.getHours();
+              if (!hourMap[hour]) hourMap[hour] = { amount: 0, count: 0 };
+              hourMap[hour].amount += amt;
+              hourMap[hour].count++;
+            }
             // Payment method
             const pm = tx.paymentMethod || "Não informado";
             if (!paymentMap[pm]) paymentMap[pm] = { amount: 0, count: 0 };

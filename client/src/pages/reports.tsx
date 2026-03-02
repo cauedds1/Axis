@@ -452,47 +452,54 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       </div>
 
       {/* ══ ROW 3: When + Summary metrics ══ */}
-      {byTimePeriod?.some((p: any) => p.amount > 0) && (
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
           {/* Time periods + hour chart */}
           <div className="xl:col-span-3 rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Quando você mais gasta</p>
-            <div className="grid grid-cols-4 gap-2 mb-4">
-              {byTimePeriod.map((period: any) => {
-                const isTopPeriod = period.amount === Math.max(...byTimePeriod.map((p: any) => p.amount));
-                return (
-                  <div key={period.label} className="rounded-xl border p-3 flex flex-col gap-1" style={isTopPeriod ? { borderColor: `${color}30`, background: `${color}08` } : {}} data-testid={`time-period-${period.label}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-base">{period.emoji}</span>
-                      {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>Pico</span>}
-                    </div>
-                    <p className="text-xs font-semibold">{period.label}</p>
-                    <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>R$ {period.amount.toFixed(0)}</p>
-                    <p className="text-[10px] text-muted-foreground">{period.count}x</p>
-                    <div className="h-1 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${period.pct}%`, background: isTopPeriod ? color : "hsl(var(--muted-foreground))" }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {byHour?.some((h: any) => h.amount > 0) && (
+            {!byTimePeriod?.some((p: any) => p.amount > 0) ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Sem dados de horário — as transações deste período foram importadas sem hora definida.
+              </p>
+            ) : (
               <>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-muted-foreground">Gastos por hora do dia</p>
-                  {peakHour && <span className="text-xs font-semibold" style={{ color }}>Pico: {peakHour}</span>}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {byTimePeriod.map((period: any) => {
+                    const isTopPeriod = period.amount === Math.max(...byTimePeriod.map((p: any) => p.amount));
+                    return (
+                      <div key={period.label} className="rounded-xl border p-3 flex flex-col gap-1" style={isTopPeriod ? { borderColor: `${color}30`, background: `${color}08` } : {}} data-testid={`time-period-${period.label}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-base">{period.emoji}</span>
+                          {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>Pico</span>}
+                        </div>
+                        <p className="text-xs font-semibold">{period.label}</p>
+                        <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>R$ {period.amount.toFixed(0)}</p>
+                        <p className="text-[10px] text-muted-foreground">{period.count}x</p>
+                        <div className="h-1 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${period.pct}%`, background: isTopPeriod ? color : "hsl(var(--muted-foreground))" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <ResponsiveContainer width="100%" height={120}>
-                  <BarChart data={byHour} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                    <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
-                    <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="amount" name="Gastos" radius={[3, 3, 0, 0]}>
-                      {byHour.map((entry: any, i: number) => <Cell key={i} fill={entry.hour === peakHour ? color : `${color}40`} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {byHour?.some((h: any) => h.amount > 0) && (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-muted-foreground">Gastos por hora do dia</p>
+                      {peakHour && <span className="text-xs font-semibold" style={{ color }}>Pico: {peakHour}</span>}
+                    </div>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={byHour} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                        <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
+                        <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="amount" name="Gastos" radius={[3, 3, 0, 0]}>
+                          {byHour.map((entry: any, i: number) => <Cell key={i} fill={entry.hour === peakHour ? color : `${color}40`} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -521,7 +528,6 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             )}
           </div>
         </div>
-      )}
 
       {/* ══ Goals ══ */}
       {goals?.length > 0 && (
