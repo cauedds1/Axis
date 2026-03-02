@@ -137,6 +137,16 @@ class WhatsAppManager {
   resetRetryCount(): void { this.retryCount = 0; }
   getConnectedPhone(): string | null { return this.connectedPhone; }
 
+  unlinkPhone(phone: string): void {
+    const normalized = phone.startsWith("55") ? phone : "55" + phone;
+    for (const [jid, storedPhone] of this.lidCache.entries()) {
+      if (storedPhone === phone || storedPhone === normalized || storedPhone === normalized.slice(2)) {
+        this.lidCache.delete(jid);
+        log(`WhatsApp: JID removido do cache para phone=${phone}`, "whatsapp");
+      }
+    }
+  }
+
   async resolveJidToStoredPhone(jid: string): Promise<string> {
     if (!jid.includes("@lid")) {
       return jid.replace("@s.whatsapp.net", "").replace(/[^0-9]/g, "");

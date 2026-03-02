@@ -2912,7 +2912,11 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         whatsappManager.resolveAndSaveJid(userId, cleaned).catch(() => {});
       }
     } else {
-      await storage.upsertUserProfile(userId, { whatsappPhone: null, whatsappJid: null } as any);
+      const existingProfile = await storage.getUserProfile(userId);
+      const oldPhone = (existingProfile as any)?.whatsappPhone as string | null;
+      await storage.clearWhatsappLink(userId);
+      if (oldPhone) whatsappManager.unlinkPhone(oldPhone);
+      log(`WhatsApp: número desvinculado para userId=${userId} (phone=${oldPhone ?? "none"})`, "whatsapp");
     }
     res.json({ success: true, phone: cleaned });
   });

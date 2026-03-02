@@ -83,6 +83,7 @@ export interface IStorage {
   getRecentAlerts(userId: string, alertType: string, referenceId: string | null, sinceDate: Date): Promise<EmailAlertLog[]>;
   getAllProfiles(): Promise<UserProfile[]>;
   getUserProfileByPhone(phone: string): Promise<(UserProfile & { userId: string }) | undefined>;
+  clearWhatsappLink(userId: string): Promise<void>;
 
   getCreditCards(userId: string): Promise<CreditCard[]>;
   getCreditCard(id: string, userId: string): Promise<CreditCard | undefined>;
@@ -411,6 +412,12 @@ export class DatabaseStorage implements IStorage {
   async getUserProfileByJid(jid: string): Promise<(UserProfile & { userId: string }) | undefined> {
     const [profile] = await db.select().from(userProfile).where(eq(userProfile.whatsappJid, jid));
     return profile as (UserProfile & { userId: string }) | undefined;
+  }
+
+  async clearWhatsappLink(userId: string): Promise<void> {
+    await db.update(userProfile)
+      .set({ whatsappPhone: sql`NULL`, whatsappJid: sql`NULL` })
+      .where(eq(userProfile.userId, userId));
   }
 
   async getScheduleCancellations(userId: string, startDate: string, endDate: string): Promise<ScheduleItemCancellation[]> {
