@@ -809,8 +809,8 @@ class WhatsAppManager {
       type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
       date: t.date ? new Date(t.date) : new Date(),
       source: "pdf" as const,
-      establishment: null,
-      paymentMethod: null,
+      establishment: t.establishment || null,
+      paymentMethod: t.paymentMethod || null,
     }));
 
     const skipped = txns.length - toCreate.length;

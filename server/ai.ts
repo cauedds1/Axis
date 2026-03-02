@@ -57,7 +57,11 @@ trabalho → salário, freelance, renda de serviço prestado, comissão, bônus.
 
 transferência → Pix, TED, DOC, transferência bancária entre pessoas físicas/jurídicas (sem categoria óbvia de uso).
 
-outros → o que genuinamente não se encaixa em nenhuma categoria acima.
+REGRA DE CATEGORIA PERSONALIZADA — MUITO IMPORTANTE:
+Se a transação não se encaixar em nenhuma categoria acima, CRIE um nome de categoria descritivo e específico.
+NUNCA use "outros" enquanto houver qualquer pista sobre o tipo do gasto.
+Exemplos de categorias personalizadas aceitáveis: "pet shop", "eletrônicos", "papelaria", "brinquedos", "construção", "joalheria", "tabacaria", "serviços cartoriais", "taxas bancárias", "seguros", "doações", "impostos", "games", "beleza", "estética", "viagem", "hospedagem", "flores", "presentes", "assinatura".
+"outros" é PROIBIDO a menos que a descrição seja completamente ilegível e sem qualquer contexto identificável.
 
 EXEMPLOS CRÍTICOS:
 - "RC SFP COM DE COMB LTDA" → combustível (COMB = combustível)
@@ -74,6 +78,13 @@ EXEMPLOS CRÍTICOS:
 - "ENDUTEX HOTEIS" / "Airbnb" → lazer (ou moradia se for longa estadia)
 - "Carole Winebar" → lazer (wine bar = bebida/social)
 - "Academia" / "SmartFit" → saúde
+- "Cobasi" / "Petz" → pet shop
+- "Leroy Merlin" / "Telhanorte" → construção
+- "Kalunga" / "Staples" → papelaria
+- "Steam" / "PlayStation Store" → games
+- "Ri Happy" / "Imaginarium" → brinquedos
+- "Seguro Bradesco Auto" → seguros
+- "DETRAN" / "IPVA" → impostos
 `;
 
 export interface IntentResult {
@@ -368,7 +379,9 @@ Se docType = "statement", retorne este JSON:
       "description": "descrição da transação",
       "amount": número positivo,
       "type": "expense" ou "income",
-      "categoryName": "categoria"
+      "categoryName": "categoria conforme regras abaixo — NUNCA use 'outros' se houver qualquer pista",
+      "establishment": "nome do estabelecimento/empresa se identificável no extrato, ou null",
+      "paymentMethod": "pix" | "crédito" | "débito" | "dinheiro" | "boleto" | "transferência" | null
     }
   ]
 }

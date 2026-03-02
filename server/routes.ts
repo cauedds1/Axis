@@ -531,7 +531,8 @@ export async function registerRoutes(
             type: t.type || "expense",
             date: t.date ? new Date(t.date) : new Date(),
             source: "pdf",
-            establishment: null,
+            establishment: t.establishment || null,
+            paymentMethod: t.paymentMethod || null,
             location: null,
           }))
         );
@@ -699,8 +700,8 @@ export async function registerRoutes(
                 type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
                 date: t.date ? new Date(t.date) : new Date(),
                 source: "pdf" as const,
-                establishment: null,
-                paymentMethod: null,
+                establishment: t.establishment || null,
+                paymentMethod: t.paymentMethod || null,
               })));
               imported = toCreate.length;
             }
