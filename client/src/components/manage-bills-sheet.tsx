@@ -80,7 +80,7 @@ function BillFormModal({
         dueDay: parseInt(form.dueDay) || 5,
         categoryName: form.categoryName.trim() || undefined,
         recurrenceType: recurrence.type,
-        recurrenceEndDate: endDate ?? null,
+        recurrenceEndDate: endDate,
         notes: form.notes.trim() || undefined,
       };
       if (isEdit) {

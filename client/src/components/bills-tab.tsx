@@ -421,7 +421,7 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
         dueDay: parseInt(form.dueDay) || 1,
         categoryName: form.categoryName.trim() || undefined,
         recurrenceType: recurrence.type,
-        recurrenceEndDate: endDate ?? null,
+        recurrenceEndDate: endDate,
         notes: form.notes.trim() || undefined,
       });
       return res.json();
