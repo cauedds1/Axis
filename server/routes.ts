@@ -1652,6 +1652,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       if (activeModules) updateData.activeModules = activeModules;
       if (theme) updateData.theme = theme;
       if (aiPersonality) updateData.aiPersonality = aiPersonality;
+      if (profileData?.firstName) updateData.firstName = profileData.firstName;
 
       await db.update(users).set(updateData).where(eq(users.id, userId));
 
