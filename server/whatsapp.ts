@@ -121,6 +121,14 @@ interface PendingBillIdentity {
   expiresAt: number;
 }
 
+interface PendingSavingsDeposit {
+  amount: number;
+  originalGoalName: string | null;
+  goals: Array<{ id: string; title: string }>;
+  awaitingNewGoalName: boolean;
+  expiresAt: number;
+}
+
 class WhatsAppManager {
   private sock: any = null;
   private status: WhatsAppStatus = "disconnected";
@@ -130,6 +138,7 @@ class WhatsAppManager {
   private lidCache: Map<string, string> = new Map();
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
+  private pendingSavingsDeposit: Map<string, PendingSavingsDeposit> = new Map();
   private pgAuthClearAll: (() => Promise<void>) | null = null;
   private lastRegisteredTx: Map<string, {
     id: string;
@@ -475,6 +484,57 @@ class WhatsAppManager {
         }
       }
 
+      // Check for pending savings deposit
+      const pendingSavings = this.pendingSavingsDeposit.get(jid);
+      if (pendingSavings && !imageMsg) {
+        if (Date.now() > pendingSavings.expiresAt) {
+          this.pendingSavingsDeposit.delete(jid);
+        } else {
+          const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+          if (pendingSavings.awaitingNewGoalName) {
+            const goalTitle = text.trim();
+            const newGoal = await storage.createFinancialGoal({
+              userId: profile.userId,
+              title: goalTitle,
+              emoji: "💰",
+              currentAmount: 0 as any,
+            });
+            this.pendingSavingsDeposit.delete(jid);
+            await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount);
+          } else {
+            const goals = pendingSavings.goals;
+            const createNewIdx = goals.length + 1;
+            const chosenNum = parseInt(answer);
+
+            if (!isNaN(chosenNum) && chosenNum >= 1 && chosenNum <= goals.length) {
+              const goal = goals[chosenNum - 1];
+              this.pendingSavingsDeposit.delete(jid);
+              await this.depositIntoGoal(jid, profile.userId, goal.id, goal.title, pendingSavings.amount);
+            } else if (chosenNum === createNewIdx || answer.includes("criar") || answer.includes("nova") || answer.includes("novo") || answer.includes("new")) {
+              if (pendingSavings.originalGoalName) {
+                const newGoal = await storage.createFinancialGoal({
+                  userId: profile.userId,
+                  title: pendingSavings.originalGoalName,
+                  emoji: "💰",
+                  currentAmount: 0 as any,
+                });
+                this.pendingSavingsDeposit.delete(jid);
+                await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount);
+              } else {
+                this.pendingSavingsDeposit.set(jid, { ...pendingSavings, awaitingNewGoalName: true, expiresAt: Date.now() + 10 * 60 * 1000 });
+                await this.sendMessage(jid, "📝 Qual será o nome da nova reserva?");
+              }
+            } else {
+              const lines = goals.map((g, i) => `${i + 1}️⃣ ${g.title}`).join("\n");
+              const fmtAmt = pendingSavings.amount.toFixed(2).replace(".", ",");
+              await this.sendMessage(jid, `⚠️ Opção inválida. Responda com o número da reserva:\n\n${lines}\n➕ ${createNewIdx} - Criar nova reserva "${pendingSavings.originalGoalName || "..."}" com R$ ${fmtAmt}`);
+            }
+          }
+          return;
+        }
+      }
+
       if (imageMsg) {
         await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
         return;
@@ -538,6 +598,11 @@ class WhatsAppManager {
         const typeIcon = finalType === "income" ? "📥" : "💸";
         await this.sendMessage(jid, `✅ *Transação atualizada!*\n${typeIcon} ${finalDesc} — R$ ${Number(finalAmount).toFixed(2).replace(".", ",")} em *${finalCategory}*`);
         log(`WhatsApp: transação editada id=${lastTxContext.id} para userId=${profile.userId}`, "whatsapp");
+        return;
+      }
+
+      if (result.intent === "savings_deposit") {
+        await this.handleSavingsDeposit(jid, profile.userId, Number(result.data.amount), result.data.goalName || null);
         return;
       }
 
@@ -981,6 +1046,93 @@ class WhatsAppManager {
     } catch {
       return "";
     }
+  }
+
+  private async depositIntoGoal(jid: string, userId: string, goalId: string, goalTitle: string, amount: number): Promise<void> {
+    const allGoals = await storage.getFinancialGoals(userId);
+    const goal = allGoals.find(g => g.id === goalId);
+    const currentAmount = goal ? (Number(goal.currentAmount) || 0) : 0;
+    const newAmount = currentAmount + amount;
+    await storage.updateFinancialGoal(goalId, userId, { currentAmount: newAmount as any });
+    await storage.createTransaction({
+      userId,
+      type: "expense",
+      amount: amount as any,
+      description: `Depósito em ${goalTitle}`,
+      categoryName: "reserva",
+      date: new Date(),
+      source: "whatsapp",
+      paymentMethod: null,
+      establishment: null,
+    });
+    const fmtAmt = amount.toFixed(2).replace(".", ",");
+    const fmtTotal = newAmount.toFixed(2).replace(".", ",");
+    await this.sendMessage(jid, `✅ *R$ ${fmtAmt} guardado em ${goalTitle}!*\n💰 Total na reserva: R$ ${fmtTotal}`);
+    log(`WhatsApp: depósito de R$ ${amount} em goal="${goalTitle}" userId=${userId}`, "whatsapp");
+  }
+
+  private async handleSavingsDeposit(jid: string, userId: string, amount: number, goalName: string | null): Promise<void> {
+    if (!amount || isNaN(amount) || amount <= 0) {
+      await this.sendMessage(jid, "Não entendi o valor. Qual é o valor que você quer guardar?");
+      return;
+    }
+
+    const allGoals = await storage.getFinancialGoals(userId);
+    const activeGoals = allGoals.filter(g => g.status === "active" || !g.status);
+
+    // Try fuzzy match if goalName was provided
+    if (goalName) {
+      const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const target = norm(goalName);
+      const matched = activeGoals.find(g => {
+        const t = norm(g.title);
+        return t === target || t.includes(target) || target.includes(t);
+      });
+      if (matched) {
+        await this.depositIntoGoal(jid, userId, matched.id, matched.title, amount);
+        return;
+      }
+    }
+
+    const fmtAmt = amount.toFixed(2).replace(".", ",");
+
+    // No match or no goalName — show menu
+    if (activeGoals.length === 0) {
+      // No existing goals — ask to create new one
+      if (goalName) {
+        const newGoal = await storage.createFinancialGoal({
+          userId,
+          title: goalName,
+          emoji: "💰",
+          currentAmount: 0 as any,
+        });
+        await this.depositIntoGoal(jid, userId, newGoal.id, newGoal.title, amount);
+      } else {
+        this.pendingSavingsDeposit.set(jid, {
+          amount,
+          originalGoalName: null,
+          goals: [],
+          awaitingNewGoalName: true,
+          expiresAt: Date.now() + 10 * 60 * 1000,
+        });
+        await this.sendMessage(jid, `📝 Você ainda não tem reservas. Qual será o nome da reserva onde guardar R$ ${fmtAmt}?`);
+      }
+      return;
+    }
+
+    const lines = activeGoals.map((g, i) => `${i + 1}️⃣ ${g.title}`).join("\n");
+    const createIdx = activeGoals.length + 1;
+    const notFoundMsg = goalName ? `🔍 Reserva *"${goalName}"* não encontrada.\n\n` : "";
+    const menu = `${notFoundMsg}Em qual reserva deseja guardar *R$ ${fmtAmt}*?\n\n${lines}\n➕ ${createIdx} - Criar nova reserva${goalName ? ` "${goalName}"` : ""}`;
+
+    this.pendingSavingsDeposit.set(jid, {
+      amount,
+      originalGoalName: goalName,
+      goals: activeGoals.map(g => ({ id: g.id, title: g.title })),
+      awaitingNewGoalName: false,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+    await this.sendMessage(jid, menu);
   }
 
   private async buildReply(result: IntentResult, userId: string, jid: string): Promise<string> {

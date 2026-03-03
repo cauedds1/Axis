@@ -88,7 +88,7 @@ EXEMPLOS CRÍTICOS:
 `;
 
 export interface IntentResult {
-  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last";
+  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last" | "savings_deposit";
   data: any;
   rawText: string;
 }
@@ -179,6 +179,7 @@ INTENÇÕES POSSÍVEIS:
 6. "habit" — O usuário quer criar um HÁBITO. Palavras: "quero começar a", "hábito de", "todo dia", etc.
 7. "chat" — Qualquer outra coisa que não se encaixa acima — uma pergunta, reflexão, ou conversa.
 8. "edit_last" — O usuário está CORRIGINDO ou AJUSTANDO a última transação registrada. Use SOMENTE quando existir uma "ÚLTIMA TRANSAÇÃO REGISTRADA" no contexto acima E a mensagem for claramente uma correção, não uma nova transação. Indicadores: menciona um valor diferente sem contexto de nova compra ("foi 50", "era 30 reais", "na verdade foi"), corrige o tipo ("era uma notinha de posto", "foi abastecimento"), corrige o estabelecimento/descrição ("era na padaria", "foi no mercado"), usa palavras como "editar", "corrigir", "muda", "altera", "na verdade", "não foi", "era". Mensagens curtas como "foi 50 reais" ou "era combustível" sem contexto de nova compra → "edit_last".
+9. "savings_deposit" — O usuário guardou/depositou dinheiro em uma reserva, caixinha ou meta de economia. Palavras: "guardei", "coloquei na caixinha", "joguei na reserva", "depositei na reserva", "botei de lado", "separei", "poupi", "economizei X para", "coloquei na reserva". Exemplos: "guardei 200 na caixinha viagem", "botei 500 na reserva do carro", "coloquei 100 na caixinha emergência". REGRA: se for claramente uma ação de guardar/depositar em reserva própria (não pagar conta/boleto), use "savings_deposit".
 
 RESPONDA EM JSON:
 
@@ -246,6 +247,13 @@ Para edit_last (inclua APENAS os campos que o usuário quer alterar):
   "establishment": "novo estabelecimento" (se mencionado),
   "date": "YYYY-MM-DD" (nova data, se mencionada),
   "type": "expense" ou "income" (se mudou o tipo)
+}
+
+Para savings_deposit:
+{
+  "intent": "savings_deposit",
+  "amount": número (valor em reais),
+  "goalName": "nome da reserva/caixinha mencionada, ou null se não mencionada"
 }
 
 ${CATEGORY_RULES}
