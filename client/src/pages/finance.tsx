@@ -15,6 +15,7 @@ import { CaptureButton } from "@/components/capture-button";
 import { BillsTab } from "@/components/bills-tab";
 import { ManageBillsSheet } from "@/components/manage-bills-sheet";
 import { CreditCardsTab } from "@/components/credit-cards-tab";
+import { EditTransactionDialog } from "@/components/edit-transaction-dialog";
 import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { Transaction, FinancialGoal } from "@shared/schema";
 
@@ -117,6 +118,7 @@ export default function Finance() {
   const [balanceInput, setBalanceInput] = useState("");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txToDelete, setTxToDelete] = useState<string | null>(null);
+  const [editingTx, setEditingTx] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -1551,6 +1553,15 @@ export default function Finance() {
               </div>
 
               <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={() => { setEditingTx(tx); setSelectedTx(null); }}
+                data-testid="button-edit-tx-detail"
+              >
+                <Pencil className="h-4 w-4 mr-2" /> Editar transação
+              </Button>
+              <Button
                 variant="destructive"
                 size="sm"
                 className="w-full mt-2"
@@ -1592,6 +1603,8 @@ export default function Finance() {
       </AlertDialog>
 
       <ManageBillsSheet open={showManageBills} onClose={() => setShowManageBills(false)} />
+
+      <EditTransactionDialog transaction={editingTx} onClose={() => setEditingTx(null)} />
     </div>
   );
 }

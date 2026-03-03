@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EditTransactionDialog } from "@/components/edit-transaction-dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +97,9 @@ function CardDetailSheet({
 
   // Tabs: overview, purchase, history
   const [tab, setTab] = useState<"overview" | "purchase" | "invoice">("overview");
+
+  // Edit transaction
+  const [editingTx, setEditingTx] = useState<any>(null);
 
   // Edit mode
   const [editing, setEditing] = useState(false);
@@ -465,6 +469,14 @@ function CardDetailSheet({
                           </span>
                         )}
                         <span className="text-sm font-bold text-red-400">R$ {fmtBRL(tx.amount)}</span>
+                        <button
+                          onClick={() => setEditingTx(tx)}
+                          className="p-1 rounded opacity-30 hover:opacity-80 transition-opacity"
+                          data-testid={`button-edit-card-tx-${tx.id}`}
+                          title="Editar transação"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-white" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -712,6 +724,7 @@ function CardDetailSheet({
           </div>
         )}
       </div>
+      <EditTransactionDialog transaction={editingTx} onClose={() => setEditingTx(null)} />
     </div>
   );
 }

@@ -1039,6 +1039,26 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/transactions/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { amount, description, categoryName, establishment, date, type, paymentMethod, creditCardId } = req.body;
+      const fields: Record<string, any> = {};
+      if (amount !== undefined) fields.amount = Number(amount);
+      if (description !== undefined) fields.description = description;
+      if (categoryName !== undefined) fields.categoryName = categoryName;
+      if (establishment !== undefined) fields.establishment = establishment || null;
+      if (date !== undefined) fields.date = new Date(date);
+      if (type !== undefined) fields.type = type;
+      if (paymentMethod !== undefined) fields.paymentMethod = paymentMethod || null;
+      if (creditCardId !== undefined) fields.creditCardId = creditCardId || null;
+      const updated = await storage.updateTransaction(paramId(req), userId, fields);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/transactions/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
