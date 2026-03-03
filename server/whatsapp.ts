@@ -885,7 +885,7 @@ class WhatsAppManager {
       return;
     }
 
-    await this.sendMessage(jid, "📄 Analisando extrato...");
+    await this.sendMessage(jid, "📄 Analisando extrato... Isso pode levar alguns segundos para arquivos com muitas páginas.");
 
     let buffer: Buffer;
     try {

@@ -437,6 +437,79 @@ export async function processReceiptPhoto(imageBase64: string, userId: string, u
   return result.receipts[0] ?? {};
 }
 
+function chunkStatementText(text: string, maxChunkSize = 8000): string[] {
+  if (text.length <= maxChunkSize) return [text];
+
+  const datePattern = /\n(?=\d{2} [A-Z]{3} \d{4})/g;
+  const splitPoints: number[] = [0];
+  let match: RegExpExecArray | null;
+  while ((match = datePattern.exec(text)) !== null) {
+    splitPoints.push(match.index);
+  }
+  splitPoints.push(text.length);
+
+  const chunks: string[] = [];
+  let chunkStart = 0;
+
+  for (let i = 1; i < splitPoints.length; i++) {
+    const segmentEnd = splitPoints[i];
+    if (segmentEnd - chunkStart >= maxChunkSize || i === splitPoints.length - 1) {
+      chunks.push(text.slice(chunkStart, segmentEnd).trim());
+      chunkStart = segmentEnd;
+    }
+  }
+
+  if (chunkStart < text.length) {
+    const remaining = text.slice(chunkStart).trim();
+    if (remaining.length > 0) chunks.push(remaining);
+  }
+
+  return chunks.filter(c => c.length > 10);
+}
+
+async function extractChunkTransactions(openai: OpenAI, chunk: string): Promise<any[]> {
+  const systemPrompt = `Você é o AXIS, assistente financeiro brasileiro. Extraia TODAS as transações financeiras do trecho de extrato bancário abaixo e retorne um JSON com o seguinte formato:
+
+{
+  "transactions": [
+    {
+      "date": "YYYY-MM-DD",
+      "description": "descrição da transação",
+      "amount": número positivo,
+      "type": "expense" ou "income",
+      "categoryName": "categoria — NUNCA use 'outros' se houver pista",
+      "establishment": "nome do estabelecimento/empresa ou null",
+      "paymentMethod": "pix" | "crédito" | "débito" | "dinheiro" | "boleto" | "transferência" | null
+    }
+  ]
+}
+
+REGRAS:
+- Débitos/saídas/compras = "expense"; créditos/entradas/transferências recebidas = "income"
+- Inclua TODAS as transações do trecho, sem omitir nenhuma
+- NÃO inclua linhas de totais ou saldos (ex: "Total de entradas", "Saldo final")
+- Se a data estiver no formato "DD MMM YYYY" (ex: "01 DEZ 2025"), converta para YYYY-MM-DD
+- Nunca invente dados; se não houver transações no trecho, retorne {"transactions": []}
+
+${CATEGORY_RULES}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: chunk }
+      ],
+    });
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{"transactions":[]}');
+    return Array.isArray(parsed.transactions) ? parsed.transactions : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function processPDFExtract(pdfInput: Buffer | string, userId: string): Promise<any> {
   const openai = getOpenAIClient();
 
@@ -456,76 +529,60 @@ export async function processPDFExtract(pdfInput: Buffer | string, userId: strin
     return { docType: "statement", transactions: [] };
   }
 
-  const response = await openai.chat.completions.create({
+  const previewText = pdfText.slice(0, 2000);
+  const classifyResponse = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     response_format: { type: "json_object" },
+    max_tokens: 1024,
     messages: [
       {
         role: "system",
-        content: `Você é o AXIS, assistente financeiro brasileiro. Analise o documento abaixo e retorne um JSON.
+        content: `Analise o início do documento e classifique o tipo. Retorne JSON:
 
-PASSO 1 — CLASSIFIQUE o tipo do documento:
-- "statement" → extrato bancário com MÚLTIPLAS transações de débito/crédito (ex: extrato Nubank, Itaú, fatura de cartão)
-- "bill" → conta/nota fiscal/boleto/NFS-e/fatura de serviço — um ÚNICO documento de cobrança ou prestação de serviço
+Se for extrato bancário com múltiplas transações:
+{"docType":"statement","bankName":"nome do banco ou null","period":"período ou null"}
 
-PASSO 2 — EXTRAIA os dados de acordo com o tipo:
+Se for conta/boleto/NFS-e/nota fiscal (documento de cobrança único):
+{"docType":"bill","title":"nome","description":"desc","amount":0,"type":"expense","dueDate":"YYYY-MM-DD","dueDay":1,"categoryName":"cat","issuer":"emissor","issuerCnpj":"cnpj ou null","recipient":"dest","recipientCnpj":"cnpj ou null","paymentInfo":"dados pagamento"}
 
-Se docType = "statement", retorne este JSON:
-{
-  "docType": "statement",
-  "bankName": "nome do banco se identificável",
-  "period": "período do extrato se identificável",
-  "transactions": [
-    {
-      "date": "YYYY-MM-DD",
-      "description": "descrição da transação",
-      "amount": número positivo,
-      "type": "expense" ou "income",
-      "categoryName": "categoria conforme regras abaixo — NUNCA use 'outros' se houver qualquer pista",
-      "establishment": "nome do estabelecimento/empresa se identificável no extrato, ou null",
-      "paymentMethod": "pix" | "crédito" | "débito" | "dinheiro" | "boleto" | "transferência" | null
-    }
-  ]
-}
-
-Se docType = "bill", retorne este JSON:
-{
-  "docType": "bill",
-  "title": "nome curto e descritivo (ex: 'TRUSTCOTA — Serviços administrativos')",
-  "description": "descrição detalhada do serviço ou produto cobrado, conforme consta no documento",
-  "amount": número positivo (valor líquido/total a pagar ou receber),
-  "type": "expense" se alguém precisa PAGAR esta conta, ou "income" se alguém vai RECEBER,
-  "dueDate": "YYYY-MM-DD" (data de vencimento; se não houver, use data de emissão)",
-  "dueDay": número 1-31 (dia do mês do vencimento),
-  "categoryName": "categoria mais adequada",
-  "issuer": "nome completo de quem EMITIU o documento (prestador/emissor)",
-  "issuerCnpj": "CNPJ ou CPF do emissor, se disponível",
-  "recipient": "nome completo de quem é o DESTINATÁRIO/TOMADOR (quem vai pagar ou receber)",
-  "recipientCnpj": "CNPJ ou CPF do destinatário, se disponível",
-  "paymentInfo": "dados para pagamento: chave Pix, banco, agência, conta, favorecido, código de barras — tudo que encontrar"
-}
-
-REGRAS PARA CLASSIFICAÇÃO:
-- NFS-e (Nota Fiscal de Serviço Eletrônica) → SEMPRE "bill"
-- Boleto bancário → SEMPRE "bill"
-- Fatura de serviço (internet, telefone, energia) → SEMPRE "bill"
-- Nota fiscal de produto avulso → SEMPRE "bill"
-- Extrato com lista de transações de débito e crédito → SEMPRE "statement"
-
-REGRAS GERAIS:
-- Débitos/saídas são "expense", créditos/entradas são "income"
-- Nunca invente dados que não estão no documento
-- Se não conseguir classificar, use docType "statement" com transactions vazio
-
-${CATEGORY_RULES}`
+REGRAS:
+- NFS-e, boleto, fatura de serviço único → "bill"
+- Extrato com lista de movimentações → "statement"
+- Nunca invente dados`
       },
-      { role: "user", content: pdfText }
+      { role: "user", content: previewText }
     ],
   });
 
-  const result = JSON.parse(response.choices[0]?.message?.content || '{"docType":"statement","transactions":[]}');
-  if (!result.docType) result.docType = "statement";
-  return result;
+  const classified = JSON.parse(classifyResponse.choices[0]?.message?.content || '{"docType":"statement"}');
+  if (!classified.docType) classified.docType = "statement";
+
+  if (classified.docType === "bill") {
+    return classified;
+  }
+
+  const chunks = chunkStatementText(pdfText, 8000);
+
+  const chunkResults = await Promise.all(chunks.map(chunk => extractChunkTransactions(openai, chunk)));
+
+  const seen = new Set<string>();
+  const allTransactions: any[] = [];
+  for (const txns of chunkResults) {
+    for (const t of txns) {
+      const key = `${t.date}|${t.amount}|${(t.description || "").slice(0, 30).toLowerCase()}|${t.type}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        allTransactions.push(t);
+      }
+    }
+  }
+
+  return {
+    docType: "statement",
+    bankName: classified.bankName || null,
+    period: classified.period || null,
+    transactions: allTransactions,
+  };
 }
 
 export async function chatWithContext(message: string, userId: string, executedActionContext?: string): Promise<string> {
