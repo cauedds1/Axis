@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Component } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { ArrowRight, ArrowLeft, Loader2, CheckCircle2, Plus, X, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
@@ -7,6 +7,47 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme, type AxisTheme } from "@/components/theme-provider";
+
+class StepErrorBoundary extends Component<
+  { children: React.ReactNode; onError?: (err: Error) => void },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error) {
+    console.error("StepErrorBoundary caught:", error);
+    this.props.onError?.(error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="py-6 space-y-3">
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>Erro ao carregar esta etapa.</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}
+          >
+            Tentar novamente
+          </button>
+          {this.state.error && (
+            <details style={{ textAlign: "left" }}>
+              <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>Detalhes</summary>
+              <code style={{ display: "block", marginTop: 6, fontSize: 9, color: "#FF6B6B", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 8, background: "rgba(255,107,107,0.06)", borderRadius: 6, maxHeight: 120, overflow: "auto" }}>
+                {this.state.error.message}{"\n"}{this.state.error.stack?.slice(0, 400)}
+              </code>
+            </details>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const CORAL = "#FF6B6B";
 const GOLD = "#FFB347";
@@ -532,7 +573,7 @@ export default function Onboarding() {
                     >
                       <Slider
                         value={[disciplineScore]}
-                        onValueChange={([v]) => setDisciplineScore(v)}
+                        onValueChange={(vals) => { if (vals.length > 0 && typeof vals[0] === "number") setDisciplineScore(vals[0]); }}
                         min={1}
                         max={10}
                         step={1}
@@ -550,41 +591,43 @@ export default function Onboarding() {
 
               {/* ── STEP 3: Personalidade + Tema ── */}
               {step === 3 && (
-                <>
-                  <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
-                    Como prefere que o AXIS fale com você?
-                  </h2>
-                  <p className="text-sm text-white/35 mb-6 leading-relaxed">Define o tom de todas as respostas e sugestões do assistente</p>
+                <StepErrorBoundary>
+                  <>
+                    <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
+                      Como prefere que o AXIS fale com você?
+                    </h2>
+                    <p className="text-sm text-white/35 mb-6 leading-relaxed">Define o tom de todas as respostas e sugestões do assistente</p>
 
-                  <div className="grid grid-cols-2 gap-2.5 mb-8">
-                    {personalityOptions.map((p) => {
-                      const isSelected = aiPersonality === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => setAiPersonality(p.id)}
-                          className="text-left px-4 py-4 rounded-xl border transition-all duration-200"
-                          style={{
-                            background: isSelected ? `${LAVANDA}10` : "rgba(255,255,255,0.03)",
-                            borderColor: isSelected ? `${LAVANDA}50` : "rgba(255,255,255,0.07)",
-                          }}
-                          data-testid={`button-personality-${p.id}`}
-                        >
-                          <div className="text-lg mb-1.5">{p.icon}</div>
-                          <span className="text-sm font-semibold text-white/85 block">{p.label}</span>
-                          <p className="text-xs text-white/35 mt-0.5">{p.desc}</p>
-                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5 mt-2" style={{ color: LAVANDA }} />}
-                        </button>
-                      );
-                    })}
-                  </div>
+                    <div className="grid grid-cols-2 gap-2.5 mb-8">
+                      {personalityOptions.map((p) => {
+                        const isSelected = aiPersonality === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => setAiPersonality(p.id)}
+                            className="text-left px-4 py-4 rounded-xl border transition-all duration-200"
+                            style={{
+                              background: isSelected ? `${LAVANDA}10` : "rgba(255,255,255,0.03)",
+                              borderColor: isSelected ? `${LAVANDA}50` : "rgba(255,255,255,0.07)",
+                            }}
+                            data-testid={`button-personality-${p.id}`}
+                          >
+                            <div className="text-lg mb-1.5">{p.icon}</div>
+                            <span className="text-sm font-semibold text-white/85 block">{p.label}</span>
+                            <p className="text-xs text-white/35 mt-0.5">{p.desc}</p>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 mt-2" style={{ color: LAVANDA }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <p className="text-sm text-white/35 mb-4">Escolha seu visual</p>
-                  <ThemeSelector
-                    value={theme}
-                    onChange={(t) => setThemeVal(t)}
-                  />
-                </>
+                    <p className="text-sm text-white/35 mb-4">Escolha seu visual</p>
+                    <ThemeSelector
+                      value={theme}
+                      onChange={(t) => setThemeVal(t)}
+                    />
+                  </>
+                </StepErrorBoundary>
               )}
             </motion.div>
           </AnimatePresence>

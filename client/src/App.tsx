@@ -15,14 +15,14 @@ import { Loader2 } from "lucide-react";
 
 class AuthErrorBoundary extends Component<
   { children: React.ReactNode },
-  { hasError: boolean }
+  { hasError: boolean; error: Error | null }
 > {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
   }
   componentDidCatch(error: Error) {
     console.error("AuthErrorBoundary caught:", error);
@@ -30,15 +30,23 @@ class AuthErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-          <div className="text-center space-y-4">
-            <p className="text-muted-foreground">Algo deu errado. Tente recarregar a página.</p>
+        <div className="flex items-center justify-center min-h-screen" style={{ background: "#060608" }}>
+          <div className="text-center space-y-4 px-6 max-w-sm w-full">
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Algo deu errado. Tente recarregar a página.</p>
             <button
-              onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm"
+              onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+              style={{ background: "#7A9E8A", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, cursor: "pointer" }}
             >
               Recarregar
             </button>
+            {this.state.error && (
+              <details style={{ textAlign: "left", marginTop: 12 }}>
+                <summary style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", cursor: "pointer" }}>Ver detalhes do erro</summary>
+                <code style={{ display: "block", marginTop: 8, fontSize: 10, color: "#FF6B6B", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 10, background: "rgba(255,107,107,0.06)", borderRadius: 8, border: "1px solid rgba(255,107,107,0.15)", maxHeight: 180, overflow: "auto" }}>
+                  {this.state.error.message}{"\n\n"}{this.state.error.stack?.slice(0, 600)}
+                </code>
+              </details>
+            )}
           </div>
         </div>
       );
