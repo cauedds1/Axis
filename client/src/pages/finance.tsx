@@ -351,8 +351,10 @@ export default function Finance() {
   const totalExpenses = filteredTx.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
   const totalIncome = filteredTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalCardExpenses = filteredTx.filter(t => t.type === "expense" && !!(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
-  const allExpenses = transactions.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
-  const allIncome = transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const today = new Date();
+  const pastTransactions = transactions.filter(t => t.date && new Date(t.date) <= today);
+  const allExpenses = pastTransactions.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
+  const allIncome = pastTransactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
 
   function handleSubmitTx(e: React.FormEvent) {
     e.preventDefault();

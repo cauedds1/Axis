@@ -215,7 +215,7 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
     const [transactions, recurringIncomes, allTimeTx, userCards] = await Promise.all([
       storage.getTransactions(userId, { startDate: thirtyDaysAgo, endDate: now }),
       storage.getRecurringIncomes(userId),
-      storage.getTransactions(userId),
+      storage.getTransactions(userId, { endDate: now }),
       storage.getCreditCards(userId),
     ]);
 
@@ -836,7 +836,7 @@ export async function registerRoutes(
       autoCloseInvoices(userId).catch(() => {});
       const filters: any = {};
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
-      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
+      filters.endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
       if (req.query.type) filters.type = req.query.type as string;
       if (req.query.categoryId) filters.categoryId = req.query.categoryId as string;
       if (req.query.creditCardId) filters.creditCardId = req.query.creditCardId as string;
@@ -2105,7 +2105,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       if (activeModules.includes("finance") || activeModules.length === 0) {
         const [monthTx, allTx, profile, userCards] = await Promise.all([
           storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfDay }),
-          storage.getTransactions(userId),
+          storage.getTransactions(userId, { endDate: endOfDay }),
           storage.getUserProfile(userId),
           storage.getCreditCards(userId),
         ]);
