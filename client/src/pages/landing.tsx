@@ -331,8 +331,8 @@ function WhatsAppSimulation() {
                       <Volume2 className="w-3.5 h-3.5 text-green-400" />
                     </div>
                     <div className="flex gap-0.5">
-                      {[...Array(18)].map((_, j) => (
-                        <div key={j} className="w-0.5 rounded-full bg-green-400/60" style={{ height: `${4 + Math.sin(j * 0.8) * 8 + Math.random() * 6}px` }} />
+                      {[6, 10, 8, 14, 7, 12, 9, 16, 5, 11, 8, 13, 6, 15, 7, 10, 12, 8].map((h, j) => (
+                        <div key={j} className="w-0.5 rounded-full bg-green-400/60" style={{ height: `${h}px` }} />
                       ))}
                     </div>
                     <span className="text-[10px] text-white/40 ml-1">0:03</span>
@@ -602,7 +602,7 @@ function StepIllustration({ type, LP }: { type: "voice" | "ai" | "done"; LP: Lan
   if (type === "voice") {
     return (
       <svg viewBox="0 0 60 60" className="w-14 h-14">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {([14, 30, 22, 38, 18] as const).map((h, i) => (
           <motion.rect
             key={i}
             x={8 + i * 10}
@@ -611,7 +611,7 @@ function StepIllustration({ type, LP }: { type: "voice" | "ai" | "done"; LP: Lan
             rx={2}
             fill={LP.primary}
             initial={{ height: 20 }}
-            animate={{ height: [20, 10 + Math.random() * 30, 20] }}
+            animate={{ height: [20, h, 20] }}
             transition={{ duration: 0.8 + i * 0.1, repeat: Infinity, ease: "easeInOut" }}
           />
         ))}
@@ -760,7 +760,7 @@ export default function Landing() {
 
   return (
     <LPContext.Provider value={LP}>
-    <div className="min-h-screen landing-bg text-white overflow-hidden relative" style={cssVars}>
+    <div className="min-h-screen landing-bg text-white overflow-x-hidden relative" style={cssVars}>
       <div className="landing-grain" />
       <div className="landing-grid-dots" />
 

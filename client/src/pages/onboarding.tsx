@@ -157,6 +157,12 @@ export default function Onboarding() {
   };
 
   const goToDashboard = () => {
+    queryClient.setQueryData(["/api/auth/user"], (old: any) =>
+      old ? { ...old, onboardingCompleted: true } : old
+    );
+    queryClient.setQueryData(["/api/user/profile"], (old: any) =>
+      old?.user ? { ...old, user: { ...old.user, onboardingCompleted: true } } : old
+    );
     setLocation("/");
     queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
     queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

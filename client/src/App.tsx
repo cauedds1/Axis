@@ -1,3 +1,4 @@
+import { Component } from "react";
 import { Switch, Route } from "wouter";
 import { useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -11,6 +12,40 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+
+class AuthErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.error("AuthErrorBoundary caught:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Algo deu errado. Tente recarregar a página.</p>
+            <button
+              onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm"
+            >
+              Recarregar
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 import Landing from "@/pages/landing";
 import AuthPage from "@/pages/auth-page";
@@ -45,7 +80,10 @@ function AuthenticatedLayout() {
     queryKey: ["/api/user/profile"],
   });
 
-  const onboardingCompleted = profileData?.user?.onboardingCompleted ?? user?.onboardingCompleted;
+  const onboardingCompleted =
+    profileData?.user?.onboardingCompleted === true || user?.onboardingCompleted === true
+      ? true
+      : (profileData?.user?.onboardingCompleted ?? user?.onboardingCompleted);
 
   const gatedPaths = ["/onboarding", "/welcome"];
 
@@ -152,7 +190,7 @@ function AppRouter() {
     );
   }
 
-  return <AuthenticatedLayout />;
+  return <AuthErrorBoundary><AuthenticatedLayout /></AuthErrorBoundary>;
 }
 
 function App() {
