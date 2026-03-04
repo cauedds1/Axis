@@ -33,6 +33,21 @@ function fmtBRL(value: number): string {
   return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtTxDate(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const day = d.getDate();
+  const month = d.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
+  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
+  if (hasTime) {
+    const h = String(d.getHours()).padStart(2, "0");
+    const m = String(d.getMinutes()).padStart(2, "0");
+    return `${day} ${month} · ${h}:${m}`;
+  }
+  return `${day} ${month}`;
+}
+
 function paymentLabel(method: string | null | undefined): string {
   if (!method) return "";
   const found = PAYMENT_METHODS.find(m => m.value === method);
@@ -347,7 +362,7 @@ export default function Finance() {
   const filteredTx = transactions.filter(t => {
     const d = new Date(t.date!);
     return d >= txDateRange.start && d <= txDateRange.end;
-  });
+  }).sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
   const totalExpenses = filteredTx.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
   const totalIncome = filteredTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalCardExpenses = filteredTx.filter(t => t.type === "expense" && !!(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
@@ -861,9 +876,12 @@ export default function Finance() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
-                            {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            {tx.date && <span className="text-xs text-muted-foreground leading-tight">{fmtTxDate(tx.date)}</span>}
+                            <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
+                              {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
+                            </span>
+                          </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setTxToDelete(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
