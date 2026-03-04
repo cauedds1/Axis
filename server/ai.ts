@@ -592,10 +592,11 @@ export async function chatWithContext(message: string, userId: string, executedA
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const sevenDaysAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  const [profile, context, allTransactions, tasks, habitsData, schedule, goals, billsData, userRows, userCards] = await Promise.all([
+  const [profile, context, allTransactions, allTimeTx, tasks, habitsData, schedule, goals, billsData, userRows, userCards] = await Promise.all([
     storage.getUserProfile(userId),
     storage.getUserContext(userId),
     storage.getTransactions(userId, { startDate: threeMonthsAgo }),
+    storage.getTransactions(userId),
     storage.getPersonalTasks(userId),
     storage.getHabits(userId),
     storage.getScheduleItems(userId, { startDate: new Date(), endDate: sevenDaysAhead }),
@@ -613,14 +614,18 @@ export async function chatWithContext(message: string, userId: string, executedA
 
   // ─── FINANCIALS ─────────────────────────────────────────────────────────────
   const currentMonthTx = allTransactions.filter(t => new Date(t.date) >= curMonthStart);
-  const totalExpenses = currentMonthTx.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+  // Exclude credit card transactions from expenses — same logic as the dashboard
+  const totalExpenses = currentMonthTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((sum, t) => sum + t.amount, 0);
   const totalIncome = currentMonthTx.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-  const balance = totalIncome - totalExpenses;
+  // Real bank balance: initialBalance + all-time income - all-time non-credit expenses (mirrors dashboard)
+  const allTimeIncome = allTimeTx.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+  const allTimeExpenses = allTimeTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((sum, t) => sum + t.amount, 0);
+  const balance = (profile?.initialBalance ?? 0) + allTimeIncome - allTimeExpenses;
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
   const spendingPct = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
 
   const expensesByCategory: Record<string, number> = {};
-  currentMonthTx.filter(t => t.type === "expense").forEach(t => {
+  currentMonthTx.filter(t => t.type === "expense" && !t.creditCardId).forEach(t => {
     const cat = t.categoryName || "outros";
     expensesByCategory[cat] = (expensesByCategory[cat] || 0) + t.amount;
   });
@@ -635,7 +640,7 @@ export async function chatWithContext(message: string, userId: string, executedA
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     if (!monthlyHistory[key]) monthlyHistory[key] = { income: 0, expenses: 0 };
     if (t.type === "income") monthlyHistory[key].income += t.amount;
-    else monthlyHistory[key].expenses += t.amount;
+    else if (!t.creditCardId) monthlyHistory[key].expenses += t.amount;
   });
 
   const recentTx = allTransactions.slice(-10).reverse();
