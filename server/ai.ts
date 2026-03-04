@@ -596,7 +596,7 @@ export async function chatWithContext(message: string, userId: string, executedA
     storage.getUserProfile(userId),
     storage.getUserContext(userId),
     storage.getTransactions(userId, { startDate: threeMonthsAgo }),
-    storage.getTransactions(userId),
+    storage.getTransactions(userId, { endDate: new Date() }),
     storage.getPersonalTasks(userId),
     storage.getHabits(userId),
     storage.getScheduleItems(userId, { startDate: new Date(), endDate: sevenDaysAhead }),
