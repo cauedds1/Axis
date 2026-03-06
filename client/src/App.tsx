@@ -68,6 +68,8 @@ import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import Reports from "@/pages/reports";
+import BusinessLanding from "@/pages/business-landing";
+import { BusinessLayout } from "@/components/BusinessLayout";
 
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
@@ -149,8 +151,8 @@ function AppRouter() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      const publicPaths = ["/", "/auth", "/privacy"];
-      if (!publicPaths.includes(location)) {
+      const publicPaths = ["/", "/auth", "/privacy", "/business"];
+      if (!publicPaths.includes(location) && !location.startsWith("/business")) {
         setLocation("/");
       }
     }
@@ -181,6 +183,7 @@ function AppRouter() {
             )}
           </Route>
           <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/business" component={BusinessLanding} />
           <Route path="/">
             {() => (
               <motion.div
@@ -198,7 +201,14 @@ function AppRouter() {
     );
   }
 
-  return <AuthErrorBoundary><AuthenticatedLayout /></AuthErrorBoundary>;
+  return (
+    <AuthErrorBoundary>
+      <Switch>
+        <Route path="/business/:rest*" component={BusinessLayout} />
+        <Route component={AuthenticatedLayout} />
+      </Switch>
+    </AuthErrorBoundary>
+  );
 }
 
 function App() {

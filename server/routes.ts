@@ -11,6 +11,7 @@ import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { whatsappManager } from "./whatsapp";
+import { generateExpenseExcel } from "./business-reports";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -2946,6 +2947,158 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       log(`WhatsApp: número desvinculado para userId=${userId} (phone=${oldPhone ?? "none"})`, "whatsapp");
     }
     res.json({ success: true, phone: cleaned });
+  });
+
+  // ── AXIS BUSINESS ─────────────────────────────────────────────────────
+
+  app.post("/api/business/organizations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const schema = z.object({ name: z.string().min(1), cnpj: z.string().optional() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Nome da empresa é obrigatório" });
+      const org = await storage.createOrganization({ ...parsed.data, adminUserId: userId });
+      await storage.addOrganizationMember({ organizationId: org.id, userId, role: "admin" });
+      res.json(org);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/business/organizations", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const orgs = await storage.getUserOrganizations(userId);
+      res.json(orgs);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/business/organizations/:orgId/members", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode convidar membros" });
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "E-mail obrigatório" });
+      const [invitedUser] = await db.select().from(users).where(eq(users.email, email));
+      if (!invitedUser) return res.status(404).json({ message: "Usuário com esse e-mail não encontrado no AXIS" });
+      const existing = (await storage.getOrganizationMembers(orgId)).find(m => m.userId === invitedUser.id);
+      if (existing) return res.status(409).json({ message: "Colaborador já faz parte da empresa" });
+      const member = await storage.addOrganizationMember({ organizationId: orgId, userId: invitedUser.id, role: "member" });
+      res.json(member);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/business/organizations/:orgId/members", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const members = await storage.getOrganizationMembers(orgId);
+      res.json(members);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/business/organizations/:orgId/expenses/export-excel", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const org = await storage.getOrganizationById(orgId);
+      const filters: any = {};
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
+      if (req.query.userId) filters.userId = req.query.userId as string;
+      if (req.query.status) filters.status = req.query.status as string;
+      const expenses = await storage.getBusinessExpenses(orgId, filters);
+      const buffer = await generateExpenseExcel(expenses, org?.name ?? "Empresa", {
+        start: req.query.startDate ? new Date(req.query.startDate as string).toLocaleDateString("pt-BR") : undefined,
+        end: req.query.endDate ? new Date(req.query.endDate as string).toLocaleDateString("pt-BR") : undefined,
+      });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="despesas-${org?.name ?? orgId}.xlsx"`);
+      res.send(buffer);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/business/organizations/:orgId/expenses", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const filters: any = {};
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
+      if (req.query.userId) filters.userId = req.query.userId as string;
+      if (req.query.status) filters.status = req.query.status as string;
+      const expenses = await storage.getBusinessExpenses(orgId, filters);
+      res.json(expenses);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/business/organizations/:orgId/expenses", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const schema = z.object({
+        amount: z.number().positive(),
+        description: z.string().min(1),
+        categoryName: z.string().optional(),
+        establishment: z.string().optional(),
+        paymentMethod: z.string().optional(),
+        notes: z.string().optional(),
+        receiptImageBase64: z.string().optional(),
+        receiptItems: z.string().optional(),
+        source: z.string().optional(),
+        date: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
+      const expense = await storage.createBusinessExpense({
+        ...parsed.data,
+        organizationId: orgId,
+        userId,
+        date: parsed.data.date ? new Date(parsed.data.date) : new Date(),
+        source: parsed.data.source ?? "manual",
+      });
+      res.json(expense);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/business/organizations/:orgId/expenses/:expenseId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, expenseId } = req.params;
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode aprovar/rejeitar despesas" });
+      const { status } = req.body;
+      if (!["approved", "rejected", "pending_review"].includes(status)) return res.status(400).json({ message: "Status inválido" });
+      const updated = await storage.updateBusinessExpenseStatus(expenseId, orgId, status);
+      if (!updated) return res.status(404).json({ message: "Despesa não encontrada" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
   });
 
   return httpServer;

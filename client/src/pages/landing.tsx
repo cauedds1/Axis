@@ -775,6 +775,16 @@ export default function Landing() {
             <span className="text-lg font-bold tracking-tight">AXIS</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/business">
+              <button
+                className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-all"
+                style={{ color: "rgba(255,255,255,0.55)" }}
+                data-testid="button-axis-business"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                AXIS Business
+              </button>
+            </Link>
             <button
               onClick={cycleTheme}
               className="w-8 h-8 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"

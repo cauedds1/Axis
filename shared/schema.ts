@@ -276,3 +276,48 @@ export const scheduleItemCancellations = pgTable("schedule_item_cancellations", 
 });
 
 export type ScheduleItemCancellation = typeof scheduleItemCancellations.$inferSelect;
+
+export const organizations = pgTable("organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  cnpj: text("cnpj"),
+  adminUserId: varchar("admin_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const organizationMembers = pgTable("organization_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  role: text("role").notNull().default("member"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const businessExpenses = pgTable("business_expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  amount: real("amount").notNull(),
+  description: text("description").notNull(),
+  categoryName: text("category_name"),
+  date: timestamp("date").defaultNow(),
+  establishment: text("establishment"),
+  receiptImageBase64: text("receipt_image_base64"),
+  receiptItems: text("receipt_items"),
+  paymentMethod: text("payment_method"),
+  status: text("status").notNull().default("pending_review"),
+  notes: text("notes"),
+  source: text("source").notNull().default("manual"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
+export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({ id: true, joinedAt: true });
+export const insertBusinessExpenseSchema = createInsertSchema(businessExpenses).omit({ id: true, createdAt: true });
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type InsertOrganizationMember = z.infer<typeof insertOrganizationMemberSchema>;
+export type BusinessExpense = typeof businessExpenses.$inferSelect;
+export type InsertBusinessExpense = z.infer<typeof insertBusinessExpenseSchema>;

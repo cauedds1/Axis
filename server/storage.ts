@@ -1,5 +1,6 @@
 import {
   categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, scheduleItemCancellations,
+  organizations, organizationMembers, businessExpenses,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
   type Transaction, type InsertTransaction,
@@ -15,6 +16,9 @@ import {
   type CreditCard, type InsertCreditCard,
   type CreditCardInvoice, type InsertCreditCardInvoice,
   type ScheduleItemCancellation,
+  type Organization, type InsertOrganization,
+  type OrganizationMember, type InsertOrganizationMember,
+  type BusinessExpense, type InsertBusinessExpense,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -112,6 +116,16 @@ export interface IStorage {
 
   deleteUserAccount(userId: string): Promise<void>;
   resetUserData(userId: string): Promise<void>;
+
+  createOrganization(data: InsertOrganization): Promise<Organization>;
+  getOrganizationById(id: string): Promise<Organization | undefined>;
+  getOrganizationsByUserId(userId: string): Promise<Organization[]>;
+  addOrganizationMember(data: InsertOrganizationMember): Promise<OrganizationMember>;
+  getOrganizationMembers(orgId: string): Promise<(OrganizationMember & { userEmail?: string; userName?: string })[]>;
+  getUserOrganizations(userId: string): Promise<Organization[]>;
+  createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense>;
+  getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]>;
+  updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -548,6 +562,74 @@ export class DatabaseStorage implements IStorage {
     await db.delete(userProfile).where(eq(userProfile.userId, userId));
     await db.delete(sessions).where(sql`(sess->>'passport')::jsonb->>'user' = ${userId}`);
     await db.delete(users).where(eq(users.id, userId));
+  }
+
+  async createOrganization(data: InsertOrganization): Promise<Organization> {
+    const [org] = await db.insert(organizations).values(data).returning();
+    return org;
+  }
+
+  async getOrganizationById(id: string): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async getOrganizationsByUserId(userId: string): Promise<Organization[]> {
+    return db.select().from(organizations).where(eq(organizations.adminUserId, userId));
+  }
+
+  async addOrganizationMember(data: InsertOrganizationMember): Promise<OrganizationMember> {
+    const [member] = await db.insert(organizationMembers).values(data).returning();
+    return member;
+  }
+
+  async getOrganizationMembers(orgId: string): Promise<(OrganizationMember & { userEmail?: string; userName?: string })[]> {
+    const members = await db.select().from(organizationMembers).where(eq(organizationMembers.organizationId, orgId));
+    const enriched = await Promise.all(members.map(async (m) => {
+      const [user] = await db.select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, m.userId));
+      return { ...m, userEmail: user?.email ?? undefined, userName: user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() : undefined };
+    }));
+    return enriched;
+  }
+
+  async getUserOrganizations(userId: string): Promise<Organization[]> {
+    const memberRows = await db.select().from(organizationMembers).where(eq(organizationMembers.userId, userId));
+    const orgIds = memberRows.map(m => m.organizationId);
+    const adminOrgs = await db.select().from(organizations).where(eq(organizations.adminUserId, userId));
+    if (orgIds.length === 0) return adminOrgs;
+    const memberOrgs = await db.select().from(organizations).where(
+      sql`${organizations.id} = ANY(ARRAY[${sql.join(orgIds.map(id => sql`${id}`), sql`, `)}]::text[])`
+    );
+    const allOrgs = [...adminOrgs, ...memberOrgs];
+    const seen = new Set<string>();
+    return allOrgs.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });
+  }
+
+  async createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense> {
+    const [expense] = await db.insert(businessExpenses).values(data).returning();
+    return expense;
+  }
+
+  async getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]> {
+    const conditions = [eq(businessExpenses.organizationId, orgId)];
+    if (filters?.startDate) conditions.push(gte(businessExpenses.date, filters.startDate));
+    if (filters?.endDate) conditions.push(lte(businessExpenses.date, filters.endDate));
+    if (filters?.userId) conditions.push(eq(businessExpenses.userId, filters.userId));
+    if (filters?.status) conditions.push(eq(businessExpenses.status, filters.status));
+    const expenses = await db.select().from(businessExpenses).where(and(...conditions)).orderBy(desc(businessExpenses.date));
+    const enriched = await Promise.all(expenses.map(async (e) => {
+      const [user] = await db.select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, e.userId));
+      return { ...e, userEmail: user?.email ?? undefined, userName: user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() : undefined };
+    }));
+    return enriched;
+  }
+
+  async updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined> {
+    const [expense] = await db.update(businessExpenses).set({ status })
+      .where(and(eq(businessExpenses.id, id), eq(businessExpenses.organizationId, orgId))).returning();
+    return expense;
   }
 }
 

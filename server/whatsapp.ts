@@ -139,6 +139,7 @@ class WhatsAppManager {
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
   private pendingSavingsDeposit: Map<string, PendingSavingsDeposit> = new Map();
+  private pendingBusinessChoice: Map<string, { transactionData: any; base64: string; replyLine: string; orgs: { id: string; name: string }[]; expiresAt: number }> = new Map();
   private pgAuthClearAll: (() => Promise<void>) | null = null;
   private lastRegisteredTx: Map<string, {
     id: string;
@@ -413,6 +414,35 @@ class WhatsAppManager {
       }
 
       log(`WhatsApp: usuário encontrado — userId=${profile.userId}`, "whatsapp");
+
+      // Check for pending business expense choice (pessoal vs corporativo)
+      const pendingBusiness = this.pendingBusinessChoice.get(jid);
+      if (pendingBusiness && !imageMsg) {
+        if (Date.now() > pendingBusiness.expiresAt) {
+          this.pendingBusinessChoice.delete(jid);
+        } else {
+          const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          if (answer === "pessoal" || answer === "p") {
+            this.pendingBusinessChoice.delete(jid);
+            const savedTx = await storage.createTransaction(pendingBusiness.transactionData);
+            if (savedTx?.id) {
+              this.lastRegisteredTx.set(jid, { id: savedTx.id, description: pendingBusiness.transactionData.description || "", amount: Number(pendingBusiness.transactionData.amount), categoryName: pendingBusiness.transactionData.categoryName || "outros", establishment: pendingBusiness.transactionData.establishment || null, type: pendingBusiness.transactionData.type, expiresAt: Date.now() + 30 * 60 * 1000 });
+            }
+            await this.sendMessage(jid, `✅ *Registrado como gasto pessoal!*\n${pendingBusiness.replyLine}`);
+          } else {
+            const matched = pendingBusiness.orgs.find(o => answer.includes(o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")) || o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(answer));
+            if (matched) {
+              this.pendingBusinessChoice.delete(jid);
+              await storage.createBusinessExpense({ organizationId: matched.id, userId: profile.userId, amount: pendingBusiness.transactionData.amount, description: pendingBusiness.transactionData.description, categoryName: pendingBusiness.transactionData.categoryName, establishment: pendingBusiness.transactionData.establishment, paymentMethod: pendingBusiness.transactionData.paymentMethod, receiptImageBase64: pendingBusiness.base64, date: pendingBusiness.transactionData.date, source: "whatsapp", status: "pending_review" } as any);
+              await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${pendingBusiness.replyLine}\n\n📋 Salvo em *${matched.name}* — aguardando aprovação do gestor.`);
+            } else {
+              const orgNames = pendingBusiness.orgs.map(o => `*${o.name}*`).join(", ");
+              await this.sendMessage(jid, `⚠️ Não entendi. Responda *pessoal* ou o nome da empresa (${orgNames}).`);
+            }
+          }
+          return;
+        }
+      }
 
       // Check for pending duplicate confirmation
       const pending = this.pendingDuplicates.get(jid);
@@ -750,6 +780,26 @@ class WhatsAppManager {
 
       return { transactionData, amount, transactionType, description, establishment, date, replyLine };
     };
+
+    // Check if user belongs to any organization — if so, ask personal vs corporate
+    const userOrgs = await storage.getUserOrganizations(userId);
+    if (userOrgs.length > 0 && validReceipts.length === 1) {
+      const { transactionData, amount, transactionType, description, establishment, date, replyLine } = buildTxData(validReceipts[0]);
+      const orgNames = userOrgs.map(o => `*${o.name}*`).join(", ");
+      this.pendingBusinessChoice.set(jid, {
+        transactionData,
+        base64,
+        replyLine,
+        orgs: userOrgs.map(o => ({ id: o.id, name: o.name })),
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+      await this.sendMessage(jid,
+        `✅ Comprovante identificado:\n${replyLine}\n\n` +
+        `🏢 Essa despesa é *pessoal* ou corporativa?\n` +
+        `Responda: *pessoal* ou o nome da empresa (${orgNames})`
+      );
+      return;
+    }
 
     // Single receipt: keep existing duplicate-detection + pendingDuplicates flow
     if (validReceipts.length === 1) {

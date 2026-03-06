@@ -96,6 +96,37 @@ shared/
 - Anti-duplicate: checks `email_alert_log` before sending (25-day window for bills, 7-day for offline)
 - User preferences stored in `userProfile.emailAlerts` JSON; UI toggles in setup-sheet "Alertas" tab
 
+## AXIS Business Module
+A corporate expense management system accessible at `/business` (public landing) and `/business/app` (authenticated dashboard). Uses the same auth/database infrastructure as the personal AXIS.
+
+### New Database Tables
+- `organizations` - Companies (name, cnpj, adminUserId)
+- `organization_members` - User membership with role (admin/member)
+- `business_expenses` - Corporate expenses with receiptImageBase64 (full image stored), status (pending_review/approved/rejected), source (whatsapp/manual/chat)
+
+### New Frontend Pages
+- `/business` → `client/src/pages/business-landing.tsx` (public, distinct blue corporate design)
+- `/business/app` → `client/src/pages/business/BusinessHome.tsx` (create company, invite members, stats)
+- `/business/app/expenses` → `client/src/pages/business/BusinessExpenses.tsx` (expense list grouped by date, receipt image viewer modal, approve/reject, Excel export, print-to-PDF)
+- `client/src/components/business-sidebar.tsx` — Business-specific sidebar
+- `client/src/components/BusinessLayout.tsx` — Business authenticated layout
+
+### Business Reports
+- `server/business-reports.ts` — `generateExpenseExcel()` using ExcelJS: formatted workbook with header, grouped by date, color-coded by status, total row
+
+### WhatsApp Business Flow
+When a user in an organization sends a receipt photo via WhatsApp, the bot asks "pessoal ou corporativo?" and saves to `business_expenses` (including base64 image) if corporate.
+
+### Business API Endpoints
+- `POST /api/business/organizations` - Create company
+- `GET /api/business/organizations` - List user's companies
+- `POST /api/business/organizations/:orgId/members` - Invite member by email
+- `GET /api/business/organizations/:orgId/members` - List members
+- `GET /api/business/organizations/:orgId/expenses` - List expenses (filterable)
+- `POST /api/business/organizations/:orgId/expenses` - Create manual expense
+- `PATCH /api/business/organizations/:orgId/expenses/:expenseId` - Approve/reject
+- `GET /api/business/organizations/:orgId/expenses/export-excel` - Download Excel report
+
 ## API Endpoints
 - `POST /api/input/process` - Universal input (voice or text) → AI detects intent → auto-routes
 - `POST /api/finance/photo` - Upload receipt photo → AI extracts data
