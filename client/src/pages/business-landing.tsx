@@ -1,33 +1,49 @@
 import { Link } from "wouter";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
-import { ArrowRight, Camera, FileSpreadsheet, Users, Check, ArrowLeft, Building2, Smartphone, Receipt, BarChart3, Zap, Shield, ChevronRight, Mic, Calendar, Flame } from "lucide-react";
+import { ArrowRight, Camera, FileSpreadsheet, Users, Check, ArrowLeft, Building2, Smartphone, Receipt, BarChart3, Zap, Shield, ChevronRight, Mic, Calendar, Flame, Palette } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
-const BIZ = {
-  primary: "#3B82F6",
-  secondary: "#6366F1",
-  tertiary: "#8B5CF6",
-  accent: "#0EA5E9",
-  success: "#10B981",
-  primaryRgb: "59,130,246",
-  secondaryRgb: "99,102,241",
-  tertiaryRgb: "139,92,246",
-  accentRgb: "14,165,233",
-  successRgb: "16,185,129",
-  primaryMuted: "rgba(59,130,246,0.15)",
-  secondaryMuted: "rgba(99,102,241,0.12)",
-  tertiaryMuted: "rgba(139,92,246,0.12)",
+type BizPalette = {
+  primary: string; secondary: string; tertiary: string; accent: string; success: string;
+  primaryRgb: string; secondaryRgb: string; tertiaryRgb: string; accentRgb: string; successRgb: string;
+  primaryMuted: string; secondaryMuted: string; tertiaryMuted: string;
 };
 
-const cssVars = {
-  "--lp-primary-rgb": BIZ.primaryRgb,
-  "--lp-secondary-rgb": BIZ.secondaryRgb,
-  "--lp-tertiary-rgb": BIZ.tertiaryRgb,
-  "--lp-accent-rgb": BIZ.accentRgb,
-  "--lp-success-rgb": BIZ.successRgb,
-} as React.CSSProperties;
+type BizTheme = "blue" | "indigo" | "teal" | "violet" | "emerald";
+const BIZ_THEMES: BizTheme[] = ["blue", "indigo", "teal", "violet", "emerald"];
 
-const BizContext = createContext(BIZ);
+function getBizPalette(theme: BizTheme): BizPalette {
+  const p: Record<BizTheme, BizPalette> = {
+    blue: {
+      primary: "#3B82F6", secondary: "#6366F1", tertiary: "#8B5CF6", accent: "#0EA5E9", success: "#10B981",
+      primaryRgb: "59,130,246", secondaryRgb: "99,102,241", tertiaryRgb: "139,92,246", accentRgb: "14,165,233", successRgb: "16,185,129",
+      primaryMuted: "rgba(59,130,246,0.15)", secondaryMuted: "rgba(99,102,241,0.12)", tertiaryMuted: "rgba(139,92,246,0.12)",
+    },
+    indigo: {
+      primary: "#6366F1", secondary: "#8B5CF6", tertiary: "#A78BFA", accent: "#7C3AED", success: "#10B981",
+      primaryRgb: "99,102,241", secondaryRgb: "139,92,246", tertiaryRgb: "167,139,250", accentRgb: "124,58,237", successRgb: "16,185,129",
+      primaryMuted: "rgba(99,102,241,0.15)", secondaryMuted: "rgba(139,92,246,0.12)", tertiaryMuted: "rgba(167,139,250,0.12)",
+    },
+    teal: {
+      primary: "#0EA5E9", secondary: "#06B6D4", tertiary: "#14B8A6", accent: "#38BDF8", success: "#10B981",
+      primaryRgb: "14,165,233", secondaryRgb: "6,182,212", tertiaryRgb: "20,184,166", accentRgb: "56,189,248", successRgb: "16,185,129",
+      primaryMuted: "rgba(14,165,233,0.15)", secondaryMuted: "rgba(6,182,212,0.12)", tertiaryMuted: "rgba(20,184,166,0.12)",
+    },
+    violet: {
+      primary: "#7C3AED", secondary: "#8B5CF6", tertiary: "#A78BFA", accent: "#6D28D9", success: "#10B981",
+      primaryRgb: "124,58,237", secondaryRgb: "139,92,246", tertiaryRgb: "167,139,250", accentRgb: "109,40,217", successRgb: "16,185,129",
+      primaryMuted: "rgba(124,58,237,0.15)", secondaryMuted: "rgba(139,92,246,0.12)", tertiaryMuted: "rgba(167,139,250,0.12)",
+    },
+    emerald: {
+      primary: "#10B981", secondary: "#059669", tertiary: "#34D399", accent: "#6EE7B7", success: "#10B981",
+      primaryRgb: "16,185,129", secondaryRgb: "5,150,105", tertiaryRgb: "52,211,153", accentRgb: "110,231,183", successRgb: "16,185,129",
+      primaryMuted: "rgba(16,185,129,0.15)", secondaryMuted: "rgba(5,150,105,0.12)", tertiaryMuted: "rgba(52,211,153,0.12)",
+    },
+  };
+  return p[theme];
+}
+
+const BizContext = createContext<BizPalette>(getBizPalette("blue"));
 
 function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number; suffix?: string; prefix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -52,6 +68,7 @@ function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number;
 }
 
 function BusinessFloatingShapes() {
+  const BIZ = useContext(BizContext);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       <div className="landing-float-1 absolute top-[15%] left-[10%] w-4 h-4 rounded-full" style={{ background: BIZ.primary, opacity: 0.15 }} />
@@ -69,6 +86,7 @@ function BusinessFloatingShapes() {
 }
 
 function CorporateOrbital() {
+  const BIZ = useContext(BizContext);
   return (
     <div className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[440px] md:h-[440px]">
       <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${BIZ.primary}08, transparent 70%)` }} />
@@ -130,14 +148,14 @@ function CorporateOrbital() {
   );
 }
 
-const receiptExamples = [
-  { input: "📷 Restaurante Central — nota fiscal", result: "R$ 87,50 · Alimentação · Acme Corp", label: "Registrado automaticamente", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
-  { input: "📷 Uber Trip · recibo digital", result: "R$ 34,20 · Transporte · Acme Corp", label: "Despesa corporativa salva", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
-  { input: "📷 Hotel Ibis — nota de hospedagem", result: "R$ 320,00 · Hospedagem · Acme Corp", label: "Imagem + dados registrados", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
-  { input: "📷 Posto Ipiranga — abastecimento", result: "R$ 180,60 · Combustível · Acme Corp", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
-];
-
 function ReceiptFlowDemo() {
+  const BIZ = useContext(BizContext);
+  const receiptExamples = [
+    { input: "📷 Restaurante Central — nota fiscal", result: "R$ 87,50 · Alimentação · Acme Corp", label: "Registrado automaticamente", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
+    { input: "📷 Uber Trip · recibo digital", result: "R$ 34,20 · Transporte · Acme Corp", label: "Despesa corporativa salva", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
+    { input: "📷 Hotel Ibis — nota de hospedagem", result: "R$ 320,00 · Hospedagem · Acme Corp", label: "Imagem + dados registrados", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
+    { input: "📷 Posto Ipiranga — abastecimento", result: "R$ 180,60 · Combustível · Acme Corp", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
+  ];
   const [exampleIdx, setExampleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [showResult, setShowResult] = useState(false);
@@ -242,6 +260,7 @@ function ReceiptFlowDemo() {
 }
 
 function BizWhatsAppChat() {
+  const BIZ = useContext(BizContext);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
@@ -319,6 +338,7 @@ function BizWhatsAppChat() {
 }
 
 function ExpensePanelPreview() {
+  const BIZ = useContext(BizContext);
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -424,7 +444,24 @@ function ExpensePanelPreview() {
 }
 
 export default function BusinessLanding() {
+  const [bizTheme, setBizTheme] = useState<BizTheme>("blue");
+  const BIZ = getBizPalette(bizTheme);
+
+  const cycleTheme = () => {
+    const idx = BIZ_THEMES.indexOf(bizTheme);
+    setBizTheme(BIZ_THEMES[(idx + 1) % BIZ_THEMES.length]);
+  };
+
+  const cssVars = {
+    "--lp-primary-rgb": BIZ.primaryRgb,
+    "--lp-secondary-rgb": BIZ.secondaryRgb,
+    "--lp-tertiary-rgb": BIZ.tertiaryRgb,
+    "--lp-accent-rgb": BIZ.accentRgb,
+    "--lp-success-rgb": BIZ.successRgb,
+  } as React.CSSProperties;
+
   return (
+  <BizContext.Provider value={BIZ}>
     <div className="min-h-screen landing-bg text-white overflow-x-hidden relative" style={cssVars}>
       <div className="landing-grain" />
       <div className="landing-grid-dots" />
@@ -443,6 +480,16 @@ export default function BusinessLanding() {
               <span className="text-base font-bold tracking-tight">AXIS</span>
               <span className="text-base font-bold tracking-tight" style={{ color: BIZ.primary }}> Business</span>
             </div>
+            <button
+              onClick={cycleTheme}
+              className="w-7 h-7 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"
+              style={{ background: `rgba(${BIZ.primaryRgb},0.15)` }}
+              title={`Tema: ${bizTheme}`}
+              data-testid="button-biz-cycle-theme"
+            >
+              <Palette className="w-3 h-3 transition-colors" style={{ color: BIZ.primary }} />
+              <span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full border border-[#08080f]" style={{ background: BIZ.primary }} />
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -943,5 +990,6 @@ export default function BusinessLanding() {
         </div>
       </footer>
     </div>
+  </BizContext.Provider>
   );
 }
