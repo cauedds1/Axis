@@ -72,6 +72,14 @@ import BusinessLanding from "@/pages/business-landing";
 import BusinessAuthPage from "@/pages/business-auth-page";
 import { BusinessLayout } from "@/components/BusinessLayout";
 
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+  return null;
+}
+
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
   const [location] = useLocation();
@@ -159,6 +167,14 @@ function AppRouter() {
     }
   }, [user, isLoading, location, setLocation]);
 
+  return (
+    <>
+      <ScrollToTop />
+      {renderContent()}
+    </>
+  );
+
+  function renderContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -222,6 +238,7 @@ function AppRouter() {
       </Switch>
     </AuthErrorBoundary>
   );
+  }
 }
 
 function App() {
