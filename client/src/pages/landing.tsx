@@ -1313,6 +1313,44 @@ export default function Landing() {
         </div>
       </section>
 
+      <section className="py-10 px-6 relative">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-6 py-5 flex flex-col sm:flex-row items-center gap-4"
+            data-testid="banner-business-crosslink"
+          >
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.25)" }}>
+                <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="none" width="18" height="18">
+                  <rect x="3" y="6" width="14" height="10" rx="2" stroke="rgb(96,165,250)" strokeWidth="1.5"/>
+                  <path d="M7 6V5a3 3 0 016 0v1" stroke="rgb(96,165,250)" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white/85">Sua empresa também precisa de organização?</p>
+                <p className="text-xs text-white/40 mt-0.5">Controle despesas da equipe pelo WhatsApp, com aprovação e relatórios automáticos.</p>
+              </div>
+            </div>
+            <Link href="/business">
+              <button
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 transition-all hover:opacity-90"
+                style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "rgb(147,197,253)" }}
+                data-testid="button-crosslink-to-business"
+              >
+                Conhecer AXIS Business
+                <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
       <footer className="py-10 px-6 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/25">
           <div className="flex items-center gap-2">

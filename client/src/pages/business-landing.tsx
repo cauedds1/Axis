@@ -837,6 +837,44 @@ export default function BusinessLanding() {
         </motion.div>
       </section>
 
+      <section className="py-10 px-6 relative">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-6 py-5 flex flex-col sm:flex-row items-center gap-4"
+            data-testid="banner-personal-crosslink"
+          >
+            <div className="flex items-center gap-3 flex-1">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <svg viewBox="0 0 20 20" fill="none" width="18" height="18">
+                  <circle cx="10" cy="7" r="3" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5"/>
+                  <path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white/85">Quer organizar sua vida pessoal também?</p>
+                <p className="text-xs text-white/40 mt-0.5">Finanças, agenda, tarefas e hábitos — tudo pelo WhatsApp ou na web, com IA.</p>
+              </div>
+            </div>
+            <Link href="/">
+              <button
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 transition-all hover:opacity-90"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.65)" }}
+                data-testid="button-crosslink-to-personal"
+              >
+                Conhecer AXIS Pessoal
+                <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
       <footer className="px-6 py-8 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
