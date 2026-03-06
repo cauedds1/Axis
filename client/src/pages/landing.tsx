@@ -1313,41 +1313,79 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="py-10 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-6 py-5 flex flex-col sm:flex-row items-center gap-4"
-            data-testid="banner-business-crosslink"
-          >
-            <div className="flex items-center gap-3 flex-1">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.25)" }}>
-                <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="none" width="18" height="18">
-                  <rect x="3" y="6" width="14" height="10" rx="2" stroke="rgb(96,165,250)" strokeWidth="1.5"/>
-                  <path d="M7 6V5a3 3 0 016 0v1" stroke="rgb(96,165,250)" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-20 md:py-28 px-6 relative" data-testid="section-business-crosslink">
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
+                Para empresas
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+                Sua equipe também{" "}
+                <span className="landing-gradient-text">merece isso.</span>
+              </h2>
+              <p className="text-white/40 text-base leading-relaxed mb-8 max-w-md">
+                Com o AXIS Business, colaboradores enviam o recibo pelo WhatsApp e as despesas aparecem organizadas no painel — prontas pra aprovação e exportação. Sem planilha, sem papel perdido.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-8">
+                {["Foto → registrado", "IA extrai os dados", "Gestor aprova", "Exporta Excel"].map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                    style={{ background: `rgba(${LP.secondaryRgb},0.1)`, color: LP.secondary, border: `1px solid rgba(${LP.secondaryRgb},0.15)` }}>
+                    {tag}
+                  </span>
+                ))}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-white/85">Sua empresa também precisa de organização?</p>
-                <p className="text-xs text-white/40 mt-0.5">Controle despesas da equipe pelo WhatsApp, com aprovação e relatórios automáticos.</p>
-              </div>
-            </div>
-            <Link href="/business">
-              <button
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0 transition-all hover:opacity-90"
-                style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "rgb(147,197,253)" }}
-                data-testid="button-crosslink-to-business"
-              >
-                Conhecer AXIS Business
-                <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" viewBox="0 0 16 16" fill="none">
-                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            </Link>
-          </motion.div>
+              <Link href="/business">
+                <button
+                  className="landing-cta-button group relative px-8 py-4 rounded-xl font-semibold text-base transition-all"
+                  data-testid="button-crosslink-to-business"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Conhecer AXIS Business
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </button>
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="grid grid-cols-1 gap-4"
+            >
+              {[
+                { step: "01", title: "Colaborador fotografa o recibo", desc: "Envia pelo WhatsApp que já usa. Nenhum app novo pra baixar.", color: LP.primary },
+                { step: "02", title: "IA registra e classifica", desc: "Estabelecimento, valor, categoria e imagem — tudo automático.", color: LP.secondary },
+                { step: "03", title: "Gestor aprova e exporta", desc: "Painel com todas as despesas da equipe, relatório Excel em um clique.", color: LP.tertiary },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 + i * 0.12 }}
+                  className="flex items-start gap-4 rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]"
+                  data-testid={`crosslink-step-${i}`}
+                >
+                  <div className="text-2xl font-bold tabular-nums flex-shrink-0 w-10 text-right" style={{ color: item.color, opacity: 0.5 }}>
+                    {item.step}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white/85 mb-0.5">{item.title}</p>
+                    <p className="text-xs text-white/40 leading-relaxed">{item.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
