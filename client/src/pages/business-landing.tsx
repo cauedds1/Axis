@@ -1,74 +1,450 @@
 import { Link } from "wouter";
-import { motion } from "framer-motion";
-import { ArrowRight, Building2, Camera, FileSpreadsheet, CheckCircle2, Users, Shield, Zap, ChevronRight, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import { ArrowRight, Camera, FileSpreadsheet, Users, Check, ArrowLeft, Building2, Smartphone, Receipt, BarChart3, Zap, Shield, ChevronRight } from "lucide-react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 
-const BLUE = "#2563EB";
-const BLUE_LIGHT = "#3B82F6";
-const BLUE_DARK = "#1D4ED8";
-const INDIGO = "#6366F1";
+const BIZ = {
+  primary: "#3B82F6",
+  secondary: "#6366F1",
+  tertiary: "#8B5CF6",
+  accent: "#0EA5E9",
+  success: "#10B981",
+  primaryRgb: "59,130,246",
+  secondaryRgb: "99,102,241",
+  tertiaryRgb: "139,92,246",
+  accentRgb: "14,165,233",
+  successRgb: "16,185,129",
+  primaryMuted: "rgba(59,130,246,0.15)",
+  secondaryMuted: "rgba(99,102,241,0.12)",
+  tertiaryMuted: "rgba(139,92,246,0.12)",
+};
 
-function Step({ number, title, description, icon }: { number: string; title: string; description: string; icon: React.ReactNode }) {
+const cssVars = {
+  "--lp-primary-rgb": BIZ.primaryRgb,
+  "--lp-secondary-rgb": BIZ.secondaryRgb,
+  "--lp-tertiary-rgb": BIZ.tertiaryRgb,
+  "--lp-accent-rgb": BIZ.accentRgb,
+  "--lp-success-rgb": BIZ.successRgb,
+} as React.CSSProperties;
+
+const BizContext = createContext(BIZ);
+
+function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number; suffix?: string; prefix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v));
+
+  useEffect(() => {
+    if (isInView) {
+      animate(count, target, { duration: 2, ease: "easeOut" });
+    }
+  }, [isInView, target, count]);
+
+  useEffect(() => {
+    const unsubscribe = rounded.on("change", (v) => {
+      if (ref.current) ref.current.textContent = `${prefix}${v}${suffix}`;
+    });
+    return unsubscribe;
+  }, [rounded, prefix, suffix]);
+
+  return <span ref={ref} className="tabular-nums">{prefix}0{suffix}</span>;
+}
+
+function BusinessFloatingShapes() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
-      className="flex flex-col items-center text-center gap-4"
-    >
-      <div className="relative">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)" }}>
-          <span style={{ color: BLUE_LIGHT }}>{icon}</span>
-        </div>
-        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: BLUE }}>
-          {number}
-        </div>
-      </div>
-      <h3 className="text-lg font-semibold text-white">{title}</h3>
-      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>{description}</p>
-    </motion.div>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="landing-float-1 absolute top-[15%] left-[10%] w-4 h-4 rounded-full" style={{ background: BIZ.primary, opacity: 0.15 }} />
+      <div className="landing-float-2 absolute top-[25%] right-[15%] w-3 h-3 rounded-full" style={{ background: BIZ.secondary, opacity: 0.12 }} />
+      <div className="landing-float-3 absolute top-[60%] left-[8%] w-5 h-5 rounded-full" style={{ background: BIZ.tertiary, opacity: 0.1 }} />
+      <div className="landing-float-1 absolute top-[70%] right-[12%] w-3 h-3 rounded-full" style={{ background: BIZ.primary, opacity: 0.12 }} />
+      <div className="landing-float-2 absolute top-[40%] left-[80%] w-2 h-2 rounded-full" style={{ background: BIZ.secondary, opacity: 0.18 }} />
+      <div className="landing-float-3 absolute top-[85%] left-[30%] w-4 h-4 rounded-full" style={{ background: BIZ.tertiary, opacity: 0.08 }} />
+      <div className="landing-float-1 absolute top-[50%] left-[50%] w-2 h-2 rounded-full" style={{ background: BIZ.accent, opacity: 0.1 }} />
+      <div className="landing-float-2 absolute top-[20%] left-[45%] w-px h-20 rotate-45" style={{ background: `linear-gradient(to bottom, transparent, ${BIZ.primary}30, transparent)` }} />
+      <div className="landing-float-1 absolute top-[50%] right-[25%] w-px h-24 -rotate-12" style={{ background: `linear-gradient(to bottom, transparent, ${BIZ.secondary}25, transparent)` }} />
+      <div className="landing-float-3 absolute top-[75%] left-[60%] w-px h-16 rotate-[30deg]" style={{ background: `linear-gradient(to bottom, transparent, ${BIZ.tertiary}25, transparent)` }} />
+    </div>
   );
 }
 
-function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function CorporateOrbital() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.4 }}
-      className="rounded-2xl p-6 flex flex-col gap-3"
-      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-    >
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.2)" }}>
-        <span style={{ color: BLUE_LIGHT }}>{icon}</span>
+    <div className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[440px] md:h-[440px]">
+      <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${BIZ.primary}08, transparent 70%)` }} />
+      <svg viewBox="0 0 420 420" className="w-full h-full" style={{ filter: `drop-shadow(0 0 60px rgba(${BIZ.primaryRgb},0.14))` }}>
+        <circle cx="210" cy="210" r="180" fill="none" stroke={`rgba(${BIZ.primaryRgb},0.06)`} strokeWidth="0.5" strokeDasharray="4 6" />
+        <circle cx="210" cy="210" r="140" fill="none" stroke={`rgba(${BIZ.primaryRgb},0.1)`} strokeWidth="1" />
+        <circle cx="210" cy="210" r="100" fill="none" stroke={`rgba(${BIZ.secondaryRgb},0.1)`} strokeWidth="1" />
+        <circle cx="210" cy="210" r="60" fill="none" stroke={`rgba(${BIZ.tertiaryRgb},0.1)`} strokeWidth="1" />
+
+        <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="350" cy="210" r="9" fill={BIZ.success} opacity="0.9" />
+          <circle cx="350" cy="210" r="14" fill={BIZ.success} opacity="0.15" />
+          <text x="350" y="237" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">WhatsApp</text>
+        </g>
+
+        <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="310" cy="210" r="8" fill={BIZ.primary} opacity="0.9" />
+          <circle cx="310" cy="210" r="12" fill={BIZ.primary} opacity="0.15" />
+          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Recibos</text>
+        </g>
+
+        <g className="landing-orbit-slow" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="270" cy="210" r="7" fill={BIZ.secondary} opacity="0.9" />
+          <circle cx="270" cy="210" r="11" fill={BIZ.secondary} opacity="0.15" />
+          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Relatório</text>
+        </g>
+
+        <g className="landing-orbit-mid" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="150" cy="120" r="5" fill={`rgba(${BIZ.primaryRgb},0.7)`} />
+        </g>
+        <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="280" cy="300" r="4" fill={`rgba(${BIZ.tertiaryRgb},0.6)`} />
+        </g>
+        <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
+          <circle cx="130" cy="280" r="3" fill={`rgba(${BIZ.secondaryRgb},0.5)`} />
+        </g>
+
+        <defs>
+          <clipPath id="biz-orbital-clip">
+            <circle cx="210" cy="210" r="54" />
+          </clipPath>
+          <radialGradient id="biz-logo-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={`rgba(${BIZ.primaryRgb},0.2)`} />
+            <stop offset="100%" stopColor="transparent" />
+          </radialGradient>
+        </defs>
+
+        <circle cx="210" cy="210" r="70" fill="url(#biz-logo-glow)" />
+        <circle cx="210" cy="210" r="58" fill={`rgba(${BIZ.primaryRgb},0.1)`} />
+        <rect x="186" y="186" width="48" height="48" rx="12" fill={`rgba(${BIZ.primaryRgb},0.15)`} stroke={`rgba(${BIZ.primaryRgb},0.3)`} strokeWidth="1" clipPath="url(#biz-orbital-clip)" />
+        <rect x="192" y="200" width="36" height="26" rx="3" fill="none" stroke={`rgba(${BIZ.primaryRgb},0.8)`} strokeWidth="1.5" />
+        <line x1="192" y1="207" x2="228" y2="207" stroke={`rgba(${BIZ.primaryRgb},0.5)`} strokeWidth="1" />
+        <line x1="196" y1="212" x2="224" y2="212" stroke={`rgba(${BIZ.primaryRgb},0.35)`} strokeWidth="0.8" />
+        <line x1="196" y1="217" x2="218" y2="217" stroke={`rgba(${BIZ.primaryRgb},0.35)`} strokeWidth="0.8" />
+        <path d="M 202 194 L 202 203 M 218 194 L 218 203" stroke={`rgba(${BIZ.primaryRgb},0.6)`} strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M 199 194 L 221 194" stroke={`rgba(${BIZ.primaryRgb},0.6)`} strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+const receiptExamples = [
+  { input: "📷 Restaurante Central — nota fiscal", result: "R$ 87,50 · Alimentação · Acme Corp", label: "Registrado automaticamente", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
+  { input: "📷 Uber Trip · recibo digital", result: "R$ 34,20 · Transporte · Acme Corp", label: "Despesa corporativa salva", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
+  { input: "📷 Hotel Ibis — nota de hospedagem", result: "R$ 320,00 · Hospedagem · Acme Corp", label: "Imagem + dados registrados", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
+  { input: "📷 Posto Ipiranga — abastecimento", result: "R$ 180,60 · Combustível · Acme Corp", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
+];
+
+function ReceiptFlowDemo() {
+  const [exampleIdx, setExampleIdx] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [showResult, setShowResult] = useState(false);
+  const [phase, setPhase] = useState<"typing" | "result" | "pause">("typing");
+
+  useEffect(() => {
+    const example = receiptExamples[exampleIdx];
+    const text = example.input;
+
+    if (phase === "typing") {
+      setShowResult(false);
+      setDisplayText("");
+      let i = 0;
+      const interval = setInterval(() => {
+        i++;
+        setDisplayText(text.slice(0, i));
+        if (i >= text.length) {
+          clearInterval(interval);
+          setTimeout(() => setPhase("result"), 400);
+        }
+      }, 40);
+      return () => clearInterval(interval);
+    }
+
+    if (phase === "result") {
+      setShowResult(true);
+      const timeout = setTimeout(() => setPhase("pause"), 2800);
+      return () => clearTimeout(timeout);
+    }
+
+    if (phase === "pause") {
+      const timeout = setTimeout(() => {
+        setExampleIdx((prev) => (prev + 1) % receiptExamples.length);
+        setPhase("typing");
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [phase, exampleIdx]);
+
+  const example = receiptExamples[exampleIdx];
+
+  return (
+    <div className="w-full max-w-xl mx-auto">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8 backdrop-blur-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${example.color}15, transparent 70%)`, filter: "blur(30px)" }} />
+
+        <div className="flex items-center gap-3 mb-1 relative z-10">
+          <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: example.color }} />
+          <span className="text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: example.color }}>
+            <Camera className="w-3.5 h-3.5" />
+            Colaborador envia
+          </span>
+        </div>
+        <p className="text-xl md:text-2xl font-medium text-white/90 mb-6 min-h-[2em] font-mono relative z-10" data-testid="text-biz-demo-input">
+          {displayText}
+          <span className="animate-blink text-white/40">|</span>
+        </p>
+
+        <motion.div
+          initial={false}
+          animate={{ opacity: showResult ? 1 : 0, y: showResult ? 0 : 12 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="relative z-10"
+        >
+          <div className="rounded-xl p-4" style={{ background: example.bg, border: `1px solid ${example.color}25` }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Check className="w-3.5 h-3.5" style={{ color: example.color }} />
+              <p className="text-xs uppercase tracking-widest" style={{ color: example.color }}>
+                {example.label}
+              </p>
+            </div>
+            <p className="text-base md:text-lg font-semibold text-white/90" data-testid="text-biz-demo-result">
+              {example.result}
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: `${example.color}20`, color: example.color }}>
+                {example.category}
+              </span>
+              <span className="text-xs text-white/30">imagem salva · pendente revisão</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
-      <h4 className="font-semibold text-white">{title}</h4>
-      <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>{description}</p>
-    </motion.div>
+
+      <div className="flex justify-center gap-2 mt-4">
+        {receiptExamples.map((ex, i) => (
+          <button
+            key={i}
+            onClick={() => { setExampleIdx(i); setPhase("typing"); }}
+            className="w-2 h-2 rounded-full transition-all duration-300"
+            style={{
+              background: i === exampleIdx ? ex.color : "rgba(255,255,255,0.15)",
+              transform: i === exampleIdx ? "scale(1.4)" : "scale(1)",
+              boxShadow: i === exampleIdx ? `0 0 8px ${ex.color}60` : "none",
+            }}
+            data-testid={`button-biz-demo-dot-${i}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BizWhatsAppChat() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const messages = [
+    { type: "user", text: "[foto da nota fiscal]", time: "09:14", isPhoto: true },
+    { type: "bot", text: "📋 Despesa detectada:\n**Restaurante Central — R$ 87,50**\n\nEssa despesa é *pessoal* ou corporativa?\n(Acme Corp)", time: "09:14" },
+    { type: "user", text: "Acme Corp", time: "09:15" },
+    { type: "bot", text: "✅ Salvo na empresa **Acme Corp**.\nO gestor verá no painel e poderá aprovar.", time: "09:15" },
+    { type: "user", text: "Quais despesas estão pendentes?", time: "09:18" },
+    { type: "bot", text: "Acme Corp — Pendentes de aprovação:\n• Restaurante Central R$ 87,50\n• Uber R$ 34,20\n• Posto Ipiranga R$ 180,60\n\nTotal: **R$ 302,30**", time: "09:18" },
+  ];
+
+  return (
+    <div ref={ref} className="w-full max-w-md mx-auto">
+      <div className="rounded-2xl overflow-hidden border border-white/10">
+        <div className="px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #075E54, #128C7E)" }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.3)` }}>
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">AXIS Business Bot</p>
+            <p className="text-white/60 text-[11px]">Acme Corp · online</p>
+          </div>
+          <div className="ml-auto flex gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="p-4 space-y-3 min-h-[320px]" style={{ background: "linear-gradient(180deg, #0b1014 0%, #0d1117 100%)" }}>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+              transition={{ delay: i * 0.45, duration: 0.4, ease: "easeOut" }}
+              className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                data-testid={`text-biz-chat-msg-${i}`}
+                className={`max-w-[82%] rounded-xl px-3.5 py-2.5 ${msg.type === "user" ? "rounded-tr-sm" : "rounded-tl-sm"}`}
+                style={{
+                  background: msg.type === "user" ? "rgba(59,130,246,0.14)" : "rgba(255,255,255,0.06)",
+                  border: msg.type === "user" ? `1px solid rgba(${BIZ.primaryRgb},0.2)` : "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                {msg.isPhoto ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)` }}>
+                      <Camera className="w-3.5 h-3.5" style={{ color: BIZ.primary }} />
+                    </div>
+                    <span className="text-[13px] text-white/70">foto da nota fiscal</span>
+                  </div>
+                ) : (
+                  <p className="text-[13px] text-white/85 whitespace-pre-line leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }}
+                  />
+                )}
+                <p className="text-[10px] text-white/30 text-right mt-1">{msg.time}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: "#0d1117", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex-1 rounded-full px-4 py-2 text-xs text-white/30 bg-white/[0.04] border border-white/[0.06]">
+            Mensagem ou foto...
+          </div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.15)` }}>
+            <Camera className="w-4 h-4" style={{ color: BIZ.primary }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpensePanelPreview() {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-80px" });
+
+  const expenses = [
+    { collaborator: "Ana Lima", description: "Restaurante Central", amount: "R$ 87,50", category: "Alimentação", status: "approved", date: "06/03" },
+    { collaborator: "Carlos M.", description: "Uber Trip", amount: "R$ 34,20", category: "Transporte", status: "pending", date: "06/03" },
+    { collaborator: "Juliana R.", description: "Hotel Ibis SP", amount: "R$ 320,00", category: "Hospedagem", status: "pending", date: "05/03" },
+    { collaborator: "Ana Lima", description: "Posto Ipiranga", amount: "R$ 180,60", category: "Combustível", status: "rejected", date: "04/03" },
+  ];
+
+  const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+    approved: { label: "Aprovado", color: BIZ.success, bg: `rgba(${BIZ.successRgb},0.12)` },
+    pending: { label: "Pendente", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+    rejected: { label: "Rejeitado", color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+  };
+
+  return (
+    <div ref={ref} className="w-full max-w-3xl mx-auto">
+      <div className="landing-app-window rounded-2xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/70" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
+            <div className="w-3 h-3 rounded-full bg-green-500/70" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="px-4 py-1 rounded-md bg-white/[0.04] text-[11px] text-white/30 font-mono">axis.com.br/business/app/expenses</div>
+          </div>
+        </div>
+
+        <div className="p-5 md:p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.15)`, border: `1px solid rgba(${BIZ.primaryRgb},0.25)` }}>
+              <Building2 className="w-4 h-4" style={{ color: BIZ.primary }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white/90">Acme Corp</p>
+              <p className="text-[11px] text-white/40">Painel de Despesas · Março 2026</p>
+            </div>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={isInView ? { scale: 1 } : {}}
+              transition={{ delay: 0.5, type: "spring" }}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg cursor-pointer"
+              style={{ background: `rgba(${BIZ.successRgb},0.1)`, border: `1px solid rgba(${BIZ.successRgb},0.2)` }}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" style={{ color: BIZ.success }} />
+              <span className="text-xs font-medium" style={{ color: BIZ.success }}>Exportar Excel</span>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {[
+              { label: "Total Mês", value: "R$ 622,30", color: BIZ.primary },
+              { label: "Pendentes", value: "2 despesas", color: "#F59E0B" },
+              { label: "Aprovados", value: "R$ 87,50", color: BIZ.success },
+            ].map((card, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                animate={isInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.2 + i * 0.1 }}
+                className="rounded-xl p-3 border border-white/[0.06]"
+                style={{ background: `linear-gradient(135deg, ${card.color}08, transparent)` }}
+              >
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">{card.label}</p>
+                <p className="text-base font-bold text-white/90">{card.value}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+            <div className="grid grid-cols-5 gap-2 px-4 py-2 border-b border-white/[0.04]">
+              {["Colaborador", "Descrição", "Valor", "Categoria", "Status"].map((h) => (
+                <p key={h} className="text-[10px] text-white/30 uppercase tracking-wider font-medium">{h}</p>
+              ))}
+            </div>
+            {expenses.map((exp, i) => {
+              const st = statusConfig[exp.status];
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                  className="grid grid-cols-5 gap-2 px-4 py-2.5 border-b border-white/[0.03] last:border-0 hover:bg-white/[0.02] transition-colors"
+                >
+                  <p className="text-xs text-white/70 truncate">{exp.collaborator}</p>
+                  <p className="text-xs text-white/60 truncate">{exp.description}</p>
+                  <p className="text-xs font-semibold text-white/85">{exp.amount}</p>
+                  <p className="text-xs text-white/45">{exp.category}</p>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-md self-start" style={{ color: st.color, background: st.bg }}>
+                    {st.label}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
 export default function BusinessLanding() {
   return (
-    <div className="min-h-screen" style={{ background: "#060610", color: "white" }}>
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full" style={{ background: `radial-gradient(ellipse, rgba(37,99,235,0.12), transparent 70%)`, filter: "blur(60px)" }} />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[400px] rounded-full" style={{ background: `radial-gradient(ellipse, rgba(99,102,241,0.07), transparent 70%)`, filter: "blur(80px)" }} />
-      </div>
+    <div className="min-h-screen landing-bg text-white overflow-x-hidden relative" style={cssVars}>
+      <div className="landing-grain" />
+      <div className="landing-grid-dots" />
 
-      <header className="fixed top-0 w-full z-50 backdrop-blur-xl border-b" style={{ background: "rgba(6,6,16,0.8)", borderColor: "rgba(255,255,255,0.06)" }}>
+      <div className="landing-blob absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${BIZ.primaryRgb},0.12) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-2 absolute top-[30%] right-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${BIZ.secondaryRgb},0.09) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+      <div className="landing-blob-3 absolute top-[60%] left-[-8%] w-[450px] h-[450px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${BIZ.tertiaryRgb},0.07) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+
+      <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: BLUE }}>
-              <Building2 className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)`, border: `1px solid rgba(${BIZ.primaryRgb},0.3)` }}>
+              <Building2 className="w-4 h-4" style={{ color: BIZ.primary }} />
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <span className="text-base font-bold tracking-tight">AXIS</span>
-              <span className="text-base font-bold tracking-tight" style={{ color: BLUE_LIGHT }}>Business</span>
+              <span className="text-base font-bold tracking-tight" style={{ color: BIZ.primary }}> Business</span>
             </div>
           </div>
+
           <div className="flex items-center gap-3">
             <Link href="/">
               <button
@@ -81,182 +457,400 @@ export default function BusinessLanding() {
               </button>
             </Link>
             <Link href="/auth">
-              <Button
-                size="sm"
-                className="text-sm font-semibold px-5 border-0"
-                style={{ background: BLUE, color: "white" }}
-                data-testid="button-business-cta-header"
+              <button
+                className="landing-cta-button group relative px-5 py-2 rounded-xl font-semibold text-sm transition-all border-0"
+                data-testid="button-biz-header-cta"
               >
                 Começar grátis
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
       </header>
 
       <section className="relative min-h-screen flex items-center justify-center px-6 pt-16">
-        <div className="relative z-10 flex flex-col items-center text-center gap-8 max-w-3xl mx-auto py-24">
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-medium"
-            style={{ borderColor: "rgba(37,99,235,0.35)", background: "rgba(37,99,235,0.08)", color: BLUE_LIGHT }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BLUE_LIGHT }} />
-            Novo — Gestão corporativa de despesas
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight tracking-tight"
-          >
-            Controle de despesas
-            <br />
-            <span style={{ color: BLUE_LIGHT }}>pelo WhatsApp.</span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg leading-relaxed max-w-xl"
-            style={{ color: "rgba(255,255,255,0.55)" }}
-          >
-            Colaboradores enviam a foto do recibo pelo WhatsApp. O AXIS registra automaticamente, guarda a imagem e gera relatórios organizados — sem planilha manual, sem papel perdido.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center gap-3"
-          >
-            <Link href="/auth">
-              <Button
-                size="lg"
-                className="text-base font-semibold px-8 py-6 border-0"
-                style={{ background: `linear-gradient(135deg, ${BLUE}, ${INDIGO})`, color: "white" }}
-                data-testid="button-business-cta-hero"
+        <BusinessFloatingShapes />
+        <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12 lg:gap-20 max-w-6xl mx-auto">
+          <div className="flex-1 text-center lg:text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-medium mb-6"
+                style={{ borderColor: `rgba(${BIZ.primaryRgb},0.35)`, background: `rgba(${BIZ.primaryRgb},0.08)`, color: BIZ.primary }}
+                data-testid="badge-biz-new"
               >
-                Começar agora — é grátis
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </Link>
-            <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-              Sem cartão de crédito
-            </span>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BIZ.primary }} />
+                Novo — Gestão corporativa de despesas
+              </motion.div>
+
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-biz-hero-title">
+                Despesas{" "}
+                <span className="landing-gradient-text">da equipe.</span>
+                <br />
+                <span className="text-white/50">Zero planilha</span>
+                <br className="md:hidden" />
+                <span className="text-white/50"> manual.</span>
+              </h1>
+              <p className="text-lg md:text-xl text-white/45 max-w-lg mb-10 leading-relaxed" data-testid="text-biz-hero-subtitle">
+                Colaboradores fotografam o recibo. O AXIS registra, classifica e entrega o relatório — sem digitação, sem papel perdido, direto pelo WhatsApp.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="flex flex-col sm:flex-row items-center gap-4"
+            >
+              <Link href="/auth">
+                <button
+                  className="landing-cta-button group relative px-8 py-4 rounded-xl font-semibold text-base transition-all"
+                  data-testid="button-biz-hero-start"
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    Começar agora — é grátis
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </button>
+              </Link>
+              <div className="flex items-center gap-2 text-sm text-white/30">
+                <Check className="w-4 h-4" style={{ color: BIZ.success }} />
+                <span>Sem cartão de crédito</span>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="flex items-center gap-6 mt-8"
+            >
+              {[
+                { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto" },
+                { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp" },
+                { icon: <FileSpreadsheet className="w-3.5 h-3.5" />, label: "Excel" },
+                { icon: <Zap className="w-3.5 h-3.5" />, label: "IA" },
+                { icon: <Shield className="w-3.5 h-3.5" />, label: "Aprovação" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-white/30 text-xs">
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="flex-shrink-0"
+          >
+            <CorporateOrbital />
+          </motion.div>
+        </div>
+
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-5 h-8 rounded-full border border-white/15 flex items-start justify-center p-1.5"
+          >
+            <div className="w-1 h-1.5 rounded-full bg-white/30" />
+          </motion.div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-20 md:py-28 px-6 relative">
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.primary }}>
+                Veja na prática
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-demo-title">
+                Foto do recibo.{" "}
+                <span className="landing-gradient-text">AXIS faz o resto.</span>
+              </h2>
+              <p className="text-white/35 text-base leading-relaxed mb-6 max-w-md">
+                A IA lê a nota, extrai estabelecimento, valor e categoria — e registra na empresa com a imagem original. Tudo em segundos.
+              </p>
+              <ReceiptFlowDemo />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="flex flex-col gap-6"
+            >
+              <div className="grid grid-cols-1 gap-4">
+                {[
+                  { value: 0, suffix: "", prefix: "", label: "digitação manual por despesa", color: BIZ.primary },
+                  { value: 2, suffix: "s", prefix: "< ", label: "para registrar uma nota fiscal", color: BIZ.secondary },
+                  { value: 100, suffix: "%", prefix: "", label: "das imagens salvas e acessíveis", color: BIZ.tertiary },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.12 }}
+                    className="flex items-center gap-5 rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`biz-stat-${i}`}
+                  >
+                    <div className="text-4xl md:text-5xl font-bold tabular-nums" style={{ color: stat.color }}>
+                      <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
+                    </div>
+                    <p className="text-white/45 text-sm leading-snug">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-2">
+                {[
+                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: BIZ.primary },
+                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: BIZ.success },
+                  { icon: <Receipt className="w-3.5 h-3.5" />, label: "Nota Fiscal", color: BIZ.secondary },
+                  { icon: <FileSpreadsheet className="w-3.5 h-3.5" />, label: "Excel", color: BIZ.tertiary },
+                  { icon: <Zap className="w-3.5 h-3.5" />, label: "IA", color: BIZ.accent },
+                ].map((input, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 + i * 0.06 }}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.03]"
+                    data-testid={`biz-input-type-${i}`}
+                  >
+                    <span style={{ color: input.color }}>{input.icon}</span>
+                    <span className="text-xs text-white/50">{input.label}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-20 md:py-28 px-6 relative">
+        <div className="landing-blob-2 absolute top-[20%] right-[-15%] w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${BIZ.successRgb},0.07) 0%, transparent 60%)`, filter: "blur(70px)" }} />
+        <div className="max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-whatsapp-title">
+                Tudo pelo{" "}
+                <span className="landing-whatsapp-glow">WhatsApp.</span>
+                <br />
+                <span className="text-white/40">Que a equipe já usa.</span>
+              </h2>
+              <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
+                Nenhum app novo para baixar. Colaboradores enviam a foto do recibo no mesmo WhatsApp que já usam — o bot do AXIS identifica a empresa, registra a despesa e notifica o gestor.
+              </p>
+              <div className="flex flex-wrap gap-2 mb-8">
+                {["Foto → registrado", "Classifica por empresa", "Gestor aprovado", "Consultar pendências", "Relatório instantâneo"].map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
+                    style={{ background: `rgba(${BIZ.successRgb},0.1)`, color: BIZ.success, border: `1px solid rgba(${BIZ.successRgb},0.15)` }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { cmd: "[foto do recibo]", result: "Despesa registrada · R$ 87,50", color: BIZ.primary },
+                  { cmd: '"Acme Corp"', result: "Salvo na empresa · Gestor notificado", color: BIZ.secondary },
+                  { cmd: '"Quais pendentes?"', result: "3 despesas · R$ 302,30 total", color: BIZ.success },
+                ].map((ex, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -15 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + i * 0.1 }}
+                    className="flex items-center gap-3 rounded-lg px-4 py-3 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`biz-whatsapp-example-${i}`}
+                  >
+                    <span className="text-sm text-white/50 flex-1">{ex.cmd}</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />
+                    <span className="text-sm font-medium flex-shrink-0" style={{ color: ex.color }}>{ex.result}</span>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mt-6">
+                {[
+                  { value: 24, suffix: "h", label: "Disponível", color: BIZ.success },
+                  { value: 3, suffix: "s", prefix: "< ", label: "Resposta", color: BIZ.secondary },
+                  { value: 0, suffix: "", label: "Downloads", color: BIZ.tertiary },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
+                    className="text-center rounded-lg py-3 border border-white/[0.06] bg-white/[0.02]"
+                    data-testid={`biz-whatsapp-stat-${i}`}
+                  >
+                    <div className="text-2xl font-bold tabular-nums" style={{ color: stat.color }}>
+                      <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix || ""} />
+                    </div>
+                    <p className="text-[11px] text-white/35 mt-0.5">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <BizWhatsAppChat />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-20 md:py-28 px-6 relative">
+        <div className="max-w-6xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.primary }}>Painel do Gestor</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-panel-title">
+              Tudo organizado,{" "}
+              <span className="landing-gradient-text">pronto para aprovar.</span>
+            </h2>
+            <p className="text-white/35 text-base max-w-lg mx-auto leading-relaxed">
+              Veja despesas de toda a equipe, filtre por período ou colaborador, aprove com um clique e exporte para Excel.
+            </p>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="w-full max-w-lg rounded-2xl p-1"
-            style={{ background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)" }}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
           >
-            <div className="rounded-xl p-4" style={{ background: "rgba(6,6,16,0.6)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#25D366" }}>W</div>
-                <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>AXIS Business Bot</span>
-                <span className="ml-auto text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>agora</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-end">
-                  <div className="text-xs px-3 py-2 rounded-2xl rounded-tr-sm" style={{ background: "#005C4B", color: "rgba(255,255,255,0.85)", maxWidth: "75%" }}>
-                    [foto da nota fiscal]
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="text-xs px-3 py-2 rounded-2xl rounded-tl-sm" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.75)", maxWidth: "85%" }}>
-                    ✅ Despesa registrada: <strong>Restaurante Central — R$ 87,50</strong>
-                    <br />Essa despesa é <em>pessoal</em> ou corporativa? (Acme Corp)
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="text-xs px-3 py-2 rounded-2xl rounded-tr-sm" style={{ background: "#005C4B", color: "rgba(255,255,255,0.85)" }}>
-                    Acme Corp
-                  </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="text-xs px-3 py-2 rounded-2xl rounded-tl-sm" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.75)", maxWidth: "85%" }}>
-                    📋 Salvo na empresa <strong>Acme Corp</strong>. O admin verá no painel de despesas.
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ExpensePanelPreview />
           </motion.div>
-        </div>
-      </section>
 
-      <section className="relative px-6 py-24" style={{ background: "rgba(255,255,255,0.015)" }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Como funciona</h2>
-            <p className="text-base" style={{ color: "rgba(255,255,255,0.45)" }}>Três passos. Zero planilha manual.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <Step number="1" icon={<Camera className="w-6 h-6" />} title="Foto pelo WhatsApp" description="O colaborador tira foto do recibo e envia para o bot do AXIS Business pelo WhatsApp que já usa." />
-            <Step number="2" icon={<Zap className="w-6 h-6" />} title="Registro automático" description="O AXIS lê a nota com IA, extrai estabelecimento, valor, itens e data, e registra na empresa com a imagem." />
-            <Step number="3" icon={<FileSpreadsheet className="w-6 h-6" />} title="Relatório pronto" description="O gestor acessa o painel, filtra por período e colaborador, aprova as despesas e exporta a planilha." />
-          </div>
-        </div>
-      </section>
-
-      <section className="relative px-6 py-24">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Tudo que sua equipe precisa</h2>
-            <p className="text-base" style={{ color: "rgba(255,255,255,0.45)" }}>Simples para quem usa, poderoso para quem gerencia.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Feature icon={<Camera className="w-5 h-5" />} title="Foto + IA" description="A imagem da nota fica salva no sistema. A IA extrai todos os dados automaticamente — nada de digitação." />
-            <Feature icon={<CheckCircle2 className="w-5 h-5" />} title="Fluxo de aprovação" description="Gestor aprova ou rejeita cada despesa com um clique. O colaborador é notificado na hora." />
-            <Feature icon={<FileSpreadsheet className="w-5 h-5" />} title="Exportação Excel" description="Gere uma planilha formatada com todas as despesas do período, agrupadas por data e colaborador." />
-            <Feature icon={<Users className="w-5 h-5" />} title="Multi-colaboradores" description="Cadastre toda a equipe. Cada um envia suas notas; o painel central consolida tudo." />
-            <Feature icon={<Shield className="w-5 h-5" />} title="Controle por empresa" description="Cada empresa tem seu painel separado. Os dados ficam isolados e seguros." />
-            <Feature icon={<Zap className="w-5 h-5" />} title="Relatório com foto" description="Visualize a foto do recibo original com um clique diretamente no painel — sem precisar guardar papel." />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
+            {[
+              { icon: <Camera className="w-5 h-5" />, title: "Foto salva", desc: "Acesse a imagem original com um clique", color: BIZ.primary },
+              { icon: <Check className="w-5 h-5" />, title: "Aprovação rápida", desc: "Aprove ou rejeite despesas em um clique", color: BIZ.success },
+              { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Excel formatado", desc: "Planilha agrupada por data e colaborador", color: BIZ.secondary },
+              { icon: <Users className="w-5 h-5" />, title: "Multi-equipe", desc: "Todos os colaboradores num painel só", color: BIZ.tertiary },
+            ].map((feat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+                className="rounded-xl p-4 border border-white/[0.06] bg-white/[0.02] flex flex-col gap-3"
+                data-testid={`biz-feature-${i}`}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${feat.color}15`, border: `1px solid ${feat.color}20` }}>
+                  <span style={{ color: feat.color }}>{feat.icon}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white/85 mb-0.5">{feat.title}</p>
+                  <p className="text-xs text-white/40 leading-relaxed">{feat.desc}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="relative px-6 py-24" style={{ background: "rgba(37,99,235,0.05)", borderTop: "1px solid rgba(37,99,235,0.12)", borderBottom: "1px solid rgba(37,99,235,0.12)" }}>
-        <div className="max-w-3xl mx-auto text-center flex flex-col items-center gap-6">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para começar?</h2>
-            <p className="text-base mb-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Crie sua conta gratuitamente. Configure sua empresa em minutos e convide sua equipe.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link href="/auth">
-                <Button
-                  size="lg"
-                  className="text-base font-semibold px-8 py-6 border-0"
-                  style={{ background: `linear-gradient(135deg, ${BLUE}, ${INDIGO})`, color: "white" }}
-                  data-testid="button-business-cta-footer"
-                >
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      <section className="py-24 md:py-32 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 landing-cta-bg pointer-events-none" />
+        <div className="landing-blob absolute top-[10%] left-[20%] w-[500px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${BIZ.primaryRgb},0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 max-w-3xl mx-auto text-center flex flex-col items-center gap-6"
+        >
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: `rgba(${BIZ.primaryRgb},0.15)`, border: `1px solid rgba(${BIZ.primaryRgb},0.25)` }}>
+            <BarChart3 className="w-8 h-8" style={{ color: BIZ.primary }} />
+          </div>
+
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight" data-testid="text-biz-cta-title">
+            Sua equipe pronta{" "}
+            <span className="landing-gradient-text">em minutos.</span>
+          </h2>
+          <p className="text-lg text-white/40 max-w-xl leading-relaxed">
+            Crie sua empresa, convide os colaboradores e comece a registrar despesas pelo WhatsApp — sem treinamento, sem planilha manual.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
+            <Link href="/auth">
+              <button
+                className="landing-cta-button group relative px-10 py-4 rounded-xl font-semibold text-base transition-all"
+                data-testid="button-biz-cta-final"
+              >
+                <span className="relative z-10 flex items-center gap-2">
                   Criar conta grátis
-                  <ChevronRight className="ml-1 w-5 h-5" />
-                </Button>
-              </Link>
+                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </button>
+            </Link>
+            <div className="flex items-center gap-2 text-sm text-white/30">
+              <Check className="w-4 h-4" style={{ color: BIZ.success }} />
+              <span>Sem cartão de crédito · Cancele quando quiser</span>
             </div>
-            <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.25)" }}>Sem cartão de crédito · Cancele quando quiser</p>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </section>
 
-      <footer className="px-6 py-8 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <footer className="px-6 py-8 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: BLUE }}>
-              <Building2 className="w-3 h-3 text-white" />
+            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)`, border: `1px solid rgba(${BIZ.primaryRgb},0.3)` }}>
+              <Building2 className="w-3 h-3" style={{ color: BIZ.primary }} />
             </div>
             <span className="text-sm font-semibold">AXIS Business</span>
           </div>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-            Uma extensão do <Link href="/"><span className="underline cursor-pointer">AXIS</span></Link> — seu assistente de vida inteligente.
+          <p className="text-xs text-white/25">
+            Uma extensão do{" "}
+            <Link href="/">
+              <span className="underline cursor-pointer text-white/40 hover:text-white/60 transition-colors">AXIS</span>
+            </Link>
+            {" "}— seu assistente de vida inteligente.
           </p>
         </div>
       </footer>
