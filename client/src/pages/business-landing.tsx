@@ -524,17 +524,6 @@ export default function BusinessLanding() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
-              <motion.div
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-medium mb-6"
-                style={{ borderColor: `rgba(${BIZ.primaryRgb},0.35)`, background: `rgba(${BIZ.primaryRgb},0.08)`, color: BIZ.primary }}
-                data-testid="badge-biz-new"
-              >
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BIZ.primary }} />
-                Novo — Gestão corporativa de despesas
-              </motion.div>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-biz-hero-title">
                 Despesas{" "}

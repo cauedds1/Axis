@@ -136,7 +136,6 @@ function BrandPanel() {
             <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">
               AXIS <span style={{ color: PRIMARY }}>Business</span>
             </span>
-            <span className="text-xs text-white/25 tracking-wide">Gestão corporativa de despesas</span>
           </div>
         </div>
       </div>
