@@ -106,6 +106,7 @@ A corporate expense management system accessible at `/business` (public landing)
 
 ### New Frontend Pages
 - `/business` → `client/src/pages/business-landing.tsx` (public, distinct blue corporate design)
+- `/business/auth` → `client/src/pages/business-auth-page.tsx` (dedicated enterprise auth page: blue BIZ palette, corporate demo cards, redirects to `/business/app` after login/register)
 - `/business/app` → `client/src/pages/business/BusinessHome.tsx` (create company, invite members, stats)
 - `/business/app/expenses` → `client/src/pages/business/BusinessExpenses.tsx` (expense list grouped by date, receipt image viewer modal, approve/reject, Excel export, print-to-PDF)
 - `client/src/components/business-sidebar.tsx` — Business-specific sidebar

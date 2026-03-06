@@ -456,7 +456,7 @@ export default function BusinessLanding() {
                 AXIS Pessoal
               </button>
             </Link>
-            <Link href="/auth">
+            <Link href="/business/auth">
               <button
                 className="landing-cta-button group relative px-5 py-2 rounded-xl font-semibold text-sm transition-all border-0"
                 data-testid="button-biz-header-cta"
@@ -508,7 +508,7 @@ export default function BusinessLanding() {
               transition={{ delay: 0.3, duration: 0.5 }}
               className="flex flex-col sm:flex-row items-center gap-4"
             >
-              <Link href="/auth">
+              <Link href="/business/auth">
                 <button
                   className="landing-cta-button group relative px-8 py-4 rounded-xl font-semibold text-base transition-all"
                   data-testid="button-biz-hero-start"
@@ -818,7 +818,7 @@ export default function BusinessLanding() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
-            <Link href="/auth">
+            <Link href="/business/auth">
               <button
                 className="landing-cta-button group relative px-10 py-4 rounded-xl font-semibold text-base transition-all"
                 data-testid="button-biz-cta-final"

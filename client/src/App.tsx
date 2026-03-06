@@ -69,6 +69,7 @@ import NotFound from "@/pages/not-found";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import Reports from "@/pages/reports";
 import BusinessLanding from "@/pages/business-landing";
+import BusinessAuthPage from "@/pages/business-auth-page";
 import { BusinessLayout } from "@/components/BusinessLayout";
 
 function SidebarMobileClose() {
@@ -151,7 +152,7 @@ function AppRouter() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      const publicPaths = ["/", "/auth", "/privacy", "/business"];
+      const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business"];
       if (!publicPaths.includes(location) && !location.startsWith("/business")) {
         setLocation("/");
       }
@@ -183,6 +184,18 @@ function AppRouter() {
             )}
           </Route>
           <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/business/auth">
+            {() => (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                <BusinessAuthPage />
+              </motion.div>
+            )}
+          </Route>
           <Route path="/business" component={BusinessLanding} />
           <Route path="/">
             {() => (
