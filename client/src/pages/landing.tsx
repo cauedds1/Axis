@@ -778,11 +778,11 @@ export default function Landing() {
             <Link href="/business">
               <button
                 className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-all"
-                style={{ color: "rgba(255,255,255,0.55)" }}
+                style={{ color: "rgba(255,255,255,0.45)" }}
                 data-testid="button-axis-business"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
                 AXIS Business
+                <ArrowRight className="w-3 h-3" />
               </button>
             </Link>
             <button
