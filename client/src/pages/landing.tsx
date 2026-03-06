@@ -773,8 +773,18 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="AXIS" className="w-10 h-10 rounded-xl object-cover" />
             <span className="text-lg font-bold tracking-tight">AXIS</span>
+            <button
+              onClick={cycleTheme}
+              className="w-7 h-7 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"
+              style={{ background: `rgba(${LP.primaryRgb},0.15)` }}
+              title={`Tema: ${theme}`}
+              data-testid="button-cycle-theme"
+            >
+              <Palette className="w-3 h-3 transition-colors" style={{ color: LP.primary }} />
+              <span className="absolute -bottom-1 -right-1 w-2 h-2 rounded-full border border-[#08080f]" style={{ background: LP.primary }} />
+            </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Link href="/business">
               <button
                 className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-all"
@@ -785,16 +795,6 @@ export default function Landing() {
                 <ArrowRight className="w-3 h-3" />
               </button>
             </Link>
-            <button
-              onClick={cycleTheme}
-              className="w-8 h-8 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"
-              style={{ background: `rgba(${LP.primaryRgb},0.15)` }}
-              title={`Tema: ${theme}`}
-              data-testid="button-cycle-theme"
-            >
-              <Palette className="w-3.5 h-3.5 transition-colors" style={{ color: LP.primary }} />
-              <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full border border-[#08080f]" style={{ background: LP.primary }} />
-            </button>
             <Link href="/auth">
               <Button
                 className="landing-cta-button border-0 text-sm font-semibold px-5"
