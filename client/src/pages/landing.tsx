@@ -1361,29 +1361,41 @@ export default function Landing() {
               transition={{ delay: 0.15 }}
               className="grid grid-cols-1 gap-4"
             >
-              {[
-                { step: "01", title: "Colaborador fotografa o recibo", desc: "Envia pelo WhatsApp que já usa. Nenhum app novo pra baixar.", color: LP.primary },
-                { step: "02", title: "IA registra e classifica", desc: "Estabelecimento, valor, categoria e imagem — tudo automático.", color: LP.secondary },
-                { step: "03", title: "Gestor aprova e exporta", desc: "Painel com todas as despesas da equipe, relatório Excel em um clique.", color: LP.tertiary },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + i * 0.12 }}
-                  className="flex items-start gap-4 rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]"
-                  data-testid={`crosslink-step-${i}`}
-                >
-                  <div className="text-2xl font-bold tabular-nums flex-shrink-0 w-10 text-right" style={{ color: item.color, opacity: 0.5 }}>
-                    {item.step}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white/85 mb-0.5">{item.title}</p>
-                    <p className="text-xs text-white/40 leading-relaxed">{item.desc}</p>
-                  </div>
-                </motion.div>
-              ))}
+              <div className="relative">
+                <div className="absolute left-[27px] top-[52px] h-[calc(100%-104px)] w-px pointer-events-none"
+                  style={{ background: `linear-gradient(to bottom, rgba(${LP.primaryRgb},0.25), rgba(${LP.secondaryRgb},0.2), rgba(${LP.tertiaryRgb},0.15))` }} />
+                {[
+                  { step: "01", icon: <Camera className="w-4 h-4" />, title: "Colaborador fotografa o recibo", desc: "Envia pelo WhatsApp que já usa. Nenhum app novo pra baixar.", result: "foto salva no sistema", color: LP.primary, colorRgb: LP.primaryRgb },
+                  { step: "02", icon: <Zap className="w-4 h-4" />, title: "IA registra e classifica", desc: "Estabelecimento, valor, categoria e imagem — tudo automático.", result: "despesa registrada", color: LP.secondary, colorRgb: LP.secondaryRgb },
+                  { step: "03", icon: <Check className="w-4 h-4" />, title: "Gestor aprova e exporta", desc: "Painel com todas as despesas da equipe, relatório Excel em um clique.", result: "Excel exportado", color: LP.tertiary, colorRgb: LP.tertiaryRgb },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 16 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.2 + i * 0.14 }}
+                    className="flex items-start gap-4 rounded-xl p-4 mb-3 last:mb-0 border-l-2 bg-white/[0.02]"
+                    style={{ borderLeftColor: item.color, borderTopColor: "rgba(255,255,255,0.05)", borderRightColor: "rgba(255,255,255,0.05)", borderBottomColor: "rgba(255,255,255,0.05)", borderTopWidth: "1px", borderRightWidth: "1px", borderBottomWidth: "1px" }}
+                    data-testid={`crosslink-step-${i}`}
+                  >
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `rgba(${item.colorRgb},0.12)`, border: `1px solid rgba(${item.colorRgb},0.2)` }}>
+                      <span style={{ color: item.color }}>{item.icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-bold tabular-nums" style={{ color: item.color, opacity: 0.6 }}>{item.step}</span>
+                        <p className="text-sm font-semibold text-white/85">{item.title}</p>
+                      </div>
+                      <p className="text-xs text-white/40 leading-relaxed mb-2">{item.desc}</p>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: `rgba(${item.colorRgb},0.1)`, color: item.color }}>
+                        <Check className="w-2.5 h-2.5" />
+                        {item.result}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
             </motion.div>
           </div>
         </div>
