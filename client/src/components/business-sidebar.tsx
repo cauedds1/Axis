@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, LogOut, AlertCircle, BarChart3,
-  ReceiptText, Users, Settings, Layers, Zap, Banknote, UserCircle,
+  ReceiptText, Users, Settings, Layers, Zap, Banknote, UserCircle, FileText,
 } from "lucide-react";
 import {
   useBusinessTheme, getBusinessPrimaryHex, getBusinessModulePalette, isCorporateTheme,
@@ -92,7 +92,7 @@ export function BusinessSidebar() {
   ];
 
   const collabPersonalNav = [
-    { href: "/business/app/reports",     icon: BarChart3,   label: "Relatórios", color: palette.reports },
+    { href: "/business/app/relatorio",   icon: FileText,    label: "Relatório",  color: palette.reports },
     { href: "/business/app/reembolsos",  icon: Banknote,    label: "Reembolsos", color: palette.expenses },
     { href: "/business/app/perfil",      icon: UserCircle,  label: "Perfil",     color: palette.colaboradores },
   ];
