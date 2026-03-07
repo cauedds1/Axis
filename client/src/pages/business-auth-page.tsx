@@ -287,7 +287,8 @@ export default function BusinessAuthPage() {
     setLoginError(null);
     setIsLoading(true);
     try {
-      const userData = await apiRequest("POST", "/api/business/auth/login", { email, password });
+      const res = await apiRequest("POST", "/api/business/auth/login", { email, password });
+      const userData = await res.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
       if (!userData?.onboardingCompleted) {
         setLocation("/business/welcome");
@@ -306,7 +307,8 @@ export default function BusinessAuthPage() {
     setCollabLoginError(null);
     setCollabIsLoading(true);
     try {
-      const userData = await apiRequest("POST", "/api/business/auth/collaborator-login", { email: collabEmail, password: collabPassword });
+      const res = await apiRequest("POST", "/api/business/auth/collaborator-login", { email: collabEmail, password: collabPassword });
+      const userData = await res.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
       setLocation("/business/app");
     } catch (err: any) {
@@ -331,7 +333,8 @@ export default function BusinessAuthPage() {
     setSubmitError(null);
     setIsLoading(true);
     try {
-      const userData = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
+      const registerRes = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
+      const userData = await registerRes.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
       const rawCnpj = cnpj.replace(/\D/g, "");
       await apiRequest("POST", "/api/business/organizations", {

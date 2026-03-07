@@ -57,12 +57,15 @@ export default function BusinessCollaborators() {
     queryKey: ["/api/business/organizations"],
   });
   const activeOrg = orgs?.[0];
-  const isAdmin = activeOrg?.adminUserId === user?.id;
 
   const { data: members, isLoading: membersLoading } = useQuery<any[]>({
     queryKey: ["/api/business/organizations", activeOrg?.id, "members"],
     enabled: !!activeOrg?.id,
   });
+
+  const isAdmin =
+    activeOrg?.adminUserId === user?.id ||
+    (members ?? []).some((m: any) => m.userId === user?.id && m.role === "admin");
 
   const { data: expenses } = useQuery<any[]>({
     queryKey: ["/api/business/organizations", activeOrg?.id, "expenses"],
