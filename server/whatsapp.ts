@@ -749,20 +749,6 @@ class WhatsAppManager {
       return;
     }
 
-    const receipt = validReceipts[0];
-    const amount = Number(receipt.totalAmount);
-    const categoryName = receipt.categoryName || "Outros";
-    const description = receipt.description || receipt.establishment || "Despesa corporativa";
-    const establishment = receipt.establishment || null;
-    const paymentMethod = receipt.paymentMethod || null;
-    const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
-    const receiptItemsJson = receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null;
-
-    let date = new Date();
-    if (receipt.date) {
-      try { date = new Date(receipt.date); } catch {}
-    }
-
     let receiptImageUrl: string | undefined;
     let receiptImageBase64: string | undefined = dataUrl;
     if (isStorageConfigured) {
@@ -770,29 +756,59 @@ class WhatsAppManager {
       if (uploaded) { receiptImageUrl = uploaded; receiptImageBase64 = undefined; }
     }
 
-    const expense = await storage.createBusinessExpense({
-      organizationId: org.id,
-      userId,
-      amount: amount as any,
-      description,
-      categoryName,
-      establishment,
-      paymentMethod,
-      receiptItems: receiptItemsJson,
-      receiptImageBase64,
-      receiptImageUrl,
-      date,
-      source: "whatsapp",
-      status: "pending_review",
-    } as any);
+    const createdExpenses: Array<{ expense: any; amount: number; categoryName: string; establishment: string | null; description: string; date: Date; receiptItemsList: any[] | null }> = [];
 
-    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    let replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}`;
-    if (receiptItemsList) replyLine += ` 📋 ${receiptItemsList.length} itens`;
-    await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`);
-    log(`WhatsApp: despesa corporativa criada via colaborador userId=${userId} orgId=${org.id}`, "whatsapp");
+    for (const receipt of validReceipts) {
+      const amount = Number(receipt.totalAmount);
+      const categoryName = receipt.categoryName || "Outros";
+      const description = receipt.description || receipt.establishment || "Despesa corporativa";
+      const establishment = receipt.establishment || null;
+      const paymentMethod = receipt.paymentMethod || null;
+      const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
+      const receiptItemsJson = receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null;
 
-    await this.notifyAdminNewExpense(org.id, expense, userName);
+      let date = new Date();
+      if (receipt.date) {
+        try { date = new Date(receipt.date); } catch {}
+      }
+
+      const expense = await storage.createBusinessExpense({
+        organizationId: org.id,
+        userId,
+        amount: amount as any,
+        description,
+        categoryName,
+        establishment,
+        paymentMethod,
+        receiptItems: receiptItemsJson,
+        receiptImageBase64,
+        receiptImageUrl,
+        date,
+        source: "whatsapp",
+        status: "pending_review",
+      } as any);
+
+      createdExpenses.push({ expense, amount, categoryName, establishment, description, date, receiptItemsList });
+      await this.notifyAdminNewExpense(org.id, expense, userName);
+    }
+
+    let replyMsg: string;
+    if (createdExpenses.length === 1) {
+      const { amount, categoryName, establishment, description, date, receiptItemsList } = createdExpenses[0];
+      const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      let replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}`;
+      if (receiptItemsList) replyLine += ` 📋 ${receiptItemsList.length} itens`;
+      replyMsg = `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+    } else {
+      const lines = createdExpenses.map(({ amount, categoryName, establishment, description }, i) =>
+        `${i + 1}. ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*`
+      ).join("\n");
+      const totalAmount = createdExpenses.reduce((s, { amount }) => s + amount, 0);
+      replyMsg = `✅ *${createdExpenses.length} despesas registradas!*\n${lines}\n\n💰 Total: R$ ${totalAmount.toFixed(2).replace(".", ",")}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+    }
+
+    await this.sendMessage(jid, replyMsg);
+    log(`WhatsApp: ${createdExpenses.length} despesa(s) corporativa(s) criada(s) via colaborador userId=${userId} orgId=${org.id}`, "whatsapp");
   }
 
   // ─── NOTIFICATION HELPERS ────────────────────────────────────────────────────
