@@ -56,6 +56,7 @@ class AuthErrorBoundary extends Component<
 }
 
 import Landing from "@/pages/landing";
+import PublicReport from "@/pages/PublicReport";
 import AuthPage from "@/pages/auth-page";
 import Welcome from "@/pages/welcome";
 import Onboarding from "@/pages/onboarding";
@@ -171,7 +172,7 @@ function AppRouter() {
         setLocation("/business/auth");
       } else {
         const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business"];
-        if (!publicPaths.includes(location)) {
+        if (!publicPaths.includes(location) && !location.startsWith("/r/")) {
           setLocation("/");
         }
       }
@@ -231,6 +232,7 @@ function AppRouter() {
               </motion.div>
             )}
           </Route>
+          <Route path="/r/:token" component={PublicReport} />
           <Route path="/business" component={BusinessLanding} />
           <Route path="/">
             {() => (
@@ -252,6 +254,7 @@ function AppRouter() {
   return (
     <AuthErrorBoundary>
       <Switch>
+        <Route path="/r/:token" component={PublicReport} />
         <Route path="/business/welcome">
           {() => <BusinessThemeProvider><BusinessWelcome /></BusinessThemeProvider>}
         </Route>

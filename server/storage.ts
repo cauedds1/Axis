@@ -22,6 +22,8 @@ import {
   type BusinessBill, type InsertBusinessBill,
   type BusinessReceivable, type InsertBusinessReceivable,
   type BusinessCorporateCard, type InsertBusinessCorporateCard,
+  reportShares,
+  type ReportShare, type InsertReportShare,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -147,6 +149,8 @@ export interface IStorage {
   createBusinessCorporateCard(data: InsertBusinessCorporateCard): Promise<BusinessCorporateCard>;
   updateBusinessCorporateCard(id: string, orgId: string, data: Partial<InsertBusinessCorporateCard>): Promise<BusinessCorporateCard | undefined>;
   deleteBusinessCorporateCard(id: string, orgId: string): Promise<void>;
+  createReportShare(data: InsertReportShare): Promise<ReportShare>;
+  getReportShare(token: string): Promise<ReportShare | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -778,6 +782,16 @@ export class DatabaseStorage implements IStorage {
   async deleteBusinessCorporateCard(id: string, orgId: string): Promise<void> {
     await db.delete(businessCorporateCards)
       .where(and(eq(businessCorporateCards.id, id), eq(businessCorporateCards.organizationId, orgId)));
+  }
+
+  async createReportShare(data: InsertReportShare): Promise<ReportShare> {
+    const [share] = await db.insert(reportShares).values(data).returning();
+    return share;
+  }
+
+  async getReportShare(token: string): Promise<ReportShare | undefined> {
+    const [share] = await db.select().from(reportShares).where(eq(reportShares.id, token));
+    return share;
   }
 }
 

@@ -1,19 +1,22 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   ExternalLink, Calendar, FileText, CheckCircle2, Clock, XCircle,
-  Banknote, ChevronDown, ImageOff, ZoomIn,
+  Banknote, ChevronDown, ImageOff, ZoomIn, Copy, Loader2, Link2, Check,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
+import { apiRequest } from "@/lib/queryClient";
 
 function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -133,21 +136,44 @@ export default function CollaboratorReport() {
   const totalPendente = sorted.filter(e => e.status === "pending_review").reduce((s, e) => s + e.amount, 0);
   const totalPago     = sorted.filter(e => e.status === "paid").reduce((s, e) => s + e.amount, 0);
 
-  const [, setLocation] = useLocation();
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const presetLabel = PRESETS.find(p => p.key === preset)?.label ?? "Período";
   const periodLabel = `${format(dates.start, "dd/MM/yyyy", { locale: ptBR })} — ${format(dates.end, "dd/MM/yyyy", { locale: ptBR })}`;
   const collaboratorName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
 
+  const shareMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeOrg?.id || !user?.id) throw new Error("Dados incompletos");
+      const res = await apiRequest("POST", "/api/reports/share", {
+        orgId:     activeOrg.id,
+        userId:    user.id,
+        startDate: dates.start.toISOString(),
+        endDate:   dates.end.toISOString(),
+      });
+      const data = await res.json();
+      return data as { token: string; url: string };
+    },
+    onSuccess: (data) => {
+      const localUrl = `${window.location.origin}/r/${data.token}`;
+      setShareUrl(localUrl);
+      setShowShareModal(true);
+      setCopied(false);
+    },
+  });
+
   const handleGenerate = () => {
     if (!activeOrg?.id || !user?.id) return;
-    const p = new URLSearchParams({
-      orgId:     activeOrg.id,
-      startDate: dates.start.toISOString(),
-      endDate:   dates.end.toISOString(),
-      userId:    user.id,
-    });
-    setLocation(`/business/app/relatorio/view?${p}`);
+    shareMutation.mutate();
+  };
+
+  const handleCopy = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const isLoading = orgsLoading || expLoading;
@@ -161,6 +187,7 @@ export default function CollaboratorReport() {
   );
 
   return (
+    <>
     <div className="p-6 max-w-3xl mx-auto print:p-0" id="collab-report-root">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
@@ -177,11 +204,11 @@ export default function CollaboratorReport() {
             className="gap-2 border-0"
             style={{ background: primaryHex, color: "#fff" }}
             onClick={handleGenerate}
-            disabled={isLoading || sorted.length === 0}
+            disabled={isLoading || sorted.length === 0 || shareMutation.isPending}
             data-testid="button-generate-report"
           >
-            <ExternalLink className="w-4 h-4" />
-            Gerar relatório
+            {shareMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+            {shareMutation.isPending ? "Gerando..." : "Gerar relatório"}
           </Button>
         </div>
 
@@ -382,15 +409,76 @@ export default function CollaboratorReport() {
               className="gap-2 border-0"
               style={{ background: primaryHex, color: "#fff" }}
               onClick={handleGenerate}
+              disabled={shareMutation.isPending}
               data-testid="button-generate-report-bottom"
             >
-              <ExternalLink className="w-4 h-4" />
-              Gerar relatório
+              {shareMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+              {shareMutation.isPending ? "Gerando..." : "Gerar relatório"}
             </Button>
           </div>
         )}
 
       </motion.div>
     </div>
+
+    <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" style={{ color: primaryHex }} />
+            Relatório gerado!
+          </DialogTitle>
+          <DialogDescription>
+            Compartilhe este link com o financeiro — ele não precisa de conta no AXIS para visualizar.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-4 pt-1">
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={shareUrl ?? ""}
+              className="flex-1 text-sm font-mono bg-muted"
+              data-testid="input-share-url"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5"
+              onClick={handleCopy}
+              data-testid="button-copy-link"
+            >
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              {copied ? "Copiado!" : "Copiar"}
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Link válido por 30 dias
+          </p>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="flex-1 gap-2"
+              style={{ background: primaryHex, color: "#fff" }}
+              onClick={() => shareUrl && window.open(shareUrl, "_blank")}
+              data-testid="button-open-report"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Abrir relatório
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowShareModal(false)}
+              data-testid="button-close-share-modal"
+            >
+              Fechar
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

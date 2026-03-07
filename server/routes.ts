@@ -3437,5 +3437,52 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.post("/api/reports/share", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, startDate, endDate } = req.body;
+      if (!orgId || !startDate || !endDate) return res.status(400).json({ message: "Parâmetros obrigatórios: orgId, startDate, endDate" });
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      const share = await storage.createReportShare({
+        orgId,
+        userId,
+        startDate: new Date(startDate),
+        endDate:   new Date(endDate),
+        expiresAt,
+      });
+      const baseUrl = process.env.APP_URL || "https://myaxis.com.br";
+      res.json({ token: share.id, url: `${baseUrl}/r/${share.id}` });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.get("/api/public/report/:token", async (req, res) => {
+    try {
+      const share = await storage.getReportShare(req.params.token);
+      if (!share) return res.status(404).json({ message: "Relatório não encontrado" });
+      if (share.expiresAt && new Date() > new Date(share.expiresAt)) return res.status(410).json({ message: "Link expirado" });
+      const org = await storage.getOrganizationById(share.orgId);
+      if (!org) return res.status(404).json({ message: "Organização não encontrada" });
+      const expenses = await storage.getBusinessExpenses(share.orgId, {
+        startDate: share.startDate ? new Date(share.startDate) : undefined,
+        endDate:   share.endDate   ? new Date(share.endDate)   : undefined,
+        userId:    share.userId,
+      });
+      const [userData] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users).where(eq(users.id, share.userId));
+      const collaboratorName = userData ? [userData.firstName, userData.lastName].filter(Boolean).join(" ") : "Colaborador";
+      res.json({
+        org: { name: org.name, tradeName: org.tradeName },
+        collaboratorName,
+        startDate: share.startDate,
+        endDate:   share.endDate,
+        expiresAt: share.expiresAt,
+        expenses,
+      });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   return httpServer;
 }

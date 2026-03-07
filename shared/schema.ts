@@ -371,6 +371,20 @@ export const businessCorporateCards = pgTable("business_corporate_cards", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const reportShares = pgTable("report_shares", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertReportShareSchema = createInsertSchema(reportShares).omit({ id: true, createdAt: true });
+export type ReportShare = typeof reportShares.$inferSelect;
+export type InsertReportShare = z.infer<typeof insertReportShareSchema>;
+
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({ id: true, joinedAt: true });
 export const insertBusinessExpenseSchema = createInsertSchema(businessExpenses).omit({ id: true, createdAt: true });
