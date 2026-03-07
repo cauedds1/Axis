@@ -73,6 +73,29 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
                 <p className="font-medium text-foreground">{expense.categoryName}</p>
               </div>
             )}
+            {expense?.receiptItems && (() => {
+              try {
+                const items: { description: string; amount: number }[] = JSON.parse(expense.receiptItems);
+                if (!items.length) return null;
+                return (
+                  <div className="rounded-xl p-3 col-span-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <p className="text-xs text-muted-foreground mb-2">Itens do cupom</p>
+                    <div className="flex flex-col gap-1.5">
+                      {items.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-foreground/80 flex-1 truncate">{item.description}</span>
+                          <span className="font-medium text-foreground shrink-0">{formatBRL(item.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-border/30 mt-1 pt-1.5 flex items-center justify-between text-sm font-semibold">
+                        <span className="text-muted-foreground">Total</span>
+                        <span style={{ color: BLUE_LIGHT }}>{formatBRL(expense.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              } catch { return null; }
+            })()}
             {expense?.notes && (
               <div className="rounded-xl p-3 col-span-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <p className="text-xs text-muted-foreground mb-1">Observações</p>

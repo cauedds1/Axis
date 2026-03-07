@@ -375,6 +375,31 @@ export default function CollaboratorReport() {
                       {expense.rejectionComment && (
                         <p className="text-xs text-red-400 mt-1.5 opacity-80">💬 {expense.rejectionComment}</p>
                       )}
+                      {expense.receiptItems && (() => {
+                        try {
+                          const items: { description: string; amount: number }[] = JSON.parse(expense.receiptItems);
+                          if (!items.length) return null;
+                          return (
+                            <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1" style={{ background: "rgba(255,255,255,0.02)" }}>
+                                Itens do cupom
+                              </p>
+                              <div className="flex flex-col divide-y divide-border/20">
+                                {items.map((item, idx) => (
+                                  <div key={idx} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                                    <span className="text-xs text-foreground/75 flex-1">{item.description}</span>
+                                    <span className="text-xs font-medium text-foreground shrink-0">{formatBRL(item.amount)}</span>
+                                  </div>
+                                ))}
+                                <div className="flex items-center justify-between gap-3 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                                  <span className="text-xs font-semibold text-muted-foreground">Total</span>
+                                  <span className="text-xs font-bold" style={{ color: primaryHex }}>{formatBRL(expense.amount)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        } catch { return null; }
+                      })()}
                     </div>
                   </div>
                 </motion.div>
