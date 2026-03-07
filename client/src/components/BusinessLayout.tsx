@@ -25,7 +25,7 @@ export function BusinessLayout() {
       <div className="flex h-screen w-full">
         <BusinessSidebar />
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center gap-4 p-2 sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/50">
+          <header className="flex items-center gap-4 p-2 sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
             <SidebarTrigger data-testid="button-business-sidebar-toggle" />
           </header>
           <main className="flex-1 overflow-auto">
