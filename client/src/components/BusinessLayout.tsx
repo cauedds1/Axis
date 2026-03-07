@@ -13,6 +13,7 @@ import CollaboratorHome from "@/pages/business/CollaboratorHome";
 import CollaboratorReimbursements from "@/pages/business/CollaboratorReimbursements";
 import CollaboratorProfile from "@/pages/business/CollaboratorProfile";
 import CollaboratorReport from "@/pages/business/CollaboratorReport";
+import ReportView from "@/pages/business/ReportView";
 
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
@@ -48,6 +49,7 @@ export function BusinessLayout() {
               <Route path="/business/app/colaboradores" component={BusinessCollaborators} />
               <Route path="/business/app/reports" component={BusinessReports} />
               <Route path="/business/app/config" component={BusinessSettingsPage} />
+              <Route path="/business/app/relatorio/view" component={ReportView} />
               <Route path="/business/app/relatorio" component={CollaboratorReport} />
               <Route path="/business/app/reembolsos" component={CollaboratorReimbursements} />
               <Route path="/business/app/perfil" component={CollaboratorProfile} />

@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Printer, Calendar, FileText, CheckCircle2, Clock, XCircle,
+  ExternalLink, Calendar, FileText, CheckCircle2, Clock, XCircle,
   Banknote, ChevronDown, ImageOff, ZoomIn,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
@@ -132,56 +133,22 @@ export default function CollaboratorReport() {
   const totalPendente = sorted.filter(e => e.status === "pending_review").reduce((s, e) => s + e.amount, 0);
   const totalPago     = sorted.filter(e => e.status === "paid").reduce((s, e) => s + e.amount, 0);
 
+  const [, setLocation] = useLocation();
+
   const presetLabel = PRESETS.find(p => p.key === preset)?.label ?? "Período";
   const periodLabel = `${format(dates.start, "dd/MM/yyyy", { locale: ptBR })} — ${format(dates.end, "dd/MM/yyyy", { locale: ptBR })}`;
   const collaboratorName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
 
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.id = "collab-report-print";
-    style.textContent = `
-      @media print {
-        body > * { display: none !important; }
-        #collab-report-root { display: block !important; }
-        .print-hide { display: none !important; }
-        .print-show { display: block !important; }
-        #collab-report-root { padding: 0; margin: 0; }
-        .report-card { break-inside: avoid; border: 1px solid #e5e7eb !important; background: #fff !important; box-shadow: none !important; margin-bottom: 12px; }
-        .report-card-border { background: #6b7280 !important; }
-        .report-header-block { border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 24px; }
-        .summary-row { display: flex; gap: 12px; margin-bottom: 24px; }
-        .summary-card { border: 1px solid #e5e7eb !important; background: #f9fafb !important; flex: 1; padding: 12px; border-radius: 8px; }
-        .summary-card .s-label { color: #6b7280 !important; font-size: 11px; }
-        .summary-card .s-value { color: #111827 !important; font-weight: 700; font-size: 15px; }
-        .expense-amount { color: #111827 !important; font-weight: 700; }
-        .expense-meta { color: #374151 !important; }
-        .expense-sub { color: #6b7280 !important; }
-        .badge-status { border: 1px solid #d1d5db !important; background: #f3f4f6 !important; color: #374151 !important; }
-        img { max-height: 80px !important; object-fit: contain !important; }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => { document.getElementById("collab-report-print")?.remove(); };
-  }, []);
-
-  const handlePrint = useCallback(() => {
-    const root = document.getElementById("collab-report-root");
-    if (!root) { window.print(); return; }
-    const clone = root.cloneNode(true) as HTMLElement;
-    clone.style.display = "block";
-    clone.style.position = "fixed";
-    clone.style.top = "0";
-    clone.style.left = "0";
-    clone.style.width = "100%";
-    clone.style.zIndex = "99999";
-    clone.style.background = "#fff";
-    clone.style.padding = "32px";
-    clone.style.boxSizing = "border-box";
-    clone.querySelectorAll(".print-hide").forEach(el => (el as HTMLElement).style.display = "none");
-    document.body.appendChild(clone);
-    window.print();
-    document.body.removeChild(clone);
-  }, []);
+  const handleGenerate = () => {
+    if (!activeOrg?.id || !user?.id) return;
+    const p = new URLSearchParams({
+      orgId:     activeOrg.id,
+      startDate: dates.start.toISOString(),
+      endDate:   dates.end.toISOString(),
+      userId:    user.id,
+    });
+    setLocation(`/business/app/relatorio/view?${p}`);
+  };
 
   const isLoading = orgsLoading || expLoading;
 
@@ -197,28 +164,28 @@ export default function CollaboratorReport() {
     <div className="p-6 max-w-3xl mx-auto print:p-0" id="collab-report-root">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
-        <div className="flex items-start justify-between mb-6 print-hide">
+        <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FileText className="w-6 h-6" style={{ color: primaryHex }} />
               Relatório de Despesas
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Gere e imprima seu relatório para o financeiro</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Gere seu relatório de despesas para análise</p>
           </div>
           <Button
             size="sm"
-            className="gap-2 border-0 print-hide"
+            className="gap-2 border-0"
             style={{ background: primaryHex, color: "#fff" }}
-            onClick={handlePrint}
+            onClick={handleGenerate}
             disabled={isLoading || sorted.length === 0}
-            data-testid="button-print-report"
+            data-testid="button-generate-report"
           >
-            <Printer className="w-4 h-4" />
-            Imprimir relatório
+            <ExternalLink className="w-4 h-4" />
+            Gerar relatório
           </Button>
         </div>
 
-        <div className="mb-5 print-hide">
+        <div className="mb-5">
           <div className="relative">
             <Button
               variant="outline"
@@ -409,16 +376,16 @@ export default function CollaboratorReport() {
         )}
 
         {sorted.length > 0 && (
-          <div className="mt-6 flex justify-end print-hide">
+          <div className="mt-6 flex justify-end">
             <Button
               size="sm"
               className="gap-2 border-0"
               style={{ background: primaryHex, color: "#fff" }}
-              onClick={handlePrint}
-              data-testid="button-print-report-bottom"
+              onClick={handleGenerate}
+              data-testid="button-generate-report-bottom"
             >
-              <Printer className="w-4 h-4" />
-              Imprimir relatório
+              <ExternalLink className="w-4 h-4" />
+              Gerar relatório
             </Button>
           </div>
         )}
