@@ -220,11 +220,12 @@ export default function BusinessHome() {
           <div className="rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6" style={{ background: `${primaryHex}0A`, border: `1px solid ${primaryHex}20` }}>
             <div className="flex items-center gap-3">
               {(activeOrg.logoUrl || activeOrg.logoBase64) ? (
-                <div className="w-10 h-10 rounded-xl flex-shrink-0 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden" style={{ background: "transparent" }}>
                   <img
                     src={activeOrg.logoUrl ?? activeOrg.logoBase64}
                     alt={activeOrg.tradeName || activeOrg.name}
                     className="w-full h-full object-cover"
+                    style={{ mixBlendMode: "screen" }}
                   />
                 </div>
               ) : (
