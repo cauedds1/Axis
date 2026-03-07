@@ -275,22 +275,28 @@ function AppRouter() {
         <Route path="/business/app">
           {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
         </Route>
-        <Route component={AuthenticatedLayout} />
+        <Route component={PersonalAppWrapper} />
       </Switch>
     </AuthErrorBoundary>
   );
   }
 }
 
+function PersonalAppWrapper() {
+  return (
+    <ThemeProvider>
+      <AuthenticatedLayout />
+    </ThemeProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AppRouter />
-        </TooltipProvider>
-      </ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <AppRouter />
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

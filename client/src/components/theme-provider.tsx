@@ -235,7 +235,7 @@ export function useBusinessTheme() {
 
 function applyBusinessTheme(t: BusinessTheme) {
   const root = window.document.documentElement;
-  root.classList.remove(...ALL_BUSINESS_THEMES, "slim", "high");
+  root.classList.remove("light", ...ALL_THEMES, ...ALL_BUSINESS_THEMES, "slim", "high");
   root.classList.add("dark", t);
   if (isCorporateTheme(t)) root.classList.add("slim");
   else if (isExecutiveTheme(t)) root.classList.add("high");
