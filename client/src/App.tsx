@@ -107,6 +107,7 @@ function AuthenticatedLayout() {
   const gatedPaths = ["/onboarding", "/welcome"];
 
   useEffect(() => {
+    if (location.startsWith("/business")) return;
     if (onboardingCompleted === false && !gatedPaths.includes(location)) {
       setLocation("/welcome");
     }
@@ -114,6 +115,8 @@ function AuthenticatedLayout() {
       setLocation("/");
     }
   }, [onboardingCompleted, location, setLocation]);
+
+  if (location.startsWith("/business")) return null;
 
   if (onboardingCompleted === false) {
     if (location === "/onboarding") return <Onboarding />;
@@ -233,7 +236,8 @@ function AppRouter() {
   return (
     <AuthErrorBoundary>
       <Switch>
-        <Route path="/business/:rest*" component={BusinessLayout} />
+        <Route path="/business/app/expenses" component={BusinessLayout} />
+        <Route path="/business/app" component={BusinessLayout} />
         <Route component={AuthenticatedLayout} />
       </Switch>
     </AuthErrorBoundary>
