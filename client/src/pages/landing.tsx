@@ -771,7 +771,7 @@ export default function Landing() {
       <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="AXIS" className="w-10 h-10 rounded-xl object-cover" />
+            <img src="/logo.png" alt="AXIS" className="w-12 h-12 rounded-xl object-cover" />
             <span className="text-lg font-bold tracking-tight">AXIS</span>
             <button
               onClick={cycleTheme}
