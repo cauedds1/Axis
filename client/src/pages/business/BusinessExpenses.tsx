@@ -267,7 +267,7 @@ export default function BusinessExpenses() {
   });
 
   const activeOrg = selectedOrgId ? orgs?.find(o => o.id === selectedOrgId) : orgs?.[0];
-  const isAdmin = activeOrg?.adminUserId === user?.id;
+  const isAdmin = !!activeOrg?.isAdmin;
 
   useEffect(() => {
     if (isCollaborator && user?.id) setFilterUser(user.id);

@@ -2979,7 +2979,8 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     try {
       const userId = getUserId(req);
       const orgs = await storage.getUserOrganizations(userId);
-      res.json(orgs);
+      const result = orgs.map(org => ({ ...org, isAdmin: org.adminUserId === userId }));
+      res.json(result);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
     }

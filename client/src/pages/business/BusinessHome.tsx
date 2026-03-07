@@ -227,7 +227,7 @@ export default function BusinessHome() {
                 <p className="text-xs text-muted-foreground">{members?.length ?? 0} colaborador{(members?.length ?? 0) !== 1 ? "es" : ""}</p>
               </div>
               <Badge className="ml-1 text-[10px]" style={{ background: `${primaryHex}20`, color: primaryHex, border: `1px solid ${primaryHex}35` }}>
-                {activeOrg.adminUserId === user?.id ? "Administrador" : "Colaborador"}
+                {activeOrg.isAdmin ? "Administrador" : "Colaborador"}
               </Badge>
             </div>
             <Link href="/business/app/colaboradores">
