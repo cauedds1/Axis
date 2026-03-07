@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { KeyRound, User, Building2 } from "lucide-react";
+import { KeyRound, User, Building2, MessageCircle, CheckCircle2 } from "lucide-react";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 
@@ -32,6 +32,8 @@ export default function CollaboratorProfile() {
   const primaryHex = getBusinessPrimaryHex(businessTheme);
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappSaved, setWhatsappSaved] = useState(false);
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const activeOrg = orgs?.[0];
@@ -46,6 +48,26 @@ export default function CollaboratorProfile() {
   const form = useForm<ChangePasswordData>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+  });
+
+  const { data: profileData } = useQuery<{ profile: any; user: any }>({ queryKey: ["/api/user/profile"] });
+
+  useEffect(() => {
+    if (profileData?.profile?.whatsappPhone && !whatsappSaved) {
+      setWhatsappInput(profileData.profile.whatsappPhone);
+    }
+  }, [profileData]);
+
+  const saveWhatsappMutation = useMutation({
+    mutationFn: async (phone: string) => {
+      const res = await apiRequest("PATCH", "/api/user/whatsapp-phone", { phone });
+      return res.json();
+    },
+    onSuccess: () => {
+      setWhatsappSaved(true);
+      toast({ title: "WhatsApp vinculado com sucesso!" });
+    },
+    onError: () => toast({ title: "Erro ao salvar número de WhatsApp", variant: "destructive" }),
   });
 
   const changePasswordMutation = useMutation({
@@ -126,6 +148,53 @@ export default function CollaboratorProfile() {
               <p className="text-sm font-medium text-foreground" data-testid="text-orgname">
                 {activeOrg?.tradeName || activeOrg?.name || "—"}
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="rounded-2xl p-6 mb-4"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <MessageCircle className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Notificações via WhatsApp</h2>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Número vinculado</p>
+              <p className="text-sm font-medium text-foreground" data-testid="text-whatsapp-phone">
+                {profileData?.profile?.whatsappPhone || "Não vinculado"}
+              </p>
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <Input
+                type="tel"
+                className="h-9 text-sm max-w-xs"
+                placeholder="(11) 99999-9999"
+                value={whatsappInput}
+                onChange={e => { setWhatsappInput(e.target.value); setWhatsappSaved(false); }}
+                data-testid="input-whatsapp-phone"
+              />
+              <Button
+                size="sm"
+                className="h-9 text-xs border-0 flex gap-1.5 items-center"
+                style={{ background: primaryHex, color: "white" }}
+                disabled={saveWhatsappMutation.isPending || !whatsappInput.trim()}
+                onClick={() => saveWhatsappMutation.mutate(whatsappInput)}
+                data-testid="button-save-whatsapp"
+              >
+                {saveWhatsappMutation.isPending ? "Salvando..." : whatsappSaved ? <><CheckCircle2 className="w-3.5 h-3.5" /> Salvo</> : "Salvar"}
+              </Button>
+            </div>
+
+            <div
+              className="rounded-xl p-3 text-xs text-muted-foreground leading-relaxed"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              Após salvar, envie <span className="font-semibold text-foreground">vincular {whatsappInput || "seu-número"}</span> para o bot do AXIS para ativar o recebimento de notificações e o envio de recibos por foto.
             </div>
           </div>
         </div>

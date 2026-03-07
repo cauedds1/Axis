@@ -3176,6 +3176,14 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         date: parsed.data.date ? new Date(parsed.data.date) : new Date(),
         source: parsed.data.source ?? "manual",
       });
+
+      const org = await storage.getOrganizationById(orgId);
+      if (org && org.adminUserId !== userId) {
+        const [submitter] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, userId));
+        const submitterName = submitter ? `${submitter.firstName ?? ""} ${submitter.lastName ?? ""}`.trim() : undefined;
+        whatsappManager.notifyAdminNewExpense(orgId, expense, submitterName).catch(() => {});
+      }
+
       res.json(expense);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -3193,6 +3201,11 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       if (!["approved", "rejected", "pending_review", "paid"].includes(status)) return res.status(400).json({ message: "Status inválido" });
       const updated = await storage.updateBusinessExpenseStatus(expenseId, orgId, status, rejectionComment);
       if (!updated) return res.status(404).json({ message: "Despesa não encontrada" });
+
+      if (["approved", "rejected", "paid"].includes(status)) {
+        whatsappManager.notifyCollaboratorExpenseStatus(updated, status, rejectionComment).catch(() => {});
+      }
+
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message });

@@ -416,6 +416,13 @@ class WhatsAppManager {
 
       log(`WhatsApp: usuário encontrado — userId=${profile.userId}`, "whatsapp");
 
+      // Route collaborator accounts directly to business expense flow
+      const [userRow] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, profile.userId));
+      if (userRow?.accountType === "collaborator") {
+        await this.handleCollaboratorMessage(msg, jid, profile.userId, imageMsg, text);
+        return;
+      }
+
       // Check for pending business expense choice (pessoal vs corporativo)
       const pendingBusiness = this.pendingBusinessChoice.get(jid);
       if (pendingBusiness && !imageMsg) {
@@ -654,6 +661,160 @@ class WhatsAppManager {
       await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
     }
   }
+
+  // ─── COLLABORATOR MESSAGE HANDLER ───────────────────────────────────────────
+
+  private async handleCollaboratorMessage(
+    msg: proto.IWebMessageInfo,
+    jid: string,
+    userId: string,
+    imageMsg: any,
+    text: string
+  ): Promise<void> {
+    if (!imageMsg) {
+      const cmdRaw = text.trim().toLowerCase();
+      if (cmdRaw.startsWith("vincular")) {
+        await this.sendMessage(jid, "✅ Seu número já está vinculado ao AXIS Business!\n\nEnvie uma foto do recibo para registrar uma despesa corporativa.");
+        return;
+      }
+      await this.sendMessage(jid, "📎 Envie uma *foto do recibo* para registrar uma despesa corporativa.\n\nAssim que receber a imagem, vou criar a despesa automaticamente e notificar o gestor.");
+      return;
+    }
+
+    const orgs = await storage.getUserOrganizations(userId);
+    if (orgs.length === 0) {
+      await this.sendMessage(jid, "⚠️ Você não está associado a nenhuma empresa. Entre em contato com o administrador.");
+      return;
+    }
+    const org = orgs[0];
+
+    await this.sendMessage(jid, "🔍 Analisando comprovante...");
+
+    let buffer: Buffer;
+    try {
+      buffer = await downloadWithTimeout(msg, this.sock);
+    } catch (dlErr: any) {
+      log(`WhatsApp: falha ao baixar mídia (colaborador) — ${dlErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui baixar a imagem. Tente enviar novamente.");
+      return;
+    }
+
+    const mimetype = imageMsg.mimetype || "image/jpeg";
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${mimetype};base64,${base64}`;
+
+    let userName: string | undefined;
+    try {
+      const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, userId));
+      if (u) userName = [u.firstName, u.lastName].filter(Boolean).join(" ");
+    } catch {}
+
+    let multiResult: { count: number; receipts: any[] };
+    try {
+      multiResult = await processMultipleReceipts(dataUrl, userId, userName);
+    } catch (aiErr: any) {
+      log(`WhatsApp: falha na análise IA (colaborador) — ${aiErr.message}`, "whatsapp");
+      await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente uma foto mais nítida.");
+      return;
+    }
+
+    const validReceipts = multiResult.receipts.filter(r => r.totalAmount);
+    if (validReceipts.length === 0) {
+      await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida.");
+      return;
+    }
+
+    const receipt = validReceipts[0];
+    const amount = Number(receipt.totalAmount);
+    const categoryName = receipt.categoryName || "Outros";
+    const description = receipt.description || receipt.establishment || "Despesa corporativa";
+    const establishment = receipt.establishment || null;
+    const paymentMethod = receipt.paymentMethod || null;
+
+    let date = new Date();
+    if (receipt.date) {
+      try { date = new Date(receipt.date); } catch {}
+    }
+
+    let receiptImageUrl: string | undefined;
+    let receiptImageBase64: string | undefined = dataUrl;
+    if (isStorageConfigured) {
+      const uploaded = await uploadBase64Image(dataUrl, "receipts");
+      if (uploaded) { receiptImageUrl = uploaded; receiptImageBase64 = undefined; }
+    }
+
+    const expense = await storage.createBusinessExpense({
+      organizationId: org.id,
+      userId,
+      amount: amount as any,
+      description,
+      categoryName,
+      establishment,
+      paymentMethod,
+      receiptImageBase64,
+      receiptImageUrl,
+      date,
+      source: "whatsapp",
+      status: "pending_review",
+    } as any);
+
+    const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}`;
+    await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`);
+    log(`WhatsApp: despesa corporativa criada via colaborador userId=${userId} orgId=${org.id}`, "whatsapp");
+
+    await this.notifyAdminNewExpense(org.id, expense, userName);
+  }
+
+  // ─── NOTIFICATION HELPERS ────────────────────────────────────────────────────
+
+  public async notifyAdminNewExpense(orgId: string, expense: any, collaboratorName?: string): Promise<void> {
+    try {
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return;
+      const adminProfile = await storage.getUserProfile(org.adminUserId);
+      if (!adminProfile?.whatsappJid) return;
+      const amount = Number(expense.amount);
+      const desc = expense.establishment || expense.description || "Despesa";
+      const name = collaboratorName || "Colaborador";
+      const msg =
+        `🧾 *Nova despesa corporativa*\n` +
+        `👤 ${name} enviou uma despesa\n` +
+        `💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n` +
+        `📂 Categoria: ${expense.categoryName || "—"}\n` +
+        `📋 Status: Aguardando aprovação`;
+      await this.sendMessage(adminProfile.whatsappJid, msg);
+      log(`WhatsApp: admin ${org.adminUserId} notificado sobre nova despesa`, "whatsapp");
+    } catch (err: any) {
+      log(`WhatsApp: erro ao notificar admin — ${err.message}`, "whatsapp");
+    }
+  }
+
+  public async notifyCollaboratorExpenseStatus(expense: any, newStatus: string, rejectionComment?: string): Promise<void> {
+    try {
+      const collaboratorProfile = await storage.getUserProfile(expense.userId);
+      if (!collaboratorProfile?.whatsappJid) return;
+      const amount = Number(expense.amount);
+      const desc = expense.establishment || expense.description || "Despesa";
+      let msg: string;
+      if (newStatus === "approved") {
+        msg = `✅ *Despesa aprovada!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n📋 Aguardando pagamento pelo gestor.`;
+      } else if (newStatus === "rejected") {
+        const reason = rejectionComment || "Sem motivo informado";
+        msg = `❌ *Despesa rejeitada*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n💬 Motivo: ${reason}\n\n📎 Envie uma nova foto com as correções para reenviar.`;
+      } else if (newStatus === "paid") {
+        msg = `💸 *Reembolso realizado!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n✅ O valor foi marcado como pago pelo gestor.`;
+      } else {
+        return;
+      }
+      await this.sendMessage(collaboratorProfile.whatsappJid, msg);
+      log(`WhatsApp: colaborador ${expense.userId} notificado — status: ${newStatus}`, "whatsapp");
+    } catch (err: any) {
+      log(`WhatsApp: erro ao notificar colaborador — ${err.message}`, "whatsapp");
+    }
+  }
+
+  // ─── RECEIPT IMAGE HANDLER ───────────────────────────────────────────────────
 
   private async handleReceiptImage(
     msg: proto.IWebMessageInfo,
