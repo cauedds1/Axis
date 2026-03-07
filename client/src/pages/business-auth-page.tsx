@@ -355,7 +355,7 @@ export default function BusinessAuthPage() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white relative">
       <button
-        onClick={() => setLocation("/")}
+        onClick={() => setLocation("/business")}
         className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
         data-testid="button-back-to-landing"
       >
