@@ -10,7 +10,7 @@ interface Props {
 
 const CANVAS_SIZE = 320;
 const CIRCLE_R = 130;
-const OUTPUT_SIZE = 280;
+const OUTPUT_SIZE = 180;
 
 export function LogoCropModal({ src, open, onSave, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -155,7 +155,7 @@ export function LogoCropModal({ src, open, onSave, onClose }: Props) {
     const oy = offset.y * scale;
     ctx.drawImage(img, cx - w / 2 + ox, cy - h / 2 + oy, w, h);
 
-    const result = offscreen.toDataURL("image/jpeg", 0.88);
+    const result = offscreen.toDataURL("image/png");
     onSave(result);
   };
 

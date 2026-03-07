@@ -148,7 +148,7 @@ export default function ReportView() {
                   <img
                     src={activeOrg.logoUrl ?? activeOrg.logoBase64}
                     alt={activeOrg.tradeName || activeOrg.name}
-                    className="w-full h-full object-contain p-1"
+                    className="w-full h-full object-cover"
                   />
                 </div>
               )}

@@ -160,7 +160,7 @@ export default function PublicReport() {
                 <div className="flex items-start gap-4">
                   {orgLogoSrc && (
                     <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                      <img src={orgLogoSrc} alt={data.org.tradeName || data.org.name} className="w-full h-full object-contain p-1" />
+                      <img src={orgLogoSrc} alt={data.org.tradeName || data.org.name} className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div>

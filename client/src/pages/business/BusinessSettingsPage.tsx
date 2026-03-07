@@ -278,7 +278,7 @@ export default function BusinessSettingsPage() {
                   style={{ background: "rgba(255,255,255,0.04)", border: "2px dashed rgba(255,255,255,0.12)" }}
                 >
                   {logoPreview ? (
-                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
+                    <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
                   ) : (
                     <ImageIcon className="w-7 h-7 text-muted-foreground/40" />
                   )}
