@@ -280,7 +280,10 @@ export type ScheduleItemCancellation = typeof scheduleItemCancellations.$inferSe
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  tradeName: text("trade_name"),
   cnpj: text("cnpj"),
+  segment: text("segment"),
+  closingDay: integer("closing_day"),
   adminUserId: varchar("admin_user_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -290,6 +293,7 @@ export const organizationMembers = pgTable("organization_members", {
   organizationId: varchar("organization_id").notNull(),
   userId: varchar("user_id").notNull(),
   role: text("role").notNull().default("member"),
+  jobTitle: text("job_title"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 

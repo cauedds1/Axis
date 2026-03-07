@@ -2955,11 +2955,19 @@ Se algum dado não foi mencionado, use valores razoáveis.`
   app.post("/api/business/organizations", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const schema = z.object({ name: z.string().min(1), cnpj: z.string().optional() });
+      const schema = z.object({
+        name: z.string().min(1),
+        tradeName: z.string().optional(),
+        cnpj: z.string().optional(),
+        segment: z.string().optional(),
+        closingDay: z.number().int().min(1).max(28).optional(),
+        jobTitle: z.string().optional(),
+      });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Nome da empresa é obrigatório" });
-      const org = await storage.createOrganization({ ...parsed.data, adminUserId: userId });
-      await storage.addOrganizationMember({ organizationId: org.id, userId, role: "admin" });
+      const { jobTitle, ...orgData } = parsed.data;
+      const org = await storage.createOrganization({ ...orgData, adminUserId: userId });
+      await storage.addOrganizationMember({ organizationId: org.id, userId, role: "admin", jobTitle });
       res.json(org);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
