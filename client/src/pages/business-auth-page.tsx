@@ -279,8 +279,12 @@ export default function BusinessAuthPage() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ email, password });
-      setLocation("/business/app");
+      const userData = await login({ email, password });
+      if (!userData?.onboardingCompleted) {
+        setLocation("/business/welcome");
+      } else {
+        setLocation("/business/app");
+      }
     } catch {}
   };
 
