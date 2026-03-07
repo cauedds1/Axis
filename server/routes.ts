@@ -3124,5 +3124,161 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
+  // ── BILLS (Contas a Pagar) ─────────────────────────────────────────────
+
+  app.get("/api/business/organizations/:orgId/bills", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const bills = await storage.getBusinessBills(orgId);
+      res.json(bills);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/business/organizations/:orgId/bills", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const schema = z.object({
+        description: z.string().min(1),
+        amount: z.number().positive(),
+        dueDate: z.string().transform(v => new Date(v)),
+        supplier: z.string().optional(),
+        categoryName: z.string().optional(),
+        paymentMethod: z.string().optional(),
+        costCenter: z.string().optional(),
+        notes: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
+      const bill = await storage.createBusinessBill({ ...parsed.data, organizationId: orgId });
+      res.status(201).json(bill);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/business/organizations/:orgId/bills/:billId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, billId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const schema = z.object({
+        description: z.string().optional(),
+        amount: z.number().optional(),
+        dueDate: z.string().transform(v => new Date(v)).optional(),
+        status: z.enum(["pending", "paid", "overdue"]).optional(),
+        supplier: z.string().optional(),
+        categoryName: z.string().optional(),
+        paymentMethod: z.string().optional(),
+        costCenter: z.string().optional(),
+        notes: z.string().optional(),
+        paidAt: z.string().transform(v => new Date(v)).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
+      const updated = await storage.updateBusinessBill(billId, orgId, parsed.data);
+      if (!updated) return res.status(404).json({ message: "Conta não encontrada" });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/business/organizations/:orgId/bills/:billId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, billId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      await storage.deleteBusinessBill(billId, orgId);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/business/organizations/:orgId/bills/batch-pay", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
+      await storage.batchPayBusinessBills(ids, orgId);
+      res.json({ success: true });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ── RECEIVABLES (Contas a Receber) ─────────────────────────────────────
+
+  app.get("/api/business/organizations/:orgId/receivables", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const receivables = await storage.getBusinessReceivables(orgId);
+      res.json(receivables);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/business/organizations/:orgId/receivables", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const schema = z.object({
+        description: z.string().min(1),
+        amount: z.number().positive(),
+        dueDate: z.string().transform(v => new Date(v)),
+        client: z.string().optional(),
+        paymentMethod: z.string().optional(),
+        costCenter: z.string().optional(),
+        notes: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
+      const rec = await storage.createBusinessReceivable({ ...parsed.data, organizationId: orgId });
+      res.status(201).json(rec);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/business/organizations/:orgId/receivables/:receivableId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, receivableId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const schema = z.object({
+        description: z.string().optional(),
+        amount: z.number().optional(),
+        dueDate: z.string().transform(v => new Date(v)).optional(),
+        status: z.enum(["pending", "received", "overdue"]).optional(),
+        client: z.string().optional(),
+        paymentMethod: z.string().optional(),
+        costCenter: z.string().optional(),
+        notes: z.string().optional(),
+        receivedAt: z.string().transform(v => new Date(v)).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
+      const updated = await storage.updateBusinessReceivable(receivableId, orgId, parsed.data);
+      if (!updated) return res.status(404).json({ message: "Recebível não encontrado" });
+      res.json(updated);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/business/organizations/:orgId/receivables/:receivableId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, receivableId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      await storage.deleteBusinessReceivable(receivableId, orgId);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   return httpServer;
 }

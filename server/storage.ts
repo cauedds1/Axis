@@ -1,6 +1,6 @@
 import {
   categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, scheduleItemCancellations,
-  organizations, organizationMembers, businessExpenses,
+  organizations, organizationMembers, businessExpenses, businessBills, businessReceivables,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
   type Transaction, type InsertTransaction,
@@ -19,6 +19,8 @@ import {
   type Organization, type InsertOrganization,
   type OrganizationMember, type InsertOrganizationMember,
   type BusinessExpense, type InsertBusinessExpense,
+  type BusinessBill, type InsertBusinessBill,
+  type BusinessReceivable, type InsertBusinessReceivable,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -126,6 +128,15 @@ export interface IStorage {
   createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense>;
   getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]>;
   updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined>;
+  createBusinessBill(data: InsertBusinessBill): Promise<BusinessBill>;
+  getBusinessBills(orgId: string): Promise<BusinessBill[]>;
+  updateBusinessBill(id: string, orgId: string, data: Partial<InsertBusinessBill>): Promise<BusinessBill | undefined>;
+  deleteBusinessBill(id: string, orgId: string): Promise<void>;
+  batchPayBusinessBills(ids: string[], orgId: string): Promise<void>;
+  createBusinessReceivable(data: InsertBusinessReceivable): Promise<BusinessReceivable>;
+  getBusinessReceivables(orgId: string): Promise<BusinessReceivable[]>;
+  updateBusinessReceivable(id: string, orgId: string, data: Partial<InsertBusinessReceivable>): Promise<BusinessReceivable | undefined>;
+  deleteBusinessReceivable(id: string, orgId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -630,6 +641,59 @@ export class DatabaseStorage implements IStorage {
     const [expense] = await db.update(businessExpenses).set({ status })
       .where(and(eq(businessExpenses.id, id), eq(businessExpenses.organizationId, orgId))).returning();
     return expense;
+  }
+
+  async createBusinessBill(data: InsertBusinessBill): Promise<BusinessBill> {
+    const [bill] = await db.insert(businessBills).values(data).returning();
+    return bill;
+  }
+
+  async getBusinessBills(orgId: string): Promise<BusinessBill[]> {
+    return db.select().from(businessBills)
+      .where(eq(businessBills.organizationId, orgId))
+      .orderBy(businessBills.dueDate);
+  }
+
+  async updateBusinessBill(id: string, orgId: string, data: Partial<InsertBusinessBill>): Promise<BusinessBill | undefined> {
+    const [bill] = await db.update(businessBills).set(data)
+      .where(and(eq(businessBills.id, id), eq(businessBills.organizationId, orgId))).returning();
+    return bill;
+  }
+
+  async deleteBusinessBill(id: string, orgId: string): Promise<void> {
+    await db.delete(businessBills)
+      .where(and(eq(businessBills.id, id), eq(businessBills.organizationId, orgId)));
+  }
+
+  async batchPayBusinessBills(ids: string[], orgId: string): Promise<void> {
+    const now = new Date();
+    for (const id of ids) {
+      await db.update(businessBills)
+        .set({ status: "paid", paidAt: now })
+        .where(and(eq(businessBills.id, id), eq(businessBills.organizationId, orgId)));
+    }
+  }
+
+  async createBusinessReceivable(data: InsertBusinessReceivable): Promise<BusinessReceivable> {
+    const [rec] = await db.insert(businessReceivables).values(data).returning();
+    return rec;
+  }
+
+  async getBusinessReceivables(orgId: string): Promise<BusinessReceivable[]> {
+    return db.select().from(businessReceivables)
+      .where(eq(businessReceivables.organizationId, orgId))
+      .orderBy(businessReceivables.dueDate);
+  }
+
+  async updateBusinessReceivable(id: string, orgId: string, data: Partial<InsertBusinessReceivable>): Promise<BusinessReceivable | undefined> {
+    const [rec] = await db.update(businessReceivables).set(data)
+      .where(and(eq(businessReceivables.id, id), eq(businessReceivables.organizationId, orgId))).returning();
+    return rec;
+  }
+
+  async deleteBusinessReceivable(id: string, orgId: string): Promise<void> {
+    await db.delete(businessReceivables)
+      .where(and(eq(businessReceivables.id, id), eq(businessReceivables.organizationId, orgId)));
   }
 }
 

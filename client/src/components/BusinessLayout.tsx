@@ -5,6 +5,10 @@ import { useLocation } from "wouter";
 import { useEffect } from "react";
 import BusinessHome from "@/pages/business/BusinessHome";
 import BusinessExpenses from "@/pages/business/BusinessExpenses";
+import BusinessBills from "@/pages/business/BusinessBills";
+import BusinessReceivables from "@/pages/business/BusinessReceivables";
+import BusinessCashflow from "@/pages/business/BusinessCashflow";
+import BusinessReports from "@/pages/business/BusinessReports";
 
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
@@ -32,6 +36,10 @@ export function BusinessLayout() {
             <Switch>
               <Route path="/business/app" component={BusinessHome} />
               <Route path="/business/app/expenses" component={BusinessExpenses} />
+              <Route path="/business/app/bills" component={BusinessBills} />
+              <Route path="/business/app/receivables" component={BusinessReceivables} />
+              <Route path="/business/app/cashflow" component={BusinessCashflow} />
+              <Route path="/business/app/reports" component={BusinessReports} />
             </Switch>
           </main>
         </div>

@@ -237,6 +237,10 @@ function AppRouter() {
     <AuthErrorBoundary>
       <Switch>
         <Route path="/business/app/expenses" component={BusinessLayout} />
+        <Route path="/business/app/bills" component={BusinessLayout} />
+        <Route path="/business/app/receivables" component={BusinessLayout} />
+        <Route path="/business/app/cashflow" component={BusinessLayout} />
+        <Route path="/business/app/reports" component={BusinessLayout} />
         <Route path="/business/app" component={BusinessLayout} />
         <Route component={AuthenticatedLayout} />
       </Switch>

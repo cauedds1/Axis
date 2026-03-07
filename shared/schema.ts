@@ -316,9 +316,44 @@ export const businessExpenses = pgTable("business_expenses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const businessBills = pgTable("business_bills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default("pending"),
+  supplier: text("supplier"),
+  categoryName: text("category_name"),
+  paymentMethod: text("payment_method"),
+  costCenter: text("cost_center"),
+  receiptImageUrl: text("receipt_image_url"),
+  notes: text("notes"),
+  source: text("source").notNull().default("manual"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const businessReceivables = pgTable("business_receivables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default("pending"),
+  client: text("client"),
+  paymentMethod: text("payment_method"),
+  costCenter: text("cost_center"),
+  notes: text("notes"),
+  receivedAt: timestamp("received_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({ id: true, joinedAt: true });
 export const insertBusinessExpenseSchema = createInsertSchema(businessExpenses).omit({ id: true, createdAt: true });
+export const insertBusinessBillSchema = createInsertSchema(businessBills).omit({ id: true, createdAt: true });
+export const insertBusinessReceivableSchema = createInsertSchema(businessReceivables).omit({ id: true, createdAt: true });
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -326,3 +361,7 @@ export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type InsertOrganizationMember = z.infer<typeof insertOrganizationMemberSchema>;
 export type BusinessExpense = typeof businessExpenses.$inferSelect;
 export type InsertBusinessExpense = z.infer<typeof insertBusinessExpenseSchema>;
+export type BusinessBill = typeof businessBills.$inferSelect;
+export type InsertBusinessBill = z.infer<typeof insertBusinessBillSchema>;
+export type BusinessReceivable = typeof businessReceivables.$inferSelect;
+export type InsertBusinessReceivable = z.infer<typeof insertBusinessReceivableSchema>;

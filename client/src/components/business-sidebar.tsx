@@ -10,7 +10,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, ReceiptText, LogOut, AlertCircle } from "lucide-react";
+import {
+  LayoutDashboard,
+  ReceiptText,
+  LogOut,
+  AlertCircle,
+  TrendingUp,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  BarChart3,
+} from "lucide-react";
 
 const PRIMARY = "#2563EB";
 const PRIMARY_LIGHT = "#3B82F6";
@@ -65,10 +74,66 @@ function UserAvatar({ name, email }: { name?: string; email?: string }) {
   );
 }
 
-const navItems = [
+const mainNav = [
   { href: "/business/app", icon: LayoutDashboard, label: "Dashboard", color: PRIMARY_LIGHT },
   { href: "/business/app/expenses", icon: ReceiptText, label: "Despesas", color: "#6366F1" },
 ];
+
+const financeNav = [
+  { href: "/business/app/cashflow", icon: TrendingUp, label: "Fluxo de Caixa", color: "#0EA5E9" },
+  { href: "/business/app/bills", icon: ArrowDownCircle, label: "Contas a Pagar", color: "#F87171" },
+  { href: "/business/app/receivables", icon: ArrowUpCircle, label: "Contas a Receber", color: "#34D399" },
+];
+
+const managementNav = [
+  { href: "/business/app/reports", icon: BarChart3, label: "Relatórios", color: "#A78BFA" },
+];
+
+function NavGroup({ label, items, location }: { label?: string; items: typeof mainNav; location: string }) {
+  return (
+    <div className="mb-1">
+      {label && (
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 pt-3 pb-1.5">
+          {label}
+        </p>
+      )}
+      <SidebarMenu>
+        {items.map((item) => {
+          const isActive = location === item.href;
+          return (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive}
+                data-testid={`link-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className="h-10 gap-3 rounded-xl transition-all duration-200"
+              >
+                <Link href={item.href} className="flex items-center gap-3">
+                  <item.icon
+                    className="h-4 w-4 flex-shrink-0"
+                    style={{ color: isActive ? item.color : "hsl(var(--muted-foreground))" }}
+                  />
+                  <span
+                    className="text-sm font-medium transition-colors duration-200"
+                    style={isActive ? { color: item.color } : {}}
+                  >
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <div
+                      className="ml-auto w-1 h-3.5 rounded-full"
+                      style={{ background: item.color, opacity: 0.7 }}
+                    />
+                  )}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
+      </SidebarMenu>
+    </div>
+  );
+}
 
 export function BusinessSidebar() {
   const { user, logoutMutation } = useAuth();
@@ -101,41 +166,12 @@ export function BusinessSidebar() {
         <PendingBar count={pendingCount} />
       </SidebarHeader>
 
-      <SidebarContent className="p-2 pt-3">
-        <SidebarMenu>
-          {navItems.map((item) => {
-            const isActive = location === item.href;
-            return (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive}
-                  data-testid={`link-nav-${item.label.toLowerCase()}`}
-                  className="h-10 gap-3 rounded-xl transition-all duration-200"
-                >
-                  <Link href={item.href} className="flex items-center gap-3">
-                    <item.icon
-                      className="h-4 w-4 flex-shrink-0"
-                      style={{ color: isActive ? item.color : "hsl(var(--muted-foreground))" }}
-                    />
-                    <span
-                      className="text-sm font-medium transition-colors duration-200"
-                      style={isActive ? { color: item.color } : {}}
-                    >
-                      {item.label}
-                    </span>
-                    {isActive && (
-                      <div
-                        className="ml-auto w-1 h-3.5 rounded-full"
-                        style={{ background: item.color, opacity: 0.7 }}
-                      />
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
-        </SidebarMenu>
+      <SidebarContent className="p-2 pt-2">
+        <NavGroup items={mainNav} location={location} />
+        <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
+        <NavGroup label="Financeiro" items={financeNav} location={location} />
+        <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
+        <NavGroup label="Gestão" items={managementNav} location={location} />
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
