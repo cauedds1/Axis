@@ -308,7 +308,7 @@ export default function BusinessAuthPage() {
         closingDay: closingDay ? parseInt(closingDay) : undefined,
         jobTitle: jobTitle || undefined,
       });
-      setLocation("/business/app");
+      setLocation("/business/welcome");
     } catch (err: any) {
       setSubmitError(err?.message ?? "Erro ao criar conta. Tente novamente.");
     }

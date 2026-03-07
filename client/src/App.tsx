@@ -71,6 +71,7 @@ import Reports from "@/pages/reports";
 import BusinessLanding from "@/pages/business-landing";
 import BusinessAuthPage from "@/pages/business-auth-page";
 import { BusinessLayout } from "@/components/BusinessLayout";
+import BusinessWelcome from "@/pages/business/BusinessWelcome";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -236,6 +237,7 @@ function AppRouter() {
   return (
     <AuthErrorBoundary>
       <Switch>
+        <Route path="/business/welcome" component={BusinessWelcome} />
         <Route path="/business/app/expenses" component={BusinessLayout} />
         <Route path="/business/app/bills" component={BusinessLayout} />
         <Route path="/business/app/receivables" component={BusinessLayout} />
