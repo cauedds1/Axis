@@ -1,0 +1,338 @@
+Vou dividir em:
+
+1️⃣ Conceito do produto
+2️⃣ Fluxo de uso
+3️⃣ Funcionalidades do colaborador
+4️⃣ Funcionalidades do gestor
+5️⃣ Estrutura do painel
+6️⃣ Estrutura de banco de dados
+7️⃣ Funcionalidades futuras
+
+🧠 1. Conceito do AXIS Business
+
+AXIS Business é uma plataforma que automatiza o controle de despesas de colaboradores.
+
+O funcionário simplesmente envia despesas pelo WhatsApp (texto, foto ou áudio), e o sistema:
+
+interpreta automaticamente
+
+registra a despesa
+
+organiza por categoria
+
+anexa comprovantes
+
+gera relatórios prontos
+
+Sem planilhas.
+
+📱 2. Fluxo principal do produto
+Durante o dia (WhatsApp)
+
+Funcionário envia:
+
+39 almoço
+
+ou
+
+📸 foto do recibo
+
+AXIS responde:
+
+Despesa registrada
+
+Categoria: Alimentação
+Valor: R$39
+Data: 07/03
+Status: aguardando aprovação
+No painel web
+
+O sistema já terá:
+
+Data	Categoria	Valor	Usuário	Comprovante
+No final do mês
+
+Botão:
+
+📄 Gerar relatório
+
+O sistema gera:
+
+Excel
+
+PDF
+
+relatório consolidado
+
+👤 3. Funcionalidades do colaborador
+Envio de despesas
+
+Entrada via WhatsApp:
+
+texto
+
+voz
+
+foto
+
+comprovante PDF
+
+Exemplos:
+
+25 estacionamento
+120 hotel cliente XP
+Registro automático
+
+O sistema identifica:
+
+valor
+
+categoria
+
+data
+
+descrição
+
+Upload de comprovante
+
+Foto ou arquivo anexado à despesa.
+
+Consulta rápida no WhatsApp
+
+Usuário pode perguntar:
+
+quanto gastei hoje
+minhas despesas do mês
+Dashboard pessoal
+
+No painel web o colaborador vê:
+
+despesas do mês
+
+despesas pendentes
+
+despesas aprovadas
+
+total gasto
+
+🧑‍💼 4. Funcionalidades do gestor
+
+Aqui está o core do B2B.
+
+Dashboard financeiro
+
+Visão geral:
+
+total de despesas do mês
+
+despesas pendentes
+
+despesas aprovadas
+
+despesas rejeitadas
+
+Aprovação de despesas
+
+Lista:
+
+Colaborador	Categoria	Valor	Status
+
+Botões:
+
+✔ Aprovar
+❌ Rejeitar
+
+Filtros
+
+Filtros por:
+
+colaborador
+
+categoria
+
+data
+
+status
+
+Visualizar comprovantes
+
+Clique abre:
+
+📸 imagem do recibo
+
+Relatórios
+
+Exportação:
+
+Excel
+
+CSV
+
+PDF
+
+Relatórios:
+
+por colaborador
+
+por categoria
+
+por período
+
+🖥️ 5. Estrutura do painel
+Dashboard
+
+total despesas mês
+
+despesas pendentes
+
+despesas aprovadas
+
+gráfico de categorias
+
+Despesas
+
+Sub-abas:
+
+todas
+
+pendentes
+
+aprovadas
+
+rejeitadas
+
+Colaboradores
+
+lista de usuários
+
+adicionar colaborador
+
+editar permissões
+
+Relatórios
+
+relatório mensal
+
+relatório por colaborador
+
+relatório por categoria
+
+Configurações
+
+categorias de despesas
+
+limites de despesas
+
+exportação contábil
+
+🗄️ 6. Estrutura básica do banco
+companies
+id
+name
+created_at
+users
+id
+company_id
+name
+email
+role
+
+role:
+
+admin
+
+colaborador
+
+expenses
+id
+user_id
+company_id
+amount
+category
+description
+date
+status
+receipt_url
+created_at
+
+status:
+
+pending
+
+approved
+
+rejected
+
+receipts
+id
+expense_id
+file_url
+uploaded_at
+🚀 7. Funcionalidades que podem vir depois
+
+Não precisa no início.
+
+centros de custo
+
+Exemplo:
+
+vendas
+
+marketing
+
+operações
+
+projetos
+
+Despesa vinculada a:
+
+cliente
+
+projeto
+
+integração contábil
+
+Exportar para:
+
+ERP
+
+contabilidade
+
+limites de gastos
+
+Exemplo:
+
+alimentação: 80/dia
+hotel: 400/noite
+
+Sistema alerta automaticamente.
+
+⭐ O segredo para esse produto funcionar
+
+Ele precisa ser:
+
+extremamente simples.
+
+O colaborador não pode precisar aprender nada.
+
+Ele só manda:
+
+📸 foto
+ou
+💬 mensagem
+
+💡 Uma feature que deixaria o produto MUITO forte
+
+Resumo automático semanal para o gestor:
+
+Resumo da semana:
+
+Total despesas: R$4.320
+
+João: R$1.200
+Maria: R$980
+Carlos: R$640
+
+Categoria mais usada: Alimentação
+
+Isso dá visão rápida da empresa.
