@@ -463,7 +463,7 @@ export default function BusinessLanding() {
       <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo-business.png" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
+            <img src="/logo-business.png" alt="AXIS Business" className="w-12 h-12 rounded-lg object-cover" />
             <div className="flex items-center gap-1">
               <span className="text-base font-bold tracking-tight">AXIS</span>
               <span className="text-base font-bold tracking-tight" style={{ color: BIZ.primary }}> Business</span>
