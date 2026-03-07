@@ -158,7 +158,7 @@ function BrandPanel() {
         </div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col justify-start pt-4 pb-10 gap-8">
+      <div className="relative z-10 flex-1 flex flex-col justify-start pt-0 pb-10 gap-8">
         <div>
           <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
             <span className="text-white">Controle total</span>{" "}
