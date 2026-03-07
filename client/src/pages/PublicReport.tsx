@@ -8,6 +8,7 @@ import {
   FileText, CheckCircle2, Clock, XCircle, Banknote,
   ImageOff, X, Eye, ShieldCheck,
 } from "lucide-react";
+import axisLogoPath from "@assets/image_1772909978438.png";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -92,20 +93,31 @@ export default function PublicReport() {
     <div className="min-h-screen" style={{ background: "hsl(222 47% 7%)", color: "hsl(210 40% 98%)" }}>
       {lightboxSrc && <ReceiptLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
 
+      <div className="fixed bottom-5 right-5 z-10 pointer-events-none">
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", opacity: 0.35 }}>
+          <img src={axisLogoPath} alt="AXIS" className="w-3.5 h-3.5 object-contain" />
+          <span className="text-[10px] font-semibold tracking-wide" style={{ color: "hsl(210 40% 98%)" }}>AXIS Business</span>
+        </div>
+      </div>
+
       <header className="border-b sticky top-0 z-40 backdrop-blur-sm" style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(15,20,35,0.9)" }}>
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {orgLogoSrc ? (
-              <img src={orgLogoSrc} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5" />
+              <img src={orgLogoSrc} alt="Logo" className="h-9 w-auto max-w-[160px] object-contain" />
             ) : (
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: PRIMARY }}>
-                <FileText className="w-4 h-4 text-white" />
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm"
+                style={{ background: PRIMARY }}
+              >
+                {(data?.org?.tradeName || data?.org?.name || "?").slice(0, 2).toUpperCase()}
               </div>
             )}
-            <span className="font-bold text-base">
-              <span style={{ color: "hsl(210 40% 98%)" }}>AXIS </span>
-              <span style={{ color: PRIMARY }}>Business</span>
-            </span>
+            {!orgLogoSrc && (
+              <span className="font-semibold text-sm" style={{ color: "hsl(210 40% 98%)" }}>
+                {data?.org?.tradeName || data?.org?.name || ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-xs text-green-400">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -309,9 +321,9 @@ export default function PublicReport() {
             )}
 
             <div className="mt-8 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" style={{ color: PRIMARY }} />
-                <span className="text-xs font-semibold" style={{ color: PRIMARY }}>AXIS Business</span>
+              <div className="flex items-center gap-1.5 opacity-40">
+                <img src={axisLogoPath} alt="AXIS" className="w-4 h-4 object-contain" />
+                <span className="text-[11px] font-semibold" style={{ color: "hsl(210 40% 98%)" }}>AXIS Business</span>
               </div>
               <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
                 Válido até {data.expiresAt ? format(new Date(data.expiresAt), "dd/MM/yyyy", { locale: ptBR }) : "—"}
