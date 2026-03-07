@@ -167,9 +167,13 @@ function AppRouter() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business"];
-      if (!publicPaths.includes(location) && !location.startsWith("/business")) {
-        setLocation("/");
+      if (location.startsWith("/business/app")) {
+        setLocation("/business/auth");
+      } else {
+        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business"];
+        if (!publicPaths.includes(location)) {
+          setLocation("/");
+        }
       }
     }
     if (!isLoading && user) {

@@ -83,10 +83,7 @@ export default function BusinessSettingsPage() {
     }
   }, [org, limitsLoaded]);
 
-  const themeMutation = useMutation({
-    mutationFn: (theme: string) => apiRequest("PATCH", "/api/user/settings", { theme }),
-    onSuccess: () => toast({ title: "Tema salvo" }),
-  });
+  const [themeSaved, setThemeSaved] = useState(false);
 
   const orgMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/business/organizations/${org?.id}`, data),
@@ -109,7 +106,8 @@ export default function BusinessSettingsPage() {
 
   const handleThemeChange = (t: BusinessTheme) => {
     setBusinessTheme(t);
-    themeMutation.mutate(t);
+    setThemeSaved(true);
+    setTimeout(() => setThemeSaved(false), 2000);
   };
 
   const handleOrgSave = (e: React.FormEvent) => {
@@ -189,8 +187,7 @@ export default function BusinessSettingsPage() {
                   {isExecutive ? "Vibrante, com animações e glow. Alto impacto visual." : "Minimalista, sem animações. Foco e clareza profissional."}
                 </p>
               </div>
-              {themeMutation.isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-auto" />}
-              {themeMutation.isSuccess && !themeMutation.isPending && <Check className="h-4 w-4 text-emerald-500 ml-auto" />}
+              {themeSaved && <Check className="h-4 w-4 text-emerald-500 ml-auto" />}
             </div>
             <BusinessThemeSelector value={businessTheme} onChange={handleThemeChange} />
           </div>
