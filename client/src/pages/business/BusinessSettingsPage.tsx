@@ -100,6 +100,9 @@ export default function BusinessSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations"] });
       toast({ title: "Dados da empresa atualizados" });
     },
+    onError: (err: any) => {
+      toast({ title: "Erro ao salvar", description: err?.message ?? "Tente novamente.", variant: "destructive" });
+    },
   });
 
   const limitsMutation = useMutation({

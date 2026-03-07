@@ -155,7 +155,7 @@ export function LogoCropModal({ src, open, onSave, onClose }: Props) {
     const oy = offset.y * scale;
     ctx.drawImage(img, cx - w / 2 + ox, cy - h / 2 + oy, w, h);
 
-    const result = offscreen.toDataURL("image/png");
+    const result = offscreen.toDataURL("image/jpeg", 0.88);
     onSave(result);
   };
 
