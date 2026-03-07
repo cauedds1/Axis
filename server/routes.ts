@@ -12,6 +12,7 @@ import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { whatsappManager } from "./whatsapp";
 import { generateExpenseExcel } from "./business-reports";
+import { uploadBase64Image, isStorageConfigured } from "./lib/file-storage";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -3071,8 +3072,22 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
+
+      let receiptImageUrl: string | undefined;
+      let receiptImageBase64: string | undefined = parsed.data.receiptImageBase64;
+
+      if (receiptImageBase64 && isStorageConfigured) {
+        const uploaded = await uploadBase64Image(receiptImageBase64, "receipts");
+        if (uploaded) {
+          receiptImageUrl = uploaded;
+          receiptImageBase64 = undefined;
+        }
+      }
+
       const expense = await storage.createBusinessExpense({
         ...parsed.data,
+        receiptImageBase64,
+        receiptImageUrl,
         organizationId: orgId,
         userId,
         date: parsed.data.date ? new Date(parsed.data.date) : new Date(),

@@ -303,6 +303,7 @@ export const businessExpenses = pgTable("business_expenses", {
   date: timestamp("date").defaultNow(),
   establishment: text("establishment"),
   receiptImageBase64: text("receipt_image_base64"),
+  receiptImageUrl: text("receipt_image_url"),
   receiptItems: text("receipt_items"),
   paymentMethod: text("payment_method"),
   status: text("status").notNull().default("pending_review"),

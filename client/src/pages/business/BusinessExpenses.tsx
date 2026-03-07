@@ -37,10 +37,14 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          {expense?.receiptImageBase64 && (
+          {(expense?.receiptImageUrl || expense?.receiptImageBase64) && (
             <div className="rounded-xl overflow-hidden border border-border/40">
               <img
-                src={`data:image/jpeg;base64,${expense.receiptImageBase64}`}
+                src={
+                  expense.receiptImageUrl
+                    ? expense.receiptImageUrl
+                    : `data:image/jpeg;base64,${expense.receiptImageBase64}`
+                }
                 alt="Foto do recibo"
                 className="w-full object-contain max-h-80"
                 data-testid="img-receipt"
