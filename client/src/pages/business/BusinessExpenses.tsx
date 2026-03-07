@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, XCircle, FileSpreadsheet, Printer, Filter, ReceiptText, ChevronDown, ChevronRight } from "lucide-react";
+import { CheckCircle2, XCircle, FileSpreadsheet, Printer, Filter, ReceiptText, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 
 const BLUE = "#2563EB";
 const BLUE_LIGHT = "#3B82F6";
@@ -40,11 +41,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
           {(expense?.receiptImageUrl || expense?.receiptImageBase64) && (
             <div className="rounded-xl overflow-hidden border border-border/40">
               <img
-                src={
-                  expense.receiptImageUrl
-                    ? expense.receiptImageUrl
-                    : `data:image/jpeg;base64,${expense.receiptImageBase64}`
-                }
+                src={expense.receiptImageUrl ? expense.receiptImageUrl : `data:image/jpeg;base64,${expense.receiptImageBase64}`}
                 alt="Foto do recibo"
                 className="w-full object-contain max-h-80"
                 data-testid="img-receipt"
@@ -91,11 +88,23 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
   );
 }
 
+type StatusTab = "all" | "pending_review" | "approved" | "rejected";
+
+const STATUS_TABS: { id: StatusTab; label: string; color: string }[] = [
+  { id: "all",          label: "Todas",     color: BLUE_LIGHT },
+  { id: "pending_review", label: "Pendentes", color: "#F59E0B" },
+  { id: "approved",     label: "Aprovadas",  color: "#10B981" },
+  { id: "rejected",     label: "Rejeitadas", color: "#EF4444" },
+];
+
 export default function BusinessExpenses() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { businessTheme } = useBusinessTheme();
+  const primaryHex = getBusinessPrimaryHex(businessTheme);
+
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [filterUser, setFilterUser] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -109,14 +118,18 @@ export default function BusinessExpenses() {
   const activeOrg = selectedOrgId ? orgs?.find(o => o.id === selectedOrgId) : orgs?.[0];
   const isAdmin = activeOrg?.adminUserId === user?.id;
 
+  const spendingLimits: Record<string, number> = useMemo(() => {
+    try { return activeOrg?.spendingLimits ? JSON.parse(activeOrg.spendingLimits) : {}; }
+    catch { return {}; }
+  }, [activeOrg?.spendingLimits]);
+
   const expenseParams = new URLSearchParams();
-  if (filterStatus !== "all") expenseParams.set("status", filterStatus);
   if (filterUser !== "all") expenseParams.set("userId", filterUser);
   if (startDate) expenseParams.set("startDate", startDate);
   if (endDate) expenseParams.set("endDate", endDate);
 
-  const { data: expenses, isLoading: expLoading } = useQuery<any[]>({
-    queryKey: ["/api/business/organizations", activeOrg?.id, "expenses", filterStatus, filterUser, startDate, endDate],
+  const { data: allExpenses, isLoading: expLoading } = useQuery<any[]>({
+    queryKey: ["/api/business/organizations", activeOrg?.id, "expenses", filterUser, startDate, endDate],
     queryFn: async () => {
       if (!activeOrg?.id) return [];
       const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses?${expenseParams.toString()}`, { credentials: "include" });
@@ -130,6 +143,22 @@ export default function BusinessExpenses() {
     queryKey: ["/api/business/organizations", activeOrg?.id, "members"],
     enabled: !!activeOrg?.id,
   });
+
+  const expenses = useMemo(() => {
+    if (!allExpenses) return [];
+    if (activeTab === "all") return allExpenses;
+    return allExpenses.filter(e => e.status === activeTab);
+  }, [allExpenses, activeTab]);
+
+  const tabCounts = useMemo(() => {
+    const all = allExpenses ?? [];
+    return {
+      all:          all.length,
+      pending_review: all.filter(e => e.status === "pending_review").length,
+      approved:     all.filter(e => e.status === "approved").length,
+      rejected:     all.filter(e => e.status === "rejected").length,
+    };
+  }, [allExpenses]);
 
   const approveMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -148,7 +177,7 @@ export default function BusinessExpenses() {
     return acc;
   }, {});
 
-  const totalApproved = (expenses ?? []).filter(e => e.status !== "rejected").reduce((s, e) => s + e.amount, 0);
+  const totalAmount = (expenses ?? []).filter(e => e.status !== "rejected").reduce((s, e) => s + e.amount, 0);
 
   const handleExportExcel = useCallback(async () => {
     if (!activeOrg?.id) return;
@@ -163,14 +192,10 @@ export default function BusinessExpenses() {
     URL.revokeObjectURL(url);
   }, [activeOrg, expenseParams]);
 
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
-
   if (orgsLoading) return (
     <div className="p-6 max-w-5xl mx-auto flex flex-col gap-4">
       <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-16 w-full rounded-2xl" />
+      <Skeleton className="h-12 w-full rounded-2xl" />
       <Skeleton className="h-64 w-full rounded-2xl" />
     </div>
   );
@@ -178,7 +203,7 @@ export default function BusinessExpenses() {
   if (!orgs || orgs.length === 0) return (
     <div className="p-6 max-w-5xl mx-auto flex flex-col items-center justify-center py-20 text-center gap-4">
       <ReceiptText className="w-12 h-12 text-muted-foreground" />
-      <p className="text-muted-foreground">Crie uma empresa primeiro na página <strong>Minha Empresa</strong>.</p>
+      <p className="text-muted-foreground">Crie uma empresa primeiro na página <strong>Config</strong>.</p>
     </div>
   );
 
@@ -192,7 +217,7 @@ export default function BusinessExpenses() {
           <p className="text-sm text-muted-foreground mt-0.5">Gerencie e exporte as despesas da equipe</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs" data-testid="button-print">
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs" data-testid="button-print">
             <Printer className="w-3.5 h-3.5 mr-1.5" />
             Imprimir / PDF
           </Button>
@@ -222,32 +247,48 @@ export default function BusinessExpenses() {
         </div>
       )}
 
-      <div className="print:hidden">
+      <div className="flex gap-1 mb-4 p-1 rounded-xl print:hidden" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        {STATUS_TABS.map(tab => {
+          const count = tabCounts[tab.id];
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all duration-200"
+              style={{
+                background: isActive ? `${tab.color}18` : "transparent",
+                color: isActive ? tab.color : "hsl(var(--muted-foreground))",
+                border: isActive ? `1px solid ${tab.color}25` : "1px solid transparent",
+              }}
+              data-testid={`tab-expenses-${tab.id}`}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span
+                  className="min-w-[18px] h-[18px] rounded-full text-[10px] font-bold flex items-center justify-center px-1"
+                  style={{ background: isActive ? `${tab.color}25` : "rgba(255,255,255,0.07)", color: isActive ? tab.color : "hsl(var(--muted-foreground))" }}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="print:hidden mb-4">
         <button
           onClick={() => setShowFilters(v => !v)}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
           data-testid="button-toggle-filters"
         >
           <Filter className="w-4 h-4" />
-          Filtros
+          Filtros adicionais
           {showFilters ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </button>
         {showFilters && (
-          <div className="rounded-2xl p-4 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-8 text-xs" data-testid="select-filter-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pending_review">Pendentes</SelectItem>
-                  <SelectItem value="approved">Aprovados</SelectItem>
-                  <SelectItem value="rejected">Rejeitados</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="rounded-2xl p-4 mb-4 grid grid-cols-2 sm:grid-cols-3 gap-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
               <Select value={filterUser} onValueChange={setFilterUser}>
@@ -278,7 +319,7 @@ export default function BusinessExpenses() {
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{expenses?.length ?? 0} despesas encontradas</p>
           <p className="text-sm font-semibold text-foreground">
-            Total aprovado: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalApproved)}</span>
+            Total: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalAmount)}</span>
           </p>
         </div>
       )}
@@ -303,67 +344,79 @@ export default function BusinessExpenses() {
                 <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
               </div>
               <div className="flex flex-col gap-2">
-                {(dayExpenses as any[]).map((expense: any) => (
-                  <div
-                    key={expense.id}
-                    className="flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all hover:border-white/15"
-                    style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
-                    onClick={() => setSelectedExpense(expense)}
-                    data-testid={`row-expense-${expense.id}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-foreground truncate">{expense.establishment || expense.description}</p>
-                        {expense.categoryName && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${BLUE}15`, color: BLUE_LIGHT }}>
-                            {expense.categoryName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">{expense.userName || expense.userEmail || "—"}</span>
-                        {expense.paymentMethod && (
-                          <>
-                            <span className="text-muted-foreground/30 text-xs">·</span>
-                            <span className="text-xs text-muted-foreground">{expense.paymentMethod}</span>
-                          </>
-                        )}
-                        {expense.receiptImageBase64 && (
-                          <>
-                            <span className="text-muted-foreground/30 text-xs">·</span>
-                            <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 recibo</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
-                      {statusBadge(expense.status)}
-                      {isAdmin && expense.status === "pending_review" && (
-                        <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => approveMutation.mutate({ id: expense.id, status: "approved" })}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
-                            style={{ background: "#10B98115", border: "1px solid #10B98130" }}
-                            title="Aprovar"
-                            data-testid={`button-approve-${expense.id}`}
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-green-400" />
-                          </button>
-                          <button
-                            onClick={() => approveMutation.mutate({ id: expense.id, status: "rejected" })}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
-                            style={{ background: "#EF444415", border: "1px solid #EF444430" }}
-                            title="Rejeitar"
-                            data-testid={`button-reject-${expense.id}`}
-                          >
-                            <XCircle className="w-4 h-4 text-red-400" />
-                          </button>
+                {(dayExpenses as any[]).map((expense: any) => {
+                  const limit = expense.categoryName ? spendingLimits[expense.categoryName] : undefined;
+                  const overLimit = limit !== undefined && expense.amount > limit;
+                  return (
+                    <div
+                      key={expense.id}
+                      className="flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all hover:border-white/15"
+                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+                      onClick={() => setSelectedExpense(expense)}
+                      data-testid={`row-expense-${expense.id}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-foreground truncate">{expense.establishment || expense.description}</p>
+                          {expense.categoryName && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${BLUE}15`, color: BLUE_LIGHT }}>
+                              {expense.categoryName}
+                            </span>
+                          )}
                         </div>
-                      )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{expense.userName || expense.userEmail || "—"}</span>
+                          {expense.paymentMethod && (
+                            <>
+                              <span className="text-muted-foreground/30 text-xs">·</span>
+                              <span className="text-xs text-muted-foreground">{expense.paymentMethod}</span>
+                            </>
+                          )}
+                          {expense.receiptImageBase64 && (
+                            <>
+                              <span className="text-muted-foreground/30 text-xs">·</span>
+                              <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 recibo</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                          {overLimit && (
+                            <div className="flex items-center gap-1 mt-0.5" title={`Limite: ${formatBRL(limit!)}`}>
+                              <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+                              <span className="text-[9px] text-amber-400 font-semibold">Acima do limite</span>
+                            </div>
+                          )}
+                        </div>
+                        {statusBadge(expense.status)}
+                        {isAdmin && expense.status === "pending_review" && (
+                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => approveMutation.mutate({ id: expense.id, status: "approved" })}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                              style={{ background: "#10B98115", border: "1px solid #10B98130" }}
+                              title="Aprovar"
+                              data-testid={`button-approve-${expense.id}`}
+                            >
+                              <CheckCircle2 className="w-4 h-4 text-green-400" />
+                            </button>
+                            <button
+                              onClick={() => approveMutation.mutate({ id: expense.id, status: "rejected" })}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                              style={{ background: "#EF444415", border: "1px solid #EF444430" }}
+                              title="Rejeitar"
+                              data-testid={`button-reject-${expense.id}`}
+                            >
+                              <XCircle className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

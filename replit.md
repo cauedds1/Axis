@@ -98,33 +98,41 @@ shared/
 - User preferences stored in `userProfile.emailAlerts` JSON; UI toggles in setup-sheet "Alertas" tab
 
 ## AXIS Business Module
-A corporate expense management system accessible at `/business` (public landing) and `/business/app` (authenticated dashboard). Uses the same auth/database infrastructure as the personal AXIS.
+A focused **corporate expense management** system (NOT an ERP) at `/business`. Manages the Despesas → Aprovação → Relatórios flow with WhatsApp-based submission.
 
-### New Database Tables
-- `organizations` - Companies (name, cnpj, adminUserId)
+### Database Tables
+- `organizations` - Companies (name, cnpj, adminUserId, **spendingLimits** TEXT as JSON `{ "Alimentação": 80 }`)
 - `organization_members` - User membership with role (admin/member)
-- `business_expenses` - Corporate expenses with receiptImageBase64 (full image stored), status (pending_review/approved/rejected), source (whatsapp/manual/chat)
+- `business_expenses` - Corporate expenses: receiptImageBase64, status (pending_review/approved/rejected), source (whatsapp/manual/chat). **Performance indexes**: `idx_biz_exp_org`, `idx_biz_exp_user`, `idx_biz_exp_status`, `idx_biz_exp_date`
 
-### New Frontend Pages
-- `/business` → `client/src/pages/business-landing.tsx` (public, distinct blue corporate design)
-- `/business/auth` → `client/src/pages/business-auth-page.tsx` (dedicated enterprise auth page: blue BIZ palette, corporate demo cards, redirects to `/business/app` after login/register)
-- `/business/app` → `client/src/pages/business/BusinessHome.tsx` (create company, invite members, stats)
-- `/business/app/expenses` → `client/src/pages/business/BusinessExpenses.tsx` (expense list grouped by date, receipt image viewer modal, approve/reject, Excel export, print-to-PDF)
-- `client/src/components/business-sidebar.tsx` — Business-specific sidebar
-- `client/src/components/BusinessLayout.tsx` — Business authenticated layout
+### Frontend Pages (5 core sections)
+- `/business` → `business-landing.tsx` (public landing)
+- `/business/auth` → `business-auth-page.tsx` (enterprise auth)
+- `/business/app` → `BusinessHome.tsx` — 4 metric cards (Total mês, Aprovadas, Aguardando, Rejeitadas) + Recent expenses + Top collaborators + Category breakdown
+- `/business/app/expenses` → `BusinessExpenses.tsx` — sub-tabs (Todas/Pendentes/Aprovadas/Rejeitadas) with counts, spending limit warning badge (⚠ Acima do limite), approve/reject inline, filters, Excel export
+- `/business/app/colaboradores` → `BusinessCollaborators.tsx` — member list with avatar, role badge, month stats (count + total R$), invite dialog, role management dropdown
+- `/business/app/reports` → `BusinessReports.tsx` — period/user/category filters, 4 metric cards, category+collaborator breakdowns with progress bars, full sortable table, CSV + Excel export
+- `/business/app/config` → `BusinessSettingsPage.tsx` — 4 tabs: Aparência (9-theme selector), Empresa (company data), Conta, **Categorias** (spending limits per default category + custom categories in localStorage)
+- `business-sidebar.tsx` — 5-item nav: Dashboard, Despesas, Colaboradores | Relatórios, Config
+- `BusinessLayout.tsx` — authenticated layout (removed: bills, receivables, cashflow, financas routes)
 
-### Business Reports
-- `server/business-reports.ts` — `generateExpenseExcel()` using ExcelJS: formatted workbook with header, grouped by date, color-coded by status, total row
+### Business Theme System
+- 9 business themes stored in `localStorage` key `axis-business-theme`
+- Corporate themes (biz-slate/ocean/emerald/amber): minimal, no animations
+- Executive themes (biz-blue/indigo/cyan/green/gold): glow, vibrant
+- `BusinessModulePalette`: primary, dashboard, expenses, colaboradores, reports, config, positive, negative
 
 ### WhatsApp Business Flow
-When a user in an organization sends a receipt photo via WhatsApp, the bot asks "pessoal ou corporativo?" and saves to `business_expenses` (including base64 image) if corporate.
+Receipt photo → bot asks "pessoal ou corporativo?" → saves to `business_expenses` with base64 image.
 
 ### Business API Endpoints
-- `POST /api/business/organizations` - Create company
-- `GET /api/business/organizations` - List user's companies
+- `POST/GET /api/business/organizations` - Create/list companies
+- `PATCH /api/business/organizations/:orgId` - Update company data + **spendingLimits**
 - `POST /api/business/organizations/:orgId/members` - Invite member by email
 - `GET /api/business/organizations/:orgId/members` - List members
-- `GET /api/business/organizations/:orgId/expenses` - List expenses (filterable)
+- `DELETE /api/business/organizations/:orgId/members/:memberId` - Remove member (admin only, can't remove primary admin)
+- `PATCH /api/business/organizations/:orgId/members/:memberId` - Update member role (admin/member)
+- `GET /api/business/organizations/:orgId/expenses` - List expenses (filterable: status, userId, startDate, endDate)
 - `POST /api/business/organizations/:orgId/expenses` - Create manual expense
 - `PATCH /api/business/organizations/:orgId/expenses/:expenseId` - Approve/reject
 - `GET /api/business/organizations/:orgId/expenses/export-excel` - Download Excel report

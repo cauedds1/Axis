@@ -3035,6 +3035,40 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
+  app.delete("/api/business/organizations/:orgId/members/:memberId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, memberId } = req.params;
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode remover membros" });
+      const members = await storage.getOrganizationMembers(orgId);
+      const target = members.find(m => m.id === memberId);
+      if (!target) return res.status(404).json({ message: "Membro não encontrado" });
+      if (target.userId === org.adminUserId) return res.status(400).json({ message: "Não é possível remover o administrador principal" });
+      await storage.deleteOrganizationMember(orgId, memberId);
+      res.json({ message: "Membro removido" });
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.patch("/api/business/organizations/:orgId/members/:memberId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, memberId } = req.params;
+      const { role } = req.body;
+      if (!role || !["admin", "member"].includes(role)) return res.status(400).json({ message: "Role inválido" });
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode alterar permissões" });
+      const updated = await storage.updateMemberRole(orgId, memberId, role);
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.get("/api/business/organizations/:orgId/expenses/export-excel", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

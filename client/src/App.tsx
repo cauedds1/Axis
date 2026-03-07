@@ -263,6 +263,9 @@ function AppRouter() {
         <Route path="/business/app/receivables">
           {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
         </Route>
+        <Route path="/business/app/colaboradores">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
         <Route path="/business/app/cashflow">
           {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
         </Route>

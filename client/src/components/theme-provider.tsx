@@ -75,9 +75,10 @@ export interface ModulePalette {
 export interface BusinessModulePalette {
   primary: string;
   dashboard: string;
-  finance: string;
-  cashflow: string;
+  expenses: string;
+  colaboradores: string;
   reports: string;
+  config: string;
   positive: string;
   negative: string;
 }
@@ -130,40 +131,40 @@ export function getBusinessModulePalette(theme: BusinessTheme): BusinessModulePa
   const p = getBusinessPrimaryHex(theme);
   const map: Record<BusinessTheme, BusinessModulePalette> = {
     "biz-slate": {
-      primary: p, dashboard: p, finance: "#60A5FA", cashflow: "#818CF8", reports: "#34D399",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: p, expenses: "#60A5FA", colaboradores: "#818CF8",
+      reports: "#34D399", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-ocean": {
-      primary: p, dashboard: p, finance: "#38BDF8", cashflow: "#818CF8", reports: "#34D399",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: p, expenses: "#38BDF8", colaboradores: "#818CF8",
+      reports: "#34D399", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-emerald": {
-      primary: p, dashboard: p, finance: "#34D399", cashflow: "#60A5FA", reports: "#A78BFA",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: p, expenses: "#34D399", colaboradores: "#60A5FA",
+      reports: "#A78BFA", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-amber": {
-      primary: p, dashboard: p, finance: "#FCD34D", cashflow: "#60A5FA", reports: "#34D399",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: p, expenses: "#FCD34D", colaboradores: "#60A5FA",
+      reports: "#34D399", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-blue": {
-      primary: p, dashboard: "#60A5FA", finance: "#34D399", cashflow: "#A78BFA", reports: "#38BDF8",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: "#60A5FA", expenses: "#34D399", colaboradores: "#A78BFA",
+      reports: "#38BDF8", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-indigo": {
-      primary: p, dashboard: "#818CF8", finance: "#60A5FA", cashflow: "#34D399", reports: "#38BDF8",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: "#818CF8", expenses: "#60A5FA", colaboradores: "#34D399",
+      reports: "#38BDF8", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-cyan": {
-      primary: p, dashboard: "#38BDF8", finance: "#34D399", cashflow: "#818CF8", reports: "#60A5FA",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: "#38BDF8", expenses: "#34D399", colaboradores: "#818CF8",
+      reports: "#60A5FA", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-green": {
-      primary: p, dashboard: "#34D399", finance: "#60A5FA", cashflow: "#38BDF8", reports: "#A78BFA",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: "#34D399", expenses: "#60A5FA", colaboradores: "#38BDF8",
+      reports: "#A78BFA", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
     "biz-gold": {
-      primary: p, dashboard: "#FCD34D", finance: "#60A5FA", cashflow: "#34D399", reports: "#38BDF8",
-      positive: "#34D399", negative: "#F87171",
+      primary: p, dashboard: "#FCD34D", expenses: "#60A5FA", colaboradores: "#34D399",
+      reports: "#38BDF8", config: "#94A3B8", positive: "#34D399", negative: "#F87171",
     },
   };
   return map[theme] ?? map["biz-slate"];

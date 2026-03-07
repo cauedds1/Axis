@@ -126,6 +126,8 @@ export interface IStorage {
   getOrganizationsByUserId(userId: string): Promise<Organization[]>;
   addOrganizationMember(data: InsertOrganizationMember): Promise<OrganizationMember>;
   getOrganizationMembers(orgId: string): Promise<(OrganizationMember & { userEmail?: string; userName?: string })[]>;
+  deleteOrganizationMember(orgId: string, memberId: string): Promise<void>;
+  updateMemberRole(orgId: string, memberId: string, role: string): Promise<OrganizationMember>;
   getUserOrganizations(userId: string): Promise<Organization[]>;
   createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense>;
   getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]>;
@@ -613,6 +615,20 @@ export class DatabaseStorage implements IStorage {
       return { ...m, userEmail: user?.email ?? undefined, userName: user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() : undefined };
     }));
     return enriched;
+  }
+
+  async deleteOrganizationMember(orgId: string, memberId: string): Promise<void> {
+    await db.delete(organizationMembers).where(
+      and(eq(organizationMembers.id, memberId), eq(organizationMembers.organizationId, orgId))
+    );
+  }
+
+  async updateMemberRole(orgId: string, memberId: string, role: string): Promise<OrganizationMember> {
+    const [updated] = await db.update(organizationMembers)
+      .set({ role })
+      .where(and(eq(organizationMembers.id, memberId), eq(organizationMembers.organizationId, orgId)))
+      .returning();
+    return updated;
   }
 
   async getUserOrganizations(userId: string): Promise<Organization[]> {

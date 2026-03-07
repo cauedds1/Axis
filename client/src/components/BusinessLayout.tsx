@@ -5,11 +5,8 @@ import { useLocation } from "wouter";
 import { useEffect } from "react";
 import BusinessHome from "@/pages/business/BusinessHome";
 import BusinessExpenses from "@/pages/business/BusinessExpenses";
-import BusinessBills from "@/pages/business/BusinessBills";
-import BusinessReceivables from "@/pages/business/BusinessReceivables";
-import BusinessCashflow from "@/pages/business/BusinessCashflow";
+import BusinessCollaborators from "@/pages/business/BusinessCollaborators";
 import BusinessReports from "@/pages/business/BusinessReports";
-import BusinessFinancePage from "@/pages/business/BusinessFinancePage";
 import BusinessSettingsPage from "@/pages/business/BusinessSettingsPage";
 
 function SidebarMobileClose() {
@@ -37,11 +34,8 @@ export function BusinessLayout() {
           <main className="flex-1 overflow-auto">
             <Switch>
               <Route path="/business/app" component={BusinessHome} />
-              <Route path="/business/app/financas" component={BusinessFinancePage} />
               <Route path="/business/app/expenses" component={BusinessExpenses} />
-              <Route path="/business/app/bills" component={BusinessBills} />
-              <Route path="/business/app/receivables" component={BusinessReceivables} />
-              <Route path="/business/app/cashflow" component={BusinessCashflow} />
+              <Route path="/business/app/colaboradores" component={BusinessCollaborators} />
               <Route path="/business/app/reports" component={BusinessReports} />
               <Route path="/business/app/config" component={BusinessSettingsPage} />
             </Switch>

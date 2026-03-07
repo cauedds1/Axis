@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, real, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, real, date, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -285,6 +285,7 @@ export const organizations = pgTable("organizations", {
   segment: text("segment"),
   closingDay: integer("closing_day"),
   adminUserId: varchar("admin_user_id").notNull(),
+  spendingLimits: text("spending_limits"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -314,7 +315,12 @@ export const businessExpenses = pgTable("business_expenses", {
   notes: text("notes"),
   source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (t) => [
+  index("idx_biz_exp_org").on(t.organizationId),
+  index("idx_biz_exp_user").on(t.userId),
+  index("idx_biz_exp_status").on(t.status),
+  index("idx_biz_exp_date").on(t.date),
+]);
 
 export const businessBills = pgTable("business_bills", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
