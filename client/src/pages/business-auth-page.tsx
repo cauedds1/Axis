@@ -248,6 +248,7 @@ const selectStyle = {
 
 export default function BusinessAuthPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isCollaboratorLogin, setIsCollaboratorLogin] = useState(false);
   const [step, setStep] = useState(1);
 
   const [email, setEmail] = useState("");
@@ -255,6 +256,11 @@ export default function BusinessAuthPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+
+  const [collabEmail, setCollabEmail] = useState("");
+  const [collabPassword, setCollabPassword] = useState("");
+  const [collabLoginError, setCollabLoginError] = useState<string | null>(null);
+  const [collabIsLoading, setCollabIsLoading] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
   const [tradeName, setTradeName] = useState("");
@@ -292,6 +298,21 @@ export default function BusinessAuthPage() {
       setLoginError(err?.message ?? "Email ou senha incorretos");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCollaboratorLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCollabLoginError(null);
+    setCollabIsLoading(true);
+    try {
+      const userData = await apiRequest("POST", "/api/business/auth/collaborator-login", { email: collabEmail, password: collabPassword });
+      queryClient.setQueryData(["/api/auth/user"], userData);
+      setLocation("/business/app");
+    } catch (err: any) {
+      setCollabLoginError(err?.message ?? "Email ou senha incorretos");
+    } finally {
+      setCollabIsLoading(false);
     }
   };
 
@@ -368,6 +389,47 @@ export default function BusinessAuthPage() {
           className="w-full max-w-[420px] relative z-10 py-4"
         >
           {isLogin ? (
+            isCollaboratorLogin ? (
+              <>
+                <div className="mb-9">
+                  <button
+                    type="button"
+                    onClick={() => { setIsCollaboratorLogin(false); setCollabLoginError(null); }}
+                    className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors mb-5"
+                    data-testid="button-back-to-manager-login"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Voltar para login de gestor
+                  </button>
+                  <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
+                    Acesso de colaborador
+                  </h1>
+                  <p className="text-sm text-white/35">Use as credenciais fornecidas pelo seu gestor</p>
+                </div>
+
+                <form onSubmit={handleCollaboratorLogin} className="space-y-4" data-testid="form-collab-login">
+                  <div>
+                    <label className={labelClass}>E-mail</label>
+                    <input type="email" value={collabEmail} onChange={(e) => setCollabEmail(e.target.value)} placeholder="voce@empresa.com.br" required className={inputClass} data-testid="input-collab-email" />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Senha</label>
+                    <input type="password" value={collabPassword} onChange={(e) => setCollabPassword(e.target.value)} placeholder="Senha fornecida pelo gestor" required className={inputClass} data-testid="input-collab-password" />
+                  </div>
+                  {collabLoginError && (
+                    <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }} data-testid="text-collab-auth-error">
+                      <span className="mt-0.5 flex-shrink-0">⚠</span>
+                      <span>{collabLoginError}</span>
+                    </div>
+                  )}
+                  <div className="pt-1">
+                    <button type="submit" disabled={collabIsLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-collab-submit">
+                      {collabIsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Entrar como colaborador</span><ArrowRight className="h-4 w-4" /></>}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
             <>
               <div className="mb-9">
                 <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
@@ -398,6 +460,7 @@ export default function BusinessAuthPage() {
                 </div>
               </form>
             </>
+            )
           ) : (
             <>
               <div className="mb-7">
@@ -562,10 +625,10 @@ export default function BusinessAuthPage() {
             </>
           )}
 
-          <div className="mt-7 text-center">
+          <div className="mt-7 text-center flex flex-col items-center gap-3">
             <button
               type="button"
-              onClick={() => { setIsLogin(!isLogin); setStep(1); setSubmitError(null); }}
+              onClick={() => { setIsLogin(!isLogin); setStep(1); setSubmitError(null); setIsCollaboratorLogin(false); }}
               className="text-sm text-white/30 transition-colors hover:text-white/50"
               data-testid="button-toggle-auth-mode"
             >
@@ -575,6 +638,17 @@ export default function BusinessAuthPage() {
                 <>Já tem conta?{" "}<span className="font-semibold" style={{ color: PRIMARY }}>Entrar</span></>
               )}
             </button>
+            {isLogin && !isCollaboratorLogin && (
+              <button
+                type="button"
+                onClick={() => { setIsCollaboratorLogin(true); setLoginError(null); }}
+                className="flex items-center gap-1.5 text-xs text-white/20 hover:text-white/40 transition-colors"
+                data-testid="button-collab-login-toggle"
+              >
+                Logar como colaborador
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
           </div>
 
           <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>

@@ -136,8 +136,8 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(401).json({ message: "Email ou senha incorretos" });
       }
 
-      if (user.accountType === "personal") {
-        return res.status(401).json({ message: "Esta conta pertence ao AXIS Pessoal. Acesse pelo portal pessoal." });
+      if (user.accountType === "personal" || user.accountType === "collaborator") {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
       }
 
       const valid = await bcrypt.compare(data.password, user.password);
@@ -153,6 +153,38 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: error.errors[0].message });
       }
       console.error("Business login error:", error);
+      res.status(500).json({ message: "Erro ao entrar" });
+    }
+  });
+
+  // ─── COLLABORATOR AUTH ────────────────────────────────────────────────────────
+
+  app.post("/api/business/auth/collaborator-login", async (req, res) => {
+    try {
+      const data = loginSchema.parse(req.body);
+
+      const user = await authStorage.getUserByEmail(data.email);
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
+      }
+
+      if (user.accountType !== "collaborator") {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
+      }
+
+      const valid = await bcrypt.compare(data.password, user.password);
+      if (!valid) {
+        return res.status(401).json({ message: "Email ou senha incorretos" });
+      }
+
+      (req.session as any).userId = user.id;
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Collaborator login error:", error);
       res.status(500).json({ message: "Erro ao entrar" });
     }
   });

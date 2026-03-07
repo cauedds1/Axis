@@ -129,6 +129,7 @@ export interface IStorage {
   deleteOrganizationMember(orgId: string, memberId: string): Promise<void>;
   updateMemberRole(orgId: string, memberId: string, role: string): Promise<OrganizationMember>;
   getUserOrganizations(userId: string): Promise<Organization[]>;
+  createCollaboratorAccount(orgId: string, data: { firstName: string; lastName: string; email: string; hashedPassword: string; jobTitle?: string }): Promise<{ userId: string; email: string }>;
   createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense>;
   getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]>;
   updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined>;
@@ -642,6 +643,20 @@ export class DatabaseStorage implements IStorage {
     const allOrgs = [...adminOrgs, ...memberOrgs];
     const seen = new Set<string>();
     return allOrgs.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });
+  }
+
+  async createCollaboratorAccount(orgId: string, data: { firstName: string; lastName: string; email: string; hashedPassword: string; jobTitle?: string }): Promise<{ userId: string; email: string }> {
+    const [existing] = await db.select().from(users).where(eq(users.email, data.email));
+    if (existing) throw new Error("Este email já está cadastrado");
+    const [user] = await db.insert(users).values({
+      email: data.email,
+      password: data.hashedPassword,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      accountType: "collaborator",
+    }).returning();
+    await this.addOrganizationMember({ organizationId: orgId, userId: user.id, role: "member", jobTitle: data.jobTitle });
+    return { userId: user.id, email: user.email };
   }
 
   async createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense> {

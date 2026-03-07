@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { log } from "./log";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import multer from "multer";
 import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification, matchBillIdentity, saveUserIdentityEntity, getUserIdentityEntities } from "./ai";
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
@@ -3066,6 +3067,28 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/business/organizations/:orgId/collaborators", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const { firstName, lastName, email, password, jobTitle } = req.body;
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: "Nome, email e senha são obrigatórios" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Senha deve ter pelo menos 6 caracteres" });
+      }
+      const org = await storage.getOrganizationById(orgId);
+      if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode adicionar colaboradores" });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = await storage.createCollaboratorAccount(orgId, { firstName, lastName, email, hashedPassword, jobTitle });
+      res.json({ userId: result.userId, email: result.email });
+    } catch (err: any) {
+      res.status(err.message.includes("já está cadastrado") ? 409 : 500).json({ message: err.message });
     }
   });
 

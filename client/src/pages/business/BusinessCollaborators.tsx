@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Users, UserPlus, MoreVertical, ShieldCheck, UserMinus, Crown } from "lucide-react";
+import { Users, UserPlus, MoreVertical, ShieldCheck, UserMinus, Crown, UserCog, Eye, EyeOff, Copy, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 
@@ -42,6 +42,16 @@ export default function BusinessCollaborators() {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  const [addCollabOpen, setAddCollabOpen] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [addedCreds, setAddedCreds] = useState<{ email: string; password: string } | null>(null);
+  const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({
     queryKey: ["/api/business/organizations"],
@@ -107,6 +117,25 @@ export default function BusinessCollaborators() {
     onError: () => toast({ title: "Erro ao remover colaborador", variant: "destructive" }),
   });
 
+  const addCollaboratorMutation = useMutation({
+    mutationFn: (data: { firstName: string; lastName: string; email: string; password: string; jobTitle?: string }) =>
+      apiRequest("POST", `/api/business/organizations/${activeOrg!.id}/collaborators`, data),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "members"] });
+      setAddedCreds({ email: vars.email, password: vars.password });
+      setNewFirstName(""); setNewLastName(""); setNewEmail(""); setNewPassword(""); setNewJobTitle("");
+    },
+    onError: (err: any) => {
+      toast({ title: err?.message ?? "Erro ao criar colaborador", variant: "destructive" });
+    },
+  });
+
+  function copyToClipboard(text: string, field: "email" | "password") {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  }
+
   if (orgsLoading || membersLoading) return (
     <div className="p-6 max-w-3xl mx-auto flex flex-col gap-4">
       <Skeleton className="h-8 w-48" />
@@ -133,43 +162,141 @@ export default function BusinessCollaborators() {
             </p>
           </div>
           {isAdmin && (
-            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2" style={{ background: primaryHex }} data-testid="button-invite-collaborator">
-                  <UserPlus className="w-4 h-4" />
-                  Convidar
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <UserPlus className="w-4 h-4" style={{ color: primaryHex }} />
-                    Convidar colaborador
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-4 pt-2">
-                  <p className="text-sm text-muted-foreground">
-                    O usuário precisa ter uma conta no AXIS com esse e-mail.
-                  </p>
-                  <Input
-                    type="email"
-                    placeholder="email@empresa.com"
-                    value={inviteEmail}
-                    onChange={e => setInviteEmail(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && inviteEmail && inviteMutation.mutate({ email: inviteEmail })}
-                    data-testid="input-invite-email"
-                  />
-                  <Button
-                    onClick={() => inviteEmail && inviteMutation.mutate({ email: inviteEmail })}
-                    disabled={!inviteEmail || inviteMutation.isPending}
-                    style={{ background: primaryHex }}
-                    data-testid="button-send-invite"
-                  >
-                    {inviteMutation.isPending ? "Convidando..." : "Enviar convite"}
+            <div className="flex items-center gap-2">
+              <Dialog open={addCollabOpen} onOpenChange={(open) => { setAddCollabOpen(open); if (!open) { setAddedCreds(null); } }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-2" data-testid="button-add-collaborator">
+                    <UserCog className="w-4 h-4" />
+                    Adicionar colaborador
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <UserCog className="w-4 h-4" style={{ color: primaryHex }} />
+                      Adicionar colaborador
+                    </DialogTitle>
+                  </DialogHeader>
+                  {addedCreds ? (
+                    <div className="flex flex-col gap-4 pt-2">
+                      <div className="flex flex-col items-center gap-3 py-4">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: `${primaryHex}20` }}>
+                          <CheckCircle2 className="w-6 h-6" style={{ color: primaryHex }} />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-sm">Colaborador criado com sucesso!</p>
+                          <p className="text-xs text-muted-foreground mt-1">Compartilhe as credenciais abaixo. Após fechar, a senha não poderá ser recuperada.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between rounded-lg px-3 py-2.5 gap-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">E-mail</p>
+                            <p className="text-sm font-mono font-medium" data-testid="text-created-email">{addedCreds.email}</p>
+                          </div>
+                          <button onClick={() => copyToClipboard(addedCreds.email, "email")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/5 transition-colors" data-testid="button-copy-email">
+                            {copiedField === "email" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg px-3 py-2.5 gap-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Senha provisória</p>
+                            <p className="text-sm font-mono font-medium" data-testid="text-created-password">{addedCreds.password}</p>
+                          </div>
+                          <button onClick={() => copyToClipboard(addedCreds.password, "password")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/5 transition-colors" data-testid="button-copy-password">
+                            {copiedField === "password" ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </button>
+                        </div>
+                      </div>
+                      <Button onClick={() => { setAddCollabOpen(false); setAddedCreds(null); }} style={{ background: primaryHex }} data-testid="button-close-credentials">
+                        Fechar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4 pt-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1.5">Nome *</label>
+                          <Input placeholder="João" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} data-testid="input-collab-first-name" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-muted-foreground mb-1.5">Sobrenome *</label>
+                          <Input placeholder="Silva" value={newLastName} onChange={e => setNewLastName(e.target.value)} data-testid="input-collab-last-name" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1.5">E-mail *</label>
+                        <Input type="email" placeholder="joao@empresa.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} data-testid="input-collab-email-create" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1.5">Senha provisória *</label>
+                        <div className="relative">
+                          <Input type={showPassword ? "text" : "password"} placeholder="Mínimo 6 caracteres" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="pr-10" data-testid="input-collab-password-create" />
+                          <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1.5">Cargo / Função <span className="text-muted-foreground/50">(opcional)</span></label>
+                        <Input placeholder="ex: Vendedor, Analista..." value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} data-testid="input-collab-job-title" />
+                      </div>
+                      <Button
+                        onClick={() => {
+                          if (!newFirstName || !newLastName || !newEmail || !newPassword) {
+                            toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" }); return;
+                          }
+                          addCollaboratorMutation.mutate({ firstName: newFirstName, lastName: newLastName, email: newEmail, password: newPassword, jobTitle: newJobTitle || undefined });
+                        }}
+                        disabled={addCollaboratorMutation.isPending}
+                        style={{ background: primaryHex }}
+                        data-testid="button-create-collaborator"
+                      >
+                        {addCollaboratorMutation.isPending ? "Criando..." : "Criar colaborador"}
+                      </Button>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2" style={{ background: primaryHex }} data-testid="button-invite-collaborator">
+                    <UserPlus className="w-4 h-4" />
+                    Convidar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4" style={{ color: primaryHex }} />
+                      Convidar colaborador
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="flex flex-col gap-4 pt-2">
+                    <p className="text-sm text-muted-foreground">
+                      O usuário precisa ter uma conta no AXIS com esse e-mail.
+                    </p>
+                    <Input
+                      type="email"
+                      placeholder="email@empresa.com"
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && inviteEmail && inviteMutation.mutate({ email: inviteEmail })}
+                      data-testid="input-invite-email"
+                    />
+                    <Button
+                      onClick={() => inviteEmail && inviteMutation.mutate({ email: inviteEmail })}
+                      disabled={!inviteEmail || inviteMutation.isPending}
+                      style={{ background: primaryHex }}
+                      data-testid="button-send-invite"
+                    >
+                      {inviteMutation.isPending ? "Convidando..." : "Enviar convite"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           )}
         </div>
 

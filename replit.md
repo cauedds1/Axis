@@ -125,17 +125,28 @@ A focused **corporate expense management** system (NOT an ERP) at `/business`. M
 ### WhatsApp Business Flow
 Receipt photo → bot asks "pessoal ou corporativo?" → saves to `business_expenses` with base64 image.
 
+### Collaborator Account System
+- `accountType: "collaborator"` — new user type for team members whose accounts are created by the admin (not self-registered)
+- Collaborator credentials only work via `POST /api/business/auth/collaborator-login` — trying the normal business login returns "Email ou senha incorretos" (generic, no enumeration)
+- Admin creates collaborator accounts via `POST /api/business/organizations/:orgId/collaborators` with name + email + provisional password + optional job title
+- After creation, admin sees credentials in a dialog (email + copyable password). Password cannot be recovered after closing.
+- On auth page: "Logar como colaborador →" link switches to a dedicated collaborator login form with "← Voltar para login de gestor" to go back
+- Collaborators are auto-added to the org as `role: "member"` and access `/business/app` with standard member permissions
+- `App.tsx` routing: `accountType === "collaborator"` is treated identically to `"business"` for redirects and layout guards
+
 ### Business API Endpoints
 - `POST/GET /api/business/organizations` - Create/list companies
 - `PATCH /api/business/organizations/:orgId` - Update company data + **spendingLimits**
-- `POST /api/business/organizations/:orgId/members` - Invite member by email
+- `POST /api/business/organizations/:orgId/members` - Invite member by email (must have existing AXIS account)
 - `GET /api/business/organizations/:orgId/members` - List members
 - `DELETE /api/business/organizations/:orgId/members/:memberId` - Remove member (admin only, can't remove primary admin)
 - `PATCH /api/business/organizations/:orgId/members/:memberId` - Update member role (admin/member)
+- `POST /api/business/organizations/:orgId/collaborators` - **Create collaborator account** (admin only: creates user + adds to org)
 - `GET /api/business/organizations/:orgId/expenses` - List expenses (filterable: status, userId, startDate, endDate)
 - `POST /api/business/organizations/:orgId/expenses` - Create manual expense
 - `PATCH /api/business/organizations/:orgId/expenses/:expenseId` - Approve/reject
 - `GET /api/business/organizations/:orgId/expenses/export-excel` - Download Excel report
+- `POST /api/business/auth/collaborator-login` - Collaborator-only login (rejects business/personal accounts)
 
 ## API Endpoints
 - `POST /api/input/process` - Universal input (voice or text) → AI detects intent → auto-routes

@@ -99,7 +99,7 @@ function AuthenticatedLayout() {
 
   const { data: profileData } = useQuery<any>({
     queryKey: ["/api/user/profile"],
-    enabled: user?.accountType !== "business",
+    enabled: user?.accountType !== "business" && user?.accountType !== "collaborator",
   });
 
   const onboardingCompleted =
@@ -120,7 +120,7 @@ function AuthenticatedLayout() {
   }, [onboardingCompleted, location, setLocation]);
 
   if (location.startsWith("/business")) return null;
-  if (user?.accountType === "business") return null;
+  if (user?.accountType === "business" || user?.accountType === "collaborator") return null;
 
   if (onboardingCompleted === false) {
     if (location === "/onboarding") return <Onboarding />;
@@ -177,7 +177,7 @@ function AppRouter() {
       }
     }
     if (!isLoading && user) {
-      if (user.accountType === "business" && !location.startsWith("/business")) {
+      if ((user.accountType === "business" || user.accountType === "collaborator") && !location.startsWith("/business")) {
         setLocation("/business/app");
       }
       if (user.accountType === "personal" && location.startsWith("/business/app")) {
