@@ -178,7 +178,7 @@ function AppRouter() {
       }
     }
     if (!isLoading && user) {
-      if ((user.accountType === "business" || user.accountType === "collaborator") && !location.startsWith("/business")) {
+      if ((user.accountType === "business" || user.accountType === "collaborator") && !location.startsWith("/business") && !location.startsWith("/r/")) {
         setLocation("/business/app");
       }
       if (user.accountType === "personal" && location.startsWith("/business/app")) {
