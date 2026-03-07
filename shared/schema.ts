@@ -349,11 +349,26 @@ export const businessReceivables = pgTable("business_receivables", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const businessCorporateCards = pgTable("business_corporate_cards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull(),
+  name: text("name").notNull(),
+  last4: varchar("last4", { length: 4 }).notNull(),
+  brand: text("brand").notNull().default("Visa"),
+  limitAmount: real("limit_amount").notNull().default(0),
+  currentBalance: real("current_balance").notNull().default(0),
+  holder: text("holder").notNull(),
+  closingDay: integer("closing_day").notNull().default(1),
+  color: text("color"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true });
 export const insertOrganizationMemberSchema = createInsertSchema(organizationMembers).omit({ id: true, joinedAt: true });
 export const insertBusinessExpenseSchema = createInsertSchema(businessExpenses).omit({ id: true, createdAt: true });
 export const insertBusinessBillSchema = createInsertSchema(businessBills).omit({ id: true, createdAt: true });
 export const insertBusinessReceivableSchema = createInsertSchema(businessReceivables).omit({ id: true, createdAt: true });
+export const insertBusinessCorporateCardSchema = createInsertSchema(businessCorporateCards).omit({ id: true, createdAt: true });
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -365,3 +380,5 @@ export type BusinessBill = typeof businessBills.$inferSelect;
 export type InsertBusinessBill = z.infer<typeof insertBusinessBillSchema>;
 export type BusinessReceivable = typeof businessReceivables.$inferSelect;
 export type InsertBusinessReceivable = z.infer<typeof insertBusinessReceivableSchema>;
+export type BusinessCorporateCard = typeof businessCorporateCards.$inferSelect;
+export type InsertBusinessCorporateCard = z.infer<typeof insertBusinessCorporateCardSchema>;

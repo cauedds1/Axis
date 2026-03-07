@@ -3280,5 +3280,50 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
+  app.get("/api/business/organizations/:orgId/cards", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const cards = await storage.getBusinessCorporateCards(orgId);
+      res.json(cards);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/business/organizations/:orgId/cards", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const card = await storage.createBusinessCorporateCard({ ...req.body, organizationId: orgId });
+      res.status(201).json(card);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.patch("/api/business/organizations/:orgId/cards/:cardId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, cardId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const card = await storage.updateBusinessCorporateCard(cardId, orgId, req.body);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+      res.json(card);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.delete("/api/business/organizations/:orgId/cards/:cardId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, cardId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      await storage.deleteBusinessCorporateCard(cardId, orgId);
+      res.status(204).send();
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
   return httpServer;
 }

@@ -9,6 +9,7 @@ import BusinessBills from "@/pages/business/BusinessBills";
 import BusinessReceivables from "@/pages/business/BusinessReceivables";
 import BusinessCashflow from "@/pages/business/BusinessCashflow";
 import BusinessReports from "@/pages/business/BusinessReports";
+import BusinessFinancePage from "@/pages/business/BusinessFinancePage";
 
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
@@ -35,6 +36,7 @@ export function BusinessLayout() {
           <main className="flex-1 overflow-auto">
             <Switch>
               <Route path="/business/app" component={BusinessHome} />
+              <Route path="/business/app/financas" component={BusinessFinancePage} />
               <Route path="/business/app/expenses" component={BusinessExpenses} />
               <Route path="/business/app/bills" component={BusinessBills} />
               <Route path="/business/app/receivables" component={BusinessReceivables} />

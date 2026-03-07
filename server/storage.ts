@@ -1,6 +1,6 @@
 import {
   categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, scheduleItemCancellations,
-  organizations, organizationMembers, businessExpenses, businessBills, businessReceivables,
+  organizations, organizationMembers, businessExpenses, businessBills, businessReceivables, businessCorporateCards,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
   type Transaction, type InsertTransaction,
@@ -21,6 +21,7 @@ import {
   type BusinessExpense, type InsertBusinessExpense,
   type BusinessBill, type InsertBusinessBill,
   type BusinessReceivable, type InsertBusinessReceivable,
+  type BusinessCorporateCard, type InsertBusinessCorporateCard,
 } from "@shared/schema";
 import { chatMessages, userContext, type ChatMessage, type InsertChatMessage, type UserContextEntry, type InsertUserContext } from "@shared/models/chat";
 import { users, sessions } from "@shared/models/auth";
@@ -137,6 +138,10 @@ export interface IStorage {
   getBusinessReceivables(orgId: string): Promise<BusinessReceivable[]>;
   updateBusinessReceivable(id: string, orgId: string, data: Partial<InsertBusinessReceivable>): Promise<BusinessReceivable | undefined>;
   deleteBusinessReceivable(id: string, orgId: string): Promise<void>;
+  getBusinessCorporateCards(orgId: string): Promise<BusinessCorporateCard[]>;
+  createBusinessCorporateCard(data: InsertBusinessCorporateCard): Promise<BusinessCorporateCard>;
+  updateBusinessCorporateCard(id: string, orgId: string, data: Partial<InsertBusinessCorporateCard>): Promise<BusinessCorporateCard | undefined>;
+  deleteBusinessCorporateCard(id: string, orgId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -694,6 +699,28 @@ export class DatabaseStorage implements IStorage {
   async deleteBusinessReceivable(id: string, orgId: string): Promise<void> {
     await db.delete(businessReceivables)
       .where(and(eq(businessReceivables.id, id), eq(businessReceivables.organizationId, orgId)));
+  }
+
+  async getBusinessCorporateCards(orgId: string): Promise<BusinessCorporateCard[]> {
+    return db.select().from(businessCorporateCards)
+      .where(eq(businessCorporateCards.organizationId, orgId))
+      .orderBy(businessCorporateCards.createdAt);
+  }
+
+  async createBusinessCorporateCard(data: InsertBusinessCorporateCard): Promise<BusinessCorporateCard> {
+    const [card] = await db.insert(businessCorporateCards).values(data).returning();
+    return card;
+  }
+
+  async updateBusinessCorporateCard(id: string, orgId: string, data: Partial<InsertBusinessCorporateCard>): Promise<BusinessCorporateCard | undefined> {
+    const [card] = await db.update(businessCorporateCards).set(data)
+      .where(and(eq(businessCorporateCards.id, id), eq(businessCorporateCards.organizationId, orgId))).returning();
+    return card;
+  }
+
+  async deleteBusinessCorporateCard(id: string, orgId: string): Promise<void> {
+    await db.delete(businessCorporateCards)
+      .where(and(eq(businessCorporateCards.id, id), eq(businessCorporateCards.organizationId, orgId)));
   }
 }
 

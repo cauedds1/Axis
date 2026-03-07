@@ -12,13 +12,11 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
-  ReceiptText,
   LogOut,
   AlertCircle,
   TrendingUp,
-  ArrowDownCircle,
-  ArrowUpCircle,
   BarChart3,
+  Wallet,
 } from "lucide-react";
 
 const PRIMARY = "#2563EB";
@@ -76,16 +74,11 @@ function UserAvatar({ name, email }: { name?: string; email?: string }) {
 
 const mainNav = [
   { href: "/business/app", icon: LayoutDashboard, label: "Dashboard", color: PRIMARY_LIGHT },
-  { href: "/business/app/expenses", icon: ReceiptText, label: "Despesas", color: "#6366F1" },
-];
-
-const financeNav = [
-  { href: "/business/app/cashflow", icon: TrendingUp, label: "Fluxo de Caixa", color: "#0EA5E9" },
-  { href: "/business/app/bills", icon: ArrowDownCircle, label: "Contas a Pagar", color: "#F87171" },
-  { href: "/business/app/receivables", icon: ArrowUpCircle, label: "Contas a Receber", color: "#34D399" },
+  { href: "/business/app/financas", icon: Wallet, label: "Finanças", color: "#10B981" },
 ];
 
 const managementNav = [
+  { href: "/business/app/cashflow", icon: TrendingUp, label: "Fluxo de Caixa", color: "#0EA5E9" },
   { href: "/business/app/reports", icon: BarChart3, label: "Relatórios", color: "#A78BFA" },
 ];
 
@@ -168,8 +161,6 @@ export function BusinessSidebar() {
 
       <SidebarContent className="p-2 pt-2">
         <NavGroup items={mainNav} location={location} />
-        <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
-        <NavGroup label="Financeiro" items={financeNav} location={location} />
         <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
         <NavGroup label="Gestão" items={managementNav} location={location} />
       </SidebarContent>
