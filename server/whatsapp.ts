@@ -391,26 +391,51 @@ class WhatsAppManager {
       if (!profile) {
         log(`WhatsApp: JID não vinculado — ${jid}`, "whatsapp");
 
-        const cmdRaw = text.trim().toLowerCase();
-        if (cmdRaw.startsWith("vincular")) {
-          const phonePart = cmdRaw.replace("vincular", "").replace(/[^0-9]/g, "").trim();
+        const cmdRaw = text.trim().toLowerCase().replace(/\s+/g, " ");
+
+        const isAP = cmdRaw.startsWith("vincular ap") || cmdRaw.startsWith("vincularap");
+        const isAB = cmdRaw.startsWith("vincular ab") || cmdRaw.startsWith("vincularab");
+
+        if (isAP || isAB) {
+          const phonePart = cmdRaw.replace(/^vincular\s*a[pb]\s*/i, "").replace(/[^0-9]/g, "").trim();
           const matchProfiles = await storage.getAllProfiles();
           const variants = phonePart ? [phonePart, "55" + phonePart] : [];
           const target = matchProfiles.find(p => {
             const ph: string = (p as any).whatsappPhone ?? "";
             return ph && (ph === phonePart || variants.includes(ph));
           });
-          if (target) {
+
+          if (!target) {
+            const prefix = isAP ? "AP" : "AB";
+            await this.sendMessage(jid, `❌ Número não encontrado. Certifique-se de cadastrar seu número em Configurações antes de vincular.\n\nTente: *vincular ${prefix} 48999186712*`);
+            return;
+          }
+
+          if (isAP) {
             await storage.upsertUserProfile(target.userId, { whatsappJid: jid } as any);
-            log(`WhatsApp: JID ${jid} vinculado ao userId=${target.userId}`, "whatsapp");
-            await this.sendMessage(jid, "✅ WhatsApp vinculado ao AXIS! Pode enviar mensagens normalmente.");
+            log(`WhatsApp: JID ${jid} vinculado (Pessoal) ao userId=${target.userId}`, "whatsapp");
+            await this.sendMessage(jid, "✅ WhatsApp vinculado ao *AXIS Pessoal*! Pode enviar comprovantes e mensagens normalmente.");
           } else {
-            await this.sendMessage(jid, "❌ Número não encontrado. Verifique se cadastrou seu número em Configurações → WhatsApp.\n\nTente: *vincular 48999186712*");
+            const [userRow] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, target.userId));
+            const orgs = await storage.getUserOrganizations(target.userId);
+            const hasBusiness = userRow?.accountType === "collaborator" || orgs.length > 0;
+            if (!hasBusiness) {
+              await this.sendMessage(jid, "❌ Este número não possui uma conta Business no AXIS.\n\nPara vincular o AXIS Pessoal, use:\n*vincular AP [seu-numero]*");
+              return;
+            }
+            await storage.upsertUserProfile(target.userId, { whatsappJid: jid } as any);
+            log(`WhatsApp: JID ${jid} vinculado (Business) ao userId=${target.userId}`, "whatsapp");
+            await this.sendMessage(jid, "✅ WhatsApp vinculado ao *AXIS Business*! Envie uma *foto do recibo* para registrar uma despesa corporativa.");
           }
           return;
         }
 
-        await this.sendMessage(jid, "❌ Este número não está vinculado ao AXIS.\n\nPara vincular, envie:\n*vincular [seu-numero]*\n\nEx: *vincular 48999186712*");
+        if (cmdRaw.startsWith("vincular")) {
+          await this.sendMessage(jid, "❌ Este número não está vinculado ao AXIS.\n\nPara vincular o *AXIS Pessoal*, envie:\n*vincular AP [seu-numero]*\n\nPara vincular o *AXIS Business*, envie:\n*vincular AB [seu-numero]*\n\nEx: *vincular AP 48999186712*");
+          return;
+        }
+
+        await this.sendMessage(jid, "❌ Este número não está vinculado ao AXIS.\n\nPara vincular o *AXIS Pessoal*, envie:\n*vincular AP [seu-numero]*\n\nPara vincular o *AXIS Business*, envie:\n*vincular AB [seu-numero]*\n\nEx: *vincular AP 48999186712*");
         return;
       }
 
@@ -672,9 +697,9 @@ class WhatsAppManager {
     text: string
   ): Promise<void> {
     if (!imageMsg) {
-      const cmdRaw = text.trim().toLowerCase();
+      const cmdRaw = text.trim().toLowerCase().replace(/\s+/g, " ");
       if (cmdRaw.startsWith("vincular")) {
-        await this.sendMessage(jid, "✅ Seu número já está vinculado ao AXIS Business!\n\nEnvie uma foto do recibo para registrar uma despesa corporativa.");
+        await this.sendMessage(jid, "✅ Seu número já está vinculado ao *AXIS Business*!\n\nEnvie uma *foto do recibo* para registrar uma despesa corporativa.");
         return;
       }
       await this.sendMessage(jid, "📎 Envie uma *foto do recibo* para registrar uma despesa corporativa.\n\nAssim que receber a imagem, vou criar a despesa automaticamente e notificar o gestor.");
