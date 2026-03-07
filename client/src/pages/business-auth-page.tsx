@@ -353,7 +353,15 @@ export default function BusinessAuthPage() {
   const error = isLogin ? (loginError ? new Error(loginError) : null) : (submitError ? new Error(submitError) : null);
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white relative">
+      <button
+        onClick={() => setLocation("/")}
+        className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
+        data-testid="button-back-to-landing"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Voltar
+      </button>
       <div className="hidden lg:block lg:w-[52%] xl:w-[55%]">
         <div className="h-screen sticky top-0">
           <BrandPanel />
