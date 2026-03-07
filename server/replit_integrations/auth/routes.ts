@@ -189,6 +189,37 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ─── CHANGE PASSWORD ─────────────────────────────────────────────────────────
+
+  app.post("/api/auth/change-password", async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) return res.status(401).json({ error: "Não autenticado" });
+
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Informe a senha atual e a nova senha" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 6 caracteres" });
+      }
+
+      const user = await authStorage.getUser(userId);
+      if (!user || !user.password) return res.status(404).json({ error: "Usuário não encontrado" });
+
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) return res.status(401).json({ error: "Senha atual incorreta" });
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await authStorage.updateUser(userId, { password: hashed });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Erro ao alterar senha" });
+    }
+  });
+
   // ─── LOGOUT (shared) ─────────────────────────────────────────────────────────
 
   app.post("/api/auth/logout", (req, res) => {

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, LogOut, AlertCircle, BarChart3,
-  ReceiptText, Users, Settings, Layers, Zap,
+  ReceiptText, Users, Settings, Layers, Zap, Banknote, UserCircle,
 } from "lucide-react";
 import {
   useBusinessTheme, getBusinessPrimaryHex, getBusinessModulePalette, isCorporateTheme,
@@ -73,16 +73,33 @@ export function BusinessSidebar() {
   });
   const pendingCount = expenses?.filter((e: any) => e.status === "pending_review").length ?? 0;
 
-  const mainNav = [
+  const isCollaborator = user?.accountType === "collaborator";
+
+  const adminMainNav = [
     { href: "/business/app",              icon: LayoutDashboard, label: "Dashboard",    color: palette.dashboard },
     { href: "/business/app/expenses",     icon: ReceiptText,     label: "Despesas",     color: palette.expenses },
     { href: "/business/app/colaboradores",icon: Users,           label: "Colaboradores",color: palette.colaboradores },
   ];
 
-  const managementNav = [
+  const adminManagementNav = [
     { href: "/business/app/reports", icon: BarChart3, label: "Relatórios", color: palette.reports },
     { href: "/business/app/config",  icon: Settings,  label: "Config",     color: palette.config },
   ];
+
+  const collabMainNav = [
+    { href: "/business/app",          icon: LayoutDashboard, label: "Dashboard", color: palette.dashboard },
+    { href: "/business/app/expenses", icon: ReceiptText,     label: "Despesas",  color: palette.expenses },
+  ];
+
+  const collabPersonalNav = [
+    { href: "/business/app/reports",     icon: BarChart3,   label: "Relatórios", color: palette.reports },
+    { href: "/business/app/reembolsos",  icon: Banknote,    label: "Reembolsos", color: palette.expenses },
+    { href: "/business/app/perfil",      icon: UserCircle,  label: "Perfil",     color: palette.colaboradores },
+  ];
+
+  const mainNav = isCollaborator ? collabMainNav : adminMainNav;
+  const managementNav = isCollaborator ? collabPersonalNav : adminManagementNav;
+  const managementLabel = isCollaborator ? "Pessoal" : "Gestão";
 
   function NavItem({ item }: { item: typeof mainNav[0] }) {
     const isActive = location === item.href;
@@ -150,7 +167,7 @@ export function BusinessSidebar() {
         <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
 
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 pt-3 pb-1.5">
-          Gestão
+          {managementLabel}
         </p>
         <SidebarMenu>
           {managementNav.map((item) => <NavItem key={item.href} item={item} />)}

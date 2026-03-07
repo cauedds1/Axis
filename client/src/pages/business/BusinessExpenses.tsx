@@ -1,15 +1,16 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, XCircle, FileSpreadsheet, Printer, Filter, ReceiptText, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { CheckCircle2, XCircle, FileSpreadsheet, Printer, Filter, ReceiptText, ChevronDown, ChevronRight, AlertTriangle, MessageSquare, Pencil, Banknote, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
@@ -24,6 +25,7 @@ function formatBRL(n: number) {
 function statusBadge(status: string) {
   if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>Aprovado</Badge>;
   if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>Rejeitado</Badge>;
+  if (status === "paid") return <Badge className="text-[10px] font-semibold" style={{ background: "#6366F115", color: "#818CF8", border: "1px solid #6366F130" }}>Pago</Badge>;
   return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>Pendente</Badge>;
 }
 
@@ -88,13 +90,157 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
   );
 }
 
+function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const { businessTheme } = useBusinessTheme();
+  const primaryHex = getBusinessPrimaryHex(businessTheme);
+
+  const [form, setForm] = useState({
+    amount: expense?.amount?.toString() ?? "",
+    description: expense?.description ?? "",
+    categoryName: expense?.categoryName ?? "",
+    establishment: expense?.establishment ?? "",
+    date: expense?.date ? expense.date.slice(0, 10) : "",
+    notes: expense?.notes ?? "",
+    paymentMethod: expense?.paymentMethod ?? "",
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PUT", `/api/business/organizations/${orgId}/expenses/${expense.id}`, data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data?.error) { toast({ title: data.error, variant: "destructive" }); return; }
+      queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "expenses"] });
+      toast({ title: "Despesa reenviada para aprovação!" });
+      onClose();
+    },
+    onError: () => toast({ title: "Erro ao editar despesa", variant: "destructive" }),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    editMutation.mutate({
+      ...form,
+      amount: parseFloat(form.amount),
+    });
+  };
+
+  return (
+    <Dialog open={!!expense} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="w-4 h-4" style={{ color: BLUE_LIGHT }} />
+            Editar despesa
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
+              <Input
+                type="number"
+                step="0.01"
+                className="h-9 text-sm"
+                value={form.amount}
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                data-testid="input-edit-amount"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Data</label>
+              <Input
+                type="date"
+                className="h-9 text-sm"
+                value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                data-testid="input-edit-date"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Estabelecimento</label>
+            <Input
+              className="h-9 text-sm"
+              value={form.establishment}
+              onChange={e => setForm(f => ({ ...f, establishment: e.target.value }))}
+              placeholder="Nome do estabelecimento"
+              data-testid="input-edit-establishment"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
+            <Input
+              className="h-9 text-sm"
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Descrição da despesa"
+              data-testid="input-edit-description"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+              <Input
+                className="h-9 text-sm"
+                value={form.categoryName}
+                onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
+                placeholder="ex: Alimentação"
+                data-testid="input-edit-category"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Pagamento</label>
+              <Input
+                className="h-9 text-sm"
+                value={form.paymentMethod}
+                onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
+                placeholder="ex: Cartão"
+                data-testid="input-edit-payment"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
+            <Textarea
+              className="text-sm min-h-[72px]"
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Informações adicionais..."
+              data-testid="input-edit-notes"
+            />
+          </div>
+          <DialogFooter className="pt-1">
+            <Button type="button" variant="outline" size="sm" className="text-xs" onClick={onClose} data-testid="button-edit-cancel">
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              className="text-xs border-0"
+              style={{ background: primaryHex, color: "white" }}
+              disabled={editMutation.isPending}
+              data-testid="button-edit-submit"
+            >
+              {editMutation.isPending ? "Enviando..." : "Reenviar para aprovação"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
 
 const STATUS_TABS: { id: StatusTab; label: string; color: string }[] = [
-  { id: "all",          label: "Todas",     color: BLUE_LIGHT },
+  { id: "all",            label: "Todas",     color: BLUE_LIGHT },
   { id: "pending_review", label: "Pendentes", color: "#F59E0B" },
-  { id: "approved",     label: "Aprovadas",  color: "#10B981" },
-  { id: "rejected",     label: "Rejeitadas", color: "#EF4444" },
+  { id: "approved",       label: "Aprovadas", color: "#10B981" },
+  { id: "rejected",       label: "Rejeitadas", color: "#EF4444" },
 ];
 
 export default function BusinessExpenses() {
@@ -103,13 +249,18 @@ export default function BusinessExpenses() {
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
 
+  const isCollaborator = user?.accountType === "collaborator";
+
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [filterUser, setFilterUser] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [rejectingExpense, setRejectingExpense] = useState<any>(null);
+  const [rejectionComment, setRejectionComment] = useState("");
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({
     queryKey: ["/api/business/organizations"],
@@ -117,6 +268,10 @@ export default function BusinessExpenses() {
 
   const activeOrg = selectedOrgId ? orgs?.find(o => o.id === selectedOrgId) : orgs?.[0];
   const isAdmin = activeOrg?.adminUserId === user?.id;
+
+  useEffect(() => {
+    if (isCollaborator && user?.id) setFilterUser(user.id);
+  }, [isCollaborator, user?.id]);
 
   const spendingLimits: Record<string, number> = useMemo(() => {
     try { return activeOrg?.spendingLimits ? JSON.parse(activeOrg.spendingLimits) : {}; }
@@ -153,19 +308,21 @@ export default function BusinessExpenses() {
   const tabCounts = useMemo(() => {
     const all = allExpenses ?? [];
     return {
-      all:          all.length,
+      all:            all.length,
       pending_review: all.filter(e => e.status === "pending_review").length,
-      approved:     all.filter(e => e.status === "approved").length,
-      rejected:     all.filter(e => e.status === "rejected").length,
+      approved:       all.filter(e => e.status === "approved").length,
+      rejected:       all.filter(e => e.status === "rejected").length,
     };
   }, [allExpenses]);
 
   const approveMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      apiRequest("PATCH", `/api/business/organizations/${activeOrg!.id}/expenses/${id}`, { status }),
+    mutationFn: ({ id, status, rejectionComment }: { id: string; status: string; rejectionComment?: string }) =>
+      apiRequest("PATCH", `/api/business/organizations/${activeOrg!.id}/expenses/${id}`, { status, rejectionComment }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "expenses"] });
       toast({ title: "Despesa atualizada!" });
+      setRejectingExpense(null);
+      setRejectionComment("");
     },
     onError: () => toast({ title: "Erro ao atualizar despesa", variant: "destructive" }),
   });
@@ -210,21 +367,75 @@ export default function BusinessExpenses() {
   return (
     <div className="p-6 max-w-5xl mx-auto print:p-0">
       <ReceiptModal expense={selectedExpense} onClose={() => setSelectedExpense(null)} />
+      {editingExpense && activeOrg && (
+        <EditExpenseModal expense={editingExpense} orgId={activeOrg.id} onClose={() => setEditingExpense(null)} />
+      )}
+
+      <Dialog open={!!rejectingExpense} onOpenChange={() => { setRejectingExpense(null); setRejectionComment(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-red-400" />
+              Rejeitar despesa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-1">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{rejectingExpense?.establishment || rejectingExpense?.description}</strong>
+              {" — "}{formatBRL(rejectingExpense?.amount ?? 0)}
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Motivo da rejeição (opcional)</label>
+              <Textarea
+                className="text-sm min-h-[80px]"
+                value={rejectionComment}
+                onChange={e => setRejectionComment(e.target.value)}
+                placeholder="ex: Falta comprovante, Categoria incorreta..."
+                data-testid="input-rejection-comment"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => { setRejectingExpense(null); setRejectionComment(""); }}
+              data-testid="button-reject-cancel"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs border-0 bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => approveMutation.mutate({ id: rejectingExpense.id, status: "rejected", rejectionComment: rejectionComment || undefined })}
+              disabled={approveMutation.isPending}
+              data-testid="button-reject-confirm"
+            >
+              {approveMutation.isPending ? "Rejeitando..." : "Confirmar rejeição"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Despesas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gerencie e exporte as despesas da equipe</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isCollaborator ? "Suas despesas submetidas" : "Gerencie e exporte as despesas da equipe"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs" data-testid="button-print">
             <Printer className="w-3.5 h-3.5 mr-1.5" />
             Imprimir / PDF
           </Button>
-          <Button size="sm" onClick={handleExportExcel} className="text-xs border-0" style={{ background: BLUE, color: "white" }} data-testid="button-export-excel">
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-            Exportar Excel
-          </Button>
+          {!isCollaborator && (
+            <Button size="sm" onClick={handleExportExcel} className="text-xs border-0" style={{ background: BLUE, color: "white" }} data-testid="button-export-excel">
+              <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+              Exportar Excel
+            </Button>
+          )}
         </div>
       </div>
 
@@ -288,21 +499,26 @@ export default function BusinessExpenses() {
           {showFilters ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </button>
         {showFilters && (
-          <div className="rounded-2xl p-4 mb-4 grid grid-cols-2 sm:grid-cols-3 gap-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
-              <Select value={filterUser} onValueChange={setFilterUser}>
-                <SelectTrigger className="h-8 text-xs" data-testid="select-filter-user">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {members?.map((m: any) => (
-                    <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div
+            className={`rounded-2xl p-4 mb-4 grid gap-3 ${isCollaborator ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            {!isCollaborator && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
+                <Select value={filterUser} onValueChange={setFilterUser}>
+                  <SelectTrigger className="h-8 text-xs" data-testid="select-filter-user">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {members?.map((m: any) => (
+                      <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Data início</label>
               <Input type="date" className="h-8 text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} data-testid="input-start-date" />
@@ -332,7 +548,12 @@ export default function BusinessExpenses() {
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <ReceiptText className="w-10 h-10 text-muted-foreground opacity-40" />
           <p className="text-sm text-muted-foreground">Nenhuma despesa encontrada.</p>
-          <p className="text-xs text-muted-foreground">Os colaboradores podem enviar fotos pelo WhatsApp para registrar despesas aqui.</p>
+          {isCollaborator && (
+            <p className="text-xs text-muted-foreground">As suas despesas enviadas aparecerão aqui.</p>
+          )}
+          {!isCollaborator && (
+            <p className="text-xs text-muted-foreground">Os colaboradores podem enviar fotos pelo WhatsApp para registrar despesas aqui.</p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -348,72 +569,114 @@ export default function BusinessExpenses() {
                   const limit = expense.categoryName ? spendingLimits[expense.categoryName] : undefined;
                   const overLimit = limit !== undefined && expense.amount > limit;
                   return (
-                    <div
-                      key={expense.id}
-                      className="flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all hover:border-white/15"
-                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
-                      onClick={() => setSelectedExpense(expense)}
-                      data-testid={`row-expense-${expense.id}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-foreground truncate">{expense.establishment || expense.description}</p>
-                          {expense.categoryName && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${BLUE}15`, color: BLUE_LIGHT }}>
-                              {expense.categoryName}
-                            </span>
-                          )}
+                    <div key={expense.id} data-testid={`row-expense-${expense.id}`}>
+                      <div
+                        className="flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-all hover:border-white/15"
+                        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+                        onClick={() => setSelectedExpense(expense)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-foreground truncate">{expense.establishment || expense.description}</p>
+                            {expense.categoryName && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${BLUE}15`, color: BLUE_LIGHT }}>
+                                {expense.categoryName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {!isCollaborator && (
+                              <span className="text-xs text-muted-foreground">{expense.userName || expense.userEmail || "—"}</span>
+                            )}
+                            {expense.paymentMethod && (
+                              <>
+                                {!isCollaborator && <span className="text-muted-foreground/30 text-xs">·</span>}
+                                <span className="text-xs text-muted-foreground">{expense.paymentMethod}</span>
+                              </>
+                            )}
+                            {expense.receiptImageBase64 && (
+                              <>
+                                <span className="text-muted-foreground/30 text-xs">·</span>
+                                <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 recibo</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-muted-foreground">{expense.userName || expense.userEmail || "—"}</span>
-                          {expense.paymentMethod && (
-                            <>
-                              <span className="text-muted-foreground/30 text-xs">·</span>
-                              <span className="text-xs text-muted-foreground">{expense.paymentMethod}</span>
-                            </>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                            {overLimit && (
+                              <div className="flex items-center gap-1 mt-0.5" title={`Limite: ${formatBRL(limit!)}`}>
+                                <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
+                                <span className="text-[9px] text-amber-400 font-semibold">Acima do limite</span>
+                              </div>
+                            )}
+                          </div>
+                          {statusBadge(expense.status)}
+                          {isAdmin && expense.status === "pending_review" && (
+                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => approveMutation.mutate({ id: expense.id, status: "approved" })}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                                style={{ background: "#10B98115", border: "1px solid #10B98130" }}
+                                title="Aprovar"
+                                data-testid={`button-approve-${expense.id}`}
+                              >
+                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                              </button>
+                              <button
+                                onClick={() => { setRejectingExpense(expense); setRejectionComment(""); }}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                                style={{ background: "#EF444415", border: "1px solid #EF444430" }}
+                                title="Rejeitar"
+                                data-testid={`button-reject-${expense.id}`}
+                              >
+                                <XCircle className="w-4 h-4 text-red-400" />
+                              </button>
+                            </div>
                           )}
-                          {expense.receiptImageBase64 && (
-                            <>
-                              <span className="text-muted-foreground/30 text-xs">·</span>
-                              <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 recibo</span>
-                            </>
+                          {isAdmin && expense.status === "approved" && (
+                            <div onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => approveMutation.mutate({ id: expense.id, status: "paid" })}
+                                className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                style={{ background: "#6366F115", border: "1px solid #6366F130", color: "#818CF8" }}
+                                title="Marcar como pago"
+                                data-testid={`button-paid-${expense.id}`}
+                              >
+                                <Banknote className="w-3.5 h-3.5" />
+                                Pagar
+                              </button>
+                            </div>
                           )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 flex-shrink-0">
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
-                          {overLimit && (
-                            <div className="flex items-center gap-1 mt-0.5" title={`Limite: ${formatBRL(limit!)}`}>
-                              <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
-                              <span className="text-[9px] text-amber-400 font-semibold">Acima do limite</span>
+                          {isCollaborator && (expense.status === "pending_review" || expense.status === "rejected") && (
+                            <div onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={() => setEditingExpense(expense)}
+                                className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
+                                style={{ background: `${primaryHex}15`, border: `1px solid ${primaryHex}30`, color: primaryHex }}
+                                data-testid={`button-edit-${expense.id}`}
+                              >
+                                <Pencil className="w-3 h-3" />
+                                {expense.status === "rejected" ? "Reenviar" : "Editar"}
+                              </button>
                             </div>
                           )}
                         </div>
-                        {statusBadge(expense.status)}
-                        {isAdmin && expense.status === "pending_review" && (
-                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            <button
-                              onClick={() => approveMutation.mutate({ id: expense.id, status: "approved" })}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
-                              style={{ background: "#10B98115", border: "1px solid #10B98130" }}
-                              title="Aprovar"
-                              data-testid={`button-approve-${expense.id}`}
-                            >
-                              <CheckCircle2 className="w-4 h-4 text-green-400" />
-                            </button>
-                            <button
-                              onClick={() => approveMutation.mutate({ id: expense.id, status: "rejected" })}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
-                              style={{ background: "#EF444415", border: "1px solid #EF444430" }}
-                              title="Rejeitar"
-                              data-testid={`button-reject-${expense.id}`}
-                            >
-                              <XCircle className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        )}
                       </div>
+                      {isCollaborator && expense.status === "rejected" && expense.rejectionComment && (
+                        <div
+                          className="flex items-start gap-2 mx-1 px-4 py-2.5 rounded-b-xl -mt-1"
+                          style={{ background: "#EF444408", border: "1px solid #EF444425", borderTop: "none" }}
+                          data-testid={`rejection-comment-${expense.id}`}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-semibold text-red-400 mb-0.5">Motivo da rejeição</p>
+                            <p className="text-xs text-red-300">{expense.rejectionComment}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

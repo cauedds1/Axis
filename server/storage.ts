@@ -132,7 +132,8 @@ export interface IStorage {
   createCollaboratorAccount(orgId: string, data: { firstName: string; lastName: string; email: string; hashedPassword: string; jobTitle?: string }): Promise<{ userId: string; email: string }>;
   createBusinessExpense(data: InsertBusinessExpense): Promise<BusinessExpense>;
   getBusinessExpenses(orgId: string, filters?: { startDate?: Date; endDate?: Date; userId?: string; status?: string }): Promise<(BusinessExpense & { userEmail?: string; userName?: string })[]>;
-  updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined>;
+  updateBusinessExpenseStatus(id: string, orgId: string, status: string, rejectionComment?: string): Promise<BusinessExpense | undefined>;
+  updateBusinessExpense(id: string, orgId: string, userId: string, data: Partial<{ amount: number; description: string; categoryName: string; establishment: string; date: Date; notes: string; paymentMethod: string }>): Promise<BusinessExpense | undefined>;
   createBusinessBill(data: InsertBusinessBill): Promise<BusinessBill>;
   getBusinessBills(orgId: string): Promise<BusinessBill[]>;
   updateBusinessBill(id: string, orgId: string, data: Partial<InsertBusinessBill>): Promise<BusinessBill | undefined>;
@@ -679,9 +680,28 @@ export class DatabaseStorage implements IStorage {
     return enriched;
   }
 
-  async updateBusinessExpenseStatus(id: string, orgId: string, status: string): Promise<BusinessExpense | undefined> {
-    const [expense] = await db.update(businessExpenses).set({ status })
+  async updateBusinessExpenseStatus(id: string, orgId: string, status: string, rejectionComment?: string): Promise<BusinessExpense | undefined> {
+    const updates: Record<string, any> = { status };
+    if (status === "rejected") {
+      updates.rejectionComment = rejectionComment ?? null;
+    } else if (status === "paid") {
+      updates.paidAt = new Date();
+    } else {
+      updates.rejectionComment = null;
+    }
+    const [expense] = await db.update(businessExpenses).set(updates)
       .where(and(eq(businessExpenses.id, id), eq(businessExpenses.organizationId, orgId))).returning();
+    return expense;
+  }
+
+  async updateBusinessExpense(id: string, orgId: string, userId: string, data: Partial<{ amount: number; description: string; categoryName: string; establishment: string; date: Date; notes: string; paymentMethod: string }>): Promise<BusinessExpense | undefined> {
+    const [expense] = await db.update(businessExpenses)
+      .set({ ...data, status: "pending_review", rejectionComment: null })
+      .where(and(
+        eq(businessExpenses.id, id),
+        eq(businessExpenses.organizationId, orgId),
+        eq(businessExpenses.userId, userId),
+      )).returning();
     return expense;
   }
 

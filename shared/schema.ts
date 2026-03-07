@@ -312,6 +312,8 @@ export const businessExpenses = pgTable("business_expenses", {
   receiptItems: text("receipt_items"),
   paymentMethod: text("payment_method"),
   status: text("status").notNull().default("pending_review"),
+  rejectionComment: text("rejection_comment"),
+  paidAt: timestamp("paid_at"),
   notes: text("notes"),
   source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at").defaultNow(),

@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,14 +42,21 @@ function MemberAvatar({ name, email, hex }: { name?: string; email?: string; hex
 }
 
 export default function BusinessReports() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
   const palette = getBusinessModulePalette(businessTheme);
 
+  const isCollaborator = user?.accountType === "collaborator";
+
   const [period, setPeriod] = useState<Period>("this_month");
-  const [filterUser, setFilterUser] = useState("all");
+  const [filterUser, setFilterUser] = useState(isCollaborator && user?.id ? user.id : "all");
   const [filterCategory, setFilterCategory] = useState("all");
+
+  useEffect(() => {
+    if (isCollaborator && user?.id) setFilterUser(user.id);
+  }, [isCollaborator, user?.id]);
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const activeOrg = orgs?.[0];
@@ -198,18 +206,20 @@ export default function BusinessReports() {
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
-          <Select value={filterUser} onValueChange={setFilterUser}>
-            <SelectTrigger className="h-9 text-xs" data-testid="select-filter-user"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {members?.map((m: any) => (
-                <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isCollaborator && (
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
+            <Select value={filterUser} onValueChange={setFilterUser}>
+              <SelectTrigger className="h-9 text-xs" data-testid="select-filter-user"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {members?.map((m: any) => (
+                  <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
@@ -243,7 +253,7 @@ export default function BusinessReports() {
       {expLoading ? (
         <div className="flex flex-col gap-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className={`grid grid-cols-1 ${!isCollaborator ? "sm:grid-cols-2" : ""} gap-4 mb-6`}>
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por categoria</p>
             {byCategory.length === 0 ? (
@@ -264,28 +274,30 @@ export default function BusinessReports() {
             ))}
           </div>
 
-          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por colaborador</p>
-            {byCollaborator.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Sem dados no período</p>
-            ) : byCollaborator.map(([userId, data]) => (
-              <div key={userId} className="mb-3" data-testid={`row-collab-${userId}`}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <MemberAvatar name={data.name} email={data.email} hex={primaryHex} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-foreground truncate">{data.name || data.email}</span>
-                      <span className="text-xs font-semibold text-foreground ml-2">{formatBRL(data.total)}</span>
+          {!isCollaborator && (
+            <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por colaborador</p>
+              {byCollaborator.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Sem dados no período</p>
+              ) : byCollaborator.map(([userId, data]) => (
+                <div key={userId} className="mb-3" data-testid={`row-collab-${userId}`}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <MemberAvatar name={data.name} email={data.email} hex={primaryHex} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-foreground truncate">{data.name || data.email}</span>
+                        <span className="text-xs font-semibold text-foreground ml-2">{formatBRL(data.total)}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{data.count} despesa{data.count !== 1 ? "s" : ""}</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">{data.count} despesa{data.count !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(data.total / maxCollab) * 100}%`, background: palette.colaboradores }} />
                   </div>
                 </div>
-                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(data.total / maxCollab) * 100}%`, background: palette.colaboradores }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

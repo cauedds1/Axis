@@ -3,11 +3,15 @@ import { BusinessSidebar } from "@/components/business-sidebar";
 import { Switch, Route } from "wouter";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import BusinessHome from "@/pages/business/BusinessHome";
 import BusinessExpenses from "@/pages/business/BusinessExpenses";
 import BusinessCollaborators from "@/pages/business/BusinessCollaborators";
 import BusinessReports from "@/pages/business/BusinessReports";
 import BusinessSettingsPage from "@/pages/business/BusinessSettingsPage";
+import CollaboratorHome from "@/pages/business/CollaboratorHome";
+import CollaboratorReimbursements from "@/pages/business/CollaboratorReimbursements";
+import CollaboratorProfile from "@/pages/business/CollaboratorProfile";
 
 function SidebarMobileClose() {
   const { setOpenMobile } = useSidebar();
@@ -17,6 +21,9 @@ function SidebarMobileClose() {
 }
 
 export function BusinessLayout() {
+  const { user } = useAuth();
+  const isCollaborator = user?.accountType === "collaborator";
+
   const style = {
     "--sidebar-width": "15rem",
     "--sidebar-width-icon": "3rem",
@@ -33,11 +40,15 @@ export function BusinessLayout() {
           </header>
           <main className="flex-1 overflow-auto">
             <Switch>
-              <Route path="/business/app" component={BusinessHome} />
+              <Route path="/business/app">
+                {isCollaborator ? <CollaboratorHome /> : <BusinessHome />}
+              </Route>
               <Route path="/business/app/expenses" component={BusinessExpenses} />
               <Route path="/business/app/colaboradores" component={BusinessCollaborators} />
               <Route path="/business/app/reports" component={BusinessReports} />
               <Route path="/business/app/config" component={BusinessSettingsPage} />
+              <Route path="/business/app/reembolsos" component={CollaboratorReimbursements} />
+              <Route path="/business/app/perfil" component={CollaboratorProfile} />
             </Switch>
           </main>
         </div>

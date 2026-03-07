@@ -3188,11 +3188,34 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       const { orgId, expenseId } = req.params;
       const org = await storage.getOrganizationById(orgId);
       if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
-      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode aprovar/rejeitar despesas" });
-      const { status } = req.body;
-      if (!["approved", "rejected", "pending_review"].includes(status)) return res.status(400).json({ message: "Status inválido" });
-      const updated = await storage.updateBusinessExpenseStatus(expenseId, orgId, status);
+      if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode aprovar/rejeitar/pagar despesas" });
+      const { status, rejectionComment } = req.body;
+      if (!["approved", "rejected", "pending_review", "paid"].includes(status)) return res.status(400).json({ message: "Status inválido" });
+      const updated = await storage.updateBusinessExpenseStatus(expenseId, orgId, status, rejectionComment);
       if (!updated) return res.status(404).json({ message: "Despesa não encontrada" });
+      res.json(updated);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  app.put("/api/business/organizations/:orgId/expenses/:expenseId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { orgId, expenseId } = req.params;
+      const userOrgs = await storage.getUserOrganizations(userId);
+      if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
+      const { amount, description, categoryName, establishment, date, notes, paymentMethod } = req.body;
+      const updated = await storage.updateBusinessExpense(expenseId, orgId, userId, {
+        ...(amount !== undefined && { amount: parseFloat(amount) }),
+        ...(description !== undefined && { description }),
+        ...(categoryName !== undefined && { categoryName }),
+        ...(establishment !== undefined && { establishment }),
+        ...(date !== undefined && { date: new Date(date) }),
+        ...(notes !== undefined && { notes }),
+        ...(paymentMethod !== undefined && { paymentMethod }),
+      });
+      if (!updated) return res.status(404).json({ message: "Despesa não encontrada ou sem permissão" });
       res.json(updated);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
