@@ -136,13 +136,7 @@ function CorporateOrbital() {
 
         <circle cx="210" cy="210" r="70" fill="url(#biz-logo-glow)" />
         <circle cx="210" cy="210" r="58" fill={`rgba(${BIZ.primaryRgb},0.1)`} />
-        <rect x="186" y="186" width="48" height="48" rx="12" fill={`rgba(${BIZ.primaryRgb},0.15)`} stroke={`rgba(${BIZ.primaryRgb},0.3)`} strokeWidth="1" clipPath="url(#biz-orbital-clip)" />
-        <rect x="192" y="200" width="36" height="26" rx="3" fill="none" stroke={`rgba(${BIZ.primaryRgb},0.8)`} strokeWidth="1.5" />
-        <line x1="192" y1="207" x2="228" y2="207" stroke={`rgba(${BIZ.primaryRgb},0.5)`} strokeWidth="1" />
-        <line x1="196" y1="212" x2="224" y2="212" stroke={`rgba(${BIZ.primaryRgb},0.35)`} strokeWidth="0.8" />
-        <line x1="196" y1="217" x2="218" y2="217" stroke={`rgba(${BIZ.primaryRgb},0.35)`} strokeWidth="0.8" />
-        <path d="M 202 194 L 202 203 M 218 194 L 218 203" stroke={`rgba(${BIZ.primaryRgb},0.6)`} strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M 199 194 L 221 194" stroke={`rgba(${BIZ.primaryRgb},0.6)`} strokeWidth="1.5" strokeLinecap="round" />
+        <image href="/logo-business.jpg" x="152" y="152" width="116" height="116" clipPath="url(#biz-orbital-clip)" preserveAspectRatio="xMidYMid slice" />
       </svg>
     </div>
   );
@@ -277,9 +271,7 @@ function BizWhatsAppChat() {
     <div ref={ref} className="w-full max-w-md mx-auto">
       <div className="rounded-2xl overflow-hidden border border-white/10">
         <div className="px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #075E54, #128C7E)" }}>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.3)` }}>
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
+          <img src="/logo-business.jpg" alt="AXIS Business" className="w-9 h-9 rounded-full object-cover" />
           <div>
             <p className="text-white text-sm font-semibold">AXIS Business Bot</p>
             <p className="text-white/60 text-[11px]">Acme Corp · online</p>
@@ -371,9 +363,7 @@ function ExpensePanelPreview() {
 
         <div className="p-5 md:p-6">
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.15)`, border: `1px solid rgba(${BIZ.primaryRgb},0.25)` }}>
-              <Building2 className="w-4 h-4" style={{ color: BIZ.primary }} />
-            </div>
+            <img src="/logo-business.jpg" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
             <div>
               <p className="text-sm font-bold text-white/90">Acme Corp</p>
               <p className="text-[11px] text-white/40">Painel de Despesas · Março 2026</p>
@@ -473,9 +463,7 @@ export default function BusinessLanding() {
       <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)`, border: `1px solid rgba(${BIZ.primaryRgb},0.3)` }}>
-              <Building2 className="w-4 h-4" style={{ color: BIZ.primary }} />
-            </div>
+            <img src="/logo-business.jpg" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
             <div className="flex items-center gap-1">
               <span className="text-base font-bold tracking-tight">AXIS</span>
               <span className="text-base font-bold tracking-tight" style={{ color: BIZ.primary }}> Business</span>
@@ -964,9 +952,7 @@ export default function BusinessLanding() {
       <footer className="px-6 py-8 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)`, border: `1px solid rgba(${BIZ.primaryRgb},0.3)` }}>
-              <Building2 className="w-3 h-3" style={{ color: BIZ.primary }} />
-            </div>
+            <img src="/logo-business.jpg" alt="AXIS Business" className="w-6 h-6 rounded-md object-cover" />
             <span className="text-sm font-semibold">AXIS Business</span>
           </div>
           <p className="text-xs text-white/25">
