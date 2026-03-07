@@ -136,7 +136,7 @@ function NavGroup({ label, items, location }: { label?: string; items: typeof ma
 }
 
 export function BusinessSidebar() {
-  const { user, logoutMutation } = useAuth();
+  const { user, logout } = useAuth();
   const [location] = useLocation();
 
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
@@ -188,7 +188,7 @@ export function BusinessSidebar() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => logoutMutation.mutate()}
+            onClick={() => logout()}
             className="flex-1 flex items-center justify-center gap-1.5 text-[11px] py-2 px-3 rounded-lg transition-colors hover:bg-red-500/10"
             style={{ color: "#f87171" }}
             data-testid="button-business-logout"
