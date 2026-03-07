@@ -8,6 +8,7 @@ import { BusinessThemeSelector } from "@/components/business-theme-selector";
 import { Palette, Building2, User, Loader2, Check, Tag, Plus, Trash2, Upload, X, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { LogoCropModal } from "@/components/logo-crop-modal";
 
 type Tab = "aparencia" | "empresa" | "conta" | "categorias";
 
@@ -64,6 +65,8 @@ export default function BusinessSettingsPage() {
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState("#3B82F6");
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
 
   if (org && !orgLoaded) {
     setCompanyName(org.name ?? "");
@@ -119,17 +122,25 @@ export default function BusinessSettingsPage() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "Imagem muito grande", description: "O logo deve ter menos de 2MB.", variant: "destructive" });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Imagem muito grande", description: "A imagem deve ter menos de 10MB.", variant: "destructive" });
       return;
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
       const b64 = ev.target?.result as string;
-      setLogoBase64(b64);
-      setLogoPreview(b64);
+      setCropSrc(b64);
+      setCropOpen(true);
+      if (logoInputRef.current) logoInputRef.current.value = "";
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCropSave = (croppedBase64: string) => {
+    setLogoBase64(croppedBase64);
+    setLogoPreview(croppedBase64);
+    setCropOpen(false);
+    setCropSrc(null);
   };
 
   const handleRemoveLogo = () => {
@@ -177,6 +188,13 @@ export default function BusinessSettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-8">
+      <LogoCropModal
+        src={cropSrc}
+        open={cropOpen}
+        onSave={handleCropSave}
+        onClose={() => { setCropOpen(false); setCropSrc(null); }}
+      />
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight mb-1">Configurações</h1>
         <p className="text-sm text-muted-foreground">Personalize sua experiência no AXIS Business</p>
