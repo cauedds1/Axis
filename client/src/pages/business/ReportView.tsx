@@ -142,10 +142,21 @@ export default function ReportView() {
 
         <div className="rounded-2xl p-5 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Relatório de Reembolso</p>
-              <h2 className="text-2xl font-bold text-foreground">{collaboratorName}</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">{activeOrg?.tradeName || activeOrg?.name || "—"}</p>
+            <div className="flex items-start gap-4">
+              {(activeOrg?.logoUrl || activeOrg?.logoBase64) && (
+                <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <img
+                    src={activeOrg.logoUrl ?? activeOrg.logoBase64}
+                    alt={activeOrg.tradeName || activeOrg.name}
+                    className="w-full h-full object-contain p-1"
+                  />
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Relatório de Reembolso</p>
+                <h2 className="text-2xl font-bold text-foreground">{collaboratorName}</h2>
+                <p className="text-sm mt-0.5" style={{ color: primaryHex }}>{activeOrg?.tradeName || activeOrg?.name || "—"}</p>
+              </div>
             </div>
             <div className="text-right shrink-0">
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Período</p>

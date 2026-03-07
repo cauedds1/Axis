@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessTheme, type BusinessTheme, getBusinessPrimaryHex, isCorporateTheme } from "@/components/theme-provider";
 import { BusinessThemeSelector } from "@/components/business-theme-selector";
-import { Palette, Building2, User, Loader2, Check, Tag, Plus, Trash2 } from "lucide-react";
+import { Palette, Building2, User, Loader2, Check, Tag, Plus, Trash2, Upload, X, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -60,12 +60,18 @@ export default function BusinessSettingsPage() {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
   const [limitsLoaded, setLimitsLoaded] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("#3B82F6");
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   if (org && !orgLoaded) {
     setCompanyName(org.name ?? "");
     setTradeName(org.tradeName ?? "");
     setSegment(org.segment ?? "");
     setClosingDay(String(org.closingDay ?? 5));
+    setPrimaryColor(org.primaryColor ?? "#3B82F6");
+    setLogoPreview(org.logoUrl ?? org.logoBase64 ?? null);
     setOrgLoaded(true);
   }
 
@@ -110,6 +116,29 @@ export default function BusinessSettingsPage() {
     setTimeout(() => setThemeSaved(false), 2000);
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Imagem muito grande", description: "O logo deve ter menos de 2MB.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const b64 = ev.target?.result as string;
+      setLogoBase64(b64);
+      setLogoPreview(b64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoBase64(null);
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+    orgMutation.mutate({ logoUrl: null, logoBase64: null } as any);
+  };
+
   const handleOrgSave = (e: React.FormEvent) => {
     e.preventDefault();
     orgMutation.mutate({
@@ -117,6 +146,8 @@ export default function BusinessSettingsPage() {
       tradeName: tradeName || undefined,
       segment: segment || undefined,
       closingDay: closingDay ? parseInt(closingDay) : undefined,
+      primaryColor: primaryColor || undefined,
+      logoBase64: logoBase64 || undefined,
     });
   };
 
@@ -213,6 +244,99 @@ export default function BusinessSettingsPage() {
 
       {activeTab === "empresa" && (
         <form onSubmit={handleOrgSave} className="space-y-5">
+
+          <div className="rounded-2xl p-5 space-y-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identidade Visual</p>
+
+            <div>
+              <label className={labelClass}>Logo da empresa</label>
+              <p className="text-xs text-muted-foreground mb-3">Aparece nos relatórios compartilhados. PNG, JPG ou WebP — máx. 2MB.</p>
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "2px dashed rgba(255,255,255,0.12)" }}
+                >
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <ImageIcon className="w-7 h-7 text-muted-foreground/40" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 flex-1">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleLogoChange}
+                    data-testid="input-logo-file"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                    style={{ background: primaryHex + "18", color: primaryHex, border: `1px solid ${primaryHex}30` }}
+                    data-testid="button-upload-logo"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {logoPreview ? "Trocar logo" : "Enviar logo"}
+                  </button>
+                  {logoPreview && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all text-muted-foreground hover:text-red-400"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                      data-testid="button-remove-logo"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Remover logo
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Cor principal da marca</label>
+              <p className="text-xs text-muted-foreground mb-3">Usada nos relatórios públicos para representar a identidade visual da empresa.</p>
+              <div className="flex items-center gap-3">
+                <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 cursor-pointer" style={{ background: primaryColor }}>
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    data-testid="input-primary-color"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={primaryColor}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) setPrimaryColor(v);
+                  }}
+                  placeholder="#3B82F6"
+                  className={inputClass + " font-mono flex-1"}
+                  style={{ maxWidth: 140 }}
+                  data-testid="input-primary-color-hex"
+                />
+                <div className="flex gap-2 flex-wrap">
+                  {["#3B82F6","#6366F1","#8B5CF6","#EC4899","#F59E0B","#10B981","#06B6D4","#EF4444"].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setPrimaryColor(c)}
+                      className="w-6 h-6 rounded-lg transition-all hover:scale-110"
+                      style={{ background: c, border: primaryColor === c ? "2px solid white" : "2px solid transparent" }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados da empresa</p>
             <div>

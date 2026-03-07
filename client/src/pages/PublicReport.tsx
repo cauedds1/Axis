@@ -12,7 +12,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 
-const PRIMARY = "#3B82F6";
 
 function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -54,7 +53,7 @@ export default function PublicReport() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const { data, isLoading, isError } = useQuery<{
-    org: { name: string; tradeName?: string };
+    org: { name: string; tradeName?: string; logoUrl?: string; logoBase64?: string; primaryColor?: string };
     collaboratorName: string;
     startDate: string;
     endDate: string;
@@ -70,6 +69,9 @@ export default function PublicReport() {
     enabled: !!token,
     retry: false,
   });
+
+  const PRIMARY = data?.org?.primaryColor || "#3B82F6";
+  const orgLogoSrc = data?.org?.logoUrl ?? (data?.org?.logoBase64 ? `data:image/jpeg;base64,${data.org.logoBase64.replace(/^data:[^;]+;base64,/, "")}` : null);
 
   const sorted = (data?.expenses ?? []).slice().sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -93,9 +95,13 @@ export default function PublicReport() {
       <header className="border-b sticky top-0 z-40 backdrop-blur-sm" style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(15,20,35,0.9)" }}>
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: PRIMARY }}>
-              <FileText className="w-4 h-4 text-white" />
-            </div>
+            {orgLogoSrc ? (
+              <img src={orgLogoSrc} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5" />
+            ) : (
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: PRIMARY }}>
+                <FileText className="w-4 h-4 text-white" />
+              </div>
+            )}
             <span className="font-bold text-base">
               <span style={{ color: "hsl(210 40% 98%)" }}>AXIS </span>
               <span style={{ color: PRIMARY }}>Business</span>
@@ -139,10 +145,17 @@ export default function PublicReport() {
 
             <div className="rounded-2xl p-5 mb-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Relatório de Reembolso</p>
-                  <h1 className="text-2xl font-bold" style={{ color: "hsl(210 40% 98%)" }}>{data.collaboratorName}</h1>
-                  <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.5)" }}>{data.org.tradeName || data.org.name}</p>
+                <div className="flex items-start gap-4">
+                  {orgLogoSrc && (
+                    <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <img src={orgLogoSrc} alt={data.org.tradeName || data.org.name} className="w-full h-full object-contain p-1" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Relatório de Reembolso</p>
+                    <h1 className="text-2xl font-bold" style={{ color: "hsl(210 40% 98%)" }}>{data.collaboratorName}</h1>
+                    <p className="text-sm mt-0.5" style={{ color: PRIMARY }}>{data.org.tradeName || data.org.name}</p>
+                  </div>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Período</p>

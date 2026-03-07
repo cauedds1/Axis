@@ -286,6 +286,9 @@ export const organizations = pgTable("organizations", {
   closingDay: integer("closing_day"),
   adminUserId: varchar("admin_user_id").notNull(),
   spendingLimits: text("spending_limits"),
+  logoUrl: text("logo_url"),
+  logoBase64: text("logo_base64"),
+  primaryColor: text("primary_color"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

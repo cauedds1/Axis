@@ -2994,10 +2994,22 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         tradeName: z.string().optional(),
         segment: z.string().optional(),
         closingDay: z.number().int().min(1).max(28).optional(),
+        spendingLimits: z.string().optional(),
+        primaryColor: z.string().optional(),
+        logoBase64: z.string().nullable().optional(),
+        logoUrl: z.string().nullable().optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
-      const org = await storage.updateOrganization(orgId, parsed.data);
+      let updateData: Record<string, any> = { ...parsed.data };
+      if (parsed.data.logoBase64 && parsed.data.logoBase64.startsWith("data:")) {
+        const uploadedUrl = await uploadBase64Image(parsed.data.logoBase64, "logos");
+        if (uploadedUrl) {
+          updateData.logoUrl = uploadedUrl;
+          updateData.logoBase64 = null;
+        }
+      }
+      const org = await storage.updateOrganization(orgId, updateData);
       res.json(org);
     } catch (err: any) {
       res.status(500).json({ message: err.message });
@@ -3474,7 +3486,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         .from(users).where(eq(users.id, share.userId));
       const collaboratorName = userData ? [userData.firstName, userData.lastName].filter(Boolean).join(" ") : "Colaborador";
       res.json({
-        org: { name: org.name, tradeName: org.tradeName },
+        org: { name: org.name, tradeName: org.tradeName, logoUrl: org.logoUrl, logoBase64: org.logoBase64, primaryColor: org.primaryColor },
         collaboratorName,
         startDate: share.startDate,
         endDate:   share.endDate,
