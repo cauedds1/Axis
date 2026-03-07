@@ -1,0 +1,85 @@
+Objetivo
+Implementar um sistema de recorte e ajuste de logo da empresa no AXIS Business para evitar logos mal enquadradas, com bordas pretas ou partes importantes cortadas. O usuário deve poder escolher exatamente qual área da imagem aparecerá na logo, usando um frame circular, com zoom e movimentação da imagem antes de salvar.
+
+Descrição da funcionalidade
+Quando o usuário selecionar uma imagem para a logo da empresa, o sistema não deve salvar a imagem imediatamente. Em vez disso, deve abrir um editor simples de ajuste da logo.
+
+Nesse editor:
+
+A imagem escolhida aparece dentro de um frame circular (preview da logo).
+
+Tudo que estiver fora do círculo é apenas visualmente escurecido ou ocultado, indicando que não fará parte da logo final.
+
+O usuário pode arrastar a imagem para posicionar melhor dentro do círculo.
+
+O usuário pode dar zoom in e zoom out na imagem para ajustar o enquadramento.
+
+O objetivo é permitir que o usuário escolha qual parte da imagem ficará visível na logo final.
+
+Esse comportamento deve ser semelhante ao ajuste de foto de perfil em aplicativos modernos.
+
+Experiência esperada do usuário (UX)
+
+Fluxo esperado:
+
+Usuário clica em "Alterar logo da empresa".
+
+Seleciona uma imagem do computador.
+
+Abre um modal ou tela de ajuste da logo.
+
+Dentro desse editor:
+
+A imagem aparece dentro de um preview circular.
+
+O usuário pode arrastar a imagem para reposicionar.
+
+Pode usar um controle de zoom (slider ou botões + / -).
+
+O usuário ajusta até que a área desejada esteja dentro do círculo.
+
+Ao clicar em Salvar, o sistema recorta a imagem e salva apenas a área selecionada.
+
+Resultado final
+
+A logo salva deve:
+
+Ser circular, não quadrada.
+
+Não ter bordas pretas ou espaços vazios.
+
+Estar bem centralizada e enquadrada.
+
+Usar exatamente a área que o usuário escolheu.
+
+Detalhes de interface
+
+O editor deve conter:
+
+Preview circular central
+
+Fundo escurecido fora da área do círculo
+
+Slider ou botões de zoom
+
+Arrastar imagem para reposicionamento
+
+Botões:
+
+Cancelar
+
+Salvar logo
+
+Comportamento esperado
+
+A imagem original pode ser maior que o frame.
+
+O usuário pode reposicionar livremente.
+
+O zoom mínimo deve garantir que o círculo esteja sempre totalmente preenchido pela imagem (evitar bordas vazias).
+
+O recorte final deve gerar uma imagem otimizada para uso como logo.
+
+Objetivo final
+
+Garantir que qualquer imagem enviada como logo possa ser ajustada corretamente pelo usuário, produzindo uma logo redonda, bem enquadrada e visualmente limpa, sem necessidade de editar a imagem externamente.
