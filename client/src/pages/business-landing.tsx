@@ -145,10 +145,10 @@ function CorporateOrbital() {
 function ReceiptFlowDemo() {
   const BIZ = useContext(BizContext);
   const receiptExamples = [
-    { input: "📷 Restaurante Central — nota fiscal", result: "R$ 87,50 · Alimentação · Acme Corp", label: "Registrado automaticamente", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
-    { input: "📷 Uber Trip · recibo digital", result: "R$ 34,20 · Transporte · Acme Corp", label: "Despesa corporativa salva", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
-    { input: "📷 Hotel Ibis — nota de hospedagem", result: "R$ 320,00 · Hospedagem · Acme Corp", label: "Imagem + dados registrados", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
-    { input: "📷 Posto Ipiranga — abastecimento", result: "R$ 180,60 · Combustível · Acme Corp", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
+    { input: "📷 Restaurante Amadeus — cupom fiscal", result: "R$ 94,70 · Alimentação · 4 itens extraídos", label: "Itens do cupom lidos pela IA", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
+    { input: "📷 Uber Business — recibo de corrida", result: "R$ 38,90 · Transporte · Corporativo", label: "Despesa salva · gestor notificado", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
+    { input: "📷 Hotel Ibis SP — nota de estadia", result: "R$ 420,00 · Hospedagem · 2 diárias", label: "Imagem original salva na nuvem", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
+    { input: "📷 Shell — abastecimento frota", result: "R$ 215,40 · Combustível · Pendente", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
   ];
   const [exampleIdx, setExampleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
@@ -259,12 +259,12 @@ function BizWhatsAppChat() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   const messages = [
-    { type: "user", text: "[foto da nota fiscal]", time: "09:14", isPhoto: true },
-    { type: "bot", text: "📋 Despesa detectada:\n**Restaurante Central — R$ 87,50**\n\nEssa despesa é *pessoal* ou corporativa?\n(Acme Corp)", time: "09:14" },
-    { type: "user", text: "Acme Corp", time: "09:15" },
-    { type: "bot", text: "✅ Salvo na empresa **Acme Corp**.\nO gestor verá no painel e poderá aprovar.", time: "09:15" },
-    { type: "user", text: "Quais despesas estão pendentes?", time: "09:18" },
-    { type: "bot", text: "Acme Corp — Pendentes de aprovação:\n• Restaurante Central R$ 87,50\n• Uber R$ 34,20\n• Posto Ipiranga R$ 180,60\n\nTotal: **R$ 302,30**", time: "09:18" },
+    { type: "user", text: "[foto do cupom fiscal]", time: "09:14", isPhoto: true },
+    { type: "bot", text: "📋 Despesa detectada:\n**Restaurante Amadeus — R$ 94,70**\n4 itens extraídos do cupom.\n\nEssa despesa é *pessoal* ou corporativa?\n(Acme Corp)", time: "09:14" },
+    { type: "user", text: "Corporativo", time: "09:15" },
+    { type: "bot", text: "✅ Salvo em **Acme Corp**.\nImagem e itens registrados. O gestor já pode ver no painel e aprovar.", time: "09:15" },
+    { type: "user", text: "Quero gerar meu relatório de reembolso", time: "09:22" },
+    { type: "bot", text: "Abra a aba *Relatório* no app e clique em **Gerar relatório**. Um link público será criado — válido por 30 dias — e você encaminha direto pro financeiro. Nenhum login necessário.", time: "09:22" },
   ];
 
   return (
@@ -522,7 +522,7 @@ export default function BusinessLanding() {
                 <span className="text-white/50"> manual.</span>
               </h1>
               <p className="text-lg md:text-xl text-white/45 max-w-lg mb-10 leading-relaxed" data-testid="text-biz-hero-subtitle">
-                Colaboradores fotografam o recibo. O AXIS registra, classifica e entrega o relatório — sem digitação, sem papel perdido, direto pelo WhatsApp.
+                Colaboradores fotografam o recibo pelo WhatsApp. O AXIS registra, extrai os itens, classifica por categoria e gera o link de relatório para o financeiro — sem app novo, sem digitação manual.
               </p>
             </motion.div>
 
@@ -560,7 +560,7 @@ export default function BusinessLanding() {
                 { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp" },
                 { icon: <FileSpreadsheet className="w-3.5 h-3.5" />, label: "Excel" },
                 { icon: <Zap className="w-3.5 h-3.5" />, label: "IA" },
-                { icon: <Shield className="w-3.5 h-3.5" />, label: "Aprovação" },
+                { icon: <Shield className="w-3.5 h-3.5" />, label: "Link público" },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-white/30 text-xs">
                   {item.icon}
@@ -609,7 +609,7 @@ export default function BusinessLanding() {
                 <span className="landing-gradient-text">AXIS faz o resto.</span>
               </h2>
               <p className="text-white/35 text-base leading-relaxed mb-6 max-w-md">
-                A IA lê a nota, extrai estabelecimento, valor e categoria — e registra na empresa com a imagem original. Tudo em segundos.
+                A IA lê o cupom, extrai estabelecimento, valor, categoria e itens — e registra na empresa com a imagem original. Tudo em segundos, sem digitar nada.
               </p>
               <ReceiptFlowDemo />
             </motion.div>
@@ -689,10 +689,10 @@ export default function BusinessLanding() {
                 <span className="text-white/40">Que a equipe já usa.</span>
               </h2>
               <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
-                Nenhum app novo para baixar. Colaboradores enviam a foto do recibo no mesmo WhatsApp que já usam — o bot do AXIS identifica a empresa, registra a despesa e notifica o gestor.
+                Nenhum app para baixar. Colaboradores enviam a foto do recibo pelo WhatsApp — o bot pergunta se é pessoal ou corporativo, extrai os itens do cupom, registra a despesa com a imagem e notifica o gestor.
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Foto → registrado", "Classifica por empresa", "Gestor aprovado", "Consultar pendências", "Relatório instantâneo"].map((tag) => (
+                {["Foto → itens extraídos", "Pessoal ou corporativo?", "Gestor notificado", "Consultar pendências", "Link público de relatório"].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: `rgba(${BIZ.successRgb},0.1)`, color: BIZ.success, border: `1px solid rgba(${BIZ.successRgb},0.15)` }}>
                     {tag}
@@ -702,9 +702,9 @@ export default function BusinessLanding() {
 
               <div className="space-y-3">
                 {[
-                  { cmd: "[foto do recibo]", result: "Despesa registrada · R$ 87,50", color: BIZ.primary },
-                  { cmd: '"Acme Corp"', result: "Salvo na empresa · Gestor notificado", color: BIZ.secondary },
-                  { cmd: '"Quais pendentes?"', result: "3 despesas · R$ 302,30 total", color: BIZ.success },
+                  { cmd: "[foto do cupom fiscal]", result: "Itens extraídos · R$ 94,70 registrado", color: BIZ.primary },
+                  { cmd: '"Corporativo"', result: "Salvo em Acme Corp · gestor notificado", color: BIZ.secondary },
+                  { cmd: '"Quais minhas pendentes?"', result: "2 despesas · R$ 133,60 aguardando", color: BIZ.success },
                 ].map((ex, i) => (
                   <motion.div
                     key={i}
@@ -774,7 +774,7 @@ export default function BusinessLanding() {
               <span className="landing-gradient-text">pronto para aprovar.</span>
             </h2>
             <p className="text-white/35 text-base max-w-lg mx-auto leading-relaxed">
-              Veja despesas de toda a equipe, filtre por período ou colaborador, aprove com um clique e exporte para Excel.
+              Veja despesas de toda a equipe, filtre por período ou colaborador, aprove ou rejeite com comentário e exporte para Excel.
             </p>
           </motion.div>
 
@@ -789,10 +789,10 @@ export default function BusinessLanding() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
             {[
-              { icon: <Camera className="w-5 h-5" />, title: "Foto salva", desc: "Acesse a imagem original com um clique", color: BIZ.primary },
-              { icon: <Check className="w-5 h-5" />, title: "Aprovação rápida", desc: "Aprove ou rejeite despesas em um clique", color: BIZ.success },
-              { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Excel formatado", desc: "Planilha agrupada por data e colaborador", color: BIZ.secondary },
-              { icon: <Users className="w-5 h-5" />, title: "Multi-equipe", desc: "Todos os colaboradores num painel só", color: BIZ.tertiary },
+              { icon: <Camera className="w-5 h-5" />, title: "Comprovante salvo", desc: "Imagem original e itens do cupom acessíveis com um clique", color: BIZ.primary },
+              { icon: <Check className="w-5 h-5" />, title: "Aprovação com comentário", desc: "Aprove ou rejeite com justificativa — colaborador vê o motivo", color: BIZ.success },
+              { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Excel formatado", desc: "Planilha agrupada por colaborador, data e categoria", color: BIZ.secondary },
+              { icon: <Users className="w-5 h-5" />, title: "Relatório público", desc: "Colaborador gera link — financeiro abre sem precisar de conta", color: BIZ.tertiary },
             ].map((feat, i) => (
               <motion.div
                 key={i}
@@ -838,7 +838,7 @@ export default function BusinessLanding() {
             <span className="landing-gradient-text">em minutos.</span>
           </h2>
           <p className="text-lg text-white/40 max-w-xl leading-relaxed">
-            Crie sua empresa, convide os colaboradores e comece a registrar despesas pelo WhatsApp — sem treinamento, sem planilha manual.
+            Crie sua organização, convide colaboradores por email e comece a registrar despesas pelo WhatsApp — aprovação, relatório público compartilhável e Excel prontos em minutos.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
