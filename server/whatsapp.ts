@@ -14,6 +14,7 @@ import {
 import { Boom } from "@hapi/boom";
 import * as qrcode from "qrcode";
 import { storage } from "./storage";
+import { uploadBase64Image, isStorageConfigured } from "./lib/file-storage";
 import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract, matchBillIdentity, saveUserIdentityEntity } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./log";
@@ -139,7 +140,7 @@ class WhatsAppManager {
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
   private pendingSavingsDeposit: Map<string, PendingSavingsDeposit> = new Map();
-  private pendingBusinessChoice: Map<string, { transactionData: any; base64: string; replyLine: string; orgs: { id: string; name: string }[]; expiresAt: number }> = new Map();
+  private pendingBusinessChoice: Map<string, { transactionData: any; dataUrl: string; replyLine: string; orgs: { id: string; name: string }[]; expiresAt: number }> = new Map();
   private pgAuthClearAll: (() => Promise<void>) | null = null;
   private lastRegisteredTx: Map<string, {
     id: string;
@@ -433,7 +434,16 @@ class WhatsAppManager {
             const matched = pendingBusiness.orgs.find(o => answer.includes(o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")) || o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(answer));
             if (matched) {
               this.pendingBusinessChoice.delete(jid);
-              await storage.createBusinessExpense({ organizationId: matched.id, userId: profile.userId, amount: pendingBusiness.transactionData.amount, description: pendingBusiness.transactionData.description, categoryName: pendingBusiness.transactionData.categoryName, establishment: pendingBusiness.transactionData.establishment, paymentMethod: pendingBusiness.transactionData.paymentMethod, receiptImageBase64: pendingBusiness.base64, date: pendingBusiness.transactionData.date, source: "whatsapp", status: "pending_review" } as any);
+              let receiptImageUrl: string | undefined;
+              let receiptImageBase64: string | undefined = pendingBusiness.dataUrl;
+              if (isStorageConfigured) {
+                const uploaded = await uploadBase64Image(pendingBusiness.dataUrl, "receipts");
+                if (uploaded) {
+                  receiptImageUrl = uploaded;
+                  receiptImageBase64 = undefined;
+                }
+              }
+              await storage.createBusinessExpense({ organizationId: matched.id, userId: profile.userId, amount: pendingBusiness.transactionData.amount, description: pendingBusiness.transactionData.description, categoryName: pendingBusiness.transactionData.categoryName, establishment: pendingBusiness.transactionData.establishment, paymentMethod: pendingBusiness.transactionData.paymentMethod, receiptImageBase64, receiptImageUrl, date: pendingBusiness.transactionData.date, source: "whatsapp", status: "pending_review" } as any);
               await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${pendingBusiness.replyLine}\n\n📋 Salvo em *${matched.name}* — aguardando aprovação do gestor.`);
             } else {
               const orgNames = pendingBusiness.orgs.map(o => `*${o.name}*`).join(", ");
@@ -788,7 +798,7 @@ class WhatsAppManager {
       const orgNames = userOrgs.map(o => `*${o.name}*`).join(", ");
       this.pendingBusinessChoice.set(jid, {
         transactionData,
-        base64,
+        dataUrl,
         replyLine,
         orgs: userOrgs.map(o => ({ id: o.id, name: o.name })),
         expiresAt: Date.now() + 5 * 60 * 1000,
