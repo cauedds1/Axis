@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   activeModules: text("active_modules").array().default(sql`ARRAY[]::text[]`),
   theme: text("theme").default("slim"),
   aiPersonality: text("ai_personality").default("calm"),
+  accountType: text("account_type").notNull().default("personal"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

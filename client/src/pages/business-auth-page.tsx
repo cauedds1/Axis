@@ -1,9 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const PRIMARY   = "#3B82F6";
 const SECONDARY = "#6366F1";
@@ -264,8 +263,9 @@ export default function BusinessAuthPage() {
 
   const [closingDay, setClosingDay] = useState("5");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { login, register, isLoggingIn, isRegistering, loginError } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -278,14 +278,21 @@ export default function BusinessAuthPage() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError(null);
+    setIsLoading(true);
     try {
-      const userData = await login({ email, password });
+      const userData = await apiRequest("POST", "/api/business/auth/login", { email, password });
+      queryClient.setQueryData(["/api/auth/user"], userData);
       if (!userData?.onboardingCompleted) {
         setLocation("/business/welcome");
       } else {
         setLocation("/business/app");
       }
-    } catch {}
+    } catch (err: any) {
+      setLoginError(err?.message ?? "Email ou senha incorretos");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStep1Next = (e: React.FormEvent) => {
@@ -301,8 +308,10 @@ export default function BusinessAuthPage() {
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    setIsLoading(true);
     try {
-      await register({ email, password, firstName, lastName });
+      const userData = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
+      queryClient.setQueryData(["/api/auth/user"], userData);
       const rawCnpj = cnpj.replace(/\D/g, "");
       await apiRequest("POST", "/api/business/organizations", {
         name: companyName,
@@ -315,11 +324,12 @@ export default function BusinessAuthPage() {
       setLocation("/business/welcome");
     } catch (err: any) {
       setSubmitError(err?.message ?? "Erro ao criar conta. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const error = isLogin ? loginError : (submitError ? new Error(submitError) : null);
-  const isLoading = isLoggingIn || isRegistering;
+  const error = isLogin ? (loginError ? new Error(loginError) : null) : (submitError ? new Error(submitError) : null);
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white">
