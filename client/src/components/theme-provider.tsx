@@ -4,10 +4,31 @@ export type AxisTheme =
   | "slim" | "slim-indigo" | "slim-rose" | "slim-amber"
   | "high" | "high-purple" | "high-gold" | "high-coral" | "high-red";
 
+export type BusinessTheme =
+  | "biz-slate" | "biz-ocean" | "biz-emerald" | "biz-amber"
+  | "biz-blue" | "biz-indigo" | "biz-cyan" | "biz-green" | "biz-gold";
+
 export const ALL_THEMES: AxisTheme[] = [
   "slim", "slim-indigo", "slim-rose", "slim-amber",
   "high", "high-purple", "high-gold", "high-coral", "high-red",
 ];
+
+export const ALL_BUSINESS_THEMES: BusinessTheme[] = [
+  "biz-slate", "biz-ocean", "biz-emerald", "biz-amber",
+  "biz-blue", "biz-indigo", "biz-cyan", "biz-green", "biz-gold",
+];
+
+export function isBusinessTheme(theme: string): theme is BusinessTheme {
+  return ALL_BUSINESS_THEMES.includes(theme as BusinessTheme);
+}
+
+export function isCorporateTheme(theme: BusinessTheme): boolean {
+  return ["biz-slate", "biz-ocean", "biz-emerald", "biz-amber"].includes(theme);
+}
+
+export function isExecutiveTheme(theme: BusinessTheme): boolean {
+  return ["biz-blue", "biz-indigo", "biz-cyan", "biz-green", "biz-gold"].includes(theme);
+}
 
 export function getPrimaryHex(theme: AxisTheme): string {
   const map: Record<AxisTheme, string> = {
@@ -24,6 +45,21 @@ export function getPrimaryHex(theme: AxisTheme): string {
   return map[theme] ?? "#7A9E8A";
 }
 
+export function getBusinessPrimaryHex(theme: BusinessTheme): string {
+  const map: Record<BusinessTheme, string> = {
+    "biz-slate":   "#3B82F6",
+    "biz-ocean":   "#0EA5E9",
+    "biz-emerald": "#10B981",
+    "biz-amber":   "#F59E0B",
+    "biz-blue":    "#3B82F6",
+    "biz-indigo":  "#6366F1",
+    "biz-cyan":    "#0EA5E9",
+    "biz-green":   "#10B981",
+    "biz-gold":    "#F59E0B",
+  };
+  return map[theme] ?? "#3B82F6";
+}
+
 export interface ModulePalette {
   primary: string;
   finance: string;
@@ -34,6 +70,16 @@ export interface ModulePalette {
   negative: string;
   chat: string;
   início: string;
+}
+
+export interface BusinessModulePalette {
+  primary: string;
+  dashboard: string;
+  finance: string;
+  cashflow: string;
+  reports: string;
+  positive: string;
+  negative: string;
 }
 
 export function getModulePalette(theme: AxisTheme): ModulePalette {
@@ -78,6 +124,49 @@ export function getModulePalette(theme: AxisTheme): ModulePalette {
     },
   };
   return map[theme] ?? map["slim"];
+}
+
+export function getBusinessModulePalette(theme: BusinessTheme): BusinessModulePalette {
+  const p = getBusinessPrimaryHex(theme);
+  const map: Record<BusinessTheme, BusinessModulePalette> = {
+    "biz-slate": {
+      primary: p, dashboard: p, finance: "#60A5FA", cashflow: "#818CF8", reports: "#34D399",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-ocean": {
+      primary: p, dashboard: p, finance: "#38BDF8", cashflow: "#818CF8", reports: "#34D399",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-emerald": {
+      primary: p, dashboard: p, finance: "#34D399", cashflow: "#60A5FA", reports: "#A78BFA",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-amber": {
+      primary: p, dashboard: p, finance: "#FCD34D", cashflow: "#60A5FA", reports: "#34D399",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-blue": {
+      primary: p, dashboard: "#60A5FA", finance: "#34D399", cashflow: "#A78BFA", reports: "#38BDF8",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-indigo": {
+      primary: p, dashboard: "#818CF8", finance: "#60A5FA", cashflow: "#34D399", reports: "#38BDF8",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-cyan": {
+      primary: p, dashboard: "#38BDF8", finance: "#34D399", cashflow: "#818CF8", reports: "#60A5FA",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-green": {
+      primary: p, dashboard: "#34D399", finance: "#60A5FA", cashflow: "#38BDF8", reports: "#A78BFA",
+      positive: "#34D399", negative: "#F87171",
+    },
+    "biz-gold": {
+      primary: p, dashboard: "#FCD34D", finance: "#60A5FA", cashflow: "#34D399", reports: "#38BDF8",
+      positive: "#34D399", negative: "#F87171",
+    },
+  };
+  return map[theme] ?? map["biz-slate"];
 }
 
 interface ThemeContextType {
@@ -125,5 +214,55 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider value={{ theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
+  );
+}
+
+// ─── BUSINESS THEME PROVIDER ─────────────────────────────────────────────────
+
+interface BusinessThemeContextType {
+  businessTheme: BusinessTheme;
+  setBusinessTheme: (theme: BusinessTheme) => void;
+}
+
+const BusinessThemeContext = createContext<BusinessThemeContextType>({
+  businessTheme: "biz-slate",
+  setBusinessTheme: () => {},
+});
+
+export function useBusinessTheme() {
+  return useContext(BusinessThemeContext);
+}
+
+function applyBusinessTheme(t: BusinessTheme) {
+  const root = window.document.documentElement;
+  root.classList.remove(...ALL_BUSINESS_THEMES, "slim", "high");
+  root.classList.add("dark", t);
+  if (isCorporateTheme(t)) root.classList.add("slim");
+  else if (isExecutiveTheme(t)) root.classList.add("high");
+}
+
+export function BusinessThemeProvider({ children }: { children: React.ReactNode }) {
+  const [businessTheme, setBusinessThemeState] = useState<BusinessTheme>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("axis-business-theme");
+      if (ALL_BUSINESS_THEMES.includes(stored as BusinessTheme)) return stored as BusinessTheme;
+    }
+    return "biz-slate";
+  });
+
+  const setBusinessTheme = useCallback((t: BusinessTheme) => {
+    setBusinessThemeState(t);
+    localStorage.setItem("axis-business-theme", t);
+    applyBusinessTheme(t);
+  }, []);
+
+  useEffect(() => {
+    applyBusinessTheme(businessTheme);
+  }, [businessTheme]);
+
+  return (
+    <BusinessThemeContext.Provider value={{ businessTheme, setBusinessTheme }}>
+      {children}
+    </BusinessThemeContext.Provider>
   );
 }

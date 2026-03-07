@@ -2984,6 +2984,24 @@ Se algum dado não foi mencionado, use valores razoáveis.`
     }
   });
 
+  app.patch("/api/business/organizations/:orgId", isAuthenticated, async (req, res) => {
+    try {
+      const { orgId } = req.params;
+      const schema = z.object({
+        name: z.string().min(1).optional(),
+        tradeName: z.string().optional(),
+        segment: z.string().optional(),
+        closingDay: z.number().int().min(1).max(28).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Dados inválidos" });
+      const org = await storage.updateOrganization(orgId, parsed.data);
+      res.json(org);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
   app.post("/api/business/organizations/:orgId/members", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

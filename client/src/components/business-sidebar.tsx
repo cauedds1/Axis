@@ -17,14 +17,20 @@ import {
   TrendingUp,
   BarChart3,
   Wallet,
+  Settings,
+  Layers,
+  Zap,
 } from "lucide-react";
+import {
+  useBusinessTheme,
+  getBusinessPrimaryHex,
+  getBusinessModulePalette,
+  isCorporateTheme,
+} from "@/components/theme-provider";
 
-const PRIMARY = "#2563EB";
-const PRIMARY_LIGHT = "#3B82F6";
-
-function PendingBar({ count }: { count: number }) {
+function PendingBar({ count, primaryHex }: { count: number; primaryHex: string }) {
   const hasItems = count > 0;
-  const color = hasItems ? "#F59E0B" : PRIMARY_LIGHT;
+  const color = hasItems ? "#F59E0B" : primaryHex;
 
   return (
     <div className="mt-3 px-1">
@@ -44,8 +50,10 @@ function PendingBar({ count }: { count: number }) {
             width: hasItems ? `${Math.min((count / 10) * 100, 100)}%` : "5%",
             background: hasItems
               ? "linear-gradient(90deg, #F59E0B, #F59E0B99)"
-              : `linear-gradient(90deg, ${PRIMARY_LIGHT}, ${PRIMARY_LIGHT}99)`,
-            boxShadow: hasItems ? "0 0 8px rgba(245,158,11,0.6)" : `0 0 8px ${PRIMARY_LIGHT}60`,
+              : `linear-gradient(90deg, ${primaryHex}, ${primaryHex}99)`,
+            boxShadow: hasItems
+              ? "0 0 8px rgba(245,158,11,0.6)"
+              : `0 0 8px ${primaryHex}60`,
           }}
         />
       </div>
@@ -53,7 +61,7 @@ function PendingBar({ count }: { count: number }) {
   );
 }
 
-function UserAvatar({ name, email }: { name?: string; email?: string }) {
+function UserAvatar({ name, email, primaryHex }: { name?: string; email?: string; primaryHex: string }) {
   const initials = name
     ? name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : (email?.[0] ?? "U").toUpperCase();
@@ -62,9 +70,9 @@ function UserAvatar({ name, email }: { name?: string; email?: string }) {
     <div
       className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
       style={{
-        background: `${PRIMARY}14`,
-        border: `1px solid ${PRIMARY}20`,
-        color: PRIMARY_LIGHT,
+        background: `${primaryHex}14`,
+        border: `1px solid ${primaryHex}20`,
+        color: primaryHex,
       }}
     >
       {initials}
@@ -72,65 +80,13 @@ function UserAvatar({ name, email }: { name?: string; email?: string }) {
   );
 }
 
-const mainNav = [
-  { href: "/business/app", icon: LayoutDashboard, label: "Dashboard", color: PRIMARY_LIGHT },
-  { href: "/business/app/financas", icon: Wallet, label: "Finanças", color: "#10B981" },
-];
-
-const managementNav = [
-  { href: "/business/app/cashflow", icon: TrendingUp, label: "Fluxo de Caixa", color: "#0EA5E9" },
-  { href: "/business/app/reports", icon: BarChart3, label: "Relatórios", color: "#A78BFA" },
-];
-
-function NavGroup({ label, items, location }: { label?: string; items: typeof mainNav; location: string }) {
-  return (
-    <div className="mb-1">
-      {label && (
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 pt-3 pb-1.5">
-          {label}
-        </p>
-      )}
-      <SidebarMenu>
-        {items.map((item) => {
-          const isActive = location === item.href;
-          return (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive}
-                data-testid={`link-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className="h-10 gap-3 rounded-xl transition-all duration-200"
-              >
-                <Link href={item.href} className="flex items-center gap-3">
-                  <item.icon
-                    className="h-4 w-4 flex-shrink-0"
-                    style={{ color: isActive ? item.color : "hsl(var(--muted-foreground))" }}
-                  />
-                  <span
-                    className="text-sm font-medium transition-colors duration-200"
-                    style={isActive ? { color: item.color } : {}}
-                  >
-                    {item.label}
-                  </span>
-                  {isActive && (
-                    <div
-                      className="ml-auto w-1 h-3.5 rounded-full"
-                      style={{ background: item.color, opacity: 0.7 }}
-                    />
-                  )}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          );
-        })}
-      </SidebarMenu>
-    </div>
-  );
-}
-
 export function BusinessSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
+  const { businessTheme } = useBusinessTheme();
+  const primaryHex = getBusinessPrimaryHex(businessTheme);
+  const palette = getBusinessModulePalette(businessTheme);
+  const isCorporate = isCorporateTheme(businessTheme);
 
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const activeOrgId = orgs?.[0]?.id;
@@ -139,6 +95,49 @@ export function BusinessSidebar() {
     enabled: !!activeOrgId,
   });
   const pendingCount = expenses?.filter((e: any) => e.status === "pending_review").length ?? 0;
+
+  const mainNav = [
+    { href: "/business/app",         icon: LayoutDashboard, label: "Dashboard", color: palette.dashboard },
+    { href: "/business/app/financas", icon: Wallet,          label: "Finanças",  color: palette.finance },
+  ];
+
+  const managementNav = [
+    { href: "/business/app/cashflow", icon: TrendingUp, label: "Fluxo de Caixa", color: palette.cashflow },
+    { href: "/business/app/reports",  icon: BarChart3,  label: "Relatórios",     color: palette.reports },
+  ];
+
+  function NavItem({ item }: { item: typeof mainNav[0] }) {
+    const isActive = location === item.href;
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          data-testid={`link-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+          className="h-10 gap-3 rounded-xl transition-all duration-200"
+        >
+          <Link href={item.href} className="flex items-center gap-3">
+            <item.icon
+              className="h-4 w-4 flex-shrink-0"
+              style={{ color: isActive ? item.color : "hsl(var(--muted-foreground))" }}
+            />
+            <span
+              className="text-sm font-medium transition-colors duration-200"
+              style={isActive ? { color: item.color } : {}}
+            >
+              {item.label}
+            </span>
+            {isActive && (
+              <div
+                className="ml-auto w-1 h-3.5 rounded-full"
+                style={{ background: item.color, opacity: 0.7 }}
+              />
+            )}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
 
   return (
     <Sidebar data-testid="sidebar-business">
@@ -149,25 +148,55 @@ export function BusinessSidebar() {
             <h1 className="text-lg font-bold tracking-tight leading-none">
               <span style={{ color: "hsl(var(--foreground))" }}>AXIS</span>
               {" "}
-              <span style={{ color: PRIMARY_LIGHT }}>Business</span>
+              <span style={{ color: primaryHex }}>Business</span>
             </h1>
             <span className="text-[10px] text-muted-foreground font-medium tracking-wide mt-0.5 block">
               Gestão corporativa
             </span>
           </div>
         </Link>
-        <PendingBar count={pendingCount} />
+
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            {isCorporate ? (
+              <Layers className="h-3 w-3" style={{ color: primaryHex, opacity: 0.7 }} />
+            ) : (
+              <Zap className="h-3 w-3" style={{ color: primaryHex }} />
+            )}
+            <span
+              className="text-[10px] font-bold tracking-widest uppercase"
+              style={{ color: primaryHex, opacity: isCorporate ? 0.7 : 1 }}
+            >
+              {isCorporate ? "Corporate" : "EXECUTIVE"}
+            </span>
+          </div>
+        </div>
+
+        <PendingBar count={pendingCount} primaryHex={primaryHex} />
       </SidebarHeader>
 
       <SidebarContent className="p-2 pt-2">
-        <NavGroup items={mainNav} location={location} />
+        <SidebarMenu>
+          {mainNav.map((item) => (
+            <NavItem key={item.href} item={item} />
+          ))}
+        </SidebarMenu>
+
         <div className="mx-3 my-1 h-px bg-sidebar-border/60" />
-        <NavGroup label="Gestão" items={managementNav} location={location} />
+
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-3 pt-3 pb-1.5">
+          Gestão
+        </p>
+        <SidebarMenu>
+          {managementNav.map((item) => (
+            <NavItem key={item.href} item={item} />
+          ))}
+        </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="flex items-center gap-2.5 mb-3">
-          <UserAvatar name={user?.firstName} email={user?.email} />
+          <UserAvatar name={user?.firstName} email={user?.email} primaryHex={primaryHex} />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-sidebar-foreground truncate">
               {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}` : user?.email}
@@ -177,7 +206,17 @@ export function BusinessSidebar() {
             )}
           </div>
         </div>
+
         <div className="flex gap-2">
+          <Link
+            href="/business/app/config"
+            className="flex items-center justify-center gap-1.5 text-[11px] py-2 px-3 rounded-lg transition-colors hover:bg-white/5 flex-1"
+            style={{ color: location === "/business/app/config" ? primaryHex : "hsl(var(--muted-foreground))" }}
+            data-testid="link-business-config"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Config
+          </Link>
           <button
             onClick={() => logout()}
             className="flex-1 flex items-center justify-center gap-1.5 text-[11px] py-2 px-3 rounded-lg transition-colors hover:bg-red-500/10"

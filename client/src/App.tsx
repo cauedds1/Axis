@@ -72,6 +72,7 @@ import BusinessLanding from "@/pages/business-landing";
 import BusinessAuthPage from "@/pages/business-auth-page";
 import { BusinessLayout } from "@/components/BusinessLayout";
 import BusinessWelcome from "@/pages/business/BusinessWelcome";
+import { BusinessThemeProvider } from "@/components/theme-provider";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -247,14 +248,33 @@ function AppRouter() {
   return (
     <AuthErrorBoundary>
       <Switch>
-        <Route path="/business/welcome" component={BusinessWelcome} />
-        <Route path="/business/app/financas" component={BusinessLayout} />
-        <Route path="/business/app/expenses" component={BusinessLayout} />
-        <Route path="/business/app/bills" component={BusinessLayout} />
-        <Route path="/business/app/receivables" component={BusinessLayout} />
-        <Route path="/business/app/cashflow" component={BusinessLayout} />
-        <Route path="/business/app/reports" component={BusinessLayout} />
-        <Route path="/business/app" component={BusinessLayout} />
+        <Route path="/business/welcome">
+          {() => <BusinessThemeProvider><BusinessWelcome /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/financas">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/expenses">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/bills">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/receivables">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/cashflow">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/reports">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app/config">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
+        <Route path="/business/app">
+          {() => <BusinessThemeProvider><BusinessLayout /></BusinessThemeProvider>}
+        </Route>
         <Route component={AuthenticatedLayout} />
       </Switch>
     </AuthErrorBoundary>
