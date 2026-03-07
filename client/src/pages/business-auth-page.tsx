@@ -129,7 +129,7 @@ function BrandPanel() {
 
       <div className="relative z-10">
         <div className="flex items-center gap-3.5 mb-1">
-          <img src="/logo-business.jpg" alt="AXIS Business" className="w-16 h-16 rounded-2xl object-cover" />
+          <img src="/logo-business.png" alt="AXIS Business" className="w-16 h-16 rounded-2xl object-cover" />
           <div>
             <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">
               AXIS <span style={{ color: PRIMARY }}>Business</span>
@@ -222,7 +222,7 @@ export default function BusinessAuthPage() {
           <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(59,130,246,0.09) 0%, transparent 60%)`, filter: "blur(50px)" }} />
           <div className="landing-grain" />
           <div className="relative z-10 flex items-center gap-3">
-            <img src="/logo-business.jpg" alt="AXIS Business" className="w-14 h-14 rounded-xl object-cover" />
+            <img src="/logo-business.png" alt="AXIS Business" className="w-14 h-14 rounded-xl object-cover" />
             <div>
               <span className="text-xl font-bold tracking-tight block">
                 AXIS <span style={{ color: PRIMARY }}>Business</span>

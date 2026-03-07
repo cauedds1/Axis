@@ -136,7 +136,7 @@ function CorporateOrbital() {
 
         <circle cx="210" cy="210" r="70" fill="url(#biz-logo-glow)" />
         <circle cx="210" cy="210" r="58" fill={`rgba(${BIZ.primaryRgb},0.1)`} />
-        <image href="/logo-business.jpg" x="152" y="152" width="116" height="116" clipPath="url(#biz-orbital-clip)" preserveAspectRatio="xMidYMid slice" />
+        <image href="/logo-business.png" x="152" y="152" width="116" height="116" clipPath="url(#biz-orbital-clip)" preserveAspectRatio="xMidYMid slice" />
       </svg>
     </div>
   );
@@ -271,7 +271,7 @@ function BizWhatsAppChat() {
     <div ref={ref} className="w-full max-w-md mx-auto">
       <div className="rounded-2xl overflow-hidden border border-white/10">
         <div className="px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #075E54, #128C7E)" }}>
-          <img src="/logo-business.jpg" alt="AXIS Business" className="w-9 h-9 rounded-full object-cover" />
+          <img src="/logo-business.png" alt="AXIS Business" className="w-9 h-9 rounded-full object-cover" />
           <div>
             <p className="text-white text-sm font-semibold">AXIS Business Bot</p>
             <p className="text-white/60 text-[11px]">Acme Corp · online</p>
@@ -363,7 +363,7 @@ function ExpensePanelPreview() {
 
         <div className="p-5 md:p-6">
           <div className="flex items-center gap-3 mb-5">
-            <img src="/logo-business.jpg" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
+            <img src="/logo-business.png" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
             <div>
               <p className="text-sm font-bold text-white/90">Acme Corp</p>
               <p className="text-[11px] text-white/40">Painel de Despesas · Março 2026</p>
@@ -463,7 +463,7 @@ export default function BusinessLanding() {
       <header className="fixed top-0 w-full z-50 bg-[#08080f]/70 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/logo-business.jpg" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
+            <img src="/logo-business.png" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
             <div className="flex items-center gap-1">
               <span className="text-base font-bold tracking-tight">AXIS</span>
               <span className="text-base font-bold tracking-tight" style={{ color: BIZ.primary }}> Business</span>
@@ -952,7 +952,7 @@ export default function BusinessLanding() {
       <footer className="px-6 py-8 border-t border-white/[0.06]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/logo-business.jpg" alt="AXIS Business" className="w-6 h-6 rounded-md object-cover" />
+            <img src="/logo-business.png" alt="AXIS Business" className="w-6 h-6 rounded-md object-cover" />
             <span className="text-sm font-semibold">AXIS Business</span>
           </div>
           <p className="text-xs text-white/25">
