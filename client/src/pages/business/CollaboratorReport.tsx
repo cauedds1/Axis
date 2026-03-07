@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,9 +101,11 @@ export default function CollaboratorReport() {
   const [customEnd, setCustomEnd]     = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [showPresets, setShowPresets] = useState(false);
 
-  const dates = preset === "custom"
-    ? { start: new Date(customStart + "T00:00:00"), end: new Date(customEnd + "T23:59:59") }
-    : getPresetDates(preset);
+  const dates = useMemo(() =>
+    preset === "custom"
+      ? { start: new Date(customStart + "T00:00:00"), end: new Date(customEnd + "T23:59:59") }
+      : getPresetDates(preset),
+  [preset, customStart, customEnd]);
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const activeOrg = orgs?.[0];
