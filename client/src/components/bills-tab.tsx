@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil } from "lucide-react";
-
-function fmtBRL(v: number): string {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { useCurrency } from "@/hooks/use-currency";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -30,11 +28,11 @@ function getEndDate(rec: Recurrence): Date {
   return new Date(now.getFullYear() + 20, now.getMonth(), now.getDate());
 }
 
-function recLabel(type: RecurrenceType): string {
-  if (type === "permanent") return "Permanente";
-  if (type === "this_month") return "Este mês";
-  if (type === "three_months") return "3 meses";
-  return "Personalizado";
+function recLabel(type: RecurrenceType, t: (k: string) => string): string {
+  if (type === "permanent") return t("axisFinance.permanent");
+  if (type === "this_month") return t("axisFinance.thisMonth");
+  if (type === "three_months") return t("axisFinance.threeMonths");
+  return t("axisFinance.periodCustom");
 }
 
 function isBillActiveInMonth(bill: Bill, y: number, m: number): boolean {
@@ -151,35 +149,38 @@ function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEn
   return months;
 }
 
-function getPeriodLabel(period: PeriodFilter, months: Array<{ y: number; m: number }>): string {
+function getPeriodLabel(period: PeriodFilter, months: Array<{ y: number; m: number }>, lang = "en-US"): string {
   if (months.length === 0) {
     const now = new Date();
-    return now.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+    return now.toLocaleString(lang, { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
   }
   if (months.length === 1) {
     const d = new Date(months[0].y, months[0].m, 1);
-    return d.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+    return d.toLocaleString(lang, { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
   }
   const first = new Date(months[months.length - 1].y, months[months.length - 1].m, 1);
   const last = new Date(months[0].y, months[0].m, 1);
-  const f = first.toLocaleString("pt-BR", { month: "short", year: "numeric" });
-  const l = last.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  const f = first.toLocaleString(lang, { month: "short", year: "numeric" });
+  const l = last.toLocaleString(lang, { month: "short", year: "numeric" });
   return `${f} — ${l}`;
 }
 
-const RECURRENCE_OPTIONS: { type: RecurrenceType; label: string; sub: string; icon: any }[] = [
-  { type: "permanent", label: "Permanente", sub: "até você desativar", icon: Infinity },
-  { type: "this_month", label: "Este mês", sub: "só o mês atual", icon: Calendar },
-  { type: "three_months", label: "3 meses", sub: "próximos 3 meses", icon: CalendarRange },
-  { type: "custom", label: "Personalizado", sub: "escolher data", icon: CalendarDays },
-];
+function getRecurrenceOptions(t: (k: string) => string): { type: RecurrenceType; label: string; sub: string; icon: any }[] {
+  return [
+    { type: "permanent", label: t("axisFinance.permanent"), sub: t("axisFinance.recPermanentSub"), icon: Infinity },
+    { type: "this_month", label: t("axisFinance.thisMonth"), sub: t("axisFinance.recThisMonthSub"), icon: Calendar },
+    { type: "three_months", label: t("axisFinance.threeMonths"), sub: t("axisFinance.rec3MonthsSub"), icon: CalendarRange },
+    { type: "custom", label: t("axisFinance.periodCustom"), sub: t("axisFinance.recCustomSub"), icon: CalendarDays },
+  ];
+}
 
 function RecurrenceSelector({ value, onChange, accent }: { value: Recurrence; onChange: (r: Recurrence) => void; accent: string }) {
+  const { t } = useTranslation();
   return (
     <div>
-      <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Recorrência</p>
+      <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.recurrence")}</p>
       <div className="grid grid-cols-2 gap-2">
-        {RECURRENCE_OPTIONS.map(opt => {
+        {getRecurrenceOptions(t).map(opt => {
           const Icon = opt.icon;
           const selected = value.type === opt.type;
           return (
@@ -241,6 +242,8 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
   const EXPENSE_COLOR = _MP.negative;
   const INCOME_COLOR = _MP.positive;
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const { symbol } = useCurrency();
   const [form, setForm] = useState({
     title: "",
     amount: "",
@@ -271,9 +274,9 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
       setForm({ title: "", amount: "", type: "expense", dueDay: "1", categoryName: "", notes: "" });
       setRecurrence({ type: "permanent" });
       onClose();
-      toast({ title: "Conta cadastrada" });
+      toast({ title: t("axisFinance.billRegistered") });
     },
-    onError: (e: any) => toast({ title: "Erro ao salvar conta", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("axisFinance.billSaveError"), description: e.message, variant: "destructive" }),
   });
 
   const canSave = form.title.trim().length > 0 && parseFloat(form.amount) > 0;
@@ -282,13 +285,13 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }}>
         <DialogHeader>
-          <DialogTitle className="text-white">Nova conta</DialogTitle>
+          <DialogTitle className="text-white">{t("axisFinance.newBill")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          {/* Tipo toggle */}
+          {/* Type toggle */}
           <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-            {([["expense", "A Pagar", EXPENSE_COLOR], ["income", "A Receber", INCOME_COLOR]] as const).map(([val, label, color]) => (
+            {([["expense", t("axisFinance.toBePaid"), EXPENSE_COLOR], ["income", t("axisFinance.toBeReceived"), INCOME_COLOR]] as const).map(([val, label, color]) => (
               <button
                 key={val}
                 type="button"
@@ -305,39 +308,39 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
             ))}
           </div>
 
-          {/* Título */}
+          {/* Description */}
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Descrição</p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.descriptionLabel")}</p>
             <input
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ex: Aluguel, Salário, Netflix..."
+              placeholder={t("axisFinance.billDescPlaceholder")}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
               data-testid="input-bill-title"
             />
           </div>
 
-          {/* Valor */}
+          {/* Amount */}
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Valor</p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.amountLabel")}</p>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-              <span className="text-white/40 text-sm font-medium">R$</span>
+              <span className="text-white/40 text-sm font-medium">{symbol}</span>
               <input
                 type="number"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                placeholder="0,00"
+                placeholder="0.00"
                 className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
                 data-testid="input-bill-amount"
               />
             </div>
           </div>
 
-          {/* Vencimento + Categoria */}
+          {/* Due day + Category */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Dia de vencimento</p>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.dueDay")}</p>
               <input
                 type="number"
                 min="1"
@@ -350,11 +353,11 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
               />
             </div>
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Categoria</p>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.categoryLabel")}</p>
               <input
                 value={form.categoryName}
                 onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
-                placeholder="Ex: Moradia..."
+                placeholder={t("axisFinance.categoryPlaceholder2")}
                 className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
                 data-testid="input-bill-category"
@@ -362,16 +365,16 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
             </div>
           </div>
 
-          {/* Recorrência */}
+          {/* Recurrence */}
           <RecurrenceSelector value={recurrence} onChange={setRecurrence} accent={form.type === "expense" ? EXPENSE_COLOR : INCOME_COLOR} />
 
-          {/* Observações */}
+          {/* Notes */}
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Observações <span className="normal-case font-normal">(opcional)</span></p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.notesOptional")}</p>
             <textarea
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Anotações sobre esta conta..."
+              placeholder={t("axisFinance.notesBillPlaceholder")}
               rows={2}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
@@ -387,7 +390,7 @@ function AddBillModal({ open, onClose, accent }: { open: boolean; onClose: () =>
             data-testid="button-submit-bill"
           >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {mutation.isPending ? "Salvando..." : "Cadastrar conta"}
+            {mutation.isPending ? t("axisFinance.saving") : t("axisFinance.registerBill")}
           </button>
         </div>
       </DialogContent>
@@ -401,6 +404,8 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
   const EXPENSE_COLOR = _MP.negative;
   const INCOME_COLOR = _MP.positive;
   const { toast } = useToast();
+  const { t } = useTranslation();
+  const { symbol } = useCurrency();
   const [form, setForm] = useState({
     title: bill.title,
     amount: String(bill.amount),
@@ -435,9 +440,9 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       onClose();
-      toast({ title: "Conta atualizada" });
+      toast({ title: t("axisFinance.billUpdated") });
     },
-    onError: (e: any) => toast({ title: "Erro ao atualizar conta", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: t("axisFinance.billUpdateError"), description: e.message, variant: "destructive" }),
   });
 
   const canSave = form.title.trim().length > 0 && parseFloat(form.amount) > 0;
@@ -447,12 +452,12 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
     <Dialog open onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }}>
         <DialogHeader>
-          <DialogTitle className="text-white">Editar conta</DialogTitle>
+          <DialogTitle className="text-white">{t("axisFinance.editBill")}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
           <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-            {([["expense", "A Pagar", EXPENSE_COLOR], ["income", "A Receber", INCOME_COLOR]] as const).map(([val, label, color]) => (
+            {([["expense", t("axisFinance.toBePaid"), EXPENSE_COLOR], ["income", t("axisFinance.toBeReceived"), INCOME_COLOR]] as const).map(([val, label, color]) => (
               <button
                 key={val}
                 type="button"
@@ -470,11 +475,11 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Descrição</p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.descriptionLabel")}</p>
             <input
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ex: Aluguel, Netflix..."
+              placeholder={t("axisFinance.billDescEditPlaceholder")}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
               data-testid="input-edit-bill-title"
@@ -482,14 +487,14 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Valor</p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.amountLabel")}</p>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-              <span className="text-white/40 text-sm font-medium">R$</span>
+              <span className="text-white/40 text-sm font-medium">{symbol}</span>
               <input
                 type="number"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                placeholder="0,00"
+                placeholder="0.00"
                 className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
                 data-testid="input-edit-bill-amount"
               />
@@ -498,7 +503,7 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Dia de vencimento</p>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.dueDay")}</p>
               <input
                 type="number"
                 min="1"
@@ -511,11 +516,11 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
               />
             </div>
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Categoria</p>
+              <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.categoryLabel")}</p>
               <input
                 value={form.categoryName}
                 onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
-                placeholder="Ex: Moradia..."
+                placeholder={t("axisFinance.categoryPlaceholder2")}
                 className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
                 data-testid="input-edit-bill-category"
@@ -526,11 +531,11 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
           <RecurrenceSelector value={recurrence} onChange={setRecurrence} accent={billAccent} />
 
           <div>
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Observações <span className="normal-case font-normal">(opcional)</span></p>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisFinance.notesOptional")}</p>
             <textarea
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Anotações sobre esta conta..."
+              placeholder={t("axisFinance.notesBillPlaceholder")}
               rows={2}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
@@ -546,7 +551,7 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
             data-testid="button-submit-edit-bill"
           >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {mutation.isPending ? "Salvando..." : "Salvar alterações"}
+            {mutation.isPending ? t("axisFinance.saving") : t("axisFinance.saveChanges")}
           </button>
         </div>
       </DialogContent>
@@ -554,13 +559,15 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
   );
 }
 
-const PERIOD_OPTS: { id: PeriodFilter; label: string }[] = [
-  { id: "current", label: "Mês atual" },
-  { id: "last", label: "Mês passado" },
-  { id: "last3", label: "3 meses" },
-  { id: "last6", label: "6 meses" },
-  { id: "custom", label: "Personalizado" },
-];
+function getPeriodOpts(t: (k: string) => string): { id: PeriodFilter; label: string }[] {
+  return [
+    { id: "current", label: t("axisFinance.periodCurrent") },
+    { id: "last", label: t("axisFinance.periodLast") },
+    { id: "last3", label: t("axisFinance.period3m") },
+    { id: "last6", label: t("axisFinance.period6m") },
+    { id: "custom", label: t("axisFinance.periodCustom") },
+  ];
+}
 
 export function BillsTab() {
   const { theme } = useTheme();
@@ -569,6 +576,8 @@ export function BillsTab() {
   const EXPENSE_COLOR = MP.negative;
   const INCOME_COLOR = MP.positive;
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const [showAdd, setShowAdd] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [filterType, setFilterType] = useState<"all" | "expense" | "income">("all");
@@ -581,6 +590,7 @@ export function BillsTab() {
 
   const { data: allBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
 
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const periodMonths = getMonthsForPeriod(filterPeriod, customStart, customEnd);
   const isSingleCurrentMonth = filterPeriod === "current";
 
@@ -593,16 +603,16 @@ export function BillsTab() {
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/bills"] }),
-    onError: () => toast({ title: "Erro ao atualizar conta", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/bills/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-      toast({ title: "Conta removida" });
+      toast({ title: t("axisFinance.billDeleteDone") });
     },
-    onError: () => toast({ title: "Erro ao remover conta", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.billDeleteError"), variant: "destructive" }),
   });
 
   const activeBills = allBills.filter(b => isBillActiveInRange(b, periodMonths));
@@ -651,9 +661,9 @@ export function BillsTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white">Contas a Pagar / Receber</h2>
+          <h2 className="text-lg font-bold text-white">{t("axisFinance.billsTitle")}</h2>
           <p className="text-xs text-white/35 mt-0.5">
-            {getPeriodLabel(filterPeriod, periodMonths)}
+            {getPeriodLabel(filterPeriod, periodMonths, lang)}
           </p>
         </div>
         <button
@@ -662,14 +672,14 @@ export function BillsTab() {
           style={{ background: `${accent}18`, border: `1px solid ${accent}30`, color: accent }}
           data-testid="button-add-bill"
         >
-          <Plus className="h-4 w-4" /> Nova Conta
+          <Plus className="h-4 w-4" /> {t("axisFinance.newBill")}
         </button>
       </div>
 
       {/* Period filter */}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
-          {PERIOD_OPTS.map(opt => {
+          {getPeriodOpts(t).map(opt => {
             const isActive = filterPeriod === opt.id;
             return (
               <button
@@ -693,7 +703,7 @@ export function BillsTab() {
         </div>
         {showCustomDates && (
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/[0.02]">
-            <span className="text-xs text-white/40 font-medium">De</span>
+            <span className="text-xs text-white/40 font-medium">{t("axisFinance.customFrom")}</span>
             <input
               type="date"
               data-testid="input-bill-custom-start"
@@ -701,7 +711,7 @@ export function BillsTab() {
               onChange={e => setCustomStart(e.target.value)}
               className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
             />
-            <span className="text-xs text-white/40 font-medium">até</span>
+            <span className="text-xs text-white/40 font-medium">{t("axisFinance.customTo")}</span>
             <input
               type="date"
               data-testid="input-bill-custom-end"
@@ -715,28 +725,28 @@ export function BillsTab() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SummaryCard label="A Pagar" value={`R$ ${fmtBRL(totalPagar)}`} sub={`${unpaidExpenses.length} conta(s)`} accent={EXPENSE_COLOR} icon={TrendingDown} />
-        <SummaryCard label="A Receber" value={`R$ ${fmtBRL(totalReceber)}`} sub={`${unpaidIncomes.length} conta(s)`} accent={INCOME_COLOR} icon={TrendingUp} />
-        <SummaryCard label="Saldo Previsto" value={`R$ ${fmtBRL(saldoPrevisto)}`} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
-        <SummaryCard label="Vencidas" value={`${vencidas.length}`} sub={vencidas.length > 0 ? `R$ ${fmtBRL(vencidas.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
+        <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar)} sub={`${unpaidExpenses.length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
+        <SummaryCard label={t("axisFinance.toBeReceived")} value={fmtMoney(totalReceber)} sub={`${unpaidIncomes.length} ${t("axisFinance.billsCount")}`} accent={INCOME_COLOR} icon={TrendingUp} />
+        <SummaryCard label={t("axisFinance.projectedBalance")} value={fmtMoney(saldoPrevisto)} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
+        <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length}`} sub={vencidas.length > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0)) : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
         {isSingleCurrentMonth ? (
-          <SummaryCard label="Próximos 7 dias" value={`${proximos7.length}`} sub={proximos7.length > 0 ? `R$ ${fmtBRL(proximos7.reduce((s, b) => s + b.amount, 0))}` : undefined} accent={proximos7.length > 0 ? MP.agenda : "rgba(255,255,255,0.3)"} icon={Clock} />
+          <SummaryCard label={t("axisFinance.next7Days")} value={`${proximos7.length}`} sub={proximos7.length > 0 ? fmtMoney(proximos7.reduce((s, b) => s + b.amount, 0)) : undefined} accent={proximos7.length > 0 ? MP.agenda : "rgba(255,255,255,0.3)"} icon={Clock} />
         ) : (
-          <SummaryCard label="Total Contas" value={`${activeBills.length}`} sub={`no período`} accent="rgba(255,255,255,0.5)" icon={Clock} />
+          <SummaryCard label={t("axisFinance.totalBills")} value={`${activeBills.length}`} sub={t("axisFinance.inPeriod")} accent="rgba(255,255,255,0.5)" icon={Clock} />
         )}
-        <SummaryCard label={isSingleCurrentMonth ? "Pago este Mês" : "Pago no Período"} value={`R$ ${fmtBRL(totalPagoMes)}`} sub={`${pagoMes.length} item(s)`} accent={INCOME_COLOR} icon={CheckCircle} />
+        <SummaryCard label={isSingleCurrentMonth ? t("axisFinance.paidThisMonth") : t("axisFinance.paidInPeriod")} value={fmtMoney(totalPagoMes)} sub={`${pagoMes.length} ${t("axisFinance.itemsCount")}`} accent={INCOME_COLOR} icon={CheckCircle} />
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        {PILL("Todos", filterType === "all", () => setFilterType("all"))}
-        {PILL("A pagar", filterType === "expense", () => setFilterType("expense"), EXPENSE_COLOR)}
-        {PILL("A receber", filterType === "income", () => setFilterType("income"), INCOME_COLOR)}
+        {PILL(t("axisFinance.filterAll"), filterType === "all", () => setFilterType("all"))}
+        {PILL(t("axisFinance.toBePaid"), filterType === "expense", () => setFilterType("expense"), EXPENSE_COLOR)}
+        {PILL(t("axisFinance.toBeReceived"), filterType === "income", () => setFilterType("income"), INCOME_COLOR)}
         <div className="w-px bg-white/10 self-stretch mx-1" />
-        {PILL("Todos status", filterStatus === "all", () => setFilterStatus("all"))}
-        {PILL("Pendentes", filterStatus === "pending", () => setFilterStatus("pending"))}
-        {PILL("Pagos", filterStatus === "paid", () => setFilterStatus("paid"), INCOME_COLOR)}
-        {PILL("Vencidos", filterStatus === "overdue", () => setFilterStatus("overdue"), EXPENSE_COLOR)}
+        {PILL(t("axisFinance.filterAllStatus"), filterStatus === "all", () => setFilterStatus("all"))}
+        {PILL(t("axisFinance.filterPending"), filterStatus === "pending", () => setFilterStatus("pending"))}
+        {PILL(t("axisFinance.filterPaid"), filterStatus === "paid", () => setFilterStatus("paid"), INCOME_COLOR)}
+        {PILL(t("axisFinance.overdue"), filterStatus === "overdue", () => setFilterStatus("overdue"), EXPENSE_COLOR)}
       </div>
 
       {/* Bills list */}
@@ -752,8 +762,8 @@ export function BillsTab() {
             <DollarSign className="h-8 w-8 text-white/20" />
           </div>
           <div>
-            <p className="text-white/50 font-medium">Nenhuma conta cadastrada</p>
-            <p className="text-white/25 text-sm mt-1">Adicione suas contas fixas para acompanhar tudo</p>
+            <p className="text-white/50 font-medium">{t("axisFinance.noBillsRegistered")}</p>
+            <p className="text-white/25 text-sm mt-1">{t("axisFinance.noBillsHint")}</p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
@@ -761,7 +771,7 @@ export function BillsTab() {
             style={{ background: `${accent}18`, border: `1px solid ${accent}30`, color: accent }}
             data-testid="button-add-first-bill"
           >
-            <Plus className="h-4 w-4" /> Cadastrar primeira conta
+            <Plus className="h-4 w-4" /> {t("axisFinance.registerFirstBill")}
           </button>
         </motion.div>
       ) : (
@@ -778,7 +788,7 @@ export function BillsTab() {
               const isUpcomingSoon = !paid && !overdue && daysUntilDue >= 0 && daysUntilDue <= 5;
               const WARN_COLOR = MP.agenda;
               const statusColor = paid ? INCOME_COLOR : overdue ? EXPENSE_COLOR : isUpcomingSoon ? WARN_COLOR : "rgba(255,255,255,0.25)";
-              const statusLabel = paid ? "Pago" : overdue ? "Vencido" : isUpcomingSoon ? (daysUntilDue === 0 ? "Vence hoje!" : `Vence em ${daysUntilDue}d`) : `Dia ${bill.dueDay}`;
+              const statusLabel = paid ? t("axisFinance.paid") : overdue ? t("axisFinance.overdue") : isUpcomingSoon ? (daysUntilDue === 0 ? t("axisFinance.duesToday") : t("axisFinance.duesInDays", { count: daysUntilDue })) : t("axisFinance.dueDayDisplay", { day: bill.dueDay });
 
               return (
                 <motion.div
@@ -814,14 +824,14 @@ export function BillsTab() {
                             <div className="flex items-center gap-2 mt-0.5">
                               {bill.categoryName && <span className="text-[10px] text-white/30">{bill.categoryName}</span>}
                               <span className="text-[10px] font-medium" style={{ color: statusColor }}>{statusLabel}</span>
-                              <span className="text-[10px] text-white/20">{recLabel(bill.recurrenceType as RecurrenceType)}</span>
+                              <span className="text-[10px] text-white/20">{recLabel(bill.recurrenceType as RecurrenceType, t)}</span>
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-base font-bold" style={{ color: paid ? "rgba(255,255,255,0.3)" : rowAccent }}>
-                            {isExpense ? "-" : "+"}R$ {fmtBRL(bill.amount)}
+                            {isExpense ? "-" : "+"}{fmtMoney(bill.amount)}
                           </span>
                           <div className="p-1.5">
                             {expanded ? <ChevronUp className="h-4 w-4 text-white/30" /> : <ChevronDown className="h-4 w-4 text-white/30" />}
@@ -883,7 +893,7 @@ export function BillsTab() {
                             <div className="flex items-center gap-3 text-[11px] text-white/30">
                               <div className="flex items-center gap-1.5">
                                 <Calendar className="h-3 w-3" />
-                                <span>Vence dia {bill.dueDay}</span>
+                                <span>{t("axisFinance.dueDayDisplay", { day: bill.dueDay })}</span>
                               </div>
                               {bill.categoryName && (
                                 <div className="flex items-center gap-1.5">
@@ -893,11 +903,11 @@ export function BillsTab() {
                               )}
                               <div className="flex items-center gap-1.5">
                                 <RotateCcw className="h-3 w-3" />
-                                <span>{recLabel(bill.recurrenceType as RecurrenceType)}</span>
+                                <span>{recLabel(bill.recurrenceType as RecurrenceType, t)}</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <DollarSign className="h-3 w-3" />
-                                <span>{isExpense ? "A Pagar" : "A Receber"}</span>
+                                <span>{isExpense ? t("axisFinance.toBePaid") : t("axisFinance.toBeReceived")}</span>
                               </div>
                             </div>
 
@@ -915,7 +925,7 @@ export function BillsTab() {
                                 data-testid={`button-toggle-paid-${bill.id}`}
                               >
                                 {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                                {paid ? "Desfazer pagamento" : "Marcar como pago"}
+                                {paid ? t("axisFinance.undoPayment") : t("axisFinance.markAsPaid")}
                               </button>
                               <div className="flex-1" />
                               <button
@@ -950,7 +960,7 @@ export function BillsTab() {
 
       {allBills.filter(b => !b.active).length > 0 && (
         <p className="text-xs text-white/20 text-center">
-          {allBills.filter(b => !b.active).length} conta(s) inativa(s) não exibida(s)
+          {t("axisFinance.inactiveBillsCount", { count: allBills.filter(b => !b.active).length })}
         </p>
       )}
 

@@ -1,22 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Pencil, Power, PowerOff, Loader2, TrendingDown, TrendingUp, RotateCcw, Calendar, Tag, Check, Infinity, CalendarRange, CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
+import { useCurrency } from "@/hooks/use-currency";
 import type { Bill } from "@shared/schema";
-
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function recLabel(type: string) {
-  if (type === "permanent") return "Permanente";
-  if (type === "this_month") return "Este mês";
-  if (type === "three_months") return "3 meses";
-  return "Personalizado";
-}
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 
@@ -33,12 +24,14 @@ function getEndDate(rec: Recurrence): Date {
   return new Date(now.getFullYear() + 20, now.getMonth(), now.getDate());
 }
 
-const RECURRENCE_OPTS: { type: RecurrenceType; label: string; icon: any }[] = [
-  { type: "permanent", label: "Permanente", icon: Infinity },
-  { type: "this_month", label: "Este mês", icon: Calendar },
-  { type: "three_months", label: "3 meses", icon: CalendarRange },
-  { type: "custom", label: "Personalizado", icon: CalendarDays },
-];
+function getRecurrenceOpts(t: (k: string) => string): { type: RecurrenceType; label: string; icon: any }[] {
+  return [
+    { type: "permanent", label: t("axisFinance.permanent"), icon: Infinity },
+    { type: "this_month", label: t("axisFinance.thisMonth"), icon: Calendar },
+    { type: "three_months", label: t("axisFinance.threeMonths"), icon: CalendarRange },
+    { type: "custom", label: t("axisFinance.periodCustom"), icon: CalendarDays },
+  ];
+}
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -71,7 +64,9 @@ function BillFormModal({
   onClose: () => void;
   initialBill?: Bill;
 }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
+  const { symbol } = useCurrency();
   const { theme: _t } = useTheme();
   const _MP = getModulePalette(_t as any);
   const EXPENSE_COLOR = _MP.negative;
@@ -119,9 +114,9 @@ function BillFormModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       onClose();
-      toast({ title: isEdit ? "Conta atualizada" : "Conta cadastrada" });
+      toast({ title: isEdit ? t("axisFinance.billUpdateDone") : t("axisFinance.billAddDone") });
     },
-    onError: (e: any) => toast({ title: "Erro ao salvar conta", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: isEdit ? t("axisFinance.billUpdateError") : t("axisFinance.billAddError"), description: e.message, variant: "destructive" }),
   });
 
   const canSave = form.title.trim().length > 0 && parseFloat(form.amount) > 0;
@@ -140,7 +135,7 @@ function BillFormModal({
         <div className="flex-shrink-0 px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <DialogHeader>
             <DialogTitle className="text-white text-base font-semibold">
-              {isEdit ? "Editar conta" : "Nova conta fixa"}
+              {isEdit ? t("axisFinance.editTransaction") : t("axisFinance.fixedBills")}
             </DialogTitle>
           </DialogHeader>
 
@@ -149,7 +144,7 @@ function BillFormModal({
             className="flex rounded-xl overflow-hidden mt-4"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", padding: "3px" }}
           >
-            {([["expense", "Gasto fixo", EXPENSE_COLOR], ["income", "Receita fixa", INCOME_COLOR]] as const).map(([val, label, color]) => (
+            {([["expense", t("axisFinance.expenseLabel"), EXPENSE_COLOR], ["income", t("axisFinance.incomeLabel"), INCOME_COLOR]] as const).map(([val, label, color]) => (
               <button
                 key={val}
                 type="button"
@@ -172,7 +167,7 @@ function BillFormModal({
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {/* Descrição */}
           <div>
-            <FieldLabel>Descrição</FieldLabel>
+            <FieldLabel>{t("axisFinance.descriptionLabel")}</FieldLabel>
             <FieldInput
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -185,12 +180,12 @@ function BillFormModal({
 
           {/* Valor */}
           <div>
-            <FieldLabel>Valor (R$)</FieldLabel>
+            <FieldLabel>{t("axisFinance.amountLabel")}</FieldLabel>
             <div
               className="flex items-center gap-2 rounded-xl px-3 py-2.5"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
             >
-              <span className="text-white/35 text-sm font-semibold select-none">R$</span>
+              <span className="text-white/35 text-sm font-semibold select-none">{symbol}</span>
               <input
                 type="number"
                 value={form.amount}
@@ -207,7 +202,7 @@ function BillFormModal({
           {/* Dia de vencimento + Categoria */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <FieldLabel>Vencimento</FieldLabel>
+              <FieldLabel>{t("axisFinance.dueDay")}</FieldLabel>
               <div className="relative">
                 <FieldInput
                   type="number"
@@ -217,15 +212,10 @@ function BillFormModal({
                   onChange={e => setForm(f => ({ ...f, dueDay: e.target.value }))}
                   data-testid="input-manage-bill-due-day"
                 />
-                <span
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none select-none"
-                >
-                  dia
-                </span>
               </div>
             </div>
             <div>
-              <FieldLabel>Categoria</FieldLabel>
+              <FieldLabel>{t("axisFinance.categoryLabel")}</FieldLabel>
               <FieldInput
                 value={form.categoryName}
                 onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
@@ -239,9 +229,9 @@ function BillFormModal({
 
           {/* Recorrência */}
           <div>
-            <FieldLabel>Recorrência</FieldLabel>
+            <FieldLabel>{t("axisFinance.recurrence")}</FieldLabel>
             <div className="flex gap-2 flex-wrap">
-              {RECURRENCE_OPTS.map(opt => {
+              {getRecurrenceOpts(t).map(opt => {
                 const Icon = opt.icon;
                 const active = recurrence.type === opt.type;
                 return (
@@ -264,7 +254,7 @@ function BillFormModal({
             </div>
             {recurrence.type === "custom" && (
               <div className="mt-2.5">
-                <p className="text-[11px] text-white/30 mb-1.5">Data de encerramento</p>
+                <p className="text-[11px] text-white/30 mb-1.5">{t("axisFinance.recCustomSub")}</p>
                 <input
                   type="date"
                   value={recurrence.endDate || ""}
@@ -281,12 +271,12 @@ function BillFormModal({
           {/* Observações */}
           <div>
             <FieldLabel>
-              Observações <span className="normal-case font-normal text-white/20">(opcional)</span>
+              {t("axisFinance.notes")} <span className="normal-case font-normal text-white/20">({t("axisFinance.descriptionOptional").toLowerCase()})</span>
             </FieldLabel>
             <textarea
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Anotações sobre esta conta..."
+              placeholder={t("axisFinance.notes") + "..."}
               rows={2}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
@@ -311,8 +301,8 @@ function BillFormModal({
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Check className="h-4 w-4" />}
             {mutation.isPending
-              ? "Salvando..."
-              : isEdit ? "Salvar alterações" : "Cadastrar conta"}
+              ? t("axisFinance.save") + "..."
+              : isEdit ? t("axisFinance.saveChanges") : t("axisFinance.registerBill")}
           </button>
         </div>
       </DialogContent>
@@ -321,6 +311,8 @@ function BillFormModal({
 }
 
 export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { toast } = useToast();
   const { theme: _t2 } = useTheme();
   const _MP2 = getModulePalette(_t2 as any);
@@ -340,16 +332,16 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
       return res.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/bills"] }),
-    onError: () => toast({ title: "Erro ao atualizar conta", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/bills/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-      toast({ title: "Conta removida" });
+      toast({ title: t("axisFinance.billDeleteDone") });
     },
-    onError: () => toast({ title: "Erro ao remover conta", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.billDeleteError"), variant: "destructive" }),
   });
 
   const filtered = bills.filter(b => filterType === "all" || b.type === filterType);
@@ -395,7 +387,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                   className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold flex-shrink-0"
                   style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
                 >
-                  inativo
+                  {t("axisFinance.inactive")}
                 </span>
               )}
             </div>
@@ -404,15 +396,15 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                 className="text-base font-bold"
                 style={{ color, opacity: bill.active ? 1 : 0.4 }}
               >
-                R${fmtBRL(Number(bill.amount))}
+                {fmtMoney(Number(bill.amount))}
               </span>
               <div className="flex items-center gap-1 text-[11px] text-white/30">
                 <Calendar className="h-3 w-3" />
-                <span>dia {bill.dueDay}</span>
+                <span>{t("axisAgenda.dueDay", { day: bill.dueDay })}</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-white/30">
                 <RotateCcw className="h-3 w-3" />
-                <span>{recLabel(bill.recurrenceType ?? "permanent")}</span>
+                <span>{getRecurrenceOpts(t).find(o => o.type === (bill.recurrenceType ?? "permanent"))?.label}</span>
               </div>
               {bill.categoryName && (
                 <div className="flex items-center gap-1 text-[11px] text-white/30">
@@ -485,13 +477,13 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
           >
             <DialogHeader>
               <DialogTitle className="text-white text-base font-semibold">
-                Gerenciar Contas Fixas
+                {t("axisFinance.manageBills")}
               </DialogTitle>
             </DialogHeader>
 
             {/* Filtros de tipo */}
             <div className="flex gap-1 mt-4">
-              {([["all", "Todas"], ["expense", "Gastos"], ["income", "Receitas"]] as const).map(([id, label]) => (
+              {([["all", t("axisFinance.tabTransactions")], ["expense", t("axisFinance.expenseLabel")], ["income", t("axisFinance.incomeLabel")]] as const).map(([id, label]) => (
                 <button
                   key={id}
                   type="button"
@@ -526,8 +518,8 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                 >
                   <RotateCcw className="h-5 w-5 text-white/20" />
                 </div>
-                <p className="text-sm text-white/30 mb-1">Nenhuma conta cadastrada</p>
-                <p className="text-xs text-white/18">Use o botão abaixo para adicionar</p>
+                <p className="text-sm text-white/30 mb-1">{t("axisFinance.toBuy")}</p>
+                <p className="text-xs text-white/18">{t("axisFinance.billAddDone")}</p>
               </div>
             )}
 
@@ -539,7 +531,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                     className="text-xs font-semibold uppercase tracking-wider"
                     style={{ color: EXPENSE_COLOR }}
                   >
-                    Gastos Fixos
+                    {t("axisFinance.toPay")}
                   </span>
                   <span className="text-[11px] text-white/25">({expenses.length})</span>
                 </div>
@@ -555,7 +547,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                     className="text-xs font-semibold uppercase tracking-wider"
                     style={{ color: INCOME_COLOR }}
                   >
-                    Receitas Fixas
+                    {t("axisFinance.toReceive")}
                   </span>
                   <span className="text-[11px] text-white/25">({incomes.length})</span>
                 </div>
@@ -583,7 +575,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
               data-testid="button-manage-add-bill"
             >
               <Plus className="h-4 w-4" />
-              Nova conta
+              {t("axisFinance.registerBill")}
             </button>
           </div>
         </DialogContent>

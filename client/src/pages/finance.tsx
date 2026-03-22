@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useCurrency } from "@/hooks/use-currency";
 import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp, Settings2, Pencil, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,10 +23,6 @@ import type { Transaction, FinancialGoal } from "@shared/schema";
 
 const PAYMENT_METHOD_VALUES = ["debit","credit","pix","cash","other"] as const;
 type PaymentMethodValue = typeof PAYMENT_METHOD_VALUES[number];
-
-function fmtBRL(value: number): string {
-  return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 function fmtTxDate(date: Date | string | null | undefined, lang = "en-US"): string {
   if (!date) return "";
@@ -76,6 +73,7 @@ function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Dat
 export default function Finance() {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
+  const { fmtMoney, symbol } = useCurrency();
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
 
@@ -513,10 +511,10 @@ export default function Finance() {
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> {t("axisFinance.expensesDebit")}</p>
-            <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalExpenses)}</p>
+            <p className="text-xl font-bold mt-1">{fmtMoney(totalExpenses)}</p>
             {totalCardExpenses > 0 && (
               <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                <CreditCard className="h-3 w-3" /> {t("axisFinance.onCard", { amount: fmtBRL(totalCardExpenses) })}
+                <CreditCard className="h-3 w-3" /> {t("axisFinance.onCard", { amount: fmtMoney(totalCardExpenses) })}
               </p>
             )}
           </CardContent>
@@ -524,14 +522,14 @@ export default function Finance() {
         <Card className="border-border" data-testid="card-total-income">
           <CardContent className="pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3 text-green-500" /> {t("axisFinance.income")}</p>
-            <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalIncome)}</p>
+            <p className="text-xl font-bold mt-1">{fmtMoney(totalIncome)}</p>
           </CardContent>
         </Card>
         <Card className="border-border relative" data-testid="card-balance">
           <CardContent className="pt-4 pb-10">
             <p className="text-xs text-muted-foreground">{t("axisFinance.balance")}</p>
             <p className={`text-xl font-bold mt-1 ${initialBalance + allIncome - allExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
-              R$ {fmtBRL(initialBalance + allIncome - allExpenses)}
+              {fmtMoney(initialBalance + allIncome - allExpenses)}
             </p>
           </CardContent>
           <button
@@ -581,7 +579,7 @@ export default function Finance() {
                           {r.categoryName && <span className="text-xs text-muted-foreground hidden sm:inline">· {r.categoryName}</span>}
                         </span>
                         <span className={`ml-2 font-bold flex-shrink-0 flex items-center gap-1 ${typeColor}`}>
-                          R$ {fmtBRL(r.totalAmount ?? 0)}
+                          {fmtMoney(r.totalAmount ?? 0)}
                           {photoResults.length > 1 && (isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                         </span>
                       </button>
@@ -595,7 +593,7 @@ export default function Finance() {
                               {r.items.map((item: any, i: number) => (
                                 <div key={i} className="flex justify-between text-xs py-0.5">
                                   <span className="truncate">{item.description}</span>
-                                  <span className="ml-2 flex-shrink-0">R$ {fmtBRL(item.amount ?? 0)}</span>
+                                  <span className="ml-2 flex-shrink-0">{fmtMoney(item.amount ?? 0)}</span>
                                 </div>
                               ))}
                             </div>
@@ -808,7 +806,7 @@ export default function Finance() {
                 {pdfPreview.transactions?.map((tx: any, i: number) => (
                   <div key={i} className="flex justify-between text-xs py-1 border-b border-border/50">
                     <span className="truncate flex-1">{tx.description}</span>
-                    <span className={`ml-2 ${tx.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {fmtBRL(tx.amount ?? 0)}</span>
+                    <span className={`ml-2 ${tx.type === "income" ? "text-green-500" : "text-destructive"}`}>{fmtMoney(tx.amount ?? 0)}</span>
                   </div>
                 ))}
                 <Button onClick={() => confirmPdfMutation.mutate(pdfPreview)} disabled={confirmPdfMutation.isPending} className="w-full mt-2" data-testid="button-confirm-pdf">
@@ -890,7 +888,7 @@ export default function Finance() {
                           <div className="flex flex-col items-end">
                             {tx.date && <span className="text-xs text-muted-foreground leading-tight">{fmtTxDate(tx.date, lang)}</span>}
                             <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
-                              {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
+                              {tx.type === "income" ? "+" : "-"}{fmtMoney(tx.amount)}
                             </span>
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setTxToDelete(tx.id); }} data-testid={`button-delete-tx-${tx.id}`}>
@@ -903,7 +901,7 @@ export default function Finance() {
                           {parsedItems.map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs" style={{ borderBottom: idx < parsedItems.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                               <span className="text-white/70 truncate mr-3">{item.description}</span>
-                              <span className="font-medium text-white/90 shrink-0">R$ {fmtBRL(item.amount)}</span>
+                              <span className="font-medium text-white/90 shrink-0">{fmtMoney(item.amount)}</span>
                             </div>
                           ))}
                         </div>
@@ -961,10 +959,10 @@ export default function Finance() {
                         <p className="text-xs text-muted-foreground mb-2 ml-7">{g.description}</p>
                       )}
                       <div className="ml-7">
-                        <p className="text-base font-semibold text-foreground">R$ {fmtBRL(g.currentAmount)}</p>
+                        <p className="text-base font-semibold text-foreground">{fmtMoney(g.currentAmount)}</p>
                         {pct !== null && g.targetAmount && (
                           <>
-                            <p className="text-xs text-muted-foreground mb-1.5">de R$ {fmtBRL(g.targetAmount)}</p>
+                            <p className="text-xs text-muted-foreground mb-1.5">de {fmtMoney(g.targetAmount)}</p>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                               <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
                             </div>
@@ -1247,7 +1245,7 @@ export default function Finance() {
                   {t("axisFinance.depositDesc")}
                 </p>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{symbol}</span>
                   <Input
                     type="number"
                     step="0.01"
@@ -1294,10 +1292,10 @@ export default function Finance() {
               >
                 <p className="text-sm text-muted-foreground">
                   {t("axisFinance.withdrawDesc")}
-                  {withdrawGoal && <span className="block mt-1 font-medium">{t("axisFinance.available")}: R$ {fmtBRL(withdrawGoal.currentAmount)}</span>}
+                  {withdrawGoal && <span className="block mt-1 font-medium">{t("axisFinance.available")}: {fmtMoney(withdrawGoal.currentAmount)}</span>}
                 </p>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{symbol}</span>
                   <Input
                     type="number"
                     step="0.01"
@@ -1415,7 +1413,7 @@ export default function Finance() {
             data-testid="form-initial-balance"
           >
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{symbol}</span>
               <Input
                 type="number"
                 step="0.01"
@@ -1469,7 +1467,7 @@ export default function Finance() {
 
               {/* Amount */}
               <div className={`text-3xl font-bold ${isIncome ? "text-green-500" : "text-destructive"}`}>
-                {isIncome ? "+" : "-"}R$ {fmtBRL(tx.amount)}
+                {isIncome ? "+" : "-"}{fmtMoney(tx.amount)}
               </div>
 
               <div className="space-y-3 pt-1">
@@ -1573,7 +1571,7 @@ export default function Finance() {
                           {items.map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs" style={{ borderBottom: idx < items.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                               <span className="text-white/70 truncate mr-3">{item.description}</span>
-                              <span className="font-medium text-white/90 shrink-0">R$ {fmtBRL(item.amount)}</span>
+                              <span className="font-medium text-white/90 shrink-0">{fmtMoney(item.amount)}</span>
                             </div>
                           ))}
                         </div>

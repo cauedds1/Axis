@@ -7,6 +7,16 @@ import { db } from "./db";
 import { users, creditCards } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  BRL: "R$", USD: "$", EUR: "€", GBP: "£", JPY: "¥",
+  CAD: "C$", AUD: "A$", CHF: "Fr", MXN: "MX$", ARS: "$",
+  COP: "$", CLP: "$", PEN: "S/", UYU: "$", SGD: "S$",
+  INR: "₹", CNY: "¥", ZAR: "R", AED: "AED",
+};
+function getCurrencySymbol(code: string | null | undefined): string {
+  return CURRENCY_SYMBOLS[code ?? "BRL"] ?? "R$";
+}
+
 let _openaiClient: OpenAI | null = null;
 
 function getOpenAIClient(): OpenAI {
@@ -126,6 +136,9 @@ export async function detectIntentAndProcess(
   const todayDate = new Date().toISOString().split("T")[0];
   const openai = getOpenAIClient();
 
+  const userProfile = await storage.getUserProfile(userId).catch(() => null);
+  const detectCur = getCurrencySymbol((userProfile as any)?.currency);
+
   let userCards: any[] = [];
   let creditCardsContext = "";
   try {
@@ -165,7 +178,7 @@ DATA DE HOJE: ${todayDate}
 ${lastTxContext ? `
 ÚLTIMA TRANSAÇÃO REGISTRADA (pode ser relevante para correções):
 - Descrição: ${lastTxContext.description}
-- Valor: R$ ${lastTxContext.amount.toFixed(2)}
+- Valor: ${detectCur} ${lastTxContext.amount.toFixed(2)}
 - Categoria: ${lastTxContext.categoryName}
 - Estabelecimento: ${lastTxContext.establishment || "não informado"}
 - Tipo: ${lastTxContext.type === "expense" ? "gasto" : "receita"}
@@ -621,6 +634,7 @@ export async function chatWithContext(message: string, userId: string, executedA
   const allTimeIncome = allTimeTx.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
   const allTimeExpenses = allTimeTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((sum, t) => sum + t.amount, 0);
   const balance = (profile?.initialBalance ?? 0) + allTimeIncome - allTimeExpenses;
+  const cur = getCurrencySymbol((profile as any)?.currency);
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
   const spendingPct = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
 
@@ -632,7 +646,7 @@ export async function chatWithContext(message: string, userId: string, executedA
   const top3Categories = Object.entries(expensesByCategory)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
-    .map(([cat, val]) => `${cat}: R$${val.toFixed(0)}`);
+    .map(([cat, val]) => `${cat}: ${cur}${val.toFixed(0)}`);
 
   const monthlyHistory: Record<string, { income: number; expenses: number }> = {};
   allTransactions.forEach(t => {
@@ -735,13 +749,13 @@ export async function chatWithContext(message: string, userId: string, executedA
 
   // ─── ALERTS ─────────────────────────────────────────────────────────────────
   const alerts: string[] = [];
-  if (balance < 0) alerts.push(`⚠️ SALDO NEGATIVO: R$${Math.abs(balance).toFixed(2)} no vermelho`);
-  else if (spendingPct >= 90 && totalIncome > 0) alerts.push(`⚠️ Gastou ${spendingPct}% da renda este mês — sobrou apenas R$${balance.toFixed(0)}`);
+  if (balance < 0) alerts.push(`⚠️ SALDO NEGATIVO: ${cur}${Math.abs(balance).toFixed(2)} no vermelho`);
+  else if (spendingPct >= 90 && totalIncome > 0) alerts.push(`⚠️ Gastou ${spendingPct}% da renda este mês — sobrou apenas ${cur}${balance.toFixed(0)}`);
   overdueTasks.forEach(t => alerts.push(`⚠️ Tarefa atrasada: "${t.title}" (${formatTaskDue(t.dueDate)})`));
-  billsOverdue.forEach(b => alerts.push(`⚠️ Conta atrasada: "${b.title}" R$${b.amount.toFixed(0)} — deveria ter pago dia ${b.dueDay}`));
+  billsOverdue.forEach(b => alerts.push(`⚠️ Conta atrasada: "${b.title}" ${cur}${b.amount.toFixed(0)} — deveria ter pago dia ${b.dueDay}`));
   billsDueSoon.forEach(b => {
     const daysLeft = Math.floor((new Date(now.getFullYear(), now.getMonth(), b.dueDay).getTime() - now.getTime()) / 86400000);
-    alerts.push(`📅 Conta vence em ${daysLeft}d: "${b.title}" R$${b.amount.toFixed(0)}`);
+    alerts.push(`📅 Conta vence em ${daysLeft}d: "${b.title}" ${cur}${b.amount.toFixed(0)}`);
   });
   const dailyHabitsNotDone = habitsData.filter(h => h.frequency === "daily" && h.lastChecked !== todayStr);
   if (dailyHabitsNotDone.length > 0) {
@@ -771,17 +785,17 @@ Momento atual: ${profile.feelingStatus || "não informado"}
 Meta de 1 ano: ${profile.oneYearGoal || "não definida"}` : "Perfil não preenchido ainda."}
 
 ═══ FINANÇAS — ${now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toUpperCase()} ═══
-Receitas: R$${totalIncome.toFixed(2)}  |  Gastos: R$${totalExpenses.toFixed(2)}  |  Saldo: R$${balance.toFixed(2)}
+Receitas: ${cur}${totalIncome.toFixed(2)}  |  Gastos: ${cur}${totalExpenses.toFixed(2)}  |  Saldo: ${cur}${balance.toFixed(2)}
 Comprometimento da renda: ${spendingPct}%  |  Taxa de poupança: ${savingsRate.toFixed(1)}%
 Top gastos: ${top3Categories.length ? top3Categories.join(" · ") : "sem gastos registrados"}
-${goals.length > 0 ? `\nMETAS:\n${goals.map(g => `  ${g.title}: R$${g.currentAmount}/${g.targetAmount} (${Math.round((g.currentAmount / g.targetAmount) * 100)}%)`).join("\n")}` : ""}
-Histórico: ${Object.entries(monthlyHistory).sort().slice(-3).map(([m, v]) => `${m}: +R$${v.income.toFixed(0)}/-R$${v.expenses.toFixed(0)}`).join(" | ") || "sem histórico"}
-Últimas transações: ${recentTx.slice(0, 5).map(t => `${t.description} R$${t.amount.toFixed(0)} (${t.type === "expense" ? "↓" : "↑"} ${new Date(t.date).toLocaleDateString("pt-BR")})`).join(" | ") || "nenhuma"}
+${goals.length > 0 ? `\nMETAS:\n${goals.map(g => `  ${g.title}: ${cur}${g.currentAmount}/${g.targetAmount} (${Math.round((g.currentAmount / g.targetAmount) * 100)}%)`).join("\n")}` : ""}
+Histórico: ${Object.entries(monthlyHistory).sort().slice(-3).map(([m, v]) => `${m}: +${cur}${v.income.toFixed(0)}/-${cur}${v.expenses.toFixed(0)}`).join(" | ") || "sem histórico"}
+Últimas transações: ${recentTx.slice(0, 5).map(t => `${t.description} ${cur}${t.amount.toFixed(0)} (${t.type === "expense" ? "↓" : "↑"} ${new Date(t.date).toLocaleDateString("pt-BR")})`).join(" | ") || "nenhuma"}
 
 ═══ CONTAS RECORRENTES ═══
 ${activeBills.length === 0 ? "Nenhuma conta recorrente cadastrada." :
-`Total fixo: R$${totalBillsFixed.toFixed(2)}  |  A pagar ainda: R$${totalBillsUnpaid.toFixed(2)}  |  Pagas: ${paidBills.length}/${activeBills.filter(b => b.type === "expense").length}
-Pendentes: ${unpaidBills.length === 0 ? "nenhuma" : unpaidBills.map(b => `"${b.title}" R$${b.amount.toFixed(0)} (dia ${b.dueDay})${billsOverdue.includes(b) ? " ⚠️ATRASADA" : billsDueSoon.includes(b) ? " 📅VENCE EM BREVE" : ""}`).join(", ")}
+`Total fixo: ${cur}${totalBillsFixed.toFixed(2)}  |  A pagar ainda: ${cur}${totalBillsUnpaid.toFixed(2)}  |  Pagas: ${paidBills.length}/${activeBills.filter(b => b.type === "expense").length}
+Pendentes: ${unpaidBills.length === 0 ? "nenhuma" : unpaidBills.map(b => `"${b.title}" ${cur}${b.amount.toFixed(0)} (dia ${b.dueDay})${billsOverdue.includes(b) ? " ⚠️ATRASADA" : billsDueSoon.includes(b) ? " 📅VENCE EM BREVE" : ""}`).join(", ")}
 Pagas este mês: ${paidBills.length === 0 ? "nenhuma" : paidBills.map(b => `"${b.title}" ✓`).join(", ")}`}
 
 ═══ CARTÕES DE CRÉDITO ═══
@@ -790,7 +804,7 @@ userCards.map(c => {
   const used = allTransactions.filter(t => t.creditCardId === c.id && new Date(t.date) >= curMonthStart).reduce((s, t) => s + t.amount, 0);
   const avail = c.limit - used;
   const pct = Math.round((used / Math.max(c.limit, 1)) * 100);
-  return `  ${c.name} (${c.bank}): limite R$${c.limit.toFixed(0)}, usado R$${used.toFixed(0)} (${pct}%), disponível R$${avail.toFixed(0)} — fecha dia ${c.closingDay}, vence dia ${c.dueDay} — id: ${c.id}`;
+  return `  ${c.name} (${c.bank}): limite ${cur}${c.limit.toFixed(0)}, usado ${cur}${used.toFixed(0)} (${pct}%), disponível ${cur}${avail.toFixed(0)} — fecha dia ${c.closingDay}, vence dia ${c.dueDay} — id: ${c.id}`;
 }).join("\n")}
 
 ═══ TAREFAS ═══
@@ -1211,8 +1225,10 @@ export async function analyzeSpendingDiscipline(
   transactions: { title: string; amount: number; category?: string | null; type: string }[],
   monthlyIncome: number,
   cardContext?: { name: string; limit: number; used: number; utilizationPct: number; topCategories: string }[],
-  bankBalance?: number
+  bankBalance?: number,
+  currencySymbol: string = "R$"
 ): Promise<SpendingAnalysisResult> {
+  const cs = currencySymbol;
   const openai = getOpenAIClient();
   const expenses = transactions.filter(t => t.type === "expense");
   const totalExpenses = expenses.reduce((s, t) => s + t.amount, 0);
@@ -1243,26 +1259,26 @@ export async function analyzeSpendingDiscipline(
       const pct = ((data.total / monthlyIncome) * 100).toFixed(1);
       const isEssential = ESSENTIAL_CATEGORIES.has(cat);
       const preview = data.items.slice(0, 4).join(", ") + (data.items.length > 4 ? ` ... (+${data.items.length - 4} itens)` : "");
-      return `  • ${cat}${isEssential ? " [ESSENCIAL]" : ""}: ${data.count}x | R$ ${data.total.toFixed(2)} | ${pct}% renda | ex: ${preview}`;
+      return `  • ${cat}${isEssential ? " [ESSENCIAL]" : ""}: ${data.count}x | ${cs} ${data.total.toFixed(2)} | ${pct}% renda | ex: ${preview}`;
     })
     .join("\n");
 
   const cardSection = (cardContext && cardContext.length > 0)
     ? `\n══ CARTÕES DE CRÉDITO ══\n${cardContext.map(c => {
         const risk = c.utilizationPct >= 90 ? "🔴 CRÍTICO" : c.utilizationPct >= 70 ? "🟠 ALTO" : c.utilizationPct >= 50 ? "🟡 MÉDIO" : "🟢 OK";
-        return `  • ${c.name}: R$${c.used.toFixed(2)} / R$${c.limit.toFixed(2)} (${c.utilizationPct.toFixed(0)}% do limite) — ${risk}\n    Categorias no cartão: ${c.topCategories}`;
+        return `  • ${c.name}: ${cs}${c.used.toFixed(2)} / ${cs}${c.limit.toFixed(2)} (${c.utilizationPct.toFixed(0)}% do limite) — ${risk}\n    Categorias no cartão: ${c.topCategories}`;
       }).join("\n")}`
     : "";
 
   const balanceSection = (bankBalance !== undefined && monthlyIncome > 0)
-    ? `\nSaldo bancário atual: R$ ${bankBalance.toFixed(2)} (${((bankBalance / monthlyIncome) * 100).toFixed(0)}% da renda mensal)${bankBalance < 0 ? " — ⚠️ SALDO NEGATIVO" : bankBalance < monthlyIncome * 0.3 ? " — saldo muito baixo" : ""}`
+    ? `\nSaldo bancário atual: ${cs} ${bankBalance.toFixed(2)} (${((bankBalance / monthlyIncome) * 100).toFixed(0)}% da renda mensal)${bankBalance < 0 ? " — ⚠️ SALDO NEGATIVO" : bankBalance < monthlyIncome * 0.3 ? " — saldo muito baixo" : ""}`
     : "";
 
   const prompt = `Você é um coach de disciplina financeira. Avalie com EXTREMA PRECISÃO os gastos do usuário dos últimos 30 dias e determine o impacto real na disciplina.
 
 ══ CONTEXTO FINANCEIRO ══
-Renda mensal: R$ ${monthlyIncome.toFixed(2)}
-Total gasto: R$ ${totalExpenses.toFixed(2)} (${spendingPct}% da renda)
+Renda mensal: ${cs} ${monthlyIncome.toFixed(2)}
+Total gasto: ${cs} ${totalExpenses.toFixed(2)} (${spendingPct}% da renda)
 Taxa de poupança: ${savingsPct}% da renda${totalExpenses > monthlyIncome ? "\n⚠️ ATENÇÃO: gastou MAIS do que ganha este mês" : ""}${balanceSection}${cardSection}
 
 ══ GASTOS POR CATEGORIA ══

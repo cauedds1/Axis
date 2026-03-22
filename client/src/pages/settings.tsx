@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone } from "lucide-react";
+import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock } from "lucide-react";
+import { SUPPORTED_CURRENCIES, getCurrencyName } from "@/lib/currencies";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -44,6 +45,86 @@ function Block({ children, danger }: { children: React.ReactNode; danger?: boole
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function CurrencyPicker({ profile }: { profile: any }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [selected, setSelected] = useState<string>("");
+  const [search, setSearch] = useState("");
+
+  const isLocked = !!profile?.currencySetAt;
+  const currentCode = profile?.currency || "BRL";
+  const currentName = getCurrencyName(currentCode);
+
+  const filtered = SUPPORTED_CURRENCIES.filter(
+    c => c.code.toLowerCase().includes(search.toLowerCase()) || c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const currencyMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await apiRequest("PATCH", "/api/user/currency", { currency: code });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
+      toast({ title: t("axisSettings.currencySaved") });
+    },
+    onError: () => toast({ title: t("axisSettings.currencyError"), variant: "destructive" }),
+  });
+
+  if (isLocked) {
+    return (
+      <div
+        className="flex items-center gap-3 px-4 py-3 rounded-xl"
+        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+        data-testid="currency-locked-display"
+      >
+        <Lock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{currentCode}</p>
+          <p className="text-xs text-muted-foreground">{currentName}</p>
+        </div>
+        <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{t("axisSettings.currencyLocked")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2" data-testid="currency-picker">
+      <Select value={selected || currentCode} onValueChange={setSelected}>
+        <SelectTrigger data-testid="select-currency">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <div className="px-2 py-1.5 sticky top-0 bg-popover border-b border-border">
+            <input
+              placeholder={t("axisSettings.currencySearch")}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+              data-testid="input-currency-search"
+            />
+          </div>
+          {filtered.map(c => (
+            <SelectItem key={c.code} value={c.code}>
+              <span className="font-mono text-xs mr-2 text-muted-foreground">{c.symbol}</span>
+              {c.code} — {c.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        className="w-full"
+        onClick={() => currencyMutation.mutate(selected || currentCode)}
+        disabled={currencyMutation.isPending}
+        data-testid="button-save-currency"
+      >
+        {currencyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+        {t("axisSettings.currencySave")}
+      </Button>
     </div>
   );
 }
@@ -432,6 +513,12 @@ export default function SettingsPage() {
                     <SelectItem value="en">🇺🇸 {t("axisSettings.langEn")}</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <SectionLabel>{t("axisSettings.currency")}</SectionLabel>
+                <p className="text-xs text-muted-foreground mb-3">{t("axisSettings.currencyDesc")}</p>
+                <CurrencyPicker profile={userData?.profile} />
               </div>
 
               <div>

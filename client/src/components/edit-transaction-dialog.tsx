@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Loader2, CreditCard, Smartphone, Banknote, Wallet } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,14 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-const PAYMENT_METHODS = [
-  { value: "debit", label: "Débito", icon: CreditCard },
-  { value: "credit", label: "Crédito", icon: CreditCard },
-  { value: "pix", label: "Pix", icon: Smartphone },
-  { value: "cash", label: "Dinheiro", icon: Banknote },
-  { value: "other", label: "Outro", icon: Wallet },
-] as const;
 
 function toDateInputValue(date: string | Date | null | undefined): string {
   if (!date) return new Date().toISOString().split("T")[0];
@@ -28,7 +21,17 @@ interface Props {
 }
 
 export function EditTransactionDialog({ transaction, onClose }: Props) {
+  const { t } = useTranslation();
   const { toast } = useToast();
+
+  const PAYMENT_METHODS = [
+    { value: "debit", label: t("axisFinance.pmDebit"), icon: CreditCard },
+    { value: "credit", label: t("axisFinance.pmCredit"), icon: CreditCard },
+    { value: "pix", label: t("axisFinance.pmPix"), icon: Smartphone },
+    { value: "cash", label: t("axisFinance.pmCash"), icon: Banknote },
+    { value: "other", label: t("axisFinance.pmOther"), icon: Wallet },
+  ] as const;
+
   const [form, setForm] = useState({
     type: "expense",
     amount: "",
@@ -70,11 +73,11 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Transação atualizada com sucesso!" });
+      toast({ title: t("axisFinance.txUpdated") });
       onClose();
     },
     onError: (err: any) => {
-      toast({ title: "Erro ao atualizar transação", description: err.message, variant: "destructive" });
+      toast({ title: t("axisFinance.txUpdateError"), description: err.message, variant: "destructive" });
     },
   });
 
@@ -98,63 +101,57 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
     <Dialog open={!!transaction} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent data-testid="dialog-edit-transaction">
         <DialogHeader>
-          <DialogTitle>Editar transação</DialogTitle>
+          <DialogTitle>{t("axisFinance.editTransaction")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-3" data-testid="form-edit-transaction">
-          {/* Tipo */}
           <Select value={form.type} onValueChange={(v) => setForm(p => ({ ...p, type: v, creditCardId: "" }))}>
             <SelectTrigger data-testid="select-edit-tx-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="expense">Gasto</SelectItem>
-              <SelectItem value="income">Receita</SelectItem>
+              <SelectItem value="expense">{t("axisFinance.expense")}</SelectItem>
+              <SelectItem value="income">{t("axisFinance.incomeLabel")}</SelectItem>
             </SelectContent>
           </Select>
 
-          {/* Valor */}
           <Input
             type="number"
             step="0.01"
             min="0.01"
-            placeholder="Valor"
+            placeholder={t("axisFinance.amountLabel")}
             value={form.amount}
             onChange={(e) => setForm(p => ({ ...p, amount: e.target.value }))}
             required
             data-testid="input-edit-tx-amount"
           />
 
-          {/* Descrição */}
           <Input
-            placeholder="Descrição"
+            placeholder={t("axisFinance.description")}
             value={form.description}
             onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}
             required
             data-testid="input-edit-tx-description"
           />
 
-          {/* Categoria */}
           <div>
             <Input
-              placeholder="Categoria"
+              placeholder={t("axisFinance.categoryRequired")}
               value={form.categoryName}
               onChange={(e) => setForm(p => ({ ...p, categoryName: e.target.value }))}
               required
               data-testid="input-edit-tx-category"
             />
-            <p className="text-[11px] text-muted-foreground mt-1 ml-1">Ex: Alimentação, Transporte, Saúde…</p>
+            <p className="text-[11px] text-muted-foreground mt-1 ml-1">{t("axisFinance.categoryPlaceholder")}</p>
           </div>
 
-          {/* Estabelecimento */}
           <Input
-            placeholder="Estabelecimento (opcional)"
+            placeholder={t("axisFinance.establishmentOptional")}
             value={form.establishment}
             onChange={(e) => setForm(p => ({ ...p, establishment: e.target.value }))}
             data-testid="input-edit-tx-establishment"
           />
 
-          {/* Data */}
           <Input
             type="date"
             value={form.date}
@@ -163,16 +160,15 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
             data-testid="input-edit-tx-date"
           />
 
-          {/* Forma de pagamento */}
           <Select
             value={form.paymentMethod || "_none"}
             onValueChange={(v) => setForm(p => ({ ...p, paymentMethod: v === "_none" ? "" : v }))}
           >
             <SelectTrigger data-testid="select-edit-tx-payment">
-              <SelectValue placeholder="Forma de pagamento (opcional)" />
+              <SelectValue placeholder={t("axisFinance.paymentMethod")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">Não especificado</SelectItem>
+              <SelectItem value="_none">{t("axisFinance.notSpecified")}</SelectItem>
               {PAYMENT_METHODS.map(m => (
                 <SelectItem key={m.value} value={m.value}>
                   <div className="flex items-center gap-2">
@@ -184,19 +180,18 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
             </SelectContent>
           </Select>
 
-          {/* Cartão de crédito — só para gastos */}
           {form.type === "expense" && creditCards.length > 0 && (
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Cartão de crédito (opcional)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.creditCardOptional")}</label>
               <Select
                 value={form.creditCardId || "_none"}
                 onValueChange={(v) => setForm(p => ({ ...p, creditCardId: v === "_none" ? "" : v, paymentMethod: v !== "_none" ? "credit" : p.paymentMethod }))}
               >
                 <SelectTrigger data-testid="select-edit-tx-card">
-                  <SelectValue placeholder="Selecionar cartão" />
+                  <SelectValue placeholder={t("axisFinance.selectCard")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_none">Nenhum cartão</SelectItem>
+                  <SelectItem value="_none">{t("axisFinance.noCard")}</SelectItem>
                   {creditCards.map((card: any) => (
                     <SelectItem key={card.id} value={card.id}>
                       <div className="flex items-center gap-2">
@@ -218,7 +213,7 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
               onClick={onClose}
               data-testid="button-edit-tx-cancel"
             >
-              Cancelar
+              {t("axisFinance.cancel")}
             </Button>
             <Button
               type="submit"
@@ -227,7 +222,7 @@ export function EditTransactionDialog({ transaction, onClose }: Props) {
               data-testid="button-edit-tx-save"
             >
               {editMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Salvar
+              {t("axisFinance.save")}
             </Button>
           </div>
         </form>

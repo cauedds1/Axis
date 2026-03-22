@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   CreditCard, Plus, Trash2, Loader2, Calendar, AlertCircle,
   Pencil, Check, X, ShoppingCart, TrendingUp, ChevronDown, ChevronUp,
@@ -12,10 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
-
-function fmtBRL(v: number) {
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 function getInvoiceMonthKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -88,6 +86,9 @@ function CardDetailSheet({
 }) {
   const { toast } = useToast();
   const { theme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const { fmtMoney, symbol } = useCurrency();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const MP = getModulePalette(theme as any);
   const NEGATIVE = MP.negative;
   const POSITIVE = MP.positive;
@@ -138,9 +139,9 @@ function CardDetailSheet({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       setEditing(false);
-      toast({ title: "Cartão atualizado" });
+      toast({ title: t("axisFinance.cardUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.cardUpdateError"), variant: "destructive" }),
   });
 
   const purchaseMutation = useMutation({
@@ -164,10 +165,10 @@ function CardDetailSheet({
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards", card.id, "invoices"] });
       setPurchase({ description: "", amount: "", installments: "1", categoryName: "", establishment: "", date: new Date().toISOString().split("T")[0] });
-      toast({ title: "Compra registrada" });
+      toast({ title: t("axisFinance.purchaseAdded") });
       setTab("overview");
     },
-    onError: () => toast({ title: "Erro ao registrar compra", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.purchaseError"), variant: "destructive" }),
   });
 
   function handleSaveEdit() {
@@ -175,7 +176,7 @@ function CardDetailSheet({
     const closingNum = parseInt(editForm.closingDay);
     const dueNum = parseInt(editForm.dueDay);
     if (!editForm.name || !editForm.bank || isNaN(limitNum) || isNaN(closingNum) || isNaN(dueNum)) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      toast({ title: t("axisFinance.fillAllFields"), variant: "destructive" });
       return;
     }
     updateMutation.mutate({
@@ -256,13 +257,13 @@ function CardDetailSheet({
           {/* Limit numbers */}
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
-              { label: "Limite", value: card.limit, color: "text-white" },
-              { label: "Utilizado", value: card.usedThisMonth ?? 0, color: isHigh ? "text-red-400" : "text-white" },
-              { label: "Disponível", value: available, color: "text-emerald-400" },
+              { label: t("axisFinance.cardLimit"), value: card.limit, color: "text-white" },
+              { label: t("axisFinance.cardUsed"), value: card.usedThisMonth ?? 0, color: isHigh ? "text-red-400" : "text-white" },
+              { label: t("axisFinance.cardAvailable"), value: available, color: "text-emerald-400" },
             ].map(({ label, value, color }) => (
               <div key={label} className="rounded-xl p-2.5 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-[10px] text-white/35 uppercase tracking-wider mb-1">{label}</p>
-                <p className={`text-sm font-bold ${color}`}>R$ {fmtBRL(value)}</p>
+                <p className={`text-sm font-bold ${color}`}>{fmtMoney(value)}</p>
               </div>
             ))}
           </div>
@@ -276,30 +277,30 @@ function CardDetailSheet({
               />
             </div>
             <div className="flex items-center justify-between mt-1.5">
-              <p className="text-[10px] text-white/30">{pct.toFixed(0)}% utilizado</p>
+              <p className="text-[10px] text-white/30">{pct.toFixed(0)}% {t("axisFinance.cardUsedPct")}</p>
               <p className="text-[10px] text-white/30">
                 {isHigh
-                  ? <span className="text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3 inline" /> Atenção</span>
-                  : `Fecha em ${daysLeft} dia${daysLeft !== 1 ? "s" : ""}`}
+                  ? <span className="text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3 inline" /> {t("axisFinance.highUsage")}</span>
+                  : t("axisFinance.closesInDays", { count: daysLeft })}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 mt-2">
             <span className="text-[11px] text-white/30 flex items-center gap-1">
-              <Calendar className="h-3 w-3" /> Fecha dia {card.closingDay}
+              <Calendar className="h-3 w-3" /> {t("axisFinance.closesDay", { day: card.closingDay })}
             </span>
             <span className="text-white/15">·</span>
-            <span className="text-[11px] text-white/30">Vence dia {card.dueDay}</span>
+            <span className="text-[11px] text-white/30">{t("axisFinance.dueDayDisplay", { day: card.dueDay })}</span>
           </div>
         </div>
 
         {/* Tab bar */}
         <div className="flex px-5 gap-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {([
-            ["overview", "Fatura", null],
-            ["purchase", "Registrar compra", null],
-            ["invoice", "Histórico", null],
+            ["overview", t("axisFinance.tabInvoice"), null],
+            ["purchase", t("axisFinance.tabRegisterPurchase"), null],
+            ["invoice", t("axisFinance.tabHistory"), null],
           ] as const).map(([id, label]) => (
             <button
               key={id}
@@ -327,52 +328,52 @@ function CardDetailSheet({
         {editing && (
           <div className="px-5 py-5 space-y-4">
             <div className="flex items-center justify-between mb-1">
-              <SectionTitle icon={<Pencil className="h-3.5 w-3.5" />}>Editar cartão</SectionTitle>
+              <SectionTitle icon={<Pencil className="h-3.5 w-3.5" />}>{t("axisFinance.editCard")}</SectionTitle>
               <button onClick={() => setEditing(false)} className="text-white/30 hover:text-white/60 transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div>
-              <FieldLabel>Nome do cartão</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardName")}</FieldLabel>
               <FieldInput value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Nubank Gold" data-testid="input-edit-card-name" />
             </div>
             <div>
-              <FieldLabel>Banco</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardBank")}</FieldLabel>
               <FieldInput value={editForm.bank} onChange={e => setEditForm(f => ({ ...f, bank: e.target.value }))} placeholder="Ex: Nubank" data-testid="input-edit-card-bank" />
             </div>
             <div>
-              <FieldLabel>Limite (R$)</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardLimitLabel")}</FieldLabel>
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-                <span className="text-white/35 text-sm font-semibold">R$</span>
+                <span className="text-white/35 text-sm font-semibold">{symbol}</span>
                 <input type="number" step="0.01" value={editForm.limit} onChange={e => setEditForm(f => ({ ...f, limit: e.target.value }))}
-                  placeholder="0,00" className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
+                  placeholder="0.00" className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
                   data-testid="input-edit-card-limit" />
               </div>
               {limitHistory.length > 0 && (
                 <p className="text-[10px] text-white/25 mt-1.5">
-                  Limite anterior: R$ {fmtBRL(limitHistory[limitHistory.length - 1]?.limit ?? card.limit)}
+                  {t("axisFinance.prevLimit")}: {fmtMoney(limitHistory[limitHistory.length - 1]?.limit ?? card.limit)}
                 </p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <FieldLabel>Fechamento</FieldLabel>
+                <FieldLabel>{t("axisFinance.closingDay")}</FieldLabel>
                 <div className="relative">
                   <FieldInput type="number" min="1" max="31" value={editForm.closingDay} onChange={e => setEditForm(f => ({ ...f, closingDay: e.target.value }))} data-testid="input-edit-card-closing" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">dia</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">{t("axisFinance.dayLabel")}</span>
                 </div>
               </div>
               <div>
-                <FieldLabel>Vencimento</FieldLabel>
+                <FieldLabel>{t("axisFinance.dueDay")}</FieldLabel>
                 <div className="relative">
                   <FieldInput type="number" min="1" max="31" value={editForm.dueDay} onChange={e => setEditForm(f => ({ ...f, dueDay: e.target.value }))} data-testid="input-edit-card-due" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">dia</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">{t("axisFinance.dayLabel")}</span>
                 </div>
               </div>
             </div>
             <div>
-              <FieldLabel>Cor</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardColor")}</FieldLabel>
               <div className="flex gap-2 flex-wrap">
                 {CARD_COLORS.map(color => (
                   <button key={color} type="button"
@@ -392,7 +393,7 @@ function CardDetailSheet({
               data-testid="button-save-card-edit"
             >
               {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-              {updateMutation.isPending ? "Salvando..." : "Salvar alterações"}
+              {updateMutation.isPending ? t("axisFinance.saving") : t("axisFinance.saveChanges")}
             </button>
           </div>
         )}
@@ -404,16 +405,16 @@ function CardDetailSheet({
             {/* Current invoice status */}
             <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-center justify-between mb-3">
-                <SectionTitle icon={<Calendar className="h-3.5 w-3.5" />}>Fatura atual</SectionTitle>
+                <SectionTitle icon={<Calendar className="h-3.5 w-3.5" />}>{t("axisFinance.currentInvoice")}</SectionTitle>
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
                   style={{ background: "rgba(234,179,8,0.12)", color: "#eab308" }}
                 >
-                  Aberta
+                  {t("axisFinance.invoiceOpen")}
                 </span>
               </div>
-              <p className="text-2xl font-bold text-white mb-0.5">R$ {fmtBRL(displayUsed)}</p>
-              <p className="text-[11px] text-white/30">Fecha dia {card.closingDay} · Vence dia {card.dueDay}</p>
+              <p className="text-2xl font-bold text-white mb-0.5">{fmtMoney(displayUsed)}</p>
+              <p className="text-[11px] text-white/30">{t("axisFinance.closesDay", { day: card.closingDay })} · {t("axisFinance.dueDayDisplay", { day: card.dueDay })}</p>
             </div>
 
             {/* Transactions */}
@@ -424,20 +425,20 @@ function CardDetailSheet({
             {!invoiceLoading && currentTx.length === 0 && (
               <div className="text-center py-8">
                 <ShoppingCart className="h-8 w-8 text-white/15 mx-auto mb-2" />
-                <p className="text-sm text-white/30">Nenhuma compra nesta fatura</p>
+                <p className="text-sm text-white/30">{t("axisFinance.noPurchasesInvoice")}</p>
                 <button
                   onClick={() => setTab("purchase")}
                   className="mt-3 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
                   style={{ background: `${cardColor}18`, color: cardColor, border: `1px solid ${cardColor}30` }}
                 >
-                  Registrar compra
+                  {t("axisFinance.tabRegisterPurchase")}
                 </button>
               </div>
             )}
 
             {currentTx.length > 0 && (
               <div className="space-y-2">
-                <SectionTitle icon={<ShoppingCart className="h-3.5 w-3.5" />}>Compras do mês</SectionTitle>
+                <SectionTitle icon={<ShoppingCart className="h-3.5 w-3.5" />}>{t("axisFinance.monthPurchases")}</SectionTitle>
                 {currentTx.map((tx: any) => {
                   let badge: string | null = null;
                   try {
@@ -454,7 +455,7 @@ function CardDetailSheet({
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-white truncate">{tx.description}</p>
                         <p className="text-[11px] text-white/35">
-                          {new Date(tx.date).toLocaleDateString("pt-BR")}
+                          {new Date(tx.date).toLocaleDateString(lang)}
                           {tx.categoryName && ` · ${tx.categoryName}`}
                           {tx.establishment && ` · ${tx.establishment}`}
                         </p>
@@ -468,7 +469,7 @@ function CardDetailSheet({
                             {badge}
                           </span>
                         )}
-                        <span className="text-sm font-bold text-red-400">R$ {fmtBRL(tx.amount)}</span>
+                        <span className="text-sm font-bold text-red-400">{fmtMoney(tx.amount)}</span>
                         <button
                           onClick={() => setEditingTx(tx)}
                           className="p-1 rounded opacity-30 hover:opacity-80 transition-opacity"
@@ -487,12 +488,12 @@ function CardDetailSheet({
             {/* Past invoices */}
             {!invoiceLoading && invoiceData?.invoices && invoiceData.invoices.filter((i: any) => i.monthKey !== currentMonthKey).length > 0 && (
               <div className="space-y-2">
-                <SectionTitle icon={<Calendar className="h-3.5 w-3.5" />}>Faturas anteriores</SectionTitle>
+                <SectionTitle icon={<Calendar className="h-3.5 w-3.5" />}>{t("axisFinance.pastInvoices")}</SectionTitle>
                 {invoiceData.invoices
                   .filter((i: any) => i.monthKey !== currentMonthKey)
                   .map((inv: any) => {
                     const [y, m] = inv.monthKey.split("-");
-                    const label = new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+                    const label = new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString(lang, { month: "long", year: "numeric" });
                     return (
                       <div
                         key={inv.id}
@@ -503,10 +504,10 @@ function CardDetailSheet({
                         <div>
                           <p className="text-sm font-medium text-white capitalize">{label}</p>
                           <p className="text-[11px]" style={{ color: inv.status === "paid" ? "#22c55e" : inv.status === "closed" ? "#60a5fa" : "#eab308" }}>
-                            {inv.status === "paid" ? "Paga" : inv.status === "closed" ? "Fechada" : "Aberta"}
+                            {inv.status === "paid" ? t("axisFinance.invoicePaid") : inv.status === "closed" ? t("axisFinance.invoiceClosed") : t("axisFinance.invoiceOpen")}
                           </p>
                         </div>
-                        <p className="text-sm font-bold text-white">R$ {fmtBRL(inv.total)}</p>
+                        <p className="text-sm font-bold text-white">{fmtMoney(inv.total)}</p>
                       </div>
                     );
                   })}
@@ -518,13 +519,13 @@ function CardDetailSheet({
         {/* ── Tab: Registrar compra ── */}
         {!editing && tab === "purchase" && (
           <div className="px-5 py-5 space-y-4">
-            <SectionTitle icon={<ShoppingCart className="h-3.5 w-3.5" />}>Nova compra no cartão</SectionTitle>
+            <SectionTitle icon={<ShoppingCart className="h-3.5 w-3.5" />}>{t("axisFinance.newPurchaseCard")}</SectionTitle>
 
             {/* Amount */}
             <div>
-              <FieldLabel>Valor (R$)</FieldLabel>
+              <FieldLabel>{t("axisFinance.amountLabel")}</FieldLabel>
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-                <span className="text-white/35 text-sm font-semibold">R$</span>
+                <span className="text-white/35 text-sm font-semibold">{symbol}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -539,29 +540,29 @@ function CardDetailSheet({
 
             {/* Description */}
             <div>
-              <FieldLabel>Descrição</FieldLabel>
+              <FieldLabel>{t("axisFinance.descriptionLabel")}</FieldLabel>
               <FieldInput
                 value={purchase.description}
                 onChange={e => setPurchase(p => ({ ...p, description: e.target.value }))}
-                placeholder="Ex: Tênis Nike, Jantar..."
+                placeholder={t("axisFinance.purchaseDescPlaceholder")}
                 data-testid="input-purchase-description"
               />
             </div>
 
             {/* Establishment */}
             <div>
-              <FieldLabel>Local / Estabelecimento</FieldLabel>
+              <FieldLabel>{t("axisFinance.establishmentLabel")}</FieldLabel>
               <FieldInput
                 value={purchase.establishment}
                 onChange={e => setPurchase(p => ({ ...p, establishment: e.target.value }))}
-                placeholder="Ex: Amazon, iFood, Shopping..."
+                placeholder={t("axisFinance.establishmentPlaceholder")}
                 data-testid="input-purchase-establishment"
               />
             </div>
 
             {/* Installments */}
             <div>
-              <FieldLabel>Parcelamento</FieldLabel>
+              <FieldLabel>{t("axisFinance.installmentsLabel")}</FieldLabel>
               <div className="flex gap-2 flex-wrap">
                 {["1", "2", "3", "4", "5", "6", "10", "12", "18", "24"].map(n => {
                   const active = purchase.installments === n;
@@ -578,21 +579,21 @@ function CardDetailSheet({
                       }}
                       data-testid={`installments-${n}`}
                     >
-                      {n === "1" ? "À vista" : `${n}x`}
+                      {n === "1" ? t("axisFinance.inCashLabel") : `${n}x`}
                     </button>
                   );
                 })}
               </div>
               {parseInt(purchase.installments) > 1 && parseFloat(purchase.amount) > 0 && (
                 <p className="text-[11px] text-white/35 mt-2">
-                  {purchase.installments}x de R$ {fmtBRL(parseFloat(purchase.amount) / parseInt(purchase.installments))}
+                  {purchase.installments}x {t("axisFinance.ofAmount")} {fmtMoney(parseFloat(purchase.amount) / parseInt(purchase.installments))}
                 </p>
               )}
             </div>
 
             {/* Category */}
             <div>
-              <FieldLabel>Categoria</FieldLabel>
+              <FieldLabel>{t("axisFinance.categoryLabel")}</FieldLabel>
               <div className="flex gap-1.5 flex-wrap">
                 {CATEGORIES.map(cat => {
                   const active = purchase.categoryName === cat;
@@ -618,7 +619,7 @@ function CardDetailSheet({
 
             {/* Date */}
             <div>
-              <FieldLabel>Data da compra</FieldLabel>
+              <FieldLabel>{t("axisFinance.purchaseDateLabel")}</FieldLabel>
               <FieldInput
                 type="date"
                 value={purchase.date}
@@ -639,8 +640,8 @@ function CardDetailSheet({
                   ? <Loader2 className="h-4 w-4 animate-spin" />
                   : <Check className="h-4 w-4" />}
                 {purchaseMutation.isPending
-                  ? "Registrando..."
-                  : `Registrar${parseInt(purchase.installments) > 1 ? ` em ${purchase.installments}x` : ""}`}
+                  ? t("axisFinance.registering")
+                  : parseInt(purchase.installments) > 1 ? t("axisFinance.registerInInstallments", { n: purchase.installments }) : t("axisFinance.registerPurchase")}
               </button>
             </div>
           </div>
@@ -649,13 +650,13 @@ function CardDetailSheet({
         {/* ── Tab: Histórico de limite ── */}
         {!editing && tab === "invoice" && (
           <div className="px-5 py-5 space-y-5">
-            <SectionTitle icon={<TrendingUp className="h-3.5 w-3.5" />}>Evolução do limite</SectionTitle>
+            <SectionTitle icon={<TrendingUp className="h-3.5 w-3.5" />}>{t("axisFinance.limitEvolution")}</SectionTitle>
 
             {limitHistory.length === 0 && (
               <div className="text-center py-8">
                 <TrendingUp className="h-8 w-8 text-white/15 mx-auto mb-2" />
-                <p className="text-sm text-white/30">Nenhuma alteração de limite registrada</p>
-                <p className="text-[11px] text-white/20 mt-1">Altere o limite pelo botão de edição para ver o histórico aqui</p>
+                <p className="text-sm text-white/30">{t("axisFinance.noLimitHistory")}</p>
+                <p className="text-[11px] text-white/20 mt-1">{t("axisFinance.noLimitHistoryHint")}</p>
               </div>
             )}
 
@@ -688,19 +689,19 @@ function CardDetailSheet({
                       {/* Content */}
                       <div className="flex-1 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-white">R$ {fmtBRL(entry.limit)}</p>
+                          <p className="text-sm font-bold text-white">{fmtMoney(entry.limit)}</p>
                           {prev && (
                             <span
                               className="text-[11px] font-semibold"
                               style={{ color: isIncrease ? "#22c55e" : "#ef4444" }}
                             >
-                              {isIncrease ? "+" : "-"}R$ {fmtBRL(diff)}
+                              {isIncrease ? "+" : "-"}{fmtMoney(diff)}
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-white/30 mt-0.5">
-                          {new Date(entry.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
-                          {isIncrease === null && " · Limite inicial"}
+                          {new Date(entry.date).toLocaleDateString(lang, { day: "2-digit", month: "long", year: "numeric" })}
+                          {isIncrease === null && ` · ${t("axisFinance.initialLimit")}`}
                         </p>
                       </div>
                     </div>
@@ -714,8 +715,8 @@ function CardDetailSheet({
                       <CreditCard className="h-3.5 w-3.5" style={{ color: cardColor }} />
                     </div>
                     <div className="flex-1 rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                      <p className="text-sm font-bold text-white">R$ {fmtBRL(card.limit)}</p>
-                      <p className="text-[11px] text-white/30 mt-0.5">Limite atual</p>
+                      <p className="text-sm font-bold text-white">{fmtMoney(card.limit)}</p>
+                      <p className="text-[11px] text-white/30 mt-0.5">{t("axisFinance.currentLimit")}</p>
                     </div>
                   </div>
                 )}
@@ -733,6 +734,8 @@ function CardDetailSheet({
 export function CreditCardsTab() {
   const { toast } = useToast();
   const { theme } = useTheme();
+  const { t } = useTranslation();
+  const { fmtMoney, symbol } = useCurrency();
   const MP = getModulePalette(theme as any);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -751,9 +754,9 @@ export function CreditCardsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       setShowAdd(false);
       setForm(EMPTY_FORM);
-      toast({ title: "Cartão adicionado" });
+      toast({ title: t("axisFinance.cardAdded") });
     },
-    onError: () => toast({ title: "Erro ao adicionar cartão", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.cardAddError"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -762,9 +765,9 @@ export function CreditCardsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
       setDeleteCardId(null);
       setSelectedCardId(null);
-      toast({ title: "Cartão removido" });
+      toast({ title: t("axisFinance.cardRemoved") });
     },
-    onError: () => toast({ title: "Erro ao remover cartão", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.cardRemoveError"), variant: "destructive" }),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -773,7 +776,7 @@ export function CreditCardsTab() {
     const closingNum = parseInt(form.closingDay);
     const dueNum = parseInt(form.dueDay);
     if (!form.name || !form.bank || isNaN(limitNum) || isNaN(closingNum) || isNaN(dueNum)) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      toast({ title: t("axisFinance.fillAllFields"), variant: "destructive" });
       return;
     }
     createMutation.mutate({ name: form.name, bank: form.bank, limit: limitNum, closingDay: closingNum, dueDay: dueNum, color: form.color });
@@ -786,14 +789,14 @@ export function CreditCardsTab() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Toque em um cartão para gerenciar</p>
+        <p className="text-sm text-muted-foreground">{t("axisFinance.tapCardToManage")}</p>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
           style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.09)" }}
           data-testid="button-add-credit-card"
         >
-          <Plus className="h-3.5 w-3.5" /> Adicionar
+          <Plus className="h-3.5 w-3.5" /> {t("axisFinance.add")}
         </button>
       </div>
 
@@ -808,8 +811,8 @@ export function CreditCardsTab() {
         >
           <CreditCard className="h-10 w-10 text-white/15" />
           <div>
-            <p className="font-semibold text-sm text-white/60">Nenhum cartão cadastrado</p>
-            <p className="text-xs text-white/30 mt-1">Adicione seus cartões para controlar limite e faturas</p>
+            <p className="font-semibold text-sm text-white/60">{t("axisFinance.noCardsRegistered")}</p>
+            <p className="text-xs text-white/30 mt-1">{t("axisFinance.noCardsHint")}</p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
@@ -817,7 +820,7 @@ export function CreditCardsTab() {
             style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.09)" }}
             data-testid="button-add-credit-card-empty"
           >
-            <Plus className="h-3.5 w-3.5" /> Adicionar cartão
+            <Plus className="h-3.5 w-3.5" /> {t("axisFinance.addCard")}
           </button>
         </div>
       )}
@@ -867,13 +870,13 @@ export function CreditCardsTab() {
                 {/* Three columns */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {[
-                    { label: "Limite", value: card.limit, color: "text-white" },
-                    { label: "Utilizado", value: card.usedThisMonth ?? 0, color: isHigh ? "text-red-400" : "text-white" },
-                    { label: "Disponível", value: available, color: "text-emerald-400" },
+                    { label: t("axisFinance.cardLimit"), value: card.limit, color: "text-white" },
+                    { label: t("axisFinance.cardUsed"), value: card.usedThisMonth ?? 0, color: isHigh ? "text-red-400" : "text-white" },
+                    { label: t("axisFinance.cardAvailable"), value: available, color: "text-emerald-400" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="text-center">
                       <p className="text-[9px] text-white/30 uppercase tracking-wide">{label}</p>
-                      <p className={`text-xs font-bold mt-0.5 ${color}`}>R$ {fmtBRL(value)}</p>
+                      <p className={`text-xs font-bold mt-0.5 ${color}`}>{fmtMoney(value)}</p>
                     </div>
                   ))}
                 </div>
@@ -889,10 +892,10 @@ export function CreditCardsTab() {
                 {/* Footer */}
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-[10px] text-white/25 flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Fecha dia {card.closingDay} · Vence dia {card.dueDay}
+                    <Calendar className="h-3 w-3" /> {t("axisFinance.closesDay", { day: card.closingDay })} · {t("axisFinance.dueDayDisplay", { day: card.dueDay })}
                   </span>
                   <span className="text-[10px] text-white/25">
-                    {isHigh ? <span className="text-red-400">Limite alto</span> : `${daysLeft}d para fechar`}
+                    {isHigh ? <span className="text-red-400">{t("axisFinance.highLimit")}</span> : t("axisFinance.daysToClose", { count: daysLeft })}
                   </span>
                 </div>
               </div>
@@ -926,44 +929,44 @@ export function CreditCardsTab() {
         >
           <div className="flex-shrink-0 px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <DialogHeader>
-              <DialogTitle className="text-white text-base font-semibold">Novo cartão de crédito</DialogTitle>
+              <DialogTitle className="text-white text-base font-semibold">{t("axisFinance.newCreditCard")}</DialogTitle>
             </DialogHeader>
           </div>
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4" data-testid="form-add-credit-card">
             <div>
-              <FieldLabel>Nome do cartão</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardName")}</FieldLabel>
               <FieldInput placeholder="Ex: Nubank Gold, Itaú Platinum..." value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} data-testid="input-card-name" />
             </div>
             <div>
-              <FieldLabel>Banco</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardBank")}</FieldLabel>
               <FieldInput placeholder="Ex: Nubank, Itaú, Bradesco..." value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} data-testid="input-card-bank" />
             </div>
             <div>
-              <FieldLabel>Limite (R$)</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardLimitLabel")}</FieldLabel>
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-                <span className="text-white/35 text-sm font-semibold">R$</span>
-                <input type="number" step="0.01" value={form.limit} onChange={e => setForm(p => ({ ...p, limit: e.target.value }))} placeholder="5000,00" className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20" data-testid="input-card-limit" />
+                <span className="text-white/35 text-sm font-semibold">{symbol}</span>
+                <input type="number" step="0.01" value={form.limit} onChange={e => setForm(p => ({ ...p, limit: e.target.value }))} placeholder="5000.00" className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20" data-testid="input-card-limit" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <FieldLabel>Fechamento</FieldLabel>
+                <FieldLabel>{t("axisFinance.closingDay")}</FieldLabel>
                 <div className="relative">
                   <FieldInput type="number" min={1} max={31} placeholder="15" value={form.closingDay} onChange={e => setForm(p => ({ ...p, closingDay: e.target.value }))} data-testid="input-card-closing-day" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">dia</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">{t("axisFinance.dayLabel")}</span>
                 </div>
               </div>
               <div>
-                <FieldLabel>Vencimento</FieldLabel>
+                <FieldLabel>{t("axisFinance.dueDay")}</FieldLabel>
                 <div className="relative">
                   <FieldInput type="number" min={1} max={31} placeholder="22" value={form.dueDay} onChange={e => setForm(p => ({ ...p, dueDay: e.target.value }))} data-testid="input-card-due-day" />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">dia</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/25 pointer-events-none">{t("axisFinance.dayLabel")}</span>
                 </div>
               </div>
             </div>
             <div>
-              <FieldLabel>Cor do cartão</FieldLabel>
+              <FieldLabel>{t("axisFinance.cardColor")}</FieldLabel>
               <div className="flex gap-2 flex-wrap">
                 {CARD_COLORS.map(color => (
                   <button key={color} type="button" onClick={() => setForm(p => ({ ...p, color }))}
@@ -986,7 +989,7 @@ export function CreditCardsTab() {
               data-testid="button-submit-credit-card"
             >
               {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              {createMutation.isPending ? "Adicionando..." : "Adicionar cartão"}
+              {createMutation.isPending ? t("axisFinance.adding") : t("axisFinance.addCard")}
             </button>
           </div>
         </DialogContent>
@@ -996,19 +999,19 @@ export function CreditCardsTab() {
       <AlertDialog open={!!deleteCardId} onOpenChange={(o) => { if (!o) setDeleteCardId(null); }}>
         <AlertDialogContent data-testid="dialog-confirm-delete-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover cartão?</AlertDialogTitle>
+            <AlertDialogTitle>{t("axisFinance.removeCardTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              O cartão e suas faturas serão removidos. As transações vinculadas continuarão no histórico.
+              {t("axisFinance.removeCardDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-card">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete-card">{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { if (deleteCardId) deleteMutation.mutate(deleteCardId); }}
               data-testid="button-confirm-delete-card"
             >
-              Remover
+              {t("common.remove")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

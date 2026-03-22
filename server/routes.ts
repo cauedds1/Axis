@@ -240,6 +240,13 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
     const allExpenses = allTimeTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((s, t) => s + Number(t.amount), 0);
     const allIncome = allTimeTx.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
     const bankBalance = (profile?.initialBalance ?? 0) + allIncome - allExpenses;
+    const CURRENCY_SYMBOLS_ROUTES: Record<string, string> = {
+      BRL: "R$", USD: "$", EUR: "€", GBP: "£", JPY: "¥",
+      CAD: "C$", AUD: "A$", CHF: "Fr", MXN: "MX$", ARS: "$",
+      COP: "$", CLP: "$", PEN: "S/", UYU: "$", SGD: "S$",
+      INR: "₹", CNY: "¥", ZAR: "R", AED: "AED",
+    };
+    const profileCur = CURRENCY_SYMBOLS_ROUTES[(profile as any)?.currency ?? "BRL"] ?? "R$";
 
     // Compute credit card utilization for this month
     const monthTx = allTimeTx.filter(t => new Date(t.date!) >= startOfMonth);
@@ -258,7 +265,7 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       const topCategories = Object.entries(catMap)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
-        .map(([cat, val]) => `${cat} R$${val.toFixed(0)}`)
+        .map(([cat, val]) => `${cat} ${profileCur}${val.toFixed(0)}`)
         .join(", ") || "nenhuma";
 
       return { name: card.name, limit, used, utilizationPct, topCategories };
@@ -270,7 +277,8 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       transactions.map(t => ({ title: t.description || t.categoryName || "", amount: Number(t.amount), category: t.categoryName, type: t.type })),
       monthlyIncome,
       cardContext.length > 0 ? cardContext : undefined,
-      bankBalance
+      bankBalance,
+      profileCur
     );
 
     let reason: string;
@@ -349,6 +357,22 @@ export async function registerRoutes(
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       res.json({ profile, user: { activeModules: user?.activeModules, theme: user?.theme, onboardingCompleted: user?.onboardingCompleted, aiPersonality: user?.aiPersonality } });
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/user/currency", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { currency } = z.object({ currency: z.string().min(2).max(5) }).parse(req.body);
+      const profile = await storage.getUserProfile(userId);
+      if (profile?.currencySetAt) {
+        return res.status(409).json({ message: "Currency already set and cannot be changed" });
+      }
+      await storage.upsertUserProfile(userId, { currency, currencySetAt: new Date() } as any);
+      res.json({ success: true, currency });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
       res.status(500).json({ message: error.message });
     }
   });

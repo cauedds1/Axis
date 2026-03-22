@@ -148,6 +148,8 @@ export const userProfile = pgTable("user_profile", {
   whatsappJid: text("whatsapp_jid"),
   initialBalance: real("initial_balance").default(0),
   lastSpendingAnalysis: timestamp("last_spending_analysis"),
+  currency: varchar("currency").default("BRL"),
+  currencySetAt: timestamp("currency_set_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
