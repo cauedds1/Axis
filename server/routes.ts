@@ -364,7 +364,8 @@ export async function registerRoutes(
   app.patch("/api/user/currency", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { currency } = z.object({ currency: z.string().min(2).max(5) }).parse(req.body);
+      const VALID_CURRENCY_CODES = ["BRL","USD","EUR","GBP","JPY","CAD","AUD","CHF","MXN","ARS","COP","CLP","PEN","UYU","SGD","INR","CNY","ZAR","AED"] as const;
+      const { currency } = z.object({ currency: z.enum(VALID_CURRENCY_CODES) }).parse(req.body);
       const profile = await storage.getUserProfile(userId);
       if (profile?.currencySetAt) {
         return res.status(409).json({ message: "Currency already set and cannot be changed" });

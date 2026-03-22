@@ -31,13 +31,23 @@ const SYMBOL_MAP: Record<string, string> = Object.fromEntries(
 );
 
 export function fmtMoney(value: number, currency: string = "BRL"): string {
-  const locale = LOCALE_MAP[currency] || "en-US";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  const safeCurrency = LOCALE_MAP[currency] ? currency : "BRL";
+  const locale = LOCALE_MAP[safeCurrency];
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: safeCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
 }
 
 export function getCurrencySymbol(currency: string): string {
