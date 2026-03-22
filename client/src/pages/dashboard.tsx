@@ -38,6 +38,7 @@ function ModuleCard({
   isHigh: boolean;
   detailsLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
@@ -63,7 +64,7 @@ function ModuleCard({
             className="mt-4 flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
             style={{ color: isHigh ? color : "hsl(var(--muted-foreground))" }}
           >
-            {detailsLabel || "Ver detalhes"} <ArrowRight className="h-3 w-3" />
+            {detailsLabel || t("axisDashboard.viewDetails")} <ArrowRight className="h-3 w-3" />
           </button>
         </Link>
       </div>
