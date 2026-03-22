@@ -2338,5 +2338,18 @@
     "scoreRegular": "Regular",
     "scoreSolid": "Solid",
     "scoreElite": "Elite"
+  },
+  "axisCapture": {
+    "placeholder": "Say or type something...",
+    "intentExpense": "Expense recorded",
+    "intentIncome": "Income recorded",
+    "intentTask": "Task created",
+    "intentSchedule": "Appointment scheduled",
+    "intentHabit": "Habit created",
+    "intentChat": "Assistant response",
+    "intentVoice": "Recorded by voice",
+    "processed": "Processed",
+    "error": "Error",
+    "noMicrophone": "No microphone access"
   }
 }

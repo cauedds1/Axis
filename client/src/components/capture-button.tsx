@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface CaptureResult {
   intent: string;
@@ -21,6 +22,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -42,22 +44,22 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
       setText("");
 
       const intentLabels: Record<string, string> = {
-        expense: "Gasto registrado",
-        income: "Receita registrada",
-        task: "Tarefa criada",
-        schedule: "Compromisso agendado",
-        habit: "Compromisso criado",
-        chat: "Resposta do assistente",
+        expense: t("axisCapture.intentExpense"),
+        income: t("axisCapture.intentIncome"),
+        task: t("axisCapture.intentTask"),
+        schedule: t("axisCapture.intentSchedule"),
+        habit: t("axisCapture.intentHabit"),
+        chat: t("axisCapture.intentChat"),
       };
 
       toast({
-        title: intentLabels[data.intent] || "Processado",
+        title: intentLabels[data.intent] || t("axisCapture.processed"),
         description: data.intent === "chat" ? data.created?.response?.substring(0, 100) : data.rawText,
       });
 
       setTimeout(() => setResult(null), 5000);
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("axisCapture.error"), description: error.message, variant: "destructive" });
     } finally {
       setIsProcessing(false);
     }
@@ -90,12 +92,12 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
           setResult(data);
           invalidateAll();
           toast({
-            title: data.intent === "chat" ? "Resposta" : "Registrado por voz",
+            title: data.intent === "chat" ? t("axisCapture.intentChat") : t("axisCapture.intentVoice"),
             description: data.rawText,
           });
           setTimeout(() => setResult(null), 5000);
         } catch (error: any) {
-          toast({ title: "Erro", description: error.message, variant: "destructive" });
+          toast({ title: t("axisCapture.error"), description: error.message, variant: "destructive" });
         } finally {
           setIsProcessing(false);
         }
@@ -104,7 +106,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
       mediaRecorder.start();
       setIsRecording(true);
     } catch {
-      toast({ title: "Erro", description: "Sem acesso ao microfone", variant: "destructive" });
+      toast({ title: t("axisCapture.error"), description: t("axisCapture.noMicrophone"), variant: "destructive" });
     }
   };
 
@@ -137,7 +139,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Diga ou escreva algo..."
+              placeholder={t("axisCapture.placeholder")}
               disabled={isProcessing || isRecording}
               className="pr-10 bg-card border-border"
               data-testid="input-capture-text"
@@ -187,7 +189,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
           <Input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Diga ou escreva algo..."
+            placeholder={t("axisCapture.placeholder")}
             disabled={isProcessing || isRecording}
             className="flex-1 bg-background/50 border-border/50"
             data-testid="input-capture-floating"
