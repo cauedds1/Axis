@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -48,20 +49,18 @@ function CustomTooltip({ active, payload, label }: any) {
 function MetricCard({ icon: Icon, label, value, sub, color, trend }: { icon: any; label: string; value: string | number; sub?: string; color: string; trend?: { value: number; label: string } }) {
   return (
     <div
-      className="rounded-2xl border bg-card p-5 flex flex-col gap-3 transition-all duration-200 hover:shadow-md"
-      style={{ borderColor: `${color}15` }}
+      className="rounded-2xl border bg-card p-4 flex items-start gap-3"
+      style={{ borderColor: `${color}18` }}
     >
-      <div className="flex items-center justify-between">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${color}14` }}>
-          <Icon className="h-4 w-4" style={{ color }} />
-        </div>
-        {trend && (
-          <div className={`flex items-center gap-1 text-xs font-medium ${trend.value >= 0 ? "text-green-500" : "text-red-400"}`}>
-            {trend.value >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {Math.abs(trend.value)}%
-          </div>
-        )}
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${color}15` }}>
+        <Icon className="h-4 w-4" style={{ color }} />
       </div>
+      {trend && (
+        <div className={`absolute top-3 right-3 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${trend.value >= 0 ? "bg-green-500/10 text-green-500" : "bg-red-400/10 text-red-400"}`}>
+          {trend.value >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {Math.abs(trend.value)}%
+        </div>
+      )}
       <div>
         <p className="text-2xl font-bold text-foreground leading-none mb-1" data-testid={`metric-${label.toLowerCase().replace(/\s/g, "-")}`}>{value}</p>
         <p className="text-xs text-muted-foreground font-medium">{label}</p>
@@ -112,7 +111,7 @@ function TrendBadge({ value, invertColor = false }: { value: number | null; inve
   return (
     <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-lg ${isGood ? "bg-green-500/10 text-green-500" : "bg-red-400/10 text-red-400"}`}>
       {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-      {Math.abs(value)}% vs mês anterior
+      {Math.abs(value)}%
     </span>
   );
 }
@@ -148,6 +147,7 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
 }
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
@@ -170,11 +170,11 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const pieColors = getPieColors(theme);
 
   const FILTER_OPTS: { id: DateFilter; label: string }[] = [
-    { id: "current", label: "Mês atual" },
-    { id: "last", label: "Mês passado" },
-    { id: "last3", label: "3 meses" },
-    { id: "last6", label: "6 meses" },
-    { id: "custom", label: "Personalizado" },
+    { id: "current", label: t("axisReports.filterCurrent") },
+    { id: "last", label: t("axisReports.filterLast") },
+    { id: "last3", label: t("axisReports.filterLast3") },
+    { id: "last6", label: t("axisReports.filterLast6") },
+    { id: "custom", label: t("axisReports.filterCustom") },
   ];
 
   const pmColors: Record<string, string> = {
@@ -224,7 +224,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         </div>
         {showCustom && (
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-card">
-            <span className="text-xs text-muted-foreground font-medium">De</span>
+            <span className="text-xs text-muted-foreground font-medium">{t("axisReports.filterFrom")}</span>
             <input
               type="date"
               data-testid="input-custom-start"
@@ -232,7 +232,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
               onChange={e => setCustomStart(e.target.value)}
               className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground outline-none focus:ring-1 focus:ring-ring"
             />
-            <span className="text-xs text-muted-foreground font-medium">até</span>
+            <span className="text-xs text-muted-foreground font-medium">{t("axisReports.filterTo")}</span>
             <input
               type="date"
               data-testid="input-custom-end"
@@ -249,7 +249,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}
         </div>
       )}
-      {!isLoading && !data && <EmptyState icon={DollarSign} message="Sem dados financeiros ainda" />}
+      {!isLoading && !data && <EmptyState icon={DollarSign} message={t("axisReports.noFinanceData")} />}
       {!isLoading && data && <>
 
       {/* ══ ROW 1: Hero mês + Categorias do mês ══ */}
@@ -261,7 +261,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           <div className="rounded-2xl border p-5 flex-1" style={{ borderColor: `${color}20`, background: `${color}06` }}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">Período selecionado</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">{t("axisReports.selectedPeriod")}</p>
                 <h2 className="text-2xl font-bold">{capitalizedMonth}</h2>
               </div>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}15` }}>
@@ -271,53 +271,53 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               <div className="rounded-xl bg-background/60 border border-border p-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Receitas</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.income")}</p>
                 <p className="text-xl font-bold" style={{ color: RP.positive }} data-testid="metric-receitas-mes">
                   R$ {currentMonth.income.toFixed(0)}
                 </p>
                 <TrendBadge value={currentMonth.incomeTrend} invertColor={false} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Gastos</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.expenses")}</p>
                 <p className="text-xl font-bold" style={{ color: RP.negative }} data-testid="metric-gastos-mes">
                   R$ {currentMonth.expenses.toFixed(0)}
                 </p>
                 <TrendBadge value={currentMonth.expenseTrend} invertColor={true} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Saldo</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.balance")}</p>
                 <p className="text-xl font-bold" style={{ color: currentMonth.balance >= 0 ? (RP.positive) : (RP.negative) }} data-testid="metric-saldo-mes">
                   R$ {currentMonth.balance.toFixed(0)}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">{currentMonth.savingsRate}% economizado</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{currentMonth.savingsRate}% {t("axisReports.saved")}</p>
               </div>
             </div>
 
             {currentMonth.income > 0 && (
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                  <span>Gastos vs Receita</span>
-                  <span>{Math.min(100, Math.round((currentMonth.expenses / currentMonth.income) * 100))}% da renda</span>
+                  <span>{t("axisReports.expensesVsIncome")}</span>
+                  <span>{Math.min(100, Math.round((currentMonth.expenses / currentMonth.income) * 100))}{t("axisReports.ofIncome")}</span>
                 </div>
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (currentMonth.expenses / currentMonth.income) * 100)}%`, background: currentMonth.expenses <= currentMonth.income ? (RP.positive) : (RP.negative) }} />
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>R$ {currentMonth.expenses.toFixed(0)} gastos</span>
-                  <span>R$ {currentMonth.income.toFixed(0)} recebidos</span>
+                  <span>R$ {currentMonth.expenses.toFixed(0)} {t("axisReports.spentLabel")}</span>
+                  <span>R$ {currentMonth.income.toFixed(0)} {t("axisReports.receivedLabel")}</span>
                 </div>
               </div>
             )}
 
             <div className="flex gap-4 mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground">
-              <span>{currentMonth.transactionCount} transações</span>
-              {currentMonth.topCategory !== "N/A" && <span>Maior gasto: <strong className="text-foreground">{currentMonth.topCategory}</strong></span>}
+              <span>{currentMonth.transactionCount} {t("axisReports.transactions")}</span>
+              {currentMonth.topCategory !== "N/A" && <span>{t("axisReports.topSpend")} <strong className="text-foreground">{currentMonth.topCategory}</strong></span>}
             </div>
           </div>
 
           {/* Daily chart */}
           <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Gastos por {groupByWeek ? "semana" : "dia"} — {capitalizedMonth}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("axisReports.spendByPeriod")} {groupByWeek ? t("axisReports.week") : t("axisReports.day")} — {capitalizedMonth}</p>
             {hasDailyData ? (
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={dailyThisMonth} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -325,11 +325,11 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="expenses" name="Gastos" fill={RP.negative} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expenses" name={t("axisReports.expenses")} fill={RP.negative} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-10">Nenhum gasto registrado no período</p>
+              <p className="text-sm text-muted-foreground text-center py-10">{t("axisReports.noSpendPeriod")}</p>
             )}
           </div>
         </div>
@@ -338,7 +338,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         <div className="xl:col-span-2 flex flex-col gap-4">
           {/* Categories this month */}
           <div className="rounded-2xl border bg-card p-5 flex-1" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Categorias — {capitalizedMonth.split(" ")[0]}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("axisReports.categoriesMonth")} {capitalizedMonth.split(" ")[0]}</p>
             {currentMonthByCategory?.length > 0 ? (
               currentMonthByCategory.map((cat: any, i: number) => (
                 <div key={cat.name} className="mb-3">
@@ -358,14 +358,14 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem gastos categorizados no período</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t("axisReports.noCategorizedSpend")}</p>
             )}
           </div>
 
           {/* Payment methods */}
           {byPaymentMethod?.filter((p: any) => p.key !== "Não informado").length > 0 && (
             <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Forma de pagamento</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("axisReports.paymentMethod")}</p>
               <div className="grid grid-cols-2 gap-2">
                 {byPaymentMethod.filter((p: any) => p.key !== "Não informado").map((pm: any, i: number) => {
                   const c = pmColors[pm.key] || color;
@@ -395,7 +395,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
         {/* 6-month area chart */}
         <div className="xl:col-span-3 rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Histórico — últimos 6 meses</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("axisReports.history6Months")}</p>
           {hasMonthlyData ? (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={monthly} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
@@ -414,19 +414,19 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="income" name="Receitas" stroke={RP.positive} fill="url(#colorIncome)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="expenses" name="Gastos" stroke={RP.negative} fill="url(#colorExpenses)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="income" name={t("axisReports.income")} stroke={RP.positive} fill="url(#colorIncome)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="expenses" name={t("axisReports.expenses")} stroke={RP.negative} fill="url(#colorExpenses)" strokeWidth={2} dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-20">Adicione transações para ver o histórico</p>
+            <p className="text-sm text-muted-foreground text-center py-20">{t("axisReports.addTransactions")}</p>
           )}
         </div>
 
         {/* Establishments */}
         {byEstablishment?.length > 0 && (
           <div className="xl:col-span-2 rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Onde você mais gasta</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("axisReports.topSpendPlaces")}</p>
             {byEstablishment.slice(0, 7).map((place: any, i: number) => {
               const barColor = pieColors[i % pieColors.length];
               return (
@@ -455,10 +455,10 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-4">
           {/* Time periods + hour chart */}
           <div className="xl:col-span-3 rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Quando você mais gasta</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("axisReports.whenYouSpend")}</p>
             {!byTimePeriod?.some((p: any) => p.amount > 0) ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                Sem dados de horário — as transações deste período foram importadas sem hora definida.
+                {t("axisReports.noTimeData")}
               </p>
             ) : (
               <>
@@ -469,7 +469,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                       <div key={period.label} className="rounded-xl border p-3 flex flex-col gap-1" style={isTopPeriod ? { borderColor: `${color}30`, background: `${color}08` } : {}} data-testid={`time-period-${period.label}`}>
                         <div className="flex items-center justify-between">
                           <span className="text-base">{period.emoji}</span>
-                          {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>Pico</span>}
+                          {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>{t("axisReports.peak")}</span>}
                         </div>
                         <p className="text-xs font-semibold">{period.label}</p>
                         <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>R$ {period.amount.toFixed(0)}</p>
@@ -484,8 +484,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 {byHour?.some((h: any) => h.amount > 0) && (
                   <>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-muted-foreground">Gastos por hora do dia</p>
-                      {peakHour && <span className="text-xs font-semibold" style={{ color }}>Pico: {peakHour}</span>}
+                      <p className="text-xs text-muted-foreground">{t("axisReports.spendByHour")}</p>
+                      {peakHour && <span className="text-xs font-semibold" style={{ color }}>{t("axisReports.peakLabel")} {peakHour}</span>}
                     </div>
                     <ResponsiveContainer width="100%" height={120}>
                       <BarChart data={byHour} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
@@ -493,7 +493,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                         <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
                         <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="amount" name="Gastos" radius={[3, 3, 0, 0]}>
+                        <Bar dataKey="amount" name={t("axisReports.expenses")} radius={[3, 3, 0, 0]}>
                           {byHour.map((entry: any, i: number) => <Cell key={i} fill={entry.hour === peakHour ? color : `${color}40`} />)}
                         </Bar>
                       </BarChart>
@@ -506,15 +506,15 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
           {/* 6-month summary metrics */}
           <div className="xl:col-span-2 grid grid-cols-2 gap-3 content-start">
-            <MetricCard icon={TrendingUp} label="Receitas" value={`R$ ${summary.totalIncome.toFixed(0)}`} color={RP.positive} />
-            <MetricCard icon={TrendingDown} label="Gastos" value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={RP.negative} />
-            <MetricCard icon={ShoppingBag} label="Média/mês" value={`R$ ${summary.avgMonthlyExpense?.toFixed(0) ?? "0"}`} sub="em gastos" color={color} />
-            <MetricCard icon={Target} label="Taxa de economia" value={`${summary.savingsRate}%`} sub={`${summary.transactionCount ?? 0} transações`} color={color} />
+            <MetricCard icon={TrendingUp} label={t("axisReports.income")} value={`R$ ${summary.totalIncome.toFixed(0)}`} color={RP.positive} />
+            <MetricCard icon={TrendingDown} label={t("axisReports.expenses")} value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={RP.negative} />
+            <MetricCard icon={ShoppingBag} label={t("axisReports.filterLast6")} value={`R$ ${summary.avgMonthlyExpense?.toFixed(0) ?? "0"}`} sub={t("axisReports.spentLabel")} color={color} />
+            <MetricCard icon={Target} label={t("axisReports.completionRate")} value={`${summary.savingsRate}%`} sub={`${summary.transactionCount ?? 0} ${t("axisReports.transactions")}`} color={color} />
 
             {/* Global pie + goals in same column */}
             {byCategory.length > 0 && (
               <div className="col-span-2 rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Categorias — 6 meses</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("axisReports.categories6Months")}</p>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie data={byCategory} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
@@ -532,7 +532,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       {/* ══ Goals ══ */}
       {goals?.length > 0 && (
         <>
-          <SectionTitle>Metas financeiras</SectionTitle>
+          <SectionTitle>{t("axisReports.financialGoals")}</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {goals.map((g: any) => {
               const pct = g.targetAmount > 0 ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)) : 0;
@@ -547,8 +547,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                   </div>
                   <div className="flex justify-between mt-1.5">
-                    <span className="text-[11px] text-muted-foreground">R$ {Number(g.currentAmount || 0).toFixed(0)} guardados</span>
-                    <span className="text-[11px] text-muted-foreground">Faltam R$ {remaining > 0 ? remaining.toFixed(0) : "0"}</span>
+                    <span className="text-[11px] text-muted-foreground">R$ {Number(g.currentAmount || 0).toFixed(0)} {t("axisReports.saved2")}</span>
+                    <span className="text-[11px] text-muted-foreground">{t("axisReports.remaining")} {remaining > 0 ? remaining.toFixed(0) : "0"}</span>
                   </div>
                 </div>
               );
@@ -560,13 +560,13 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       {/* ══ Transactions ══ */}
       <div className="flex items-center justify-between mt-6 mb-4">
         <div className="flex items-center gap-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Histórico de transações</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("axisReports.txHistory")}</p>
           <div className="h-px bg-border flex-1 w-8" />
         </div>
         <div className="flex gap-1 ml-4">
           {(["all", "expense", "income"] as const).map(f => (
             <button key={f} onClick={() => setTxFilter(f)} data-testid={`filter-tx-${f}`} className="px-3 py-1 rounded-lg text-xs font-medium transition-all" style={txFilter === f ? { background: `${color}18`, color, border: `1px solid ${color}30` } : { color: "hsl(var(--muted-foreground))", border: "1px solid transparent" }}>
-              {f === "all" ? "Tudo" : f === "expense" ? "Gastos" : "Receitas"}
+              {f === "all" ? t("axisReports.txAll") : f === "expense" ? t("axisReports.txExpenses") : t("axisReports.txIncome")}
             </button>
           ))}
         </div>
@@ -589,9 +589,9 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                       <p className="text-sm font-medium truncate">{formatTxDescription(tx.description)}</p>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
                         {tx.establishment && <><span className="font-medium text-foreground/60">{tx.establishment}</span><span>·</span></>}
-                        <span>{tx.categoryName || "Sem categoria"}</span>
+                        <span>{tx.categoryName || t("axisReports.noCategory")}</span>
                         <span>·</span>
-                        <span>{new Date(tx.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</span>
+                        <span>{new Date(tx.date).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}</span>
                       </div>
                     </div>
                   </div>
@@ -603,7 +603,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             })}
           </div>
         </div>
-      ) : <EmptyState icon={DollarSign} message="Nenhuma transação encontrada" />}
+      ) : <EmptyState icon={DollarSign} message={t("axisReports.noTransactions")} />}
 
       </>}
     </motion.div>
@@ -612,42 +612,43 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== TASKS TAB ========================
 function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/tasks"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
-  if (!data) return <EmptyState icon={CheckSquare} message="Sem dados de tarefas" />;
+  if (!data) return <EmptyState icon={CheckSquare} message={t("axisReports.noTaskData")} />;
 
   const { summary, byPriority, byCategory, urgentPending } = data;
 
   const barData = [
-    { name: "Concluídas", value: summary.completed, color },
-    { name: "Pendentes", value: summary.pending, color: "hsl(var(--muted-foreground))" },
-    { name: "Atrasadas", value: summary.overdue, color: RP.negative },
+    { name: t("axisReports.completedMetric"), value: summary.completed, color },
+    { name: t("axisReports.pendingMetric"), value: summary.pending, color: "hsl(var(--muted-foreground))" },
+    { name: t("axisReports.overdueCount"), value: summary.overdue, color: RP.negative },
   ];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <MetricCard icon={CheckSquare} label="Total" value={summary.total} color={color} />
-        <MetricCard icon={Star} label="Concluídas" value={summary.completed} color={RP.positive} />
-        <MetricCard icon={Clock} label="Pendentes" value={summary.pending} color={color} />
-        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} sub={summary.overdue > 0 ? `${summary.overdue} atrasadas` : "Em dia"} color={summary.completionRate >= 70 ? (RP.positive) : (RP.negative)} />
+        <MetricCard icon={CheckSquare} label={t("axisReports.totalMetric")} value={summary.total} color={color} />
+        <MetricCard icon={Star} label={t("axisReports.completedMetric")} value={summary.completed} color={RP.positive} />
+        <MetricCard icon={Clock} label={t("axisReports.pendingMetric")} value={summary.pending} color={color} />
+        <MetricCard icon={Target} label={t("axisReports.completionRate")} value={`${summary.completionRate}%`} sub={summary.overdue > 0 ? `${summary.overdue} ${t("axisReports.overdueCount")}` : t("axisReports.onTime")} color={summary.completionRate >= 70 ? (RP.positive) : (RP.negative)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mt-2">
         <div>
-          <SectionTitle>Por prioridade</SectionTitle>
+          <SectionTitle>{t("axisReports.highPriority").replace(" prioridade", "").replace(" priority", "")} / {t("axisReports.overview")}</SectionTitle>
           <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
-            <PriorityBar label="Alta prioridade" total={byPriority.high.total} completed={byPriority.high.completed} color={RP.negative} />
-            <PriorityBar label="Média prioridade" total={byPriority.medium.total} completed={byPriority.medium.completed} color={RP.schedule} />
-            <PriorityBar label="Baixa prioridade" total={byPriority.low.total} completed={byPriority.low.completed} color={RP.positive} />
+            <PriorityBar label={t("axisReports.highPriority")} total={byPriority.high.total} completed={byPriority.high.completed} color={RP.negative} />
+            <PriorityBar label={t("axisReports.medPriority")} total={byPriority.medium.total} completed={byPriority.medium.completed} color={RP.schedule} />
+            <PriorityBar label={t("axisReports.lowPriority")} total={byPriority.low.total} completed={byPriority.low.completed} color={RP.positive} />
           </div>
         </div>
 
         <div>
-          <SectionTitle>Visão geral</SectionTitle>
+          <SectionTitle>{t("axisReports.overview")}</SectionTitle>
           <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -655,7 +656,7 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="value" name="Qtd" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="value" name={t("axisReports.qty")} radius={[6, 6, 0, 0]}>
                   {barData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Bar>
               </BarChart>
@@ -666,7 +667,7 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
       {byCategory.length > 0 && (
         <>
-          <SectionTitle>Por categoria</SectionTitle>
+          <SectionTitle>{t("axisReports.byCategory")}</SectionTitle>
           <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
             {byCategory.map((cat: any) => (
               <PriorityBar key={cat.name} label={cat.name} total={cat.count} completed={cat.completed} color={color} />
@@ -675,24 +676,24 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         </>
       )}
 
-      <SectionTitle>Tarefas urgentes pendentes</SectionTitle>
+      <SectionTitle>{t("axisReports.urgentPending")}</SectionTitle>
       {urgentPending?.length > 0 ? (
         <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}12` }}>
-          {urgentPending.map((t: any, i: number) => (
-            <div key={t.id} className={`flex items-center gap-3 px-4 py-3 ${i < urgentPending.length - 1 ? "border-b border-border" : ""}`}>
+          {urgentPending.map((task: any, i: number) => (
+            <div key={task.id} className={`flex items-center gap-3 px-4 py-3 ${i < urgentPending.length - 1 ? "border-b border-border" : ""}`}>
               <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: RP.negative }} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" data-testid={`report-urgent-${t.id}`}>{t.title}</p>
-                {t.dueDate && <p className="text-[11px] text-muted-foreground">Prazo: {new Date(t.dueDate).toLocaleDateString("pt-BR")}</p>}
+                <p className="text-sm font-medium truncate" data-testid={`report-urgent-${task.id}`}>{task.title}</p>
+                {task.dueDate && <p className="text-[11px] text-muted-foreground">{t("axisReports.dueDate")} {new Date(task.dueDate).toLocaleDateString()}</p>}
               </div>
-              <span className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ background: `${RP.negative}15`, color: RP.negative }}>Alta</span>
+              <span className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ background: `${RP.negative}15`, color: RP.negative }}>{t("axisReports.highLabel")}</span>
             </div>
           ))}
         </div>
       ) : (
         <div className="rounded-2xl border bg-card p-6 text-center">
           <Star className="h-8 w-8 mx-auto mb-2 opacity-15" />
-          <p className="text-sm text-muted-foreground">Nenhuma tarefa urgente pendente</p>
+          <p className="text-sm text-muted-foreground">{t("axisReports.noUrgentTasks")}</p>
         </div>
       )}
     </motion.div>
@@ -701,25 +702,26 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== HABITS TAB ========================
 function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/habits"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
-  if (!data) return <EmptyState icon={Flame} message="Sem dados de compromissos" />;
+  if (!data) return <EmptyState icon={Flame} message={t("axisReports.noHabitData")} />;
 
   const { summary, habits, weeklyConsistency } = data;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <MetricCard icon={Flame} label="Total de compromissos" value={summary.totalHabits} color={color} />
-        <MetricCard icon={Star} label="Melhor streak" value={`${summary.bestStreak}d`} sub={summary.bestHabit} color={RP.positive} />
-        <MetricCard icon={Target} label="Streak médio" value={`${summary.avgStreak}d`} color={color} />
-        <MetricCard icon={CheckSquare} label="Check-ins (30d)" value={summary.totalCheckinsMonth} color={RP.positive} />
+        <MetricCard icon={Flame} label={t("axisReports.totalHabits")} value={summary.totalHabits} color={color} />
+        <MetricCard icon={Star} label={t("axisReports.bestStreak")} value={`${summary.bestStreak}d`} sub={summary.bestHabit} color={RP.positive} />
+        <MetricCard icon={Target} label={t("axisReports.avgStreak")} value={`${summary.avgStreak}d`} color={color} />
+        <MetricCard icon={CheckSquare} label={t("axisReports.checkins30")} value={summary.totalCheckinsMonth} color={RP.positive} />
       </div>
 
-      <SectionTitle>Consistência semanal</SectionTitle>
+      <SectionTitle>{t("axisReports.weeklyConsistency")}</SectionTitle>
       <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={weeklyConsistency} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -727,12 +729,12 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="completions" name="Check-ins" fill={color} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="completions" name={t("axisReports.checkins30")} fill={color} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <SectionTitle>Compromissos — streak e consistência</SectionTitle>
+      <SectionTitle>{t("axisReports.habitsStreak")}</SectionTitle>
       {habits?.length > 0 ? (
         <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}12` }}>
           {habits.map((h: any, i: number) => {
@@ -745,11 +747,11 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <div className="flex items-center gap-3">
                     <Flame className="h-4 w-4" style={{ color: streakColor }} />
                     <span className="text-sm font-medium" data-testid={`report-habit-${h.id}`}>{h.name}</span>
-                    <span className="text-[11px] text-muted-foreground capitalize">{h.frequency === "daily" ? "diário" : "semanal"}</span>
+                    <span className="text-[11px] text-muted-foreground capitalize">{h.frequency === "daily" ? t("axisReports.daily") : t("axisReports.weekly")}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
-                    <span className="font-bold" style={{ color: streakColor }}>{h.streak}d streak</span>
-                    <span className="text-muted-foreground">{h.completionRate}% consistência</span>
+                    <span className="font-bold" style={{ color: streakColor }}>{h.streak}d {t("axisReports.streak")}</span>
+                    <span className="text-muted-foreground">{h.completionRate}% {t("axisReports.consistency")}</span>
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -759,34 +761,35 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             );
           })}
         </div>
-      ) : <EmptyState icon={Flame} message="Nenhum compromisso criado ainda" />}
+      ) : <EmptyState icon={Flame} message={t("axisReports.noHabitsYet")} />}
     </motion.div>
   );
 }
 
 // ======================== SCHEDULE TAB ========================
 function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/schedule"] });
 
   if (isLoading) return <div className="space-y-4 mt-4">{[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-muted animate-pulse" />)}</div>;
-  if (!data) return <EmptyState icon={Calendar} message="Sem dados de agenda" />;
+  if (!data) return <EmptyState icon={Calendar} message={t("axisReports.noScheduleData")} />;
 
   const { summary, byDayOfWeek, upcoming, overdue } = data;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <MetricCard icon={Calendar} label="Total de eventos" value={summary.total} color={color} />
-        <MetricCard icon={CheckSquare} label="Concluídos" value={summary.completed} color={RP.positive} />
-        <MetricCard icon={Target} label="Taxa de conclusão" value={`${summary.completionRate}%`} color={summary.completionRate >= 70 ? (RP.positive) : color} />
-        <MetricCard icon={Zap} label="Sugeridos por IA" value={summary.aiSuggested} sub={`${summary.manuallyAdded} manuais`} color={color} />
+        <MetricCard icon={Calendar} label={t("axisReports.totalEvents")} value={summary.total} color={color} />
+        <MetricCard icon={CheckSquare} label={t("axisReports.completedMetric")} value={summary.completed} color={RP.positive} />
+        <MetricCard icon={Target} label={t("axisReports.completionRate")} value={`${summary.completionRate}%`} color={summary.completionRate >= 70 ? (RP.positive) : color} />
+        <MetricCard icon={Zap} label={t("axisReports.aiSuggested")} value={summary.aiSuggested} sub={`${summary.manuallyAdded} ${t("axisReports.manuals")}`} color={color} />
       </div>
 
       <div className="mt-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-muted-foreground">Progresso geral</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("axisReports.overallProgress")}</p>
           <span className="text-sm font-bold" style={{ color }}>{summary.completed}/{summary.total}</span>
         </div>
         <div className="h-3 rounded-full bg-muted overflow-hidden">
@@ -797,7 +800,7 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
         </div>
       </div>
 
-      <SectionTitle>Eventos por dia da semana</SectionTitle>
+      <SectionTitle>{t("axisReports.eventsByDay")}</SectionTitle>
       <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={byDayOfWeek} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -806,15 +809,15 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
             <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="completed" name="Concluídos" fill={RP.positive} radius={[4, 4, 0, 0]} stackId="a" />
-            <Bar dataKey="pending" name="Pendentes" fill={`${color}50`} radius={[4, 4, 0, 0]} stackId="a" />
+            <Bar dataKey="completed" name={t("axisReports.completedBar")} fill={RP.positive} radius={[4, 4, 0, 0]} stackId="a" />
+            <Bar dataKey="pending" name={t("axisReports.pendingBar")} fill={`${color}50`} radius={[4, 4, 0, 0]} stackId="a" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mt-2">
         <div>
-          <SectionTitle>Próximos eventos</SectionTitle>
+          <SectionTitle>{t("axisReports.upcomingEvents")}</SectionTitle>
           {upcoming?.length > 0 ? (
             <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${color}12` }}>
               {upcoming.map((item: any, i: number) => (
@@ -822,20 +825,20 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <div className="w-1 h-8 rounded-full flex-shrink-0 mt-0.5" style={{ background: color, opacity: i === 0 ? 1 : 0.4 }} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`report-upcoming-${item.id}`}>{item.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="rounded-2xl border bg-card p-5 text-center">
-              <p className="text-sm text-muted-foreground">Nenhum evento futuro</p>
+              <p className="text-sm text-muted-foreground">{t("axisReports.noUpcomingEvents")}</p>
             </div>
           )}
         </div>
 
         <div>
-          <SectionTitle>Eventos não concluídos</SectionTitle>
+          <SectionTitle>{t("axisReports.overdueEvents")}</SectionTitle>
           {overdue?.length > 0 ? (
             <div className="rounded-2xl border bg-card overflow-hidden" style={{ borderColor: `${RP.negative}20` }}>
               {overdue.map((item: any, i: number) => (
@@ -843,14 +846,14 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: RP.negative }} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`report-overdue-${item.id}`}>{item.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString("pt-BR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="rounded-2xl border bg-card p-5 text-center">
-              <p className="text-sm text-muted-foreground">Tudo em dia</p>
+              <p className="text-sm text-muted-foreground">{t("axisReports.allOnTime")}</p>
             </div>
           )}
         </div>
@@ -860,37 +863,36 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 }
 
 // ======================== MAIN PAGE ========================
-const TABS = [
-  { id: "finance", label: "Finanças", icon: DollarSign },
-  { id: "tasks", label: "Tarefas", icon: CheckSquare },
-  { id: "habits", label: "Compromissos", icon: Flame },
-  { id: "schedule", label: "Agenda", icon: Calendar },
-] as const;
-
-type TabId = typeof TABS[number]["id"];
-
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState<TabId>("finance");
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"finance" | "tasks" | "habits" | "schedule">("finance");
   const { theme } = useTheme();
   const isHigh = theme.startsWith("high");
   const P = getReportPalette(theme);
 
-  const tabColors: Record<TabId, string> = {
+  const TABS = [
+    { id: "finance" as const, label: t("axisReports.tabFinance"), icon: DollarSign },
+    { id: "tasks" as const, label: t("axisReports.tabTasks"), icon: CheckSquare },
+    { id: "habits" as const, label: t("axisReports.tabHabits"), icon: Flame },
+    { id: "schedule" as const, label: t("axisReports.tabSchedule"), icon: Calendar },
+  ];
+
+  const tabColors: Record<string, string> = {
     finance: P.finance,
     tasks: P.tasks,
     habits: P.habits,
     schedule: P.schedule,
   };
 
-  const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="px-6 py-6 pb-28">
-      <title>AXIS — Relatórios</title>
+      <title>{t("axisReports.pageTitle")}</title>
 
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mb-6">
         <p className="text-sm text-muted-foreground mb-0.5 capitalize">{today}</p>
-        <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("axisReports.pageHeading")}</h1>
       </motion.div>
 
       {/* Tab Navigation */}

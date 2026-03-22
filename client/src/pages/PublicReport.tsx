@@ -261,7 +261,7 @@ export default function PublicReport() {
 
                             <div className="flex items-center gap-2 flex-wrap mt-2">
                               <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                                {format(expDate, "dd 'de' MMMM 'de' yyyy", { locale: dateLocale })}
+                                {format(expDate, t("axisPublicReport.dateFormat"), { locale: dateLocale })}
                               </span>
                               {expense.categoryName && (
                                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${PRIMARY}18`, color: PRIMARY }}>
