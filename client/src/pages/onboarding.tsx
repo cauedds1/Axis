@@ -1,7 +1,7 @@
 import { useState, Component } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { ArrowRight, ArrowLeft, Loader2, CheckCircle2, Plus, X, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2, CheckCircle2, Plus, X, TrendingDown, TrendingUp, RefreshCw, Lock, Search } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme, type AxisTheme } from "@/components/theme-provider";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
 
 class StepErrorBoundary extends Component<
   { children: React.ReactNode; onError?: (err: Error) => void; stepErrorText?: string; tryAgainText?: string; detailsText?: string },
@@ -145,6 +146,12 @@ export default function Onboarding() {
   const [isSetupSubmitting, setIsSetupSubmitting] = useState(false);
   const [phase, setPhase] = useState<Phase>("question");
 
+  // Currency step state
+  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
+  type CurrencyPhase = "select" | "confirm1" | "confirm2" | "confirmed";
+  const [currencyPhase, setCurrencyPhase] = useState<CurrencyPhase>("select");
+  const [currencySearch, setCurrencySearch] = useState("");
+
   // Setup phase state
   type SetupIncome = { name: string; amount: number; dayOfMonth: number };
   type SetupBill = { title: string; amount: number; dueDay: number };
@@ -167,7 +174,7 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { setTheme } = useTheme();
 
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 5;
 
   const goNext = () => {
     setDirection(1);
@@ -179,12 +186,13 @@ export default function Onboarding() {
     setStep(s => s - 1);
   };
 
-  const stepColors = [CORAL, GOLD, getDisciplineColor(disciplineScore).hex, LAVANDA];
+  const stepColors = [CORAL, GOLD, MINT, getDisciplineColor(disciplineScore).hex, LAVANDA];
   const currentColor = stepColors[step] ?? CORAL;
 
   const canProceed = () => {
     if (step === 0) return firstName.trim().length > 0;
     if (step === 1) return activeModules.length > 0;
+    if (step === 2) return currencyPhase === "confirmed";
     return true;
   };
 
@@ -198,7 +206,14 @@ export default function Onboarding() {
         theme,
         aiPersonality,
       });
+      const currencyCode = selectedCurrency ?? "BRL";
+      try {
+        await apiRequest("PATCH", "/api/user/currency", { currency: currencyCode });
+      } catch {
+        // ignore 409 (already set) or other non-critical errors
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       setPhase("setup");
     } catch (error: any) {
       toast({ title: t("axisOnboarding.toastError"), description: error.message, variant: "destructive" });
@@ -559,8 +574,122 @@ export default function Onboarding() {
                 </>
               )}
 
-              {/* ── STEP 2: Score de disciplina ── */}
-              {step === 2 && (
+              {/* ── STEP 2: Moeda ── */}
+              {step === 2 && (() => {
+                const filteredCurrencies = SUPPORTED_CURRENCIES.filter(c =>
+                  c.name.toLowerCase().includes(currencySearch.toLowerCase()) ||
+                  c.code.toLowerCase().includes(currencySearch.toLowerCase())
+                );
+                const selected = SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency);
+                return (
+                  <>
+                    <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
+                      {t("axisOnboarding.currTitle")}
+                    </h2>
+                    <p className="text-sm text-white/35 mb-6 leading-relaxed">{t("axisOnboarding.currDesc")}</p>
+
+                    {currencyPhase === "select" && (
+                      <>
+                        <div className="relative mb-3">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                          <input
+                            value={currencySearch}
+                            onChange={e => setCurrencySearch(e.target.value)}
+                            placeholder={t("axisOnboarding.currSearch")}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/20"
+                            data-testid="input-currency-search"
+                          />
+                        </div>
+                        <div className="overflow-y-auto max-h-64 space-y-1 pr-1" data-testid="list-currencies">
+                          {filteredCurrencies.map(c => (
+                            <button
+                              key={c.code}
+                              onClick={() => {
+                                setSelectedCurrency(c.code);
+                                setCurrencyPhase("confirm1");
+                              }}
+                              className="w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 flex items-center justify-between"
+                              style={{
+                                background: "rgba(255,255,255,0.03)",
+                                borderColor: "rgba(255,255,255,0.07)",
+                              }}
+                              data-testid={`button-currency-${c.code}`}
+                            >
+                              <span className="text-sm text-white/80">{c.name}</span>
+                              <span className="text-xs text-white/35 font-mono">{c.code} {c.symbol}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {currencyPhase === "confirm1" && selected && (
+                      <div className="rounded-xl border p-5 space-y-4" style={{ background: "rgba(78,205,196,0.06)", borderColor: "rgba(78,205,196,0.25)" }} data-testid="card-currency-confirm1">
+                        <p className="text-sm text-white/75">
+                          {t("axisOnboarding.currConfirm1", { name: selected.name, code: selected.code, symbol: selected.symbol })}
+                        </p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setCurrencyPhase("confirm2")}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                            style={{ background: MINT, color: "#060608" }}
+                            data-testid="button-currency-yes"
+                          >
+                            {t("axisOnboarding.currYes")}
+                          </button>
+                          <button
+                            onClick={() => { setSelectedCurrency(null); setCurrencyPhase("select"); }}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                            style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
+                            data-testid="button-currency-cancel"
+                          >
+                            {t("axisOnboarding.currCancel")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {currencyPhase === "confirm2" && selected && (
+                      <div className="rounded-xl border p-5 space-y-4" style={{ background: "rgba(255,107,107,0.07)", borderColor: "rgba(255,107,107,0.3)" }} data-testid="card-currency-confirm2">
+                        <p className="text-sm font-semibold" style={{ color: "#FF6B6B" }}>
+                          {t("axisOnboarding.currConfirm2")}
+                        </p>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setCurrencyPhase("confirmed")}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                            style={{ background: "rgba(255,107,107,0.25)", color: "#FF6B6B", border: "1px solid rgba(255,107,107,0.4)" }}
+                            data-testid="button-currency-confirm"
+                          >
+                            {t("axisOnboarding.currConfirmBtn")}
+                          </button>
+                          <button
+                            onClick={() => setCurrencyPhase("confirm1")}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                            style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}
+                            data-testid="button-currency-goback"
+                          >
+                            {t("axisOnboarding.currGoBack")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {currencyPhase === "confirmed" && selected && (
+                      <div className="rounded-xl border p-4 flex items-center gap-3" style={{ background: "rgba(78,205,196,0.06)", borderColor: "rgba(78,205,196,0.2)" }} data-testid="card-currency-confirmed">
+                        <Lock className="w-4 h-4 flex-shrink-0" style={{ color: MINT }} />
+                        <div>
+                          <span className="text-xs text-white/40 block">{t("axisOnboarding.currLocked")}</span>
+                          <span className="text-sm font-semibold text-white/85">{selected.name} ({selected.code} {selected.symbol})</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* ── STEP 3: Score de disciplina ── */}
+              {step === 3 && (
                 <>
                   <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
                     {t("axisOnboarding.step2Title")}
@@ -599,8 +728,8 @@ export default function Onboarding() {
                 </>
               )}
 
-              {/* ── STEP 3: Personalidade + Tema ── */}
-              {step === 3 && (
+              {/* ── STEP 4: Personalidade + Tema ── */}
+              {step === 4 && (
                 <StepErrorBoundary stepErrorText={t("axisOnboarding.stepError")} tryAgainText={t("axisOnboarding.tryAgain")} detailsText={t("axisOnboarding.details")}>
                   <>
                     <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">

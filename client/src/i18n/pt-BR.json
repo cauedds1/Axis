@@ -1429,7 +1429,17 @@
     "pMotivator": "Motivador",
     "pMotivatorDesc": "Sempre encorajando",
     "pStrict": "Rigoroso",
-    "pStrictDesc": "Focado em resultados"
+    "pStrictDesc": "Focado em resultados",
+    "currTitle": "Escolha sua moeda",
+    "currDesc": "Selecione a moeda das suas finanças — não poderá ser alterada após a configuração",
+    "currSearch": "Buscar moeda...",
+    "currConfirm1": "Você selecionou {{name}} ({{code}} {{symbol}}). Confirmar?",
+    "currConfirm2": "⚠️ ATENÇÃO — ESTA AÇÃO NÃO PODERÁ SER DESFEITA. Sua moeda ficará permanentemente definida.",
+    "currYes": "Sim",
+    "currCancel": "Cancelar",
+    "currConfirmBtn": "Confirmar",
+    "currGoBack": "Voltar",
+    "currLocked": "Moeda definida:"
   },
   "axisWelcome": {
     "logout": "Sair",

@@ -1429,7 +1429,17 @@
     "pMotivator": "Motivator",
     "pMotivatorDesc": "Always encouraging",
     "pStrict": "Strict",
-    "pStrictDesc": "Results-focused"
+    "pStrictDesc": "Results-focused",
+    "currTitle": "Choose your currency",
+    "currDesc": "Select the currency for your finances — this cannot be changed after setup",
+    "currSearch": "Search currency...",
+    "currConfirm1": "You selected {{name}} ({{code}} {{symbol}}). Confirm?",
+    "currConfirm2": "⚠️ ATTENTION — THIS ACTION CANNOT BE UNDONE. Your currency will be permanently set.",
+    "currYes": "Yes",
+    "currCancel": "Cancel",
+    "currConfirmBtn": "Confirm",
+    "currGoBack": "Go back",
+    "currLocked": "Currency set:"
   },
   "axisWelcome": {
     "logout": "Sign out",
