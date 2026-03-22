@@ -35,7 +35,7 @@ export default function CollaboratorHome() {
     queryFn: async () => {
       if (!activeOrg?.id || !user?.id) return [];
       const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses?userId=${user.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erro ao buscar despesas");
+      if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
     enabled: !!activeOrg?.id && !!user?.id,

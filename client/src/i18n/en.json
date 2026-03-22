@@ -2999,7 +2999,8 @@
       "passwordPlaceholder": "Temporary password",
       "expensesThisMonth": "expenses this month",
       "shareCredentials": "Share access credentials with the collaborator.",
-      "temporaryPassword": "Temporary password"
+      "temporaryPassword": "Temporary password",
+      "emailLabel": "Email"
     },
     "finance": {
       "title": "Corporate Finance",

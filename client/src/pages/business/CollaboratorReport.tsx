@@ -127,7 +127,7 @@ export default function CollaboratorReport() {
         userId:    user.id,
       });
       const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses?${params}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erro ao buscar despesas");
+      if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
     enabled: !!activeOrg?.id && !!user?.id,

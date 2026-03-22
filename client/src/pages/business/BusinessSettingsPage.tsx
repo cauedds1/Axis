@@ -252,7 +252,7 @@ export default function BusinessSettingsPage() {
                 {isExecutive ? <span className="text-sm">⚡</span> : <span className="text-sm">◾</span>}
               </div>
               <div>
-                <p className="text-sm font-semibold">{t("axisBiz.settings.appearance.modeActive", { mode: isExecutive ? "Executive" : "Corporate" })}</p>
+                <p className="text-sm font-semibold">{t("axisBiz.settings.appearance.modeActive", { mode: isExecutive ? t("axisBiz.themeSelector.executive") : t("axisBiz.themeSelector.corporate") })}</p>
                 <p className="text-xs text-muted-foreground">
                   {isExecutive ? t("axisBiz.settings.appearance.executiveDesc") : t("axisBiz.settings.appearance.corporateDesc")}
                 </p>

@@ -105,7 +105,7 @@ function LancamentosTab({ orgId }: { orgId: string }) {
     queryKey: ["/api/business/organizations", orgId, "expenses"],
     queryFn: async () => {
       const res = await fetch(`/api/business/organizations/${orgId}/expenses`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erro ao buscar despesas");
+      if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
   });

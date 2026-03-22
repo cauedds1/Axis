@@ -2999,7 +2999,8 @@
       "passwordPlaceholder": "Senha temporária",
       "expensesThisMonth": "despesas neste mês",
       "shareCredentials": "Compartilhe as credenciais de acesso com o colaborador.",
-      "temporaryPassword": "Senha temporária"
+      "temporaryPassword": "Senha temporária",
+      "emailLabel": "E-mail"
     },
     "finance": {
       "title": "Finanças Corporativas",

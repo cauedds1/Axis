@@ -194,7 +194,7 @@ export default function BusinessCollaborators() {
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between rounded-lg px-3 py-2.5 gap-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                           <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">E-mail</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{t("axisBiz.collaborators.emailLabel")}</p>
                             <p className="text-sm font-mono font-medium" data-testid="text-created-email">{addedCreds.email}</p>
                           </div>
                           <button onClick={() => copyToClipboard(addedCreds.email, "email")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/5 transition-colors" data-testid="button-copy-email">
@@ -228,7 +228,7 @@ export default function BusinessCollaborators() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">E-mail *</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">{t("axisBiz.collaborators.emailLabel")} *</label>
                         <Input type="email" placeholder={t("axisBiz.collaborators.emailPlaceholder")} value={newEmail} onChange={e => setNewEmail(e.target.value)} data-testid="input-collab-email-create" />
                       </div>
                       <div>
@@ -282,7 +282,7 @@ export default function BusinessCollaborators() {
                     </p>
                     <Input
                       type="email"
-                      placeholder="email@empresa.com"
+                      placeholder={t("axisBiz.collaborators.emailPlaceholder")}
                       value={inviteEmail}
                       onChange={e => setInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && inviteEmail && inviteMutation.mutate({ email: inviteEmail })}
@@ -330,13 +330,13 @@ export default function BusinessCollaborators() {
                     {isOwner && (
                       <Badge className="text-[10px] gap-1 py-0" style={{ background: `${primaryHex}18`, color: primaryHex, border: `1px solid ${primaryHex}30` }}>
                         <Crown className="w-2.5 h-2.5" />
-                        Admin
+                        {t("axisBiz.home.roleAdmin")}
                       </Badge>
                     )}
                     {!isOwner && member.role === "admin" && (
                       <Badge className="text-[10px] gap-1 py-0" style={{ background: "#818CF818", color: "#818CF8", border: "1px solid #818CF830" }}>
                         <ShieldCheck className="w-2.5 h-2.5" />
-                        Admin
+                        {t("axisBiz.home.roleAdmin")}
                       </Badge>
                     )}
                     {!isOwner && member.role !== "admin" && (

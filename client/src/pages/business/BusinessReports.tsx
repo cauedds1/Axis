@@ -80,7 +80,7 @@ export default function BusinessReports() {
     queryFn: async () => {
       if (!activeOrg?.id) return [];
       const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses?${expenseParams.toString()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erro");
+      if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
     enabled: !!activeOrg?.id,
