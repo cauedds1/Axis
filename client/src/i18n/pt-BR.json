@@ -2751,11 +2751,14 @@
           "monthTotal": "Total do mês",
           "approved": "Aprovadas",
           "pendingApprovals": "Aprovações pendentes",
-          "rejected": "Rejeitadas"
+          "rejected": "Rejeitadas",
+          "items": "itens"
         },
         "language": "Idioma",
         "languageSubtitle": "Escolha o idioma da interface",
-        "languageChanged": "Idioma alterado com sucesso"
+        "languageChanged": "Idioma alterado com sucesso",
+        "langPT": "Português",
+        "langEN": "English"
       },
       "company": {
         "visualIdentity": "Identidade Visual",
@@ -2789,7 +2792,8 @@
           "marketing": "Marketing e Publicidade",
           "food": "Alimentação e Hospitalidade",
           "other": "Outro"
-        }
+        },
+        "legalNamePlaceholder": "Empresa Ltda."
       },
       "account": {
         "personalInfo": "Informações pessoais",
@@ -2863,7 +2867,8 @@
       "other": "Outros",
       "roleAdmin": "Administrador",
       "roleCollaborator": "Colaborador",
-      "viewPending": "Ver pendentes"
+      "viewPending": "Ver pendentes",
+      "title": "Dashboard"
     },
     "expenses": {
       "title": "Despesas",
@@ -2946,9 +2951,7 @@
       "status": "Status",
       "noDate": "Sem data",
       "exportError": "Erro ao exportar dados",
-      "receipt": "recibo",
-      "approve": "Aprovar",
-      "reject": "Rejeitar"
+      "receipt": "recibo"
     },
     "collaborators": {
       "title": "Colaboradores",
@@ -2967,7 +2970,6 @@
       "addCollaborator": "Adicionar colaborador",
       "close": "Fechar",
       "noOrg": "Crie uma empresa primeiro.",
-      "noCollaborators": "Nenhum colaborador ainda",
       "makeAdmin": "Tornar administrador",
       "makeCollaborator": "Tornar colaborador",
       "roleUpdated": "Papel atualizado",
@@ -3130,7 +3132,8 @@
       "expenseCount": "despesa(s)",
       "noDataForPeriod": "Sem dados no período",
       "detailedExpenses": "Despesas detalhadas",
-      "statusHeader": "Status"
+      "statusHeader": "Status",
+      "noCategory": "Sem categoria"
     },
     "bills": {
       "title": "Contas a Pagar",
@@ -3226,7 +3229,16 @@
       "fieldClientPlaceholder": "Nome do cliente",
       "fieldPaymentMethod": "Forma de Pagamento",
       "selectPlaceholder": "Selecione...",
-      "saveReceivable": "Salvar recebível"
+      "saveReceivable": "Salvar recebível",
+      "paymentMethods": {
+        "pix": "Pix",
+        "creditCard": "Cartão de Crédito",
+        "debitCard": "Cartão de Débito",
+        "boleto": "Boleto",
+        "cash": "Dinheiro",
+        "transfer": "Transferência",
+        "other": "Outro"
+      }
     },
     "collabHome": {
       "greeting": {
@@ -3354,6 +3366,15 @@
       "openReport": "Abrir relatório",
       "close": "Fechar",
       "receipt": "Comprovante"
+    },
+    "collab": {
+      "reportView": {
+        "receipt": "Recibo",
+        "receiptItems": "Itens do recibo",
+        "total": "Total",
+        "showReceipt": "Ver recibo",
+        "generatedAt": "Gerado em {{date}}"
+      }
     }
   }
 }

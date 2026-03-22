@@ -268,8 +268,8 @@ export default function BusinessSettingsPage() {
               {[
                 { label: t("axisBiz.settings.appearance.previewCards.monthTotal"), value: "R$ 18.340,00", color: primaryHex },
                 { label: t("axisBiz.settings.appearance.previewCards.approved"), value: "R$ 12.890,00", color: "#34D399" },
-                { label: t("axisBiz.settings.appearance.previewCards.pendingApprovals"), value: "7 itens", color: "#F59E0B" },
-                { label: t("axisBiz.settings.appearance.previewCards.rejected"), value: "3 itens", color: "#F87171" },
+                { label: t("axisBiz.settings.appearance.previewCards.pendingApprovals"), value: "7 " + t("axisBiz.settings.appearance.previewCards.items"), color: "#F59E0B" },
+                { label: t("axisBiz.settings.appearance.previewCards.rejected"), value: "3 " + t("axisBiz.settings.appearance.previewCards.items"), color: "#F87171" },
               ].map((card) => (
                 <div key={card.label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="text-xs text-muted-foreground mb-1">{card.label}</p>
@@ -291,8 +291,8 @@ export default function BusinessSettingsPage() {
             </div>
             <div className="flex gap-2">
               {[
-                { code: "pt-BR", flag: "🇧🇷", label: "Português" },
-                { code: "en",    flag: "🇺🇸", label: "English" },
+                { code: "pt-BR", flag: "🇧🇷", label: t("axisBiz.settings.appearance.langPT") },
+                { code: "en",    flag: "🇺🇸", label: t("axisBiz.settings.appearance.langEN") },
               ].map(({ code, flag, label }) => {
                 const isActive = currentLang === code || (code === "pt-BR" && currentLang.startsWith("pt"));
                 return (
@@ -418,7 +418,7 @@ export default function BusinessSettingsPage() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.settings.company.companyData")}</p>
             <div>
               <label className={labelClass}>{t("axisBiz.settings.company.legalName")} <span style={{ color: primaryHex }}>*</span></label>
-              <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Empresa Ltda." required className={inputClass} data-testid="input-company-name" />
+              <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("axisBiz.settings.company.legalNamePlaceholder")} required className={inputClass} data-testid="input-company-name" />
             </div>
             <div>
               <label className={labelClass}>{t("axisBiz.settings.company.tradeName")}</label>

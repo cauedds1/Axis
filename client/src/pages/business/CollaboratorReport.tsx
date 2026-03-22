@@ -13,7 +13,7 @@ import {
   Banknote, ChevronDown, ImageOff, ZoomIn, Copy, Loader2, Link2, Check,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
@@ -79,7 +79,8 @@ function ReceiptImage({ url, base64, receipt }: { url?: string; base64?: string;
 }
 
 export default function CollaboratorReport() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -143,7 +144,7 @@ export default function CollaboratorReport() {
   const [copied, setCopied] = useState(false);
 
   const presetLabel = PRESETS.find(p => p.key === preset)?.label ?? t("axisBiz.collabReport.period");
-  const periodLabel = `${format(dates.start, "dd/MM/yyyy", { locale: ptBR })} — ${format(dates.end, "dd/MM/yyyy", { locale: ptBR })}`;
+  const periodLabel = `${format(dates.start, "dd/MM/yyyy", { locale: dateLocale })} — ${format(dates.end, "dd/MM/yyyy", { locale: dateLocale })}`;
   const collaboratorName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
 
   const shareMutation = useMutation({
@@ -350,7 +351,7 @@ export default function CollaboratorReport() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap mt-2">
                         <span className="expense-sub text-xs text-muted-foreground">
-                          {format(expDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          {format(expDate, i18n.language.startsWith("pt") ? "dd 'de' MMMM 'de' yyyy" : "MMMM d, yyyy", { locale: dateLocale })}
                         </span>
                         {expense.categoryName && (
                           <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${primaryHex}18`, color: primaryHex }}>

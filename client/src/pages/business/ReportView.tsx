@@ -10,7 +10,7 @@ import {
   Banknote, ImageOff, X, Eye,
 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -53,7 +53,8 @@ function SummaryCard({ label, value, color }: { label: string; value: number; co
 }
 
 export default function ReportView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { businessTheme } = useBusinessTheme();
@@ -104,8 +105,8 @@ export default function ReportView() {
 
   const periodLabel = (() => {
     try {
-      const s = startDate ? format(new Date(startDate), "dd/MM/yyyy", { locale: ptBR }) : "—";
-      const e = endDate   ? format(new Date(endDate),   "dd/MM/yyyy", { locale: ptBR }) : "—";
+      const s = startDate ? format(new Date(startDate), "dd/MM/yyyy", { locale: dateLocale }) : "—";
+      const e = endDate   ? format(new Date(endDate),   "dd/MM/yyyy", { locale: dateLocale }) : "—";
       return `${s} — ${e}`;
     } catch { return "—"; }
   })();
@@ -122,7 +123,7 @@ export default function ReportView() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {lightboxSrc && <ReceiptLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} receipt={t("reportView.receipt")} />}
+      {lightboxSrc && <ReceiptLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} receipt={t("axisBiz.collab.reportView.receipt")} />}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
@@ -215,7 +216,7 @@ export default function ReportView() {
                       <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
                         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                         {receiptSrc
-                          ? <img src={receiptSrc} alt={t("reportView.receipt")} className="w-full h-full object-cover" />
+                          ? <img src={receiptSrc} alt={t("axisBiz.collab.reportView.receipt")} className="w-full h-full object-cover" />
                           : <ImageOff className="w-5 h-5 text-muted-foreground opacity-40" />
                         }
                       </div>
@@ -237,7 +238,7 @@ export default function ReportView() {
 
                         <div className="flex items-center gap-2 flex-wrap mt-2">
                           <span className="text-xs text-muted-foreground">
-                            {format(expDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                            {format(expDate, i18n.language.startsWith("pt") ? "dd 'de' MMMM 'de' yyyy" : "MMMM d, yyyy", { locale: dateLocale })}
                           </span>
                           {expense.categoryName && (
                             <span className="text-xs px-2 py-0.5 rounded-full"
@@ -266,7 +267,7 @@ export default function ReportView() {
                             style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1"
                               style={{ background: "rgba(255,255,255,0.02)" }}>
-                              {t("reportView.receiptItems")}
+                              {t("axisBiz.collab.reportView.receiptItems")}
                             </p>
                             <div className="flex flex-col divide-y divide-border/20">
                               {receiptItems.map((item, idx) => (
@@ -277,7 +278,7 @@ export default function ReportView() {
                               ))}
                               <div className="flex items-center justify-between gap-3 px-3 py-1.5"
                                 style={{ background: "rgba(255,255,255,0.03)" }}>
-                                <span className="text-xs font-semibold text-muted-foreground">{t("reportView.total")}</span>
+                                <span className="text-xs font-semibold text-muted-foreground">{t("axisBiz.collab.reportView.total")}</span>
                                 <span className="text-xs font-bold" style={{ color: primaryHex }}>{formatBRL(expense.amount)}</span>
                               </div>
                             </div>
@@ -294,7 +295,7 @@ export default function ReportView() {
                               data-testid={`button-show-receipt-${expense.id}`}
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              {t("reportView.showReceipt")}
+                              {t("axisBiz.collab.reportView.showReceipt")}
                             </Button>
                           </div>
                         )}
@@ -313,7 +314,7 @@ export default function ReportView() {
             <span className="text-xs font-semibold" style={{ color: primaryHex }}>AXIS Business</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {t("reportView.generatedAt", { date: format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR }) })}
+            {t("axisBiz.collab.reportView.generatedAt", { date: format(new Date(), "dd/MM/yyyy HH:mm", { locale: dateLocale }) })}
           </p>
         </div>
 

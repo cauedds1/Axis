@@ -176,7 +176,7 @@ export default function BusinessHome() {
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("axisBiz.home.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t("axisBiz.home.noOrgHint")}</p>
         </div>
         <motion.div
@@ -201,7 +201,7 @@ export default function BusinessHome() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("axisBiz.home.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {t("axisBiz.home.greeting.morning")}, {user?.firstName ?? ""}. {format(now, i18n.language.startsWith("pt") ? "MMMM 'de' yyyy" : "MMMM yyyy", { locale: dateLocale })}.
           </p>

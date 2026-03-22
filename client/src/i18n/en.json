@@ -2751,11 +2751,14 @@
           "monthTotal": "Month total",
           "approved": "Approved",
           "pendingApprovals": "Pending approvals",
-          "rejected": "Rejected"
+          "rejected": "Rejected",
+          "items": "items"
         },
         "language": "Language",
         "languageSubtitle": "Choose the interface language",
-        "languageChanged": "Language changed successfully"
+        "languageChanged": "Language changed successfully",
+        "langPT": "Portuguese",
+        "langEN": "English"
       },
       "company": {
         "visualIdentity": "Visual identity",
@@ -2789,7 +2792,8 @@
           "marketing": "Marketing & Advertising",
           "food": "Food & Hospitality",
           "other": "Other"
-        }
+        },
+        "legalNamePlaceholder": "Company Name LLC"
       },
       "account": {
         "personalInfo": "Personal information",
@@ -2863,7 +2867,8 @@
       "other": "Other",
       "roleAdmin": "Administrator",
       "roleCollaborator": "Collaborator",
-      "viewPending": "View pending"
+      "viewPending": "View pending",
+      "title": "Dashboard"
     },
     "expenses": {
       "title": "Expenses",
@@ -2946,9 +2951,7 @@
       "status": "Status",
       "noDate": "No date",
       "exportError": "Error exporting data",
-      "receipt": "receipt",
-      "approve": "Approve",
-      "reject": "Reject"
+      "receipt": "receipt"
     },
     "collaborators": {
       "title": "Collaborators",
@@ -2967,7 +2970,6 @@
       "addCollaborator": "Add collaborator",
       "close": "Close",
       "noOrg": "Create a company first.",
-      "noCollaborators": "No collaborators yet",
       "makeAdmin": "Make admin",
       "makeCollaborator": "Make collaborator",
       "roleUpdated": "Role updated",
@@ -3130,7 +3132,8 @@
       "expenseCount": "expense(s)",
       "noDataForPeriod": "No data for this period",
       "detailedExpenses": "Detailed expenses",
-      "statusHeader": "Status"
+      "statusHeader": "Status",
+      "noCategory": "No category"
     },
     "bills": {
       "title": "Bills",
@@ -3226,7 +3229,16 @@
       "fieldClientPlaceholder": "Client name",
       "fieldPaymentMethod": "Payment method",
       "selectPlaceholder": "Select...",
-      "saveReceivable": "Save receivable"
+      "saveReceivable": "Save receivable",
+      "paymentMethods": {
+        "pix": "Pix",
+        "creditCard": "Credit Card",
+        "debitCard": "Debit Card",
+        "boleto": "Boleto",
+        "cash": "Cash",
+        "transfer": "Bank Transfer",
+        "other": "Other"
+      }
     },
     "collabHome": {
       "greeting": {
@@ -3354,6 +3366,15 @@
       "openReport": "Open report",
       "close": "Close",
       "receipt": "Receipt"
+    },
+    "collab": {
+      "reportView": {
+        "receipt": "Receipt",
+        "receiptItems": "Receipt items",
+        "total": "Total",
+        "showReceipt": "Show receipt",
+        "generatedAt": "Generated on {{date}}"
+      }
     }
   }
 }

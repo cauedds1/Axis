@@ -13,7 +13,7 @@ const AMBER = "#F59E0B";
 const BLUE = "#3B82F6";
 const ACCENT = "#F87171";
 
-const PAYMENT_METHODS = ["Pix", "Cartão de Crédito", "Cartão de Débito", "Boleto", "Dinheiro", "Transferência", "Outro"];
+const PAYMENT_METHOD_KEYS = ["pix", "creditCard", "debitCard", "boleto", "cash", "transfer", "other"];
 
 function fmtCurrency(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -61,7 +61,7 @@ function ReceivableRow({
   t: (k: string) => string;
 }) {
   const [showPayModal, setShowPayModal] = useState(false);
-  const [payMethod, setPayMethod] = useState("Pix");
+  const [payMethodKey, setPayMethodKey] = useState("pix");
   const s = getDueStatus(rec.dueDate as string, rec.status);
   const leftColor = s === "received" ? GREEN : s === "overdue" ? ACCENT : s === "urgent" ? AMBER : BLUE;
 
@@ -73,19 +73,19 @@ function ReceivableRow({
             <h3 className="font-bold mb-1">{t("axisBiz.receivables.settleTitle")}</h3>
             <p className="text-xs text-muted-foreground mb-4">{t("axisBiz.receivables.settleQuestion")}</p>
             <div className="space-y-1.5 mb-4">
-              {PAYMENT_METHODS.map(m => (
-                <button key={m} onClick={() => setPayMethod(m)}
+              {PAYMENT_METHOD_KEYS.map(key => (
+                <button key={key} onClick={() => setPayMethodKey(key)}
                   className="w-full text-left px-3 py-2 rounded-xl text-sm transition-all"
-                  style={payMethod === m ? { background: "rgba(52,211,153,0.12)", color: GREEN, border: "1px solid rgba(52,211,153,0.3)" } : { background: "hsl(var(--muted)/0.3)", border: "1px solid transparent" }}
-                  data-testid={`option-payment-${m.replace(/\s+/g, "-").toLowerCase()}`}
+                  style={payMethodKey === key ? { background: "rgba(52,211,153,0.12)", color: GREEN, border: "1px solid rgba(52,211,153,0.3)" } : { background: "hsl(var(--muted)/0.3)", border: "1px solid transparent" }}
+                  data-testid={`option-payment-${key}`}
                 >
-                  {m}
+                  {t(`axisBiz.receivables.paymentMethods.${key}`)}
                 </button>
               ))}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowPayModal(false)} className="flex-1 py-2 rounded-xl text-sm bg-muted" data-testid="button-cancel-baixa">{t("common.cancel")}</button>
-              <button onClick={() => { onReceive(payMethod); setShowPayModal(false); }} className="flex-1 py-2 rounded-xl text-sm text-white font-semibold" style={{ background: GREEN }} data-testid="button-confirm-baixa">
+              <button onClick={() => { onReceive(t(`axisBiz.receivables.paymentMethods.${payMethodKey}`)); setShowPayModal(false); }} className="flex-1 py-2 rounded-xl text-sm text-white font-semibold" style={{ background: GREEN }} data-testid="button-confirm-baixa">
                 {t("common.confirm")}
               </button>
             </div>
@@ -202,7 +202,7 @@ function NewReceivableModal({ orgId, onClose }: { orgId: string; onClose: () => 
               data-testid="select-receivable-paymentMethod"
             >
               <option value="">{t("axisBiz.receivables.selectPlaceholder")}</option>
-              {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              {PAYMENT_METHOD_KEYS.map(key => <option key={key} value={t(`axisBiz.receivables.paymentMethods.${key}`)}>{t(`axisBiz.receivables.paymentMethods.${key}`)}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -89,14 +89,14 @@ export default function BusinessReports() {
   const expenses = useMemo(() => {
     if (!rawExpenses) return [];
     if (filterCategory === "all") return rawExpenses;
-    return rawExpenses.filter(e => (e.categoryName || "Sem categoria") === filterCategory);
-  }, [rawExpenses, filterCategory]);
+    return rawExpenses.filter(e => (e.categoryName || t("axisBiz.reports.noCategory")) === filterCategory);
+  }, [rawExpenses, filterCategory, t]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    (rawExpenses ?? []).forEach(e => set.add(e.categoryName || "Sem categoria"));
+    (rawExpenses ?? []).forEach(e => set.add(e.categoryName || t("axisBiz.reports.noCategory")));
     return Array.from(set).sort();
-  }, [rawExpenses]);
+  }, [rawExpenses, t]);
 
   const metrics = useMemo(() => {
     const all = expenses ?? [];
@@ -115,7 +115,7 @@ export default function BusinessReports() {
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     (expenses ?? []).filter(e => e.status !== "rejected").forEach(e => {
-      const cat = e.categoryName || "Sem categoria";
+      const cat = e.categoryName || t("axisBiz.reports.noCategory");
       map[cat] = (map[cat] ?? 0) + e.amount;
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
