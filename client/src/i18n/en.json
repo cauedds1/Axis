@@ -2263,6 +2263,17 @@
     "tabFinance": "Finance",
     "tabTasks": "Tasks",
     "tabHabits": "Habits",
-    "tabSchedule": "Schedule"
+    "tabSchedule": "Schedule",
+    "pmDebit": "Debit",
+    "pmCredit": "Credit",
+    "pmPix": "Pix",
+    "pmCash": "Cash",
+    "pmOther": "Other",
+    "pmUnknown": "Unspecified",
+    "timeDawn": "Dawn",
+    "timeMorning": "Morning",
+    "timeAfternoon": "Afternoon",
+    "timeEvening": "Evening",
+    "priorityByTitle": "By priority"
   }
 }

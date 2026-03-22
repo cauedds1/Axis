@@ -186,14 +186,46 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
     other: RP.primary,
   };
 
-  const { summary, currentMonth, monthly, byCategory, currentMonthByCategory, dailyThisMonth, groupByWeek, byPaymentMethod, byEstablishment, byHour, byTimePeriod, peakHour, recentTransactions, goals, periodLabel: backendPeriodLabel } = data || {};
+  const { summary, currentMonth, monthly, byCategory, currentMonthByCategory, dailyThisMonth, groupByWeek, byPaymentMethod, byEstablishment, byHour, byTimePeriod, peakHour, recentTransactions, goals, periodStartIso, periodEndIso, isSingleMonth } = data || {};
 
   const filteredTx = recentTransactions?.filter((tx: any) => txFilter === "all" || tx.type === txFilter) || [];
-  const hasCurrentMonthData = currentMonth ? (currentMonth.income > 0 || currentMonth.expenses > 0) : false;
   const hasMonthlyData = monthly?.some((m: any) => m.income > 0 || m.expenses > 0) ?? false;
   const hasDailyData = dailyThisMonth?.some((d: any) => d.expenses > 0) ?? false;
-  const displayPeriod = backendPeriodLabel || (currentMonth?.name || "");
-  const capitalizedMonth = displayPeriod.charAt(0).toUpperCase() + displayPeriod.slice(1);
+
+  const buildPeriodLabel = (): string => {
+    if (!periodStartIso) return "";
+    const start = new Date(periodStartIso + "T00:00:00");
+    const end = new Date(periodEndIso + "T00:00:00");
+    if (isSingleMonth) {
+      return start.toLocaleDateString(dateLocale, { month: "long", year: "numeric" });
+    }
+    const fmtShort = (d: Date) => d.toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "2-digit" });
+    return `${fmtShort(start)} – ${fmtShort(end)}`;
+  };
+
+  const periodLabel = buildPeriodLabel();
+  const capitalizedMonth = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
+
+  const PM_LABEL_KEYS: Record<string, string> = {
+    debit: "axisReports.pmDebit",
+    credit: "axisReports.pmCredit",
+    pix: "axisReports.pmPix",
+    cash: "axisReports.pmCash",
+    other: "axisReports.pmOther",
+    unknown: "axisReports.pmUnknown",
+  };
+
+  const TIME_LABEL_KEYS: Record<string, string> = {
+    dawn: "axisReports.timeDawn",
+    morning: "axisReports.timeMorning",
+    afternoon: "axisReports.timeAfternoon",
+    evening: "axisReports.timeEvening",
+  };
+
+  const localizedMonthly = monthly?.map((m: any) => ({
+    ...m,
+    month: new Date(m.monthKey + "-01").toLocaleDateString(dateLocale, { month: "short", year: "2-digit" }),
+  })) ?? [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -364,17 +396,18 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           </div>
 
           {/* Payment methods */}
-          {byPaymentMethod?.filter((p: any) => p.key !== "Não informado").length > 0 && (
+          {byPaymentMethod?.filter((p: any) => p.key !== "unknown").length > 0 && (
             <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">{t("axisReports.paymentMethod")}</p>
               <div className="grid grid-cols-2 gap-2">
-                {byPaymentMethod.filter((p: any) => p.key !== "Não informado").map((pm: any, i: number) => {
+                {byPaymentMethod.filter((p: any) => p.key !== "unknown").map((pm: any, i: number) => {
                   const c = pmColors[pm.key] || color;
                   const isTop = i === 0;
+                  const pmLabel = PM_LABEL_KEYS[pm.key] ? t(PM_LABEL_KEYS[pm.key]) : pm.key;
                   return (
                     <div key={pm.key} className="rounded-xl border p-3 flex flex-col gap-1" style={isTop ? { borderColor: `${c}30`, background: `${c}08` } : {}} data-testid={`payment-method-${pm.key}`}>
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold">{pm.label}</p>
+                        <p className="text-xs font-semibold">{pmLabel}</p>
                         {isTop && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${c}15`, color: c }}>↑</span>}
                       </div>
                       <p className="text-base font-bold" style={{ color: c }}>R$ {pm.amount.toFixed(0)}</p>
@@ -399,7 +432,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">{t("axisReports.history6Months")}</p>
           {hasMonthlyData ? (
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={monthly} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+              <AreaChart data={localizedMonthly} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={RP.positive} stopOpacity={0.2} />
@@ -466,13 +499,14 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   {byTimePeriod.map((period: any) => {
                     const isTopPeriod = period.amount === Math.max(...byTimePeriod.map((p: any) => p.amount));
+                    const periodLabel = TIME_LABEL_KEYS[period.key] ? t(TIME_LABEL_KEYS[period.key]) : period.key;
                     return (
-                      <div key={period.label} className="rounded-xl border p-3 flex flex-col gap-1" style={isTopPeriod ? { borderColor: `${color}30`, background: `${color}08` } : {}} data-testid={`time-period-${period.label}`}>
+                      <div key={period.key} className="rounded-xl border p-3 flex flex-col gap-1" style={isTopPeriod ? { borderColor: `${color}30`, background: `${color}08` } : {}} data-testid={`time-period-${period.key}`}>
                         <div className="flex items-center justify-between">
                           <span className="text-base">{period.emoji}</span>
                           {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>{t("axisReports.peak")}</span>}
                         </div>
-                        <p className="text-xs font-semibold">{period.label}</p>
+                        <p className="text-xs font-semibold">{periodLabel}</p>
                         <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>R$ {period.amount.toFixed(0)}</p>
                         <p className="text-[10px] text-muted-foreground">{period.count}x</p>
                         <div className="h-1 rounded-full bg-muted overflow-hidden">
@@ -641,7 +675,7 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
       <div className="grid md:grid-cols-2 gap-4 mt-2">
         <div>
-          <SectionTitle>{t("axisReports.highPriority").replace(" prioridade", "").replace(" priority", "")} / {t("axisReports.overview")}</SectionTitle>
+          <SectionTitle>{t("axisReports.priorityByTitle")}</SectionTitle>
           <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
             <PriorityBar label={t("axisReports.highPriority")} total={byPriority.high.total} completed={byPriority.high.completed} color={RP.negative} />
             <PriorityBar label={t("axisReports.medPriority")} total={byPriority.medium.total} completed={byPriority.medium.completed} color={RP.schedule} />

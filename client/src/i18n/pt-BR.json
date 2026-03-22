@@ -2263,6 +2263,17 @@
     "tabFinance": "Finanças",
     "tabTasks": "Tarefas",
     "tabHabits": "Compromissos",
-    "tabSchedule": "Agenda"
+    "tabSchedule": "Agenda",
+    "pmDebit": "Débito",
+    "pmCredit": "Crédito",
+    "pmPix": "Pix",
+    "pmCash": "Dinheiro",
+    "pmOther": "Outro",
+    "pmUnknown": "Não informado",
+    "timeDawn": "Madrugada",
+    "timeMorning": "Manhã",
+    "timeAfternoon": "Tarde",
+    "timeEvening": "Noite",
+    "priorityByTitle": "Por prioridade"
   }
 }

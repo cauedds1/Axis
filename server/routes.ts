@@ -2465,7 +2465,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
               hourMap[hour].count++;
             }
             // Payment method
-            const pm = tx.paymentMethod || "Não informado";
+            const pm = tx.paymentMethod || "unknown";
             if (!paymentMap[pm]) paymentMap[pm] = { amount: 0, count: 0 };
             paymentMap[pm].amount += amt;
             paymentMap[pm].count++;
@@ -2479,9 +2479,8 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
         const m = monthlyMap[key] || { income: 0, expenses: 0 };
-        monthly.push({ month: label, income: m.income, expenses: m.expenses, balance: m.income - m.expenses });
+        monthly.push({ monthKey: key, income: m.income, expenses: m.expenses, balance: m.income - m.expenses });
       }
 
       // Build daily/weekly chart for selected period
@@ -2546,9 +2545,8 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       const topCategory = byCategory[0]?.name || "N/A";
 
       // Payment method breakdown
-      const PM_LABELS: Record<string, string> = { debit: "Débito", credit: "Crédito", pix: "Pix", cash: "Dinheiro", other: "Outro" };
       const byPaymentMethod = Object.entries(paymentMap)
-        .map(([key, d]) => ({ key, label: PM_LABELS[key] || key, amount: Number(d.amount.toFixed(2)), count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
+        .map(([key, d]) => ({ key, amount: Number(d.amount.toFixed(2)), count: d.count, pct: selExpenses > 0 ? Math.round((d.amount / selExpenses) * 100) : 0 }))
         .sort((a, b) => b.amount - a.amount);
 
       // Top establishments (selected period)
@@ -2559,10 +2557,10 @@ Se algum dado não foi mencionado, use valores razoáveis.`
 
       // Spending by hour → group into time periods
       const timePeriods = [
-        { label: "Madrugada", emoji: "🌙", range: [0, 5], amount: 0, count: 0 },
-        { label: "Manhã", emoji: "🌅", range: [6, 11], amount: 0, count: 0 },
-        { label: "Tarde", emoji: "☀️", range: [12, 17], amount: 0, count: 0 },
-        { label: "Noite", emoji: "🌆", range: [18, 23], amount: 0, count: 0 },
+        { key: "dawn", emoji: "🌙", range: [0, 5], amount: 0, count: 0 },
+        { key: "morning", emoji: "🌅", range: [6, 11], amount: 0, count: 0 },
+        { key: "afternoon", emoji: "☀️", range: [12, 17], amount: 0, count: 0 },
+        { key: "evening", emoji: "🌆", range: [18, 23], amount: 0, count: 0 },
       ];
       for (const [h, d] of Object.entries(hourMap)) {
         const hour = Number(h);
@@ -2582,7 +2580,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       const peakHour = byHour.reduce((best, h) => h.amount > best.amount ? h : best, byHour[0]);
 
       const byTimePeriod = timePeriods.map(p => ({
-        label: p.label,
+        key: p.key,
         emoji: p.emoji,
         amount: Number(p.amount.toFixed(2)),
         count: p.count,
@@ -2599,10 +2597,15 @@ Se algum dado não foi mencionado, use valores razoáveis.`
       const periodMonths = Math.max(1, Math.round(periodMs / (1000 * 60 * 60 * 24 * 30)));
       const avgMonthlyExpense = Math.round(selExpenses / periodMonths);
 
+      const periodStartIso = periodStart.toISOString().slice(0, 10);
+      const periodEndIso = periodEnd.toISOString().slice(0, 10);
+
       res.json({
         summary: { totalIncome: selIncome, totalExpenses: selExpenses, balance: selBalance, savingsRate: selSavingsRate, topCategory, transactionCount: selTxCount, avgMonthlyExpense },
-        currentMonth: { name: periodLabel, income: selIncome, expenses: selExpenses, balance: selBalance, savingsRate: selSavingsRate, transactionCount: selTxCount, expenseTrend, incomeTrend, topCategory: currentMonthByCategory[0]?.name || "N/A" },
-        periodLabel,
+        currentMonth: { income: selIncome, expenses: selExpenses, balance: selBalance, savingsRate: selSavingsRate, transactionCount: selTxCount, expenseTrend, incomeTrend, topCategory: currentMonthByCategory[0]?.name || "N/A" },
+        periodStartIso,
+        periodEndIso,
+        isSingleMonth,
         monthly,
         byCategory,
         currentMonthByCategory,
