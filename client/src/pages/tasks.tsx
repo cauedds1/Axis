@@ -625,8 +625,8 @@ export default function Tasks() {
     tomorrow.setDate(today.getDate() + 1);
     const isToday = d.toDateString() === today.toDateString();
     const isTomorrow = d.toDateString() === tomorrow.toDateString();
-    const timeStr = d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
-    const hasTime = timeStr !== "23:59";
+    const hasTime = !(d.getHours() === 23 && d.getMinutes() === 59);
+    const timeStr = hasTime ? d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" }) : "";
     if (isToday) return `${t("axisTasks.today")}${hasTime ? ` · ${timeStr}` : ""}`;
     if (isTomorrow) return `${t("axisTasks.tomorrow")}${hasTime ? ` · ${timeStr}` : ""}`;
     return d.toLocaleDateString(lang, { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");

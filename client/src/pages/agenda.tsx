@@ -578,7 +578,7 @@ export default function Agenda() {
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
-                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
+                                        onClick={() => { const _st = new Date(item.startTime); const _hh = String(_st.getHours()).padStart(2, "0"); const _mm = String(_st.getMinutes()).padStart(2, "0"); setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(`${_hh}:${_mm}`); setPanelItemMenuId(null); }}
                                         data-testid={`button-postpone-${item.id}`}>
                                         <CalendarClock className="h-3 w-3" /> {t("axisAgenda.postpone")}
                                       </button>
