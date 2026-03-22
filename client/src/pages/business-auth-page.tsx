@@ -414,7 +414,7 @@ export default function BusinessAuthPage() {
       const registerRes = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
       const userData = await registerRes.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
-      const rawReg = registrationNumber.replace(/\s/g, "");
+      const rawReg = registrationNumber.replace(/[^0-9A-Za-z]/g, "");
       await apiRequest("POST", "/api/business/organizations", {
         name: companyName,
         tradeName: tradeName || undefined,
@@ -643,13 +643,14 @@ export default function BusinessAuthPage() {
                     </div>
                     {(() => {
                       const region = REGIONS.find((r) => r.code === country) ?? REGIONS[0];
+                      const label = region.code === "OTHER" ? t("axisBizAuth.registrationNumber") : region.regLabel;
                       return (
                         <div>
-                          <label className={labelClass}>{region.regLabel} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
+                          <label className={labelClass}>{label} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
                           <input
                             value={registrationNumber}
                             onChange={(e) => setRegistrationNumber(region.format(e.target.value))}
-                            placeholder={region.placeholder}
+                            placeholder={region.placeholder || t("axisBizAuth.registrationNumber")}
                             inputMode={region.inputMode}
                             className={inputClass}
                             data-testid="input-registration-number"
