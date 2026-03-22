@@ -135,7 +135,7 @@ function BillFormModal({
         <div className="flex-shrink-0 px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <DialogHeader>
             <DialogTitle className="text-white text-base font-semibold">
-              {isEdit ? t("axisFinance.editTransaction") : t("axisFinance.fixedBills")}
+              {isEdit ? t("axisFinance.editBill") : t("axisFinance.newBill")}
             </DialogTitle>
           </DialogHeader>
 
@@ -483,7 +483,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
 
             {/* Filtros de tipo */}
             <div className="flex gap-1 mt-4">
-              {([["all", t("axisFinance.tabTransactions")], ["expense", t("axisFinance.expenseLabel")], ["income", t("axisFinance.incomeLabel")]] as const).map(([id, label]) => (
+              {([["all", t("axisFinance.filterAll")], ["expense", t("axisFinance.expenseLabel")], ["income", t("axisFinance.incomeLabel")]] as const).map(([id, label]) => (
                 <button
                   key={id}
                   type="button"
@@ -518,8 +518,8 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
                 >
                   <RotateCcw className="h-5 w-5 text-white/20" />
                 </div>
-                <p className="text-sm text-white/30 mb-1">{t("axisFinance.toBuy")}</p>
-                <p className="text-xs text-white/18">{t("axisFinance.billAddDone")}</p>
+                <p className="text-sm text-white/30 mb-1">{t("axisFinance.noBillsRegistered")}</p>
+                <p className="text-xs text-white/18">{t("axisFinance.noBillsHint")}</p>
               </div>
             )}
 

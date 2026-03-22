@@ -137,7 +137,7 @@ export async function detectIntentAndProcess(
   const openai = getOpenAIClient();
 
   const userProfile = await storage.getUserProfile(userId).catch(() => null);
-  const detectCur = getCurrencySymbol((userProfile as any)?.currency);
+  const detectCur = getCurrencySymbol(userProfile?.currency ?? undefined);
 
   let userCards: any[] = [];
   let creditCardsContext = "";
@@ -634,7 +634,7 @@ export async function chatWithContext(message: string, userId: string, executedA
   const allTimeIncome = allTimeTx.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
   const allTimeExpenses = allTimeTx.filter(t => t.type === "expense" && !t.creditCardId).reduce((sum, t) => sum + t.amount, 0);
   const balance = (profile?.initialBalance ?? 0) + allTimeIncome - allTimeExpenses;
-  const cur = getCurrencySymbol((profile as any)?.currency);
+  const cur = getCurrencySymbol(profile?.currency ?? undefined);
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100) : 0;
   const spendingPct = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
 

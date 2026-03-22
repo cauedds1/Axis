@@ -246,7 +246,7 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       COP: "$", CLP: "$", PEN: "S/", UYU: "$", SGD: "S$",
       INR: "₹", CNY: "¥", ZAR: "R", AED: "AED",
     };
-    const profileCur = CURRENCY_SYMBOLS_ROUTES[(profile as any)?.currency ?? "BRL"] ?? "R$";
+    const profileCur = CURRENCY_SYMBOLS_ROUTES[profile?.currency ?? "BRL"] ?? "R$";
 
     // Compute credit card utilization for this month
     const monthTx = allTimeTx.filter(t => new Date(t.date!) >= startOfMonth);
@@ -369,7 +369,7 @@ export async function registerRoutes(
       if (profile?.currencySetAt) {
         return res.status(409).json({ message: "Currency already set and cannot be changed" });
       }
-      await storage.upsertUserProfile(userId, { currency, currencySetAt: new Date() } as any);
+      await storage.upsertUserProfile(userId, { currency: currency as string, currencySetAt: new Date() });
       res.json({ success: true, currency });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
