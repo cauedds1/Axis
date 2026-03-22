@@ -400,7 +400,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
               </span>
               <div className="flex items-center gap-1 text-[11px] text-white/30">
                 <Calendar className="h-3 w-3" />
-                <span>{t("axisAgenda.dueDay", { day: bill.dueDay })}</span>
+                <span>{t("axisFinance.dueDayDisplay", { day: bill.dueDay })}</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-white/30">
                 <RotateCcw className="h-3 w-3" />
