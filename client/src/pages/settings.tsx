@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -282,6 +283,7 @@ function WhatsAppTab() {
 }
 
 export default function SettingsPage() {
+  const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("aparencia");
@@ -409,6 +411,24 @@ export default function SettingsPage() {
               <div>
                 <SectionLabel>Tema visual</SectionLabel>
                 <ThemeSelector value={theme} onChange={handleThemeChange} />
+              </div>
+
+              <div>
+                <SectionLabel>{t("settings.language")}</SectionLabel>
+                <p className="text-xs text-muted-foreground mb-3">{t("settings.languageSelectLabel")}</p>
+                <Select
+                  value={i18n.language}
+                  onValueChange={(lng) => {
+                    i18n.changeLanguage(lng);
+                    toast({ title: t("settings.languageChanged") });
+                  }}
+                >
+                  <SelectTrigger data-testid="select-language"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pt-BR">🇧🇷 {t("settings.langPtBR")}</SelectItem>
+                    <SelectItem value="en">🇺🇸 {t("settings.langEn")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>

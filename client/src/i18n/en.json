@@ -540,7 +540,12 @@
     "exporting": "Exporting...",
     "exportSuccess": "Data exported successfully!",
     "exportError": "Error exporting data",
-    "deleteDataNotice": "In compliance with data protection laws, deleting your account will permanently remove all your personal data from our servers, including processed recordings, transcriptions, contacts, companies, and tasks. This action is irreversible."
+    "deleteDataNotice": "In compliance with data protection laws, deleting your account will permanently remove all your personal data from our servers, including processed recordings, transcriptions, contacts, companies, and tasks. This action is irreversible.",
+    "language": "Language",
+    "languageSelectLabel": "Select the interface language",
+    "langPtBR": "Português (BR)",
+    "langEn": "English",
+    "languageChanged": "Language changed successfully"
   },
   "categories": {
     "all": "All categories",

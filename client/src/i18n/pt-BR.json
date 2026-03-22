@@ -540,7 +540,12 @@
     "exporting": "Exportando...",
     "exportSuccess": "Dados exportados com sucesso!",
     "exportError": "Erro ao exportar dados",
-    "deleteDataNotice": "Conforme a LGPD, ao excluir sua conta, todos os seus dados pessoais serao permanentemente removidos dos nossos servidores, incluindo gravacoes processadas, transcricoes, contatos, empresas e tarefas. Esta acao e irreversivel."
+    "deleteDataNotice": "Conforme a LGPD, ao excluir sua conta, todos os seus dados pessoais serao permanentemente removidos dos nossos servidores, incluindo gravacoes processadas, transcricoes, contatos, empresas e tarefas. Esta acao e irreversivel.",
+    "language": "Idioma",
+    "languageSelectLabel": "Selecione o idioma da interface",
+    "langPtBR": "Português (BR)",
+    "langEn": "English",
+    "languageChanged": "Idioma alterado com sucesso"
   },
   "categories": {
     "all": "Todas as categorias",
