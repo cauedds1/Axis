@@ -2142,6 +2142,7 @@
     "errorSending": "Error",
     "errorConfirm": "Error confirming",
     "errorFile": "Error processing file",
+    "errorMic": "Microphone access denied",
     "scheduledCreated": "Appointments created in schedule"
   },
   "axisPublicReport": {

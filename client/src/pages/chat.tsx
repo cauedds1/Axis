@@ -170,7 +170,7 @@ export default function Chat() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch {
-      toast({ title: t("axisChat.errorSending"), description: t("axisChat.errorFile"), variant: "destructive" });
+      toast({ title: t("axisChat.errorMic"), variant: "destructive" });
     }
   };
 

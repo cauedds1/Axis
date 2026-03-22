@@ -2142,6 +2142,7 @@
     "errorSending": "Erro",
     "errorConfirm": "Erro ao confirmar",
     "errorFile": "Erro ao processar arquivo",
+    "errorMic": "Acesso ao microfone negado",
     "scheduledCreated": "Compromissos criados na agenda"
   },
   "axisPublicReport": {

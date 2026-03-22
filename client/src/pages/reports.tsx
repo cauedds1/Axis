@@ -147,7 +147,8 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
 }
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const [txFilter, setTxFilter] = useState<"all" | "expense" | "income">("all");
@@ -591,7 +592,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                         {tx.establishment && <><span className="font-medium text-foreground/60">{tx.establishment}</span><span>·</span></>}
                         <span>{tx.categoryName || t("axisReports.noCategory")}</span>
                         <span>·</span>
-                        <span>{new Date(tx.date).toLocaleDateString(undefined, { day: "2-digit", month: "short" })}</span>
+                        <span>{new Date(tx.date).toLocaleDateString(dateLocale, { day: "2-digit", month: "short" })}</span>
                       </div>
                     </div>
                   </div>
@@ -612,7 +613,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== TASKS TAB ========================
 function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/tasks"] });
@@ -684,7 +686,7 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
               <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: RP.negative }} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" data-testid={`report-urgent-${task.id}`}>{task.title}</p>
-                {task.dueDate && <p className="text-[11px] text-muted-foreground">{t("axisReports.dueDate")} {new Date(task.dueDate).toLocaleDateString()}</p>}
+                {task.dueDate && <p className="text-[11px] text-muted-foreground">{t("axisReports.dueDate")} {new Date(task.dueDate).toLocaleDateString(dateLocale)}</p>}
               </div>
               <span className="text-[11px] font-bold px-2 py-1 rounded-lg" style={{ background: `${RP.negative}15`, color: RP.negative }}>{t("axisReports.highLabel")}</span>
             </div>
@@ -768,7 +770,8 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== SCHEDULE TAB ========================
 function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/reports/schedule"] });
@@ -825,7 +828,7 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <div className="w-1 h-8 rounded-full flex-shrink-0 mt-0.5" style={{ background: color, opacity: i === 0 ? 1 : 0.4 }} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`report-upcoming-${item.id}`}>{item.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
                 </div>
               ))}
@@ -846,7 +849,7 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: RP.negative }} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" data-testid={`report-overdue-${item.id}`}>{item.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(item.startTime).toLocaleDateString(dateLocale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
                   </div>
                 </div>
               ))}
@@ -864,7 +867,8 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
 // ======================== MAIN PAGE ========================
 export default function Reports() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [activeTab, setActiveTab] = useState<"finance" | "tasks" | "habits" | "schedule">("finance");
   const { theme } = useTheme();
   const isHigh = theme.startsWith("high");
@@ -884,7 +888,7 @@ export default function Reports() {
     schedule: P.schedule,
   };
 
-  const today = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date().toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="px-6 py-6 pb-28">
