@@ -2,52 +2,30 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { Loader2, ArrowRight, ArrowLeft, Mic, Calendar, TrendingUp, Flame, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Mic, Calendar, Flame } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CORAL = "#FF6B6B";
 const GOLD = "#FFB347";
 const LAVANDA = "#A78BFA";
 const MINT = "#4ECDC4";
 
-const features = [
-  { text: "Registre gastos por voz em 3 segundos", color: CORAL },
-  { text: "Agenda inteligente com sugestão de horários", color: GOLD },
-  { text: "Compromissos com streaks e score de disciplina", color: LAVANDA },
-  { text: "Chat com IA que conhece todos os seus dados", color: MINT },
-  { text: "Foto de nota fiscal vira gasto categorizado", color: GOLD },
-];
-
-const demoCards = [
-  {
-    icon: Mic,
-    color: CORAL,
-    bg: "rgba(255,107,107,0.08)",
-    border: "rgba(255,107,107,0.15)",
-    voice: '"Gastei 45 reais no almoço"',
-    result: "R$ 45,00 · Alimentação",
-    tag: "Gasto registrado",
-  },
-  {
-    icon: Calendar,
-    color: GOLD,
-    bg: "rgba(255,179,71,0.08)",
-    border: "rgba(255,179,71,0.15)",
-    voice: '"Reunião amanhã às 14h"',
-    result: "Amanhã, 14:00 · Reunião",
-    tag: "Evento criado",
-  },
-  {
-    icon: Flame,
-    color: LAVANDA,
-    bg: "rgba(167,139,250,0.08)",
-    border: "rgba(167,139,250,0.15)",
-    voice: '"Estudar 2h por dia"',
-    result: "Compromisso · Streak: 12 dias",
-    tag: "Compromisso adicionado",
-  },
-];
+const FEATURE_COLORS = [CORAL, GOLD, LAVANDA, MINT, GOLD];
+const DEMO_COLORS = [CORAL, GOLD, LAVANDA];
+const DEMO_ICONS = [Mic, Calendar, Flame];
+const DEMO_BG = ["rgba(255,107,107,0.08)", "rgba(255,179,71,0.08)", "rgba(167,139,250,0.08)"];
+const DEMO_BORDER = ["rgba(255,107,107,0.15)", "rgba(255,179,71,0.15)", "rgba(167,139,250,0.15)"];
 
 function FeatureRotator() {
+  const { t } = useTranslation();
+  const features = [
+    { text: t("axisAuth.feature0"), color: CORAL },
+    { text: t("axisAuth.feature1"), color: GOLD },
+    { text: t("axisAuth.feature2"), color: LAVANDA },
+    { text: t("axisAuth.feature3"), color: MINT },
+    { text: t("axisAuth.feature4"), color: GOLD },
+  ];
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
@@ -55,7 +33,7 @@ function FeatureRotator() {
       setIdx((prev) => (prev + 1) % features.length);
     }, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [features.length]);
 
   return (
     <div className="h-14 relative overflow-hidden">
@@ -80,27 +58,31 @@ function FeatureRotator() {
   );
 }
 
-function DemoCard({ card, delay }: { card: typeof demoCards[0]; delay: number }) {
-  const Icon = card.icon;
+function DemoCard({ cardIndex, delay }: { cardIndex: number; delay: number }) {
+  const { t } = useTranslation();
+  const Icon = DEMO_ICONS[cardIndex];
+  const color = DEMO_COLORS[cardIndex];
+  const bg = DEMO_BG[cardIndex];
+  const border = DEMO_BORDER[cardIndex];
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay }}
       className="rounded-xl p-4 border"
-      style={{ background: card.bg, borderColor: card.border }}
+      style={{ background: bg, borderColor: border }}
     >
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: card.bg, border: `1px solid ${card.border}` }}>
-          <Icon className="w-4 h-4" style={{ color: card.color }} />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg, border: `1px solid ${border}` }}>
+          <Icon className="w-4 h-4" style={{ color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-white/35 mb-1 italic leading-relaxed">{card.voice}</p>
+          <p className="text-xs text-white/35 mb-1 italic leading-relaxed">{t(`axisAuth.card${cardIndex}Voice`)}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color: card.color }} />
-            <p className="text-xs font-semibold text-white/80">{card.result}</p>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ color: card.color, background: card.bg, border: `1px solid ${card.border}` }}>
-              {card.tag}
+            <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color }} />
+            <p className="text-xs font-semibold text-white/80">{t(`axisAuth.card${cardIndex}Result`)}</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ color, background: bg, border: `1px solid ${border}` }}>
+              {t(`axisAuth.card${cardIndex}Tag`)}
             </span>
           </div>
         </div>
@@ -110,6 +92,13 @@ function DemoCard({ card, delay }: { card: typeof demoCards[0]; delay: number })
 }
 
 function BrandPanel() {
+  const { t } = useTranslation();
+  const modules = [
+    { key: "module0", color: CORAL },
+    { key: "module1", color: GOLD },
+    { key: "module2", color: LAVANDA },
+    { key: "module3", color: MINT },
+  ];
   return (
     <div className="relative flex flex-col justify-between h-full p-10 xl:p-14 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "#060608" }} />
@@ -132,7 +121,7 @@ function BrandPanel() {
           <img src="/logo.png" alt="AXIS" className="w-16 h-16 rounded-2xl object-cover" />
           <div>
             <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">AXIS</span>
-            <span className="text-xs text-white/25 tracking-wide">Seu assistente de vida</span>
+            <span className="text-xs text-white/25 tracking-wide">{t("axisAuth.brandSubtitle")}</span>
           </div>
         </div>
       </div>
@@ -140,19 +129,19 @@ function BrandPanel() {
       <div className="relative z-10 flex-1 flex flex-col justify-center py-10 gap-8">
         <div>
           <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
-            <span className="text-white">Organize</span>{" "}
+            <span className="text-white">{t("axisAuth.heroTitle1")}</span>{" "}
             <span style={{ background: `linear-gradient(135deg, ${CORAL} 0%, ${GOLD} 50%, ${LAVANDA} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              sua vida.
+              {t("axisAuth.heroGradient")}
             </span>
             <br />
-            <span className="text-white/30 text-3xl xl:text-4xl">Por voz ou texto.</span>
+            <span className="text-white/30 text-3xl xl:text-4xl">{t("axisAuth.heroSubtitle")}</span>
           </h2>
           <FeatureRotator />
         </div>
 
         <div className="flex flex-col gap-3">
-          {demoCards.map((card, i) => (
-            <DemoCard key={i} card={card} delay={i * 0.12} />
+          {[0, 1, 2].map((i) => (
+            <DemoCard key={i} cardIndex={i} delay={i * 0.12} />
           ))}
         </div>
       </div>
@@ -160,15 +149,10 @@ function BrandPanel() {
       <div className="relative z-10">
         <div className="h-px w-full mb-5" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
         <div className="flex items-center gap-6">
-          {[
-            { label: "Finanças", color: CORAL },
-            { label: "Agenda", color: GOLD },
-            { label: "Compromissos", color: LAVANDA },
-            { label: "IA", color: MINT },
-          ].map((mod) => (
-            <div key={mod.label} className="flex items-center gap-1.5">
+          {modules.map((mod) => (
+            <div key={mod.key} className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
-              <span className="text-xs text-white/25" data-testid={`text-module-${mod.label.toLowerCase()}`}>{mod.label}</span>
+              <span className="text-xs text-white/25" data-testid={`text-module-${mod.key}`}>{t(`axisAuth.${mod.key}`)}</span>
             </div>
           ))}
         </div>
@@ -178,6 +162,7 @@ function BrandPanel() {
 }
 
 export default function AuthPage() {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -187,8 +172,8 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    document.title = `AXIS — ${isLogin ? "Entrar" : "Criar conta"}`;
-  }, [isLogin]);
+    document.title = `AXIS — ${isLogin ? t("axisAuth.loginTitle") : t("axisAuth.registerTitle")}`;
+  }, [isLogin, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +199,7 @@ export default function AuthPage() {
         data-testid="button-back-to-landing"
       >
         <ArrowLeft className="w-4 h-4" />
-        Voltar
+        {t("axisAuth.backButton")}
       </button>
 
       <div className="hidden lg:block lg:w-[52%] xl:w-[55%]">
@@ -232,7 +217,7 @@ export default function AuthPage() {
             <img src="/logo.png" alt="AXIS" className="w-14 h-14 rounded-xl object-cover" />
             <div>
               <span className="text-xl font-bold tracking-tight block">AXIS</span>
-              <p className="text-white/35 text-xs">Organize sua vida. Por voz ou texto.</p>
+              <p className="text-white/35 text-xs">{t("axisAuth.mobileSubtitle")}</p>
             </div>
           </div>
         </div>
@@ -251,10 +236,10 @@ export default function AuthPage() {
         >
           <div className="mb-9">
             <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
-              {isLogin ? "Bem-vindo de volta" : "Crie sua conta"}
+              {isLogin ? t("axisAuth.loginTitle") : t("axisAuth.registerTitle")}
             </h1>
             <p className="text-sm text-white/35">
-              {isLogin ? "Entre com suas credenciais para continuar" : "Comece a organizar sua vida agora"}
+              {isLogin ? t("axisAuth.loginSubtitle") : t("axisAuth.registerSubtitle")}
             </p>
           </div>
 
@@ -270,7 +255,7 @@ export default function AuthPage() {
               <div className="grid grid-cols-2 gap-3 pb-1">
                 <div>
                   <label htmlFor="firstName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                    Nome
+                    {t("axisAuth.nameLabel")}
                   </label>
                   <input
                     id="firstName"
@@ -285,7 +270,7 @@ export default function AuthPage() {
                 </div>
                 <div>
                   <label htmlFor="lastName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                    Sobrenome
+                    {t("axisAuth.surnameLabel")}
                   </label>
                   <input
                     id="lastName"
@@ -303,7 +288,7 @@ export default function AuthPage() {
 
             <div>
               <label htmlFor="email" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                E-mail
+                {t("axisAuth.emailLabel")}
               </label>
               <input
                 id="email"
@@ -319,14 +304,14 @@ export default function AuthPage() {
 
             <div>
               <label htmlFor="password" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                Senha
+                {t("axisAuth.passwordLabel")}
               </label>
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
+                placeholder={t("axisAuth.passwordPh")}
                 required
                 minLength={6}
                 className="auth-input"
@@ -356,7 +341,7 @@ export default function AuthPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    {isLogin ? "Entrar na conta" : "Criar minha conta"}
+                    {isLogin ? t("axisAuth.loginBtn") : t("axisAuth.registerBtn")}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
@@ -372,9 +357,9 @@ export default function AuthPage() {
               data-testid="button-toggle-auth-mode"
             >
               {isLogin ? (
-                <>Não tem conta?{" "}<span className="font-semibold" style={{ color: CORAL }}>Criar agora</span></>
+                <>{t("axisAuth.noAccount")}{" "}<span className="font-semibold" style={{ color: CORAL }}>{t("axisAuth.createNow")}</span></>
               ) : (
-                <>Já tem conta?{" "}<span className="font-semibold" style={{ color: CORAL }}>Entrar</span></>
+                <>{t("axisAuth.hasAccount")}{" "}<span className="font-semibold" style={{ color: CORAL }}>{t("axisAuth.signIn")}</span></>
               )}
             </button>
           </div>
@@ -382,13 +367,13 @@ export default function AuthPage() {
           <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <div className="flex items-center justify-center gap-7">
               {[
-                { label: "Gratuito", color: CORAL },
-                { label: "Sem cartão", color: GOLD },
-                { label: "30 segundos", color: LAVANDA },
+                { key: "badgeFree", color: CORAL },
+                { key: "badgeNoCard", color: GOLD },
+                { key: "badgeSeconds", color: LAVANDA },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5">
+                <div key={item.key} className="flex items-center gap-1.5">
                   <div className="w-1 h-1 rounded-full" style={{ background: item.color, boxShadow: `0 0 4px ${item.color}80` }} />
-                  <span className="text-[11px] text-white/22">{item.label}</span>
+                  <span className="text-[11px] text-white/22">{t(`axisAuth.${item.key}`)}</span>
                 </div>
               ))}
             </div>

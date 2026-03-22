@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import { ArrowRight, LogOut, ReceiptText, CheckCircle2, TrendingUp, BarChart3, Smartphone, Users, FileSpreadsheet, Sparkles, MessageSquare, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 const PRIMARY = "#3B82F6";
 const INDIGO = "#6366F1";
@@ -11,32 +12,11 @@ const CYAN = "#0EA5E9";
 const EMERALD = "#10B981";
 const AMBER = "#F59E0B";
 
-const steps = [
-  {
-    n: "01",
-    title: "Configure sua empresa",
-    desc: "Sua empresa já foi criada. Personalize categorias, centros de custo e limites de aprovação",
-    active: true,
-  },
-  {
-    n: "02",
-    title: "Convide colaboradores",
-    desc: "Eles enviam recibos pelo WhatsApp, a IA processa e categoriza automaticamente",
-    active: false,
-  },
-  {
-    n: "03",
-    title: "Aprove e exporte",
-    desc: "Gerencie aprovações com um clique e exporte relatórios para o contador em segundos",
-    active: false,
-  },
-];
-
-function ExpensesCard({ delay }: { delay: number }) {
+function ExpensesCard({ delay, t }: { delay: number; t: (k: string) => string }) {
   const items = [
-    { label: "Almoço cliente", value: "R$ 89,00", cat: "Alimentação" },
-    { label: "Uber para reunião", value: "R$ 34,50", cat: "Transporte" },
-    { label: "Material escritório", value: "R$ 127,00", cat: "Suprimentos" },
+    { label: t("businessWelcome.exampleFood"), value: "R$ 89,00", cat: t("businessWelcome.categoryFood") },
+    { label: t("businessWelcome.exampleUber"), value: "R$ 34,50", cat: t("businessWelcome.categoryTransport") },
+    { label: t("businessWelcome.exampleSupplies"), value: "R$ 127,00", cat: t("businessWelcome.categorySupplies") },
   ];
 
   return (
@@ -55,9 +35,9 @@ function ExpensesCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${PRIMARY}18`, border: `1px solid ${PRIMARY}28` }}>
             <ReceiptText className="w-3.5 h-3.5" style={{ color: PRIMARY }} />
           </div>
-          <span className="text-white font-bold text-sm">Despesas</span>
+          <span className="text-white font-bold text-sm">{t("businessWelcome.expenses")}</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>IA ativa</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${PRIMARY}15`, color: PRIMARY }}>{t("businessWelcome.aiActive")}</span>
       </div>
 
       <div className="space-y-2 flex-1">
@@ -80,13 +60,13 @@ function ExpensesCard({ delay }: { delay: number }) {
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
         <MessageSquare className="w-3 h-3" style={{ color: PRIMARY }} />
-        <span className="text-[10px] text-white/30">Enviados pelo WhatsApp</span>
+        <span className="text-[10px] text-white/30">{t("businessWelcome.sentViaWhatsApp")}</span>
       </div>
     </motion.div>
   );
 }
 
-function ApprovalsCard({ delay }: { delay: number }) {
+function ApprovalsCard({ delay, t }: { delay: number; t: (k: string) => string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -103,9 +83,9 @@ function ApprovalsCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${AMBER}18`, border: `1px solid ${AMBER}28` }}>
             <CheckCircle2 className="w-3.5 h-3.5" style={{ color: AMBER }} />
           </div>
-          <span className="text-white font-bold text-sm">Aprovações</span>
+          <span className="text-white font-bold text-sm">{t("businessWelcome.approvals")}</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${EMERALD}15`, color: EMERALD }}>Tudo em dia</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${EMERALD}15`, color: EMERALD }}>{t("businessWelcome.allGood")}</span>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center py-2">
@@ -118,8 +98,8 @@ function ApprovalsCard({ delay }: { delay: number }) {
         >
           <CheckCircle2 className="w-5 h-5" style={{ color: EMERALD }} />
         </motion.div>
-        <p className="text-sm font-bold text-white/80">0 pendentes</p>
-        <p className="text-[10px] text-white/30 mt-0.5">Nenhuma aprovação aguardando</p>
+        <p className="text-sm font-bold text-white/80">0 {t("businessWelcome.pendingApprovals")}</p>
+        <p className="text-[10px] text-white/30 mt-0.5">{t("businessWelcome.noPendingApprovals")}</p>
       </div>
 
       <div className="mt-2">
@@ -132,13 +112,13 @@ function ApprovalsCard({ delay }: { delay: number }) {
             style={{ background: `linear-gradient(90deg, ${EMERALD}, ${EMERALD}80)` }}
           />
         </div>
-        <p className="text-[10px] text-white/25 mt-1">100% processadas</p>
+        <p className="text-[10px] text-white/25 mt-1">100% {t("businessWelcome.processed")}</p>
       </div>
     </motion.div>
   );
 }
 
-function CashflowCard({ delay }: { delay: number }) {
+function CashflowCard({ delay, t }: { delay: number; t: (k: string) => string }) {
   const bars = [30, 55, 45, 70, 40, 60, 50];
 
   return (
@@ -157,7 +137,7 @@ function CashflowCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${EMERALD}18`, border: `1px solid ${EMERALD}28` }}>
             <TrendingUp className="w-3.5 h-3.5" style={{ color: EMERALD }} />
           </div>
-          <span className="text-white font-bold text-sm">Fluxo de Caixa</span>
+          <span className="text-white font-bold text-sm">{t("businessWelcome.cashflow")}</span>
         </div>
       </div>
 
@@ -176,11 +156,11 @@ function CashflowCard({ delay }: { delay: number }) {
 
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/35">A receber</span>
+          <span className="text-[10px] text-white/35">{t("businessWelcome.receivable")}</span>
           <span className="text-[10px] font-semibold" style={{ color: EMERALD }}>R$ 0,00</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/35">A pagar</span>
+          <span className="text-[10px] text-white/35">{t("businessWelcome.payable")}</span>
           <span className="text-[10px] font-semibold text-white/50">R$ 0,00</span>
         </div>
       </div>
@@ -188,7 +168,13 @@ function CashflowCard({ delay }: { delay: number }) {
   );
 }
 
-function ReportsCard({ delay }: { delay: number }) {
+function ReportsCard({ delay, t }: { delay: number; t: (k: string) => string }) {
+  const reportItems = [
+    { icon: FileSpreadsheet, label: t("businessWelcome.excelByPeriod"), color: EMERALD },
+    { icon: Users, label: t("businessWelcome.byCollaborator"), color: CYAN },
+    { icon: Smartphone, label: t("businessWelcome.zipReceipts"), color: INDIGO },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -205,17 +191,13 @@ function ReportsCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${INDIGO}18`, border: `1px solid ${INDIGO}28` }}>
             <BarChart3 className="w-3.5 h-3.5" style={{ color: INDIGO }} />
           </div>
-          <span className="text-white font-bold text-sm">Relatórios</span>
+          <span className="text-white font-bold text-sm">{t("businessWelcome.reports")}</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${INDIGO}15`, color: INDIGO }}>Disponível</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${INDIGO}15`, color: INDIGO }}>{t("businessWelcome.available")}</span>
       </div>
 
       <div className="space-y-2 flex-1">
-        {[
-          { icon: FileSpreadsheet, label: "Excel por período", color: EMERALD },
-          { icon: Users, label: "Por colaborador", color: CYAN },
-          { icon: Smartphone, label: "ZIP com comprovantes", color: INDIGO },
-        ].map(({ icon: Icon, label, color }, i) => (
+        {reportItems.map(({ icon: Icon, label, color }, i) => (
           <motion.div
             key={label}
             initial={{ opacity: 0, x: -8 }}
@@ -233,7 +215,7 @@ function ReportsCard({ delay }: { delay: number }) {
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
         <Sparkles className="w-3 h-3" style={{ color: INDIGO }} />
-        <span className="text-[10px] text-white/30">Exportação para o contador</span>
+        <span className="text-[10px] text-white/30">{t("businessWelcome.exportToAccountant")}</span>
       </div>
     </motion.div>
   );
@@ -242,12 +224,34 @@ function ReportsCard({ delay }: { delay: number }) {
 export default function BusinessWelcome() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
-    document.title = "AXIS Business — Bem-vindo";
-  }, []);
+    document.title = t("businessWelcome.pageTitle");
+  }, [t]);
 
   const firstName = user?.firstName || "você";
+
+  const steps = [
+    {
+      n: "01",
+      title: t("businessWelcome.step1Title"),
+      desc: t("businessWelcome.step1Desc"),
+      active: true,
+    },
+    {
+      n: "02",
+      title: t("businessWelcome.step2Title"),
+      desc: t("businessWelcome.step2Desc"),
+      active: false,
+    },
+    {
+      n: "03",
+      title: t("businessWelcome.step3Title"),
+      desc: t("businessWelcome.step3Desc"),
+      active: false,
+    },
+  ];
 
   async function handleStart() {
     try {
@@ -284,7 +288,7 @@ export default function BusinessWelcome() {
             data-testid="button-business-welcome-logout"
           >
             <LogOut className="w-3.5 h-3.5" />
-            Sair
+            {t("businessWelcome.logout")}
           </button>
         </motion.div>
 
@@ -309,17 +313,17 @@ export default function BusinessWelcome() {
               </div>
 
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] mb-4">
-                <span className="text-white/35 block text-2xl md:text-3xl font-medium mb-1">Olá, {firstName}.</span>
+                <span className="text-white/35 block text-2xl md:text-3xl font-medium mb-1">{t("businessWelcome.hello", { name: firstName })}</span>
                 <span style={{ background: `linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  Bem-vindo ao{" "}
+                  {t("businessWelcome.title")}{" "}
                 </span>
                 <span style={{ background: `linear-gradient(135deg, ${PRIMARY}, ${CYAN})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  AXIS Business.
+                  {t("businessWelcome.titleBusiness")}.
                 </span>
               </h1>
 
               <p className="text-white/45 text-base leading-relaxed">
-                Controle total das despesas da sua empresa — com IA e WhatsApp, sem burocracia.
+                {t("businessWelcome.subtitle")}
               </p>
             </motion.div>
 
@@ -362,11 +366,11 @@ export default function BusinessWelcome() {
                 data-testid="button-business-welcome-start"
               >
                 <Zap className="w-4 h-4 opacity-80" />
-                Ir para o Dashboard
+                {t("businessWelcome.ctaButton")}
                 <ArrowRight className="w-4 h-4" />
               </button>
               <p className="text-center text-xs text-white/20 mt-3">
-                Configure no seu ritmo · Pode personalizar depois
+                {t("businessWelcome.ctaHint")}
               </p>
             </motion.div>
           </div>
@@ -378,14 +382,14 @@ export default function BusinessWelcome() {
               transition={{ delay: 0.2 }}
               className="text-[11px] font-semibold tracking-widest uppercase text-white/22 mb-3 flex-shrink-0"
             >
-              O que está te esperando
+              {t("businessWelcome.awaitingLabel")}
             </motion.p>
 
             <div className="grid grid-cols-2 gap-3 flex-1" style={{ gridTemplateRows: "1fr 1fr" }}>
-              <ExpensesCard delay={0.25} />
-              <ApprovalsCard delay={0.33} />
-              <CashflowCard delay={0.41} />
-              <ReportsCard delay={0.49} />
+              <ExpensesCard delay={0.25} t={t} />
+              <ApprovalsCard delay={0.33} t={t} />
+              <CashflowCard delay={0.41} t={t} />
+              <ReportsCard delay={0.49} t={t} />
             </div>
           </div>
         </div>

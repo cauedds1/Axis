@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CheckSquare, Plus, Trash2, Flame, Loader2, Check, X, Clock, AlertTriangle, MessageSquare, Pencil, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,17 +12,16 @@ import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-pr
 import { CaptureButton } from "@/components/capture-button";
 import type { PersonalTask, Habit } from "@shared/schema";
 
-function getPriorityOptions(theme: string) {
+function getPriorityOptions(theme: string, t: (k: string) => string) {
   const MP = getModulePalette(theme as any);
   return [
-    { value: "high" as const, label: "Alta", color: MP.negative },
-    { value: "medium" as const, label: "Média", color: MP.agenda },
-    { value: "low" as const, label: "Baixa", color: MP.positive },
+    { value: "high" as const, label: t("axisTasks.priorityHigh"), color: MP.negative },
+    { value: "medium" as const, label: t("axisTasks.priorityMedium"), color: MP.agenda },
+    { value: "low" as const, label: t("axisTasks.priorityLow"), color: MP.positive },
   ];
 }
 
 const HABIT_EMOJIS = ["⚡", "🏋️", "📚", "💧", "🧘", "🍎", "😴", "💊", "🚶", "✍️"];
-const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function calcEndTime(start: string, duration: string): string {
   if (!start) return "";
@@ -74,6 +74,7 @@ function SheetHeader({ title, onClose }: { title: string; onClose: () => void })
 function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => void; accent: string }) {
   const { theme } = useTheme();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     title: "",
     priority: "medium" as "high" | "medium" | "low",
@@ -103,9 +104,9 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setForm({ title: "", priority: "medium", category: "", description: "", dueDate: "", dueTime: "" });
       onClose();
-      toast({ title: "Tarefa criada" });
+      toast({ title: t("axisTasks.taskCreated") });
     },
-    onError: () => toast({ title: "Erro ao criar tarefa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisTasks.taskError"), variant: "destructive" }),
   });
 
   const canSave = form.title.trim().length > 0;
@@ -117,24 +118,24 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
         className="w-full sm:w-[460px] p-0 flex flex-col border-0"
         style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
       >
-        <SheetHeader title="Nova tarefa" onClose={onClose} />
+        <SheetHeader title={t("axisTasks.newTask")} onClose={onClose} />
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           <div>
-            <FieldLabel>O que precisa fazer?</FieldLabel>
+            <FieldLabel>{t("axisTasks.whatToDo")}</FieldLabel>
             <StyledInput
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ex: Ligar para o cliente, Estudar inglês..."
+              placeholder={t("axisTasks.taskTitlePlaceholder")}
               autoFocus
               data-testid="input-task-title"
             />
           </div>
 
           <div>
-            <FieldLabel>Prioridade</FieldLabel>
+            <FieldLabel>{t("axisTasks.priority")}</FieldLabel>
             <div className="flex gap-2">
-              {getPriorityOptions(theme).map(opt => (
+              {getPriorityOptions(theme, t).map(opt => (
                 <button
                   key={opt.value}
                   type="button"
@@ -154,11 +155,11 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
           </div>
 
           <div>
-            <FieldLabel>Descrição <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+            <FieldLabel>{t("axisTasks.description")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
             <StyledTextarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Notas, links, contexto..."
+              placeholder={t("axisTasks.taskDescPlaceholder")}
               rows={3}
               data-testid="textarea-task-description"
             />
@@ -166,7 +167,7 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <FieldLabel>Data de vencimento</FieldLabel>
+              <FieldLabel>{t("axisTasks.dueDate")}</FieldLabel>
               <StyledInput
                 type="date"
                 value={form.dueDate}
@@ -176,7 +177,7 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
               />
             </div>
             <div>
-              <FieldLabel>Horário</FieldLabel>
+              <FieldLabel>{t("axisTasks.time")}</FieldLabel>
               <StyledInput
                 type="time"
                 value={form.dueTime}
@@ -189,11 +190,11 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
           </div>
 
           <div>
-            <FieldLabel>Categoria <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+            <FieldLabel>{t("axisTasks.category")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
             <StyledInput
               value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-              placeholder="Ex: Trabalho, Pessoal, Estudos..."
+              placeholder={t("axisTasks.categoryPlaceholder")}
               data-testid="input-task-category"
             />
           </div>
@@ -208,13 +209,13 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
             data-testid="button-submit-task"
           >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {mutation.isPending ? "Criando..." : "Criar tarefa"}
+            {mutation.isPending ? t("axisTasks.creating") : t("axisTasks.createTask")}
           </button>
           <button
             onClick={onClose}
             className="w-full py-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
-            Cancelar
+            {t("axisTasks.cancel")}
           </button>
         </div>
       </SheetContent>
@@ -224,6 +225,7 @@ function TaskSheet({ open, onClose, accent }: { open: boolean; onClose: () => vo
 
 function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => void; accent: string }) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: "",
     frequency: "daily" as "daily" | "weekly",
@@ -260,9 +262,9 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setForm({ name: "", frequency: "daily", emoji: "⚡", targetTime: "", endTime: "", durationType: "", description: "", weekdays: [] });
       onClose();
-      toast({ title: "Compromisso criado" });
+      toast({ title: t("axisTasks.habitCreated") });
     },
-    onError: () => toast({ title: "Erro ao criar compromisso", variant: "destructive" }),
+    onError: () => toast({ title: t("axisTasks.habitError"), variant: "destructive" }),
   });
 
   const canSave = form.name.trim().length > 0;
@@ -274,11 +276,11 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
         className="w-full sm:w-[460px] p-0 flex flex-col border-0"
         style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
       >
-        <SheetHeader title="Novo compromisso" onClose={onClose} />
+        <SheetHeader title={t("axisTasks.newHabit")} onClose={onClose} />
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           <div>
-            <FieldLabel>Ícone</FieldLabel>
+            <FieldLabel>{t("axisTasks.icon")}</FieldLabel>
             <div className="grid grid-cols-5 gap-2">
               {HABIT_EMOJIS.map(e => (
                 <button
@@ -299,20 +301,20 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
           </div>
 
           <div>
-            <FieldLabel>Nome do compromisso</FieldLabel>
+            <FieldLabel>{t("axisTasks.habitName")}</FieldLabel>
             <StyledInput
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Ex: Exercitar, Meditar, Ler..."
+              placeholder={t("axisTasks.habitNamePlaceholder")}
               autoFocus
               data-testid="input-habit-name"
             />
           </div>
 
           <div>
-            <FieldLabel>Frequência</FieldLabel>
+            <FieldLabel>{t("axisTasks.frequency")}</FieldLabel>
             <div className="flex gap-2">
-              {([["daily", "Diário"], ["weekly", "Semanal"]] as const).map(([val, label]) => (
+              {([["daily", t("axisTasks.daily")], ["weekly", t("axisTasks.weekly")]] as const).map(([val, label]) => (
                 <button
                   key={val}
                   type="button"
@@ -339,9 +341,9 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                <FieldLabel>Dias da semana</FieldLabel>
+                <FieldLabel>{t("axisTasks.weekdays")}</FieldLabel>
                 <div className="flex gap-1.5">
-                  {DAYS.map((d, i) => (
+                  {[t("axisTasks.sun"), t("axisTasks.mon"), t("axisTasks.tue"), t("axisTasks.wed"), t("axisTasks.thu"), t("axisTasks.fri"), t("axisTasks.sat")].map((d, i) => (
                     <button
                       key={d}
                       type="button"
@@ -363,23 +365,23 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
           </AnimatePresence>
 
           <div>
-            <FieldLabel>Horário <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+            <FieldLabel>{t("axisTasks.time")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
             <StyledInput
               type="time"
               value={form.targetTime}
               onChange={e => {
                 setForm(f => ({ ...f, targetTime: e.target.value, durationType: f.durationType || "custom" }));
               }}
-              placeholder="Início"
+              placeholder={t("axisTasks.start")}
               style={{ colorScheme: "dark" }}
               data-testid="input-habit-target-time"
             />
           </div>
 
           <div>
-            <FieldLabel>Duração</FieldLabel>
+            <FieldLabel>{t("axisTasks.duration")}</FieldLabel>
             <div className="grid grid-cols-4 gap-1.5">
-              {[["30min", "30min"], ["1h", "1h"], ["1h30", "1h30"], ["2h", "2h"], ["3h", "3h"], ["4h+", "4h+"], ["custom", "Personalizado"]].map(([val, label]) => (
+              {[["30min", "30min"], ["1h", "1h"], ["1h30", "1h30"], ["2h", "2h"], ["3h", "3h"], ["4h+", "4h+"], ["custom", t("axisTasks.custom")]].map(([val, label]) => (
                 <button
                   key={val}
                   type="button"
@@ -413,7 +415,7 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                <FieldLabel>Horário final</FieldLabel>
+                <FieldLabel>{t("axisTasks.endTime")}</FieldLabel>
                 <StyledInput
                   type="time"
                   value={form.endTime}
@@ -426,11 +428,11 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
           </AnimatePresence>
 
           <div>
-            <FieldLabel>Motivação / Observações <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+            <FieldLabel>{t("axisTasks.motivation")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
             <StyledTextarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Por que esse compromisso é importante para você?"
+              placeholder={t("axisTasks.motivationPlaceholder")}
               rows={3}
               data-testid="textarea-habit-description"
             />
@@ -446,13 +448,13 @@ function HabitSheet({ open, onClose, accent }: { open: boolean; onClose: () => v
             data-testid="button-submit-habit"
           >
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-            {mutation.isPending ? "Criando..." : "Criar compromisso"}
+            {mutation.isPending ? t("axisTasks.creating") : t("axisTasks.createHabit")}
           </button>
           <button
             onClick={onClose}
             className="w-full py-2 text-xs text-white/30 hover:text-white/50 transition-colors"
           >
-            Cancelar
+            {t("axisTasks.cancel")}
           </button>
         </div>
       </SheetContent>
@@ -476,6 +478,7 @@ export default function Tasks() {
   const [manageHabits, setManageHabits] = useState(false);
   const { toast } = useToast();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const accent = getPrimaryHex(theme);
   const MP = getModulePalette(theme as any);
 
@@ -530,9 +533,9 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setEditTask(false);
       setDetailTask(null);
-      toast({ title: "Tarefa atualizada" });
+      toast({ title: t("axisTasks.taskUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar tarefa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisTasks.taskUpdateError"), variant: "destructive" }),
   });
 
   function openTaskForEdit(task: PersonalTask) {
@@ -557,9 +560,9 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setEditHabit(false);
       setDetailHabit(null);
-      toast({ title: "Compromisso atualizado" });
+      toast({ title: t("axisTasks.habitUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" }),
+    onError: () => toast({ title: t("axisTasks.habitUpdateError"), variant: "destructive" }),
   });
 
   function openHabitDetail(habit: Habit) {
@@ -586,7 +589,7 @@ export default function Tasks() {
       const res = await apiRequest("POST", `/api/tasks/${id}/justify`, { justification });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.message || "Erro ao enviar justificativa");
+        throw new Error(err.message || t("axisTasks.justifyError"));
       }
       return res.json();
     },
@@ -596,16 +599,16 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: (err: any) => {
-      toast({ title: err.message || "Erro ao enviar justificativa", variant: "destructive" });
+      toast({ title: err.message || t("axisTasks.justifyError"), variant: "destructive" });
     },
   });
 
   const now = new Date();
   const needsJustification = tasks.filter(
-    t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now && (t as any).justificationScore == null
+    tx => tx.status === "pending" && tx.dueDate && new Date(tx.dueDate) < now && (tx as any).justificationScore == null
   );
-  const pending = tasks.filter(t => t.status === "pending" && !(t.dueDate && new Date(t.dueDate) < now && (t as any).justificationScore == null));
-  const completed = tasks.filter(t => t.status === "completed");
+  const pending = tasks.filter(tx => tx.status === "pending" && !(tx.dueDate && new Date(tx.dueDate) < now && (tx as any).justificationScore == null));
+  const completed = tasks.filter(tx => tx.status === "completed");
 
   const priorityColor: Record<string, string> = {
     high: MP.negative,
@@ -621,11 +624,11 @@ export default function Tasks() {
     tomorrow.setDate(today.getDate() + 1);
     const isToday = d.toDateString() === today.toDateString();
     const isTomorrow = d.toDateString() === tomorrow.toDateString();
-    const timeStr = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
     const hasTime = timeStr !== "23:59";
-    if (isToday) return `Hoje${hasTime ? ` · ${timeStr}` : ""}`;
-    if (isTomorrow) return `Amanhã${hasTime ? ` · ${timeStr}` : ""}`;
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");
+    if (isToday) return `${t("axisTasks.today")}${hasTime ? ` · ${timeStr}` : ""}`;
+    if (isTomorrow) return `${t("axisTasks.tomorrow")}${hasTime ? ` · ${timeStr}` : ""}`;
+    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");
   }
 
   function closeJustifyDialog() {
@@ -638,10 +641,10 @@ export default function Tasks() {
 
   return (
     <div className="px-6 py-6 space-y-6 pb-28">
-      <title>AXIS - Tarefas e Compromissos</title>
+      <title>{t("axisTasks.pageTitle")}</title>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" data-testid="text-tasks-title">Tarefas e Compromissos</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-tasks-title">{t("axisTasks.title")}</h1>
       </div>
 
       <div className="mb-4">
@@ -653,10 +656,10 @@ export default function Tasks() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" style={{ color: MP.agenda }} />
             <p className="text-sm font-semibold" style={{ color: MP.agenda }}>
-              {needsJustification.length} tarefa{needsJustification.length > 1 ? "s" : ""} em atraso — justifique o atraso
+              {t("axisTasks.overdueTasks", { count: needsJustification.length })}
             </p>
           </div>
-          <p className="text-xs text-white/40">A IA vai avaliar sua justificativa e isso afetará sua disciplina.</p>
+          <p className="text-xs text-white/40">{t("axisTasks.justifyAiNote")}</p>
           <div className="space-y-2">
             {needsJustification.map(task => (
               <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,170,0,0.12)" }} data-testid={`row-justify-task-${task.id}`}>
@@ -665,7 +668,7 @@ export default function Tasks() {
                   {task.dueDate && (
                     <p className="text-[10px] text-white/30 mt-0.5 flex items-center gap-0.5">
                       <Clock className="h-2.5 w-2.5" />
-                      {formatDueDate(task.dueDate)} — em atraso
+                      {formatDueDate(task.dueDate)} — {t("axisTasks.overdue")}
                     </p>
                   )}
                 </div>
@@ -676,7 +679,7 @@ export default function Tasks() {
                   style={{ background: `${MP.agenda}26`, color: MP.agenda, border: `1px solid ${MP.agenda}4D` }}
                   data-testid={`button-justify-task-${task.id}`}
                 >
-                  <MessageSquare className="h-3.5 w-3.5" /> Justificar
+                  <MessageSquare className="h-3.5 w-3.5" /> {t("axisTasks.justify")}
                 </Button>
               </div>
             ))}
@@ -689,7 +692,7 @@ export default function Tasks() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-              <CheckSquare className="h-4 w-4" /> Tarefas ({pending.length} pendentes)
+              <CheckSquare className="h-4 w-4" /> {t("axisTasks.tasksHeader", { count: pending.length })}
             </h2>
             <div className="flex items-center gap-1.5">
               <Button size="sm" variant="outline" onClick={() => setManageTasks(true)} data-testid="button-manage-tasks">
@@ -734,12 +737,12 @@ export default function Tasks() {
                 </div>
               );
             })}
-            {pending.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhuma tarefa pendente</p>}
+            {pending.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">{t("axisTasks.noPendingTasks")}</p>}
           </div>
 
           {completed.length > 0 && (
             <details className="mt-4">
-              <summary className="text-xs text-muted-foreground cursor-pointer mb-2">Concluídas ({completed.length})</summary>
+              <summary className="text-xs text-muted-foreground cursor-pointer mb-2">{t("axisTasks.completed", { count: completed.length })}</summary>
               <div className="space-y-1">
                 {completed.map((task) => (
                   <div key={task.id} className="flex items-center gap-2 p-2 rounded-lg opacity-50">
@@ -756,7 +759,7 @@ export default function Tasks() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-              <Flame className="h-4 w-4" /> Compromissos
+              <Flame className="h-4 w-4" /> {t("axisTasks.habitsHeader")}
             </h2>
             <div className="flex items-center gap-1.5">
               <Button size="sm" variant="outline" onClick={() => setManageHabits(true)} data-testid="button-manage-habits">
@@ -786,9 +789,10 @@ export default function Tasks() {
               if ((habit as any).weekdays) {
                 try { weekdaysParsed = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {}
               }
+              const DAYS_T = [t("axisTasks.sun"), t("axisTasks.mon"), t("axisTasks.tue"), t("axisTasks.wed"), t("axisTasks.thu"), t("axisTasks.fri"), t("axisTasks.sat")];
               const dayLabel = habit.frequency === "weekly" && weekdaysParsed.length > 0
-                ? weekdaysParsed.map(d => DAYS[d]).join(", ")
-                : "Diário";
+                ? weekdaysParsed.map(d => DAYS_T[d]).join(", ")
+                : t("axisTasks.daily");
               return (
                 <div
                   key={habit.id}
@@ -809,7 +813,7 @@ export default function Tasks() {
                       <p className="text-sm font-medium truncate">{habit.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Flame className="h-3 w-3" /> {habit.streak} dias
+                          <Flame className="h-3 w-3" /> {t("axisTasks.streak", { count: habit.streak })}
                         </span>
                         <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
                         {habitTime && (
@@ -836,13 +840,13 @@ export default function Tasks() {
                 </div>
               );
             })}
-            {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum compromisso ainda</p>}
+            {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">{t("axisTasks.noHabitsYet")}</p>}
             {habits.length > 0 && habits.filter((h) => {
               const dow = new Date().getDay();
               let wp: number[] = [];
               if ((h as any).weekdays) { try { wp = typeof (h as any).weekdays === "string" ? JSON.parse((h as any).weekdays) : (h as any).weekdays; } catch {} }
               return h.frequency === "daily" || wp.length === 0 || wp.includes(dow);
-            }).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Sem compromissos para hoje</p>}
+            }).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">{t("axisTasks.noHabitsToday")}</p>}
           </div>
         </div>
       </div>
@@ -856,9 +860,9 @@ export default function Tasks() {
           className="w-full sm:w-[460px] p-0 flex flex-col border-0"
           style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
         >
-          <SheetHeader title="Gerenciar tarefas" onClose={() => setManageTasks(false)} />
+          <SheetHeader title={t("axisTasks.manageTasks")} onClose={() => setManageTasks(false)} />
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-            {tasks.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa</p>}
+            {tasks.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">{t("axisTasks.noTasks")}</p>}
             {tasks.map((task) => {
               const due = formatDueDate(task.dueDate);
               return (
@@ -874,9 +878,9 @@ export default function Tasks() {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: priorityColor[task.priority] }} />
                       <span className="text-[10px] text-muted-foreground capitalize">
-                        {task.priority === "high" ? "Alta" : task.priority === "medium" ? "Média" : "Baixa"}
+                        {task.priority === "high" ? t("axisTasks.priorityHigh") : task.priority === "medium" ? t("axisTasks.priorityMedium") : t("axisTasks.priorityLow")}
                       </span>
-                      <span className="text-[10px] text-muted-foreground capitalize">{task.status === "completed" ? "Concluída" : "Pendente"}</span>
+                      <span className="text-[10px] text-muted-foreground capitalize">{task.status === "completed" ? t("axisTasks.statusCompleted") : t("axisTasks.statusPending")}</span>
                       {due && (
                         <span className="text-[10px] text-white/30 flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" />{due}
@@ -909,15 +913,16 @@ export default function Tasks() {
           className="w-full sm:w-[460px] p-0 flex flex-col border-0"
           style={{ background: "#0d0d12", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
         >
-          <SheetHeader title="Gerenciar compromissos" onClose={() => setManageHabits(false)} />
+          <SheetHeader title={t("axisTasks.manageHabits")} onClose={() => setManageHabits(false)} />
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-            {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum compromisso</p>}
+            {habits.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">{t("axisTasks.noHabits")}</p>}
             {habits.map((habit) => {
               const habitEmoji = (habit as any).emoji || "⚡";
               const habitTime = (habit as any).targetTime as string | null;
               let wp: number[] = [];
               if ((habit as any).weekdays) { try { wp = typeof (habit as any).weekdays === "string" ? JSON.parse((habit as any).weekdays) : (habit as any).weekdays; } catch {} }
-              const dayLabel = habit.frequency === "weekly" && wp.length > 0 ? wp.map(d => DAYS[d]).join(", ") : "Diário";
+              const DAYS_T2 = [t("axisTasks.sun"), t("axisTasks.mon"), t("axisTasks.tue"), t("axisTasks.wed"), t("axisTasks.thu"), t("axisTasks.fri"), t("axisTasks.sat")];
+              const dayLabel = habit.frequency === "weekly" && wp.length > 0 ? wp.map(d => DAYS_T2[d]).join(", ") : t("axisTasks.daily");
               return (
                 <div
                   key={habit.id}
@@ -932,7 +937,7 @@ export default function Tasks() {
                       <p className="text-sm font-medium truncate">{habit.name}</p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Flame className="h-3 w-3" /> {habit.streak} dias
+                          <Flame className="h-3 w-3" /> {t("axisTasks.streak", { count: habit.streak })}
                         </span>
                         <span className="text-[10px] text-muted-foreground">{dayLabel}</span>
                         {habitTime && (
@@ -977,21 +982,21 @@ export default function Tasks() {
               <div className="px-6 py-5 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Frequência</p>
-                    <p className="text-sm font-medium text-white">{detailHabit.frequency === "daily" ? "Diário" : "Semanal"}</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.frequency")}</p>
+                    <p className="text-sm font-medium text-white">{detailHabit.frequency === "daily" ? t("axisTasks.daily") : t("axisTasks.weekly")}</p>
                   </div>
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Sequência</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.streakLabel")}</p>
                     <p className="text-sm font-medium text-white flex items-center gap-1">
                       <Flame className="h-3.5 w-3.5" style={{ color: MP.agenda }} />
-                      {detailHabit.streak} dias
+                      {t("axisTasks.streak", { count: detailHabit.streak })}
                     </p>
                   </div>
                 </div>
 
                 {((detailHabit as any).targetTime || (detailHabit as any).endTime) && (
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Horário</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.time")}</p>
                     <p className="text-sm font-medium text-white flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-white/40" />
                       {(detailHabit as any).targetTime || "—"}
@@ -1010,9 +1015,9 @@ export default function Tasks() {
                   if (parsed.length === 0) return null;
                   return (
                     <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                      <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Dias da semana</p>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">{t("axisTasks.weekdays")}</p>
                       <div className="flex gap-1.5">
-                        {DAYS.map((d, i) => (
+                        {[t("axisTasks.sun"), t("axisTasks.mon"), t("axisTasks.tue"), t("axisTasks.wed"), t("axisTasks.thu"), t("axisTasks.fri"), t("axisTasks.sat")].map((d, i) => (
                           <span
                             key={d}
                             className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold text-center"
@@ -1032,17 +1037,17 @@ export default function Tasks() {
 
                 {(detailHabit as any).description && (
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Motivação</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.motivationLabel")}</p>
                     <p className="text-sm text-white/70 whitespace-pre-wrap" data-testid="text-habit-detail-desc">{(detailHabit as any).description}</p>
                   </div>
                 )}
 
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Último check</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.lastCheck")}</p>
                   <p className="text-sm font-medium text-white">
                     {detailHabit.lastChecked
-                      ? new Date(detailHabit.lastChecked + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
-                      : "Nenhum ainda"}
+                      ? new Date(detailHabit.lastChecked + "T12:00:00").toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" })
+                      : t("axisTasks.noneYet")}
                   </p>
                 </div>
 
@@ -1053,7 +1058,7 @@ export default function Tasks() {
                     style={{ background: accent, color: "#060608" }}
                     data-testid="button-edit-habit"
                   >
-                    <Pencil className="h-4 w-4" /> Editar
+                    <Pencil className="h-4 w-4" /> {t("axisTasks.edit")}
                   </button>
                   <button
                     onClick={() => { deleteHabitMutation.mutate(detailHabit.id); setDetailHabit(null); }}
@@ -1061,7 +1066,7 @@ export default function Tasks() {
                     style={{ background: `${MP.negative}1A`, color: MP.negative, border: `1px solid ${MP.negative}33` }}
                     data-testid="button-delete-habit-detail"
                   >
-                    <Trash2 className="h-4 w-4" /> Excluir
+                    <Trash2 className="h-4 w-4" /> {t("axisTasks.delete")}
                   </button>
                 </div>
               </div>
@@ -1074,13 +1079,13 @@ export default function Tasks() {
                 <DialogHeader>
                   <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
                     <Pencil className="h-4 w-4" style={{ color: accent }} />
-                    Editar compromisso
+                    {t("axisTasks.editHabit")}
                   </DialogTitle>
                 </DialogHeader>
               </div>
               <div className="px-6 py-5 space-y-5">
                 <div>
-                  <FieldLabel>Ícone</FieldLabel>
+                  <FieldLabel>{t("axisTasks.icon")}</FieldLabel>
                   <div className="grid grid-cols-5 gap-2">
                     {HABIT_EMOJIS.map(e => (
                       <button
@@ -1101,19 +1106,19 @@ export default function Tasks() {
                 </div>
 
                 <div>
-                  <FieldLabel>Nome</FieldLabel>
+                  <FieldLabel>{t("axisTasks.habitName")}</FieldLabel>
                   <StyledInput
                     value={habitForm.name}
                     onChange={e => setHabitForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Ex: Exercitar, Meditar, Ler..."
+                    placeholder={t("axisTasks.habitNamePlaceholder")}
                     data-testid="edit-input-habit-name"
                   />
                 </div>
 
                 <div>
-                  <FieldLabel>Frequência</FieldLabel>
+                  <FieldLabel>{t("axisTasks.frequency")}</FieldLabel>
                   <div className="flex gap-2">
-                    {([["daily", "Diário"], ["weekly", "Semanal"]] as const).map(([val, label]) => (
+                    {([["daily", t("axisTasks.daily")], ["weekly", t("axisTasks.weekly")]] as const).map(([val, label]) => (
                       <button
                         key={val}
                         type="button"
@@ -1134,9 +1139,9 @@ export default function Tasks() {
 
                 {habitForm.frequency === "weekly" && (
                   <div>
-                    <FieldLabel>Dias da semana</FieldLabel>
+                    <FieldLabel>{t("axisTasks.weekdays")}</FieldLabel>
                     <div className="flex gap-1.5">
-                      {DAYS.map((d, i) => (
+                      {[t("axisTasks.sun"), t("axisTasks.mon"), t("axisTasks.tue"), t("axisTasks.wed"), t("axisTasks.thu"), t("axisTasks.fri"), t("axisTasks.sat")].map((d, i) => (
                         <button
                           key={d}
                           type="button"
@@ -1160,7 +1165,7 @@ export default function Tasks() {
                 )}
 
                 <div>
-                  <FieldLabel>Horário início <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <FieldLabel>{t("axisTasks.start")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
                   <StyledInput
                     type="time"
                     value={habitForm.targetTime}
@@ -1171,7 +1176,7 @@ export default function Tasks() {
                 </div>
 
                 <div>
-                  <FieldLabel>Horário final <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <FieldLabel>{t("axisTasks.endTime")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
                   <StyledInput
                     type="time"
                     value={habitForm.endTime}
@@ -1182,11 +1187,11 @@ export default function Tasks() {
                 </div>
 
                 <div>
-                  <FieldLabel>Motivação / Observações <span className="normal-case font-normal text-white/25">(opcional)</span></FieldLabel>
+                  <FieldLabel>{t("axisTasks.motivation")} <span className="normal-case font-normal text-white/25">({t("axisTasks.optional")})</span></FieldLabel>
                   <StyledTextarea
                     value={habitForm.description}
                     onChange={e => setHabitForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Por que esse compromisso é importante para você?"
+                    placeholder={t("axisTasks.motivationPlaceholder")}
                     rows={3}
                     data-testid="edit-textarea-habit-description"
                   />
@@ -1213,13 +1218,13 @@ export default function Tasks() {
                   data-testid="button-save-habit-edit"
                 >
                   {updateHabitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  {updateHabitMutation.isPending ? "Salvando..." : "Salvar alterações"}
+                  {updateHabitMutation.isPending ? t("axisTasks.saving") : t("axisTasks.saveChanges")}
                 </button>
                 <button
                   onClick={() => setEditHabit(false)}
                   className="w-full py-2 text-xs text-white/30 hover:text-white/50 transition-colors"
                 >
-                  Voltar
+                  {t("axisTasks.back")}
                 </button>
               </div>
             </>
@@ -1235,47 +1240,47 @@ export default function Tasks() {
                 <DialogHeader>
                   <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
                     <CheckSquare className="h-4 w-4" style={{ color: accent }} />
-                    Detalhes da tarefa
+                    {t("axisTasks.taskDetails")}
                   </DialogTitle>
                 </DialogHeader>
               </div>
               <div className="px-6 py-5 space-y-4">
                 <div>
-                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Título</p>
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">{t("axisTasks.title")}</p>
                   <p className="text-sm text-white leading-relaxed" data-testid="text-task-detail-title">{detailTask.title}</p>
                 </div>
 
                 {detailTask.description && (
                   <div>
-                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Descrição</p>
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">{t("axisTasks.description")}</p>
                     <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap" data-testid="text-task-detail-desc">{detailTask.description}</p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Prioridade</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.priority")}</p>
                     <div className="flex items-center gap-2">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ background: priorityColor[detailTask.priority] }} />
-                      <p className="text-sm font-medium text-white capitalize">{detailTask.priority === "high" ? "Alta" : detailTask.priority === "medium" ? "Média" : "Baixa"}</p>
+                      <p className="text-sm font-medium text-white capitalize">{detailTask.priority === "high" ? t("axisTasks.priorityHigh") : detailTask.priority === "medium" ? t("axisTasks.priorityMedium") : t("axisTasks.priorityLow")}</p>
                     </div>
                   </div>
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Status</p>
-                    <p className="text-sm font-medium text-white capitalize">{detailTask.status === "completed" ? "Concluída" : "Pendente"}</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.status")}</p>
+                    <p className="text-sm font-medium text-white capitalize">{detailTask.status === "completed" ? t("axisTasks.statusCompleted") : t("axisTasks.statusPending")}</p>
                   </div>
                 </div>
 
                 {detailTask.category && (
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Categoria</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.category")}</p>
                     <p className="text-sm font-medium text-white">{detailTask.category}</p>
                   </div>
                 )}
 
                 {detailTask.dueDate && (
                   <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Prazo</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.dueDate")}</p>
                     <p className="text-sm font-medium text-white flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-white/40" />
                       {formatDueDate(detailTask.dueDate)}
@@ -1291,7 +1296,7 @@ export default function Tasks() {
                       style={{ background: accent, color: "#060608" }}
                       data-testid="button-complete-task-detail"
                     >
-                      <Check className="h-4 w-4" /> Concluir tarefa
+                      <Check className="h-4 w-4" /> {t("axisTasks.completeTask")}
                     </button>
                   )}
                   <button
@@ -1300,7 +1305,7 @@ export default function Tasks() {
                     style={{ background: `${MP.negative}1A`, color: MP.negative, border: `1px solid ${MP.negative}33` }}
                     data-testid="button-delete-task-detail"
                   >
-                    <Trash2 className="h-4 w-4" /> Excluir
+                    <Trash2 className="h-4 w-4" /> {t("axisTasks.delete")}
                   </button>
                 </div>
               </div>
@@ -1315,7 +1320,7 @@ export default function Tasks() {
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" style={{ color: MP.agenda }} />
-                Justificativa de atraso
+                {t("axisTasks.justifyTitle")}
               </DialogTitle>
             </DialogHeader>
           </div>
@@ -1323,15 +1328,15 @@ export default function Tasks() {
             {justifyTask && !justifyResult && (
               <>
                 <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="text-xs text-white/40 mb-0.5">Tarefa em atraso</p>
+                  <p className="text-xs text-white/40 mb-0.5">{t("axisTasks.justifyOverdueTask")}</p>
                   <p className="text-sm font-medium text-white">{justifyTask.title}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40 mb-2">Por que você não completou essa tarefa? A IA vai avaliar sua justificativa.</p>
+                  <p className="text-xs text-white/40 mb-2">{t("axisTasks.justifyAiNote")}</p>
                   <textarea
                     value={justifyText}
                     onChange={e => setJustifyText(e.target.value)}
-                    placeholder="Explique o motivo do atraso com honestidade..."
+                    placeholder={t("axisTasks.justifyPlaceholder")}
                     rows={4}
                     className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/20 resize-none"
                     style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
@@ -1345,7 +1350,7 @@ export default function Tasks() {
                     onClick={closeJustifyDialog}
                     data-testid="button-cancel-justification"
                   >
-                    Cancelar
+                    {t("axisTasks.cancel")}
                   </Button>
                   <button
                     onClick={() => justifyMutation.mutate({ id: justifyTask.id, justification: justifyText })}
@@ -1354,7 +1359,7 @@ export default function Tasks() {
                     style={{ background: MP.agenda, color: "#060608" }}
                     data-testid="button-submit-justification"
                   >
-                    {justifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar para a IA"}
+                    {justifyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("axisTasks.submitToAi")}
                   </button>
                 </div>
               </>
@@ -1367,16 +1372,16 @@ export default function Tasks() {
                     {justifyResult.score}/5
                   </p>
                   <p className="text-sm font-semibold mt-1 capitalize" style={{ color: scoreColors[justifyResult.score] ?? MP.agenda }}>
-                    Justificativa {justifyResult.verdict}
+                    {t("axisTasks.justifyVerdict")} {justifyResult.verdict}
                   </p>
                 </div>
                 <div className="rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <p className="text-sm text-white/80 italic">"{justifyResult.feedback}"</p>
                 </div>
                 <div className="rounded-xl px-4 py-3 text-center" style={{ background: `${justifyResult.netPenalty >= 0 ? MP.positive : MP.negative}0F`, border: `1px solid ${justifyResult.netPenalty >= 0 ? MP.positive : MP.negative}26` }}>
-                  <p className="text-xs text-white/40 mb-0.5">Impacto na disciplina</p>
+                  <p className="text-xs text-white/40 mb-0.5">{t("axisTasks.disciplineImpact")}</p>
                   <p className="text-sm font-bold" style={{ color: justifyResult.netPenalty >= 0 ? MP.positive : MP.negative }}>
-                    {justifyResult.creditPoints > 0 ? `${justifyResult.netPenalty} pts (${justifyResult.creditPoints} de crédito aplicado)` : `${justifyResult.netPenalty} pts`}
+                    {justifyResult.creditPoints > 0 ? t("axisTasks.creditApplied", { pts: justifyResult.netPenalty, credit: justifyResult.creditPoints }) : `${justifyResult.netPenalty} pts`}
                   </p>
                 </div>
                 <button
@@ -1385,7 +1390,7 @@ export default function Tasks() {
                   style={{ background: "rgba(255,255,255,0.08)", color: "white" }}
                   data-testid="button-close-justification-result"
                 >
-                  Fechar
+                  {t("axisTasks.close")}
                 </button>
               </div>
             )}

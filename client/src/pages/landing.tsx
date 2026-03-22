@@ -4,6 +4,8 @@ import { ArrowRight, Mic, MessageSquare, TrendingUp, Calendar, ListChecks, Brain
 import { Button } from "@/components/ui/button";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useTheme, ALL_THEMES, type AxisTheme } from "@/components/theme-provider";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 interface LandingPalette {
   primary: string;
@@ -96,17 +98,18 @@ function AnimatedCounter({ target, suffix = "", prefix = "" }: { target: number;
   return <span ref={ref} className="tabular-nums">{prefix}0{suffix}</span>;
 }
 
-function getDemoExamples(LP: LandingPalette) {
+function getDemoExamples(LP: LandingPalette, t: (k: string) => string) {
   return [
-    { input: '"Gastei 45 reais no almoço"', result: "R$ 45,00 · Alimentação · Almoço", label: "Gasto registrado", color: LP.primary, bg: LP.primaryMuted, icon: <Mic className="w-4 h-4" /> },
-    { input: '"Reunião amanhã às 14h"', result: "Amanhã, 14:00 – 15:00 · Reunião", label: "Evento criado", color: LP.secondary, bg: LP.secondaryMuted, icon: <Calendar className="w-4 h-4" /> },
-    { input: '"Preciso estudar 2h por dia"', result: "Hábito: Estudar · 2h/dia · Streak: 0", label: "Hábito adicionado", color: LP.tertiary, bg: LP.tertiaryMuted, icon: <ListChecks className="w-4 h-4" /> },
+    { input: t("axisLanding.demo0Input"), result: t("axisLanding.demo0Result"), label: t("axisLanding.demo0Label"), color: LP.primary, bg: LP.primaryMuted, icon: <Mic className="w-4 h-4" /> },
+    { input: t("axisLanding.demo1Input"), result: t("axisLanding.demo1Result"), label: t("axisLanding.demo1Label"), color: LP.secondary, bg: LP.secondaryMuted, icon: <Calendar className="w-4 h-4" /> },
+    { input: t("axisLanding.demo2Input"), result: t("axisLanding.demo2Result"), label: t("axisLanding.demo2Label"), color: LP.tertiary, bg: LP.tertiaryMuted, icon: <ListChecks className="w-4 h-4" /> },
   ];
 }
 
 function TypewriterDemo() {
   const LP = useContext(LPContext);
-  const demoExamples = getDemoExamples(LP);
+  const { t } = useTranslation();
+  const demoExamples = getDemoExamples(LP, t);
   const [exampleIdx, setExampleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [showResult, setShowResult] = useState(false);
@@ -157,7 +160,7 @@ function TypewriterDemo() {
           <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: example.color }} />
           <span className="text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: example.color }}>
             {example.icon}
-            Você diz
+            {t("axisLanding.youSay")}
           </span>
         </div>
         <p className="text-xl md:text-2xl font-medium text-white/90 mb-6 min-h-[2em] font-mono relative z-10" data-testid="text-demo-input">
@@ -206,6 +209,7 @@ function TypewriterDemo() {
 
 function OrbitalGraphic() {
   const LP = useContext(LPContext);
+  const { t } = useTranslation();
   return (
     <div className="relative w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[440px] md:h-[440px]">
       <div className="absolute inset-0 rounded-full landing-pulse-ring" style={{ background: `radial-gradient(circle, ${LP.primary}08, transparent 70%)` }} />
@@ -218,19 +222,19 @@ function OrbitalGraphic() {
         <g className="landing-orbit" style={{ transformOrigin: "210px 210px" }}>
           <circle cx="350" cy="210" r="9" fill={LP.primary} opacity="0.9" />
           <circle cx="350" cy="210" r="14" fill={LP.primary} opacity="0.15" />
-          <text x="350" y="237" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Finanças</text>
+          <text x="350" y="237" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">{t("axisLanding.orbitalFinance")}</text>
         </g>
 
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
           <circle cx="310" cy="210" r="8" fill={LP.secondary} opacity="0.9" />
           <circle cx="310" cy="210" r="12" fill={LP.secondary} opacity="0.15" />
-          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Agenda</text>
+          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">{t("axisLanding.orbitalAgenda")}</text>
         </g>
 
         <g className="landing-orbit-slow" style={{ transformOrigin: "210px 210px" }}>
           <circle cx="270" cy="210" r="7" fill={LP.tertiary} opacity="0.9" />
           <circle cx="270" cy="210" r="11" fill={LP.tertiary} opacity="0.15" />
-          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">Hábitos</text>
+          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">{t("axisLanding.orbitalHabits")}</text>
         </g>
 
         <g className="landing-orbit-mid" style={{ transformOrigin: "210px 210px" }}>
@@ -282,14 +286,15 @@ function FloatingShapes() {
 function WhatsAppSimulation() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { t } = useTranslation();
 
   const messages = [
-    { type: "user", text: "Gastei 80 no mercado", time: "14:32" },
-    { type: "bot", text: "Registrado! R$ 80,00 em Alimentação (Mercado). Seu gasto total do mês: R$ 1.420,00.", time: "14:32" },
-    { type: "user", text: "Audio (0:03)", time: "14:33", isAudio: true },
-    { type: "bot", text: "Transcrição: \"Reunião com o João amanhã às 15h\"\n\nEvento criado: Reunião com João\nAmanhã, 15:00 – 16:00", time: "14:33" },
-    { type: "user", text: "Quanto gastei esse mês?", time: "14:35" },
-    { type: "bot", text: "Este mês você gastou R$ 1.420,00\n\nAlimentação: R$ 580 (41%)\nTransporte: R$ 340 (24%)\nMoradia: R$ 500 (35%)", time: "14:35" },
+    { type: "user", text: t("axisLanding.waMsg0"), time: "14:32" },
+    { type: "bot", text: t("axisLanding.waMsg1"), time: "14:32" },
+    { type: "user", text: t("axisLanding.waMsg2Audio"), time: "14:33", isAudio: true },
+    { type: "bot", text: t("axisLanding.waMsg3"), time: "14:33" },
+    { type: "user", text: t("axisLanding.waMsg4"), time: "14:35" },
+    { type: "bot", text: t("axisLanding.waMsg5"), time: "14:35" },
   ];
 
   return (
@@ -301,7 +306,7 @@ function WhatsAppSimulation() {
           </div>
           <div>
             <p className="text-white text-sm font-semibold">AXIS Bot</p>
-            <p className="text-white/60 text-[11px]">online</p>
+            <p className="text-white/60 text-[11px]">{t("axisLanding.waBotOnline")}</p>
           </div>
           <div className="ml-auto flex gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -348,7 +353,7 @@ function WhatsAppSimulation() {
 
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: "#0d1117", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex-1 rounded-full px-4 py-2 text-xs text-white/30 bg-white/[0.04] border border-white/[0.06]">
-            Digite uma mensagem...
+            {t("axisLanding.waInputPlaceholder")}
           </div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,230,100,0.15)" }}>
             <Mic className="w-4 h-4 text-green-400" />
@@ -361,6 +366,7 @@ function WhatsAppSimulation() {
 
 function DashboardPreview() {
   const LP = useContext(LPContext);
+  const { t } = useTranslation();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -386,8 +392,8 @@ function DashboardPreview() {
               <img src="/logo.png" alt="AXIS" className="w-full h-full object-cover" />
             </div>
             <div>
-              <p className="text-sm font-bold text-white/90">Boa tarde, Lucas!</p>
-              <p className="text-[11px] text-white/40">Março 2026</p>
+              <p className="text-sm font-bold text-white/90">{t("axisLanding.dashGreeting")}</p>
+              <p className="text-[11px] text-white/40">{t("axisLanding.dashMonth")}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <motion.div
@@ -399,16 +405,16 @@ function DashboardPreview() {
               >
                 <Zap className="w-3.5 h-3.5" style={{ color: LP.success }} />
                 <span className="text-xs font-bold" style={{ color: LP.success }}>7.2</span>
-                <span className="text-[10px] text-white/40">disciplina</span>
+                <span className="text-[10px] text-white/40">{t("axisLanding.dashDiscipline")}</span>
               </motion.div>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
-              { label: "Saldo", value: "R$ 3.280", color: LP.success, change: "+12%" },
-              { label: "Gastos", value: "R$ 1.420", color: LP.primary, change: "-8%" },
-              { label: "Receitas", value: "R$ 4.700", color: LP.secondary, change: "+5%" },
+              { label: t("axisLanding.dashCardBalance"), value: "R$ 3.280", color: LP.success, change: "+12%" },
+              { label: t("axisLanding.dashCardExpenses"), value: "R$ 1.420", color: LP.primary, change: "-8%" },
+              { label: t("axisLanding.dashCardIncome"), value: "R$ 4.700", color: LP.secondary, change: "+5%" },
             ].map((card, i) => (
               <motion.div
                 key={i}
@@ -428,7 +434,7 @@ function DashboardPreview() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Gastos por Mês</p>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">{t("axisLanding.dashMonthlyExp")}</p>
               <div className="flex items-end gap-1 h-24">
                 {bars.map((h, i) => (
                   <motion.div
@@ -444,12 +450,12 @@ function DashboardPreview() {
             </div>
 
             <div className="rounded-xl p-4 border border-white/[0.06] bg-white/[0.02]">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Tarefas Pendentes</p>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-3">{t("axisLanding.dashPendingTasks")}</p>
               <div className="space-y-2">
                 {[
-                  { text: "Pagar fatura do cartão", priority: LP.primary, done: false },
-                  { text: "Reunião com equipe", priority: LP.secondary, done: false },
-                  { text: "Enviar relatório", priority: LP.tertiary, done: true },
+                  { text: t("axisLanding.dashTask0"), priority: LP.primary, done: false },
+                  { text: t("axisLanding.dashTask1"), priority: LP.secondary, done: false },
+                  { text: t("axisLanding.dashTask2"), priority: LP.tertiary, done: true },
                 ].map((task, i) => (
                   <motion.div
                     key={i}
@@ -547,12 +553,13 @@ function MiniCalendar() {
 
 function MiniHabits() {
   const LP = useContext(LPContext);
+  const { t } = useTranslation();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
   const habits = [
-    { name: "Leitura", streak: 12, pct: 85 },
-    { name: "Exercício", streak: 7, pct: 60 },
-    { name: "Meditação", streak: 23, pct: 95 },
+    { name: t("axisLanding.habit0"), streak: 12, pct: 85 },
+    { name: t("axisLanding.habit1"), streak: 7, pct: 60 },
+    { name: t("axisLanding.habit2"), streak: 23, pct: 95 },
   ];
 
   return (
@@ -580,18 +587,19 @@ function MiniHabits() {
 
 function MiniChat() {
   const LP = useContext(LPContext);
+  const { t } = useTranslation();
   return (
     <div className="space-y-2.5">
       <div className="flex justify-end">
         <div className="rounded-xl rounded-tr-sm px-3 py-2 text-xs text-white/80 max-w-[70%]"
           style={{ background: `rgba(${LP.primaryRgb},0.15)`, border: `1px solid rgba(${LP.primaryRgb},0.1)` }}>
-          Quanto gastei esse mês?
+          {t("axisLanding.miniChatQ")}
         </div>
       </div>
       <div className="flex justify-start">
         <div className="rounded-xl rounded-tl-sm px-3 py-2 text-xs text-white/80 max-w-[80%]"
           style={{ background: `rgba(${LP.secondaryRgb},0.12)`, border: `1px solid rgba(${LP.secondaryRgb},0.08)` }}>
-          Você gastou R$ 2.340 em fevereiro. 42% foi em alimentação.
+          {t("axisLanding.miniChatA")}
         </div>
       </div>
     </div>
@@ -653,13 +661,13 @@ function StepIllustration({ type, LP }: { type: "voice" | "ai" | "done"; LP: Lan
   );
 }
 
-function getModuleShowcase(LP: LandingPalette) {
+function getModuleShowcase(LP: LandingPalette, t: (k: string) => string) {
   return [
-    { title: "Finanças", desc: "Registre gastos por voz, texto, foto de recibo ou PDF. A IA categoriza automaticamente e você acompanha pra onde vai cada real.", color: LP.primary, bg: LP.primaryMuted, visual: <MiniFinanceChart />, icon: <TrendingUp className="w-5 h-5" />, features: ["Foto de recibo", "PDF de extrato", "Categorização por IA", "Metas financeiras"] },
-    { title: "Agenda", desc: "Diga o compromisso e a IA sugere o melhor horário. Aprove com um toque. Sem conflitos, sem esforço.", color: LP.secondary, bg: LP.secondaryMuted, visual: <MiniCalendar />, icon: <Calendar className="w-5 h-5" />, features: ["Sugestão inteligente", "Sem conflitos", "Aprovação rápida", "Lembretes"] },
-    { title: "Tarefas & Hábitos", desc: "Streaks, progresso e score de disciplina automático. A IA avalia suas justificativas e te mantém no trilho.", color: LP.tertiary, bg: LP.tertiaryMuted, visual: <MiniHabits />, icon: <ListChecks className="w-5 h-5" />, features: ["Streaks diários", "Score de disciplina", "Justificativas IA", "Prioridades"] },
-    { title: "Chat Inteligente", desc: "Pergunte qualquer coisa sobre seus dados. A IA tem memória de longo prazo e acesso total ao seu contexto.", color: LP.primary, bg: `rgba(${LP.primaryRgb},0.08)`, visual: <MiniChat />, icon: <Brain className="w-5 h-5" />, features: ["Memória longa", "Acesso total", "Análises", "Sugestões"] },
-    { title: "WhatsApp Bot", desc: "Registre gastos, consulte saldo, crie tarefas e muito mais — tudo direto pelo WhatsApp. Manda áudio e o bot transcreve.", color: LP.success, bg: `rgba(${LP.successRgb},0.1)`, visual: (
+    { title: t("axisLanding.mod0Title"), desc: t("axisLanding.mod0Desc"), color: LP.primary, bg: LP.primaryMuted, visual: <MiniFinanceChart />, icon: <TrendingUp className="w-5 h-5" />, features: [t("axisLanding.mod0F0"), t("axisLanding.mod0F1"), t("axisLanding.mod0F2"), t("axisLanding.mod0F3")] },
+    { title: t("axisLanding.mod1Title"), desc: t("axisLanding.mod1Desc"), color: LP.secondary, bg: LP.secondaryMuted, visual: <MiniCalendar />, icon: <Calendar className="w-5 h-5" />, features: [t("axisLanding.mod1F0"), t("axisLanding.mod1F1"), t("axisLanding.mod1F2"), t("axisLanding.mod1F3")] },
+    { title: t("axisLanding.mod2Title"), desc: t("axisLanding.mod2Desc"), color: LP.tertiary, bg: LP.tertiaryMuted, visual: <MiniHabits />, icon: <ListChecks className="w-5 h-5" />, features: [t("axisLanding.mod2F0"), t("axisLanding.mod2F1"), t("axisLanding.mod2F2"), t("axisLanding.mod2F3")] },
+    { title: t("axisLanding.mod3Title"), desc: t("axisLanding.mod3Desc"), color: LP.primary, bg: `rgba(${LP.primaryRgb},0.08)`, visual: <MiniChat />, icon: <Brain className="w-5 h-5" />, features: [t("axisLanding.mod3F0"), t("axisLanding.mod3F1"), t("axisLanding.mod3F2"), t("axisLanding.mod3F3")] },
+    { title: t("axisLanding.mod4Title"), desc: t("axisLanding.mod4Desc"), color: LP.success, bg: `rgba(${LP.successRgb},0.1)`, visual: (
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(${LP.successRgb},0.15)`, border: `1px solid rgba(${LP.successRgb},0.2)` }}>
           <Smartphone className="w-6 h-6" style={{ color: LP.success }} />
@@ -669,44 +677,39 @@ function getModuleShowcase(LP: LandingPalette) {
           <div className="h-2 w-14 rounded-full" style={{ background: `rgba(${LP.successRgb},0.1)` }} />
         </div>
       </div>
-    ), icon: <MessageSquare className="w-5 h-5" />, features: ["Áudio → texto", "Gastos por voz", "Consultar saldo", "Criar tarefas"] },
+    ), icon: <MessageSquare className="w-5 h-5" />, features: [t("axisLanding.mod4F0"), t("axisLanding.mod4F1"), t("axisLanding.mod4F2"), t("axisLanding.mod4F3")] },
   ];
 }
 
-function getSteps(LP: LandingPalette) {
+function getSteps(LP: LandingPalette, t: (k: string) => string) {
   return [
-    { title: "Fale ou digite", desc: "Texto, voz, foto, PDF ou WhatsApp. Do jeito que for mais fácil.", type: "voice" as const, color: LP.primary },
-    { title: "IA entende", desc: "Classifica, categoriza e organiza em milissegundos.", type: "ai" as const, color: LP.secondary },
-    { title: "Pronto", desc: "Tudo registrado. Zero esforço. Vida organizada.", type: "done" as const, color: LP.tertiary },
+    { title: t("axisLanding.step0Title"), desc: t("axisLanding.step0Desc"), type: "voice" as const, color: LP.primary },
+    { title: t("axisLanding.step1Title"), desc: t("axisLanding.step1Desc"), type: "ai" as const, color: LP.secondary },
+    { title: t("axisLanding.step2Title"), desc: t("axisLanding.step2Desc"), type: "done" as const, color: LP.tertiary },
   ];
 }
 
-const marqueeItems = [
-  "Por voz ou texto",
-  "WhatsApp integrado",
-  "IA que aprende",
-  "Score de disciplina",
-  "Relatórios visuais",
-  "Privacidade total",
-  "Foto de recibo",
-  "PDF de extrato",
-  "Streaks diários",
-  "Memória longa",
-  "Zero configuração",
-  "Áudio → Texto",
-];
+function getMarqueeItems(t: (k: string) => string) {
+  return [
+    t("axisLanding.mq0"), t("axisLanding.mq1"), t("axisLanding.mq2"), t("axisLanding.mq3"),
+    t("axisLanding.mq4"), t("axisLanding.mq5"), t("axisLanding.mq6"), t("axisLanding.mq7"),
+    t("axisLanding.mq8"), t("axisLanding.mq9"), t("axisLanding.mq10"), t("axisLanding.mq11"),
+  ];
+}
 
-const faqItems = [
-  { q: "O AXIS é gratuito?", a: "Sim! Você cria sua conta em segundos e tem acesso a todas as funcionalidades principais sem pagar nada — finanças, agenda, tarefas, hábitos, chat com IA e o bot do WhatsApp. Não pedimos cartão de crédito. A ideia é que você experimente o AXIS sem nenhuma barreira e sinta o impacto na sua rotina antes de qualquer coisa." },
-  { q: "Funciona no WhatsApp?", a: "Funciona sim, e essa é uma das partes mais legais. Você conecta seu WhatsApp ao AXIS e passa a registrar gastos, criar tarefas, agendar compromissos e consultar seu saldo — tudo por mensagem de texto ou áudio. Mandou um áudio dizendo \"gastei 30 no uber\"? O bot transcreve, entende e registra automaticamente. Você nem precisa abrir o app pra manter tudo organizado." },
-  { q: "Meus dados estão seguros?", a: "Totalmente. Seus dados são armazenados com criptografia e ficam completamente isolados — ninguém além de você tem acesso. Não vendemos, não compartilhamos e não usamos seus dados pra treinar modelos. Você tem controle total: pode exportar tudo ou excluir sua conta e todos os dados a qualquer momento, sem burocracia." },
-  { q: "Preciso instalar algum app?", a: "Não precisa instalar nada. O AXIS funciona 100% no navegador, em qualquer dispositivo — computador, tablet ou celular. É só abrir o site e usar. E se preferir, o bot funciona direto no WhatsApp que você já tem instalado. Sem downloads, sem atualizações, sem ocupar espaço no celular." },
-  { q: "Como a IA funciona?", a: "A IA do AXIS entende linguagem natural em português. Você fala ou digita do jeito que quiser — \"gastei 50 no almoço\", \"reunião com o João sexta às 15h\", \"quero ler 30 minutos por dia\" — e ela categoriza, organiza e registra tudo automaticamente. Com o tempo, ela aprende seus padrões de gastos, horários e hábitos, ficando cada vez mais precisa nas sugestões. Ela também avalia suas justificativas de hábitos e tarefas usando um score de disciplina gamificado." },
-  { q: "Posso usar por voz?", a: "Com certeza. Você pode enviar áudios pelo WhatsApp ou usar o microfone direto no app. O AXIS transcreve o áudio em tempo real e interpreta o que você disse. Funciona também com fotos de recibos e PDFs de extratos bancários — a IA lê, extrai os valores e categoriza cada gasto automaticamente." },
-  { q: "O que é o Score de Disciplina?", a: "É um sistema de gamificação que acompanha o quanto você está mantendo suas tarefas e hábitos em dia. Completar tarefas e manter streaks de hábitos aumenta seu score, enquanto atrasos e tarefas ignoradas diminuem. A IA também avalia suas justificativas — se você explicar por que não fez algo, ela pode aceitar parcialmente e reduzir a penalidade. É uma forma de te manter motivado sem ser punitivo." },
-];
+function getFaqItems(t: (k: string) => string) {
+  return [
+    { q: t("axisLanding.faq0Q"), a: t("axisLanding.faq0A") },
+    { q: t("axisLanding.faq1Q"), a: t("axisLanding.faq1A") },
+    { q: t("axisLanding.faq2Q"), a: t("axisLanding.faq2A") },
+    { q: t("axisLanding.faq3Q"), a: t("axisLanding.faq3A") },
+    { q: t("axisLanding.faq4Q"), a: t("axisLanding.faq4A") },
+    { q: t("axisLanding.faq5Q"), a: t("axisLanding.faq5A") },
+    { q: t("axisLanding.faq6Q"), a: t("axisLanding.faq6A") },
+  ];
+}
 
-function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
+function FAQItem({ item, index }: { item: { q: string; a: string }; index: number }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -734,14 +737,22 @@ function FAQItem({ item, index }: { item: typeof faqItems[0]; index: number }) {
 
 export default function Landing() {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const LP = getLandingPalette(theme as AxisTheme);
-  const moduleShowcase = getModuleShowcase(LP);
-  const steps = getSteps(LP);
+  const moduleShowcase = getModuleShowcase(LP, t);
+  const steps = getSteps(LP, t);
+  const marqueeItems = getMarqueeItems(t);
+  const faqItems = getFaqItems(t);
 
   const cycleTheme = () => {
     const idx = ALL_THEMES.indexOf(theme as AxisTheme);
     const next = ALL_THEMES[(idx + 1) % ALL_THEMES.length];
     setTheme(next);
+  };
+
+  const toggleLang = () => {
+    const next = i18n.language === "pt-BR" ? "en" : "pt-BR";
+    i18n.changeLanguage(next);
   };
 
   useEffect(() => {
@@ -785,6 +796,16 @@ export default function Landing() {
             </button>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={toggleLang}
+              className="hidden sm:flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-white/10 hover:border-white/25 transition-all"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+              data-testid="button-lang-toggle"
+            >
+              <span style={{ color: i18n.language === "pt-BR" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}>{t("axisLanding.langTogglePT")}</span>
+              <span className="text-white/20">|</span>
+              <span style={{ color: i18n.language === "en" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}>{t("axisLanding.langToggleEN")}</span>
+            </button>
             <Link href="/business">
               <button
                 className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-all"
@@ -801,7 +822,7 @@ export default function Landing() {
                 size="sm"
                 data-testid="button-header-login"
               >
-                Começar grátis
+                {t("axisLanding.headerStartFree")}
               </Button>
             </Link>
           </div>
@@ -818,15 +839,15 @@ export default function Landing() {
               transition={{ duration: 0.7 }}
             >
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-hero-title">
-                Organize{" "}
-                <span className="landing-gradient-text">sua vida.</span>
+                {t("axisLanding.heroTitle1")}{" "}
+                <span className="landing-gradient-text">{t("axisLanding.heroGradient")}</span>
                 <br />
-                <span className="text-white/50">Por voz, texto</span>
+                <span className="text-white/50">{t("axisLanding.heroSub1")}</span>
                 <br className="md:hidden" />
-                <span className="text-white/50"> ou WhatsApp.</span>
+                <span className="text-white/50"> {t("axisLanding.heroSub2")}</span>
               </h1>
               <p className="text-lg md:text-xl text-white/45 max-w-lg mb-10 leading-relaxed" data-testid="text-hero-subtitle">
-                Diga o que precisa — o AXIS entende, categoriza e organiza finanças, agenda, tarefas e hábitos automaticamente. Na web ou direto no WhatsApp.
+                {t("axisLanding.heroParagraph")}
               </p>
             </motion.div>
 
@@ -842,14 +863,14 @@ export default function Landing() {
                   data-testid="button-hero-start"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Começar agora — é grátis
+                    {t("axisLanding.heroCta")}
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
               </Link>
               <div className="flex items-center gap-2 text-sm text-white/30">
                 <Check className="w-4 h-4" style={{ color: LP.success }} />
-                <span>Sem cartão de crédito</span>
+                <span>{t("axisLanding.heroNoCard")}</span>
               </div>
             </motion.div>
 
@@ -860,11 +881,11 @@ export default function Landing() {
               className="flex items-center gap-6 mt-8"
             >
               {[
-                { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz" },
-                { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto" },
-                { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto" },
-                { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF" },
-                { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp" },
+                { icon: <Mic className="w-3.5 h-3.5" />, label: t("axisLanding.inputVoice") },
+                { icon: <MessageSquare className="w-3.5 h-3.5" />, label: t("axisLanding.inputText") },
+                { icon: <Camera className="w-3.5 h-3.5" />, label: t("axisLanding.inputPhoto") },
+                { icon: <FileText className="w-3.5 h-3.5" />, label: t("axisLanding.inputPDF") },
+                { icon: <Smartphone className="w-3.5 h-3.5" />, label: t("axisLanding.inputWhatsApp") },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-white/30 text-xs">
                   {item.icon}
@@ -906,13 +927,13 @@ export default function Landing() {
               viewport={{ once: true }}
             >
               <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.primary }}>
-                Veja na prática
+                {t("axisLanding.demoLabel")}
               </p>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-demo-title">
-                Fale. O AXIS <span className="landing-gradient-text">faz o resto.</span>
+                {t("axisLanding.demoTitle1")} <span className="landing-gradient-text">{t("axisLanding.demoTitle2")}</span>
               </h2>
               <p className="text-white/35 text-base leading-relaxed mb-6 max-w-md">
-                Registre um gasto, crie um compromisso ou inicie um hábito — tudo com uma frase.
+                {t("axisLanding.demoDesc")}
               </p>
               <TypewriterDemo />
             </motion.div>
@@ -926,9 +947,9 @@ export default function Landing() {
             >
               <div className="grid grid-cols-1 gap-4">
                 {[
-                  { value: 3, suffix: "s", prefix: "< ", label: "pra registrar um gasto", color: LP.primary },
-                  { value: 5, suffix: "x", prefix: "", label: "menos toques que apps tradicionais", color: LP.secondary },
-                  { value: 0, suffix: "", prefix: "", label: "toques pra manter um hábito", color: LP.tertiary },
+                  { value: 3, suffix: "s", prefix: "< ", label: t("axisLanding.stat0Label"), color: LP.primary },
+                  { value: 5, suffix: "x", prefix: "", label: t("axisLanding.stat1Label"), color: LP.secondary },
+                  { value: 0, suffix: "", prefix: "", label: t("axisLanding.stat2Label"), color: LP.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -949,11 +970,11 @@ export default function Landing() {
 
               <div className="flex flex-wrap gap-3 mt-2">
                 {[
-                  { icon: <Mic className="w-3.5 h-3.5" />, label: "Voz", color: LP.primary },
-                  { icon: <MessageSquare className="w-3.5 h-3.5" />, label: "Texto", color: LP.secondary },
-                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: LP.tertiary },
-                  { icon: <FileText className="w-3.5 h-3.5" />, label: "PDF", color: LP.accent },
-                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: LP.success },
+                  { icon: <Mic className="w-3.5 h-3.5" />, label: t("axisLanding.inputVoice"), color: LP.primary },
+                  { icon: <MessageSquare className="w-3.5 h-3.5" />, label: t("axisLanding.inputText"), color: LP.secondary },
+                  { icon: <Camera className="w-3.5 h-3.5" />, label: t("axisLanding.inputPhoto"), color: LP.tertiary },
+                  { icon: <FileText className="w-3.5 h-3.5" />, label: t("axisLanding.inputPDF"), color: LP.accent },
+                  { icon: <Smartphone className="w-3.5 h-3.5" />, label: t("axisLanding.inputWhatsApp"), color: LP.success },
                 ].map((input, i) => (
                   <motion.div
                     key={i}
@@ -986,16 +1007,16 @@ export default function Landing() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-whatsapp-title">
-                Tudo pelo{" "}
+                {t("axisLanding.waTitle1")}{" "}
                 <span className="landing-whatsapp-glow">WhatsApp.</span>
                 <br />
-                <span className="text-white/40">Sem abrir o app.</span>
+                <span className="text-white/40">{t("axisLanding.waTitle2")}</span>
               </h2>
               <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
-                Mande uma mensagem de texto ou áudio pro bot do AXIS. Ele transcreve, entende e registra tudo automaticamente. Consulte saldo, veja tarefas pendentes, crie compromissos — tudo na conversa.
+                {t("axisLanding.waDesc")}
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Áudio → Texto", "Registrar gastos", "Consultar saldo", "Criar tarefas", "Foto de recibo"].map((tag) => (
+                {[t("axisLanding.waTag0"), t("axisLanding.waTag1"), t("axisLanding.waTag2"), t("axisLanding.waTag3"), t("axisLanding.waTag4")].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: `rgba(${LP.successRgb},0.1)`, color: LP.success, border: `1px solid rgba(${LP.successRgb},0.15)` }}>
                     {tag}
@@ -1005,9 +1026,9 @@ export default function Landing() {
 
               <div className="space-y-3">
                 {[
-                  { cmd: "Gastei 30 no uber", result: "Transporte registrado", color: LP.primary },
-                  { cmd: "Reunião amanhã 14h", result: "Evento criado", color: LP.secondary },
-                  { cmd: "Como tá meu saldo?", result: "R$ 3.280 disponível", color: LP.success },
+                  { cmd: t("axisLanding.waEx0Cmd"), result: t("axisLanding.waEx0Result"), color: LP.primary },
+                  { cmd: t("axisLanding.waEx1Cmd"), result: t("axisLanding.waEx1Result"), color: LP.secondary },
+                  { cmd: t("axisLanding.waEx2Cmd"), result: t("axisLanding.waEx2Result"), color: LP.success },
                 ].map((ex, i) => (
                   <motion.div
                     key={i}
@@ -1027,9 +1048,9 @@ export default function Landing() {
 
               <div className="grid grid-cols-3 gap-3 mt-6">
                 {[
-                  { value: 24, suffix: "h", label: "Disponível", color: LP.success },
-                  { value: 2, suffix: "s", prefix: "< ", label: "Resposta", color: LP.secondary },
-                  { value: 0, suffix: "", label: "Downloads", color: LP.tertiary },
+                  { value: 24, suffix: "h", label: t("axisLanding.waStat0"), color: LP.success },
+                  { value: 2, suffix: "s", prefix: "< ", label: t("axisLanding.waStat1"), color: LP.secondary },
+                  { value: 0, suffix: "", label: t("axisLanding.waStat2"), color: LP.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -1073,13 +1094,13 @@ export default function Landing() {
             className="text-center mb-14"
           >
             <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
-              Painel completo
+              {t("axisLanding.dashLabel")}
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Tudo <span className="landing-gradient-text">num só lugar.</span>
+              {t("axisLanding.dashTitle1")} <span className="landing-gradient-text">{t("axisLanding.dashTitle2")}</span>
             </h2>
             <p className="text-white/35 text-lg mt-4 max-w-lg mx-auto">
-              Dashboard inteligente com tudo que você precisa ver em 30 segundos.
+              {t("axisLanding.dashDesc")}
             </p>
           </motion.div>
 
@@ -1106,11 +1127,11 @@ export default function Landing() {
             className="text-center mb-16"
           >
             <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.tertiary }}>
-              Módulos
+              {t("axisLanding.modulesLabel")}
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Tudo que você precisa.{" "}
-              <span className="text-white/30">Nada que não precisa.</span>
+              {t("axisLanding.modulesTitle1")}{" "}
+              <span className="text-white/30">{t("axisLanding.modulesTitle2")}</span>
             </h2>
           </motion.div>
 
@@ -1199,10 +1220,10 @@ export default function Landing() {
             className="text-center mb-16"
           >
             <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
-              Como funciona
+              {t("axisLanding.howLabel")}
             </p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Três passos. <span className="text-white/30">Zero esforço.</span>
+              {t("axisLanding.howTitle1")} <span className="text-white/30">{t("axisLanding.howTitle2")}</span>
             </h2>
           </motion.div>
 
@@ -1262,10 +1283,10 @@ export default function Landing() {
             className="text-center mb-12"
           >
             <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.tertiary }}>
-              Dúvidas frequentes
+              {t("axisLanding.faqLabel")}
             </p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight" data-testid="text-faq-title">
-              Perguntas frequentes
+              {t("axisLanding.faqTitle")}
             </h2>
           </motion.div>
 
@@ -1287,10 +1308,10 @@ export default function Landing() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4" data-testid="text-cta-title">
-              Pronto pra <span className="landing-gradient-text">organizar sua vida?</span>
+              {t("axisLanding.ctaTitle1")} <span className="landing-gradient-text">{t("axisLanding.ctaTitle2")}</span>
             </h2>
             <p className="text-white/40 text-lg mb-10 max-w-md mx-auto">
-              Crie sua conta em 30 segundos. Sem cartão. Sem compromisso. Use pelo navegador ou WhatsApp.
+              {t("axisLanding.ctaDesc")}
             </p>
             <Link href="/auth">
               <button
@@ -1298,16 +1319,16 @@ export default function Landing() {
                 data-testid="button-cta-start"
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  Criar minha conta grátis
+                  {t("axisLanding.ctaButton")}
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
             </Link>
 
             <div className="flex items-center justify-center gap-6 mt-6 text-xs text-white/25">
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> Grátis</span>
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> Sem cartão</span>
-              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> WhatsApp</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> {t("axisLanding.ctaFree")}</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> {t("axisLanding.ctaNoCard")}</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3" style={{ color: LP.success }} /> {t("axisLanding.ctaWhatsApp")}</span>
             </div>
           </motion.div>
         </div>
@@ -1324,17 +1345,17 @@ export default function Landing() {
               viewport={{ once: true }}
             >
               <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.secondary }}>
-                Para empresas
+                {t("axisLanding.crossLabel")}
               </p>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-                Sua equipe também{" "}
-                <span className="landing-gradient-text">merece isso.</span>
+                {t("axisLanding.crossTitle1")}{" "}
+                <span className="landing-gradient-text">{t("axisLanding.crossTitle2")}</span>
               </h2>
               <p className="text-white/40 text-base leading-relaxed mb-8 max-w-md">
-                Com o AXIS Business, colaboradores enviam o recibo pelo WhatsApp e as despesas aparecem organizadas no painel — prontas pra aprovação e exportação. Sem planilha, sem papel perdido.
+                {t("axisLanding.crossDesc")}
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Foto → registrado", "IA extrai os dados", "Gestor aprova", "Exporta Excel"].map((tag) => (
+                {[t("axisLanding.crossTag0"), t("axisLanding.crossTag1"), t("axisLanding.crossTag2"), t("axisLanding.crossTag3")].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: `rgba(${LP.secondaryRgb},0.1)`, color: LP.secondary, border: `1px solid rgba(${LP.secondaryRgb},0.15)` }}>
                     {tag}
@@ -1347,7 +1368,7 @@ export default function Landing() {
                   data-testid="button-crosslink-to-business"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Conhecer AXIS Business
+                    {t("axisLanding.crossButton")}
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
@@ -1365,9 +1386,9 @@ export default function Landing() {
                 <div className="absolute left-[27px] top-[52px] h-[calc(100%-104px)] w-px pointer-events-none"
                   style={{ background: `linear-gradient(to bottom, rgba(${LP.primaryRgb},0.25), rgba(${LP.secondaryRgb},0.2), rgba(${LP.tertiaryRgb},0.15))` }} />
                 {[
-                  { step: "01", icon: <Camera className="w-4 h-4" />, title: "Colaborador fotografa o recibo", desc: "Envia pelo WhatsApp que já usa. Nenhum app novo pra baixar.", result: "foto salva no sistema", color: LP.primary, colorRgb: LP.primaryRgb },
-                  { step: "02", icon: <Zap className="w-4 h-4" />, title: "IA registra e classifica", desc: "Estabelecimento, valor, categoria e imagem — tudo automático.", result: "despesa registrada", color: LP.secondary, colorRgb: LP.secondaryRgb },
-                  { step: "03", icon: <Check className="w-4 h-4" />, title: "Gestor aprova e exporta", desc: "Painel com todas as despesas da equipe, relatório Excel em um clique.", result: "Excel exportado", color: LP.tertiary, colorRgb: LP.tertiaryRgb },
+                  { step: "01", icon: <Camera className="w-4 h-4" />, title: t("axisLanding.crossStep0Title"), desc: t("axisLanding.crossStep0Desc"), result: t("axisLanding.crossStep0Result"), color: LP.primary, colorRgb: LP.primaryRgb },
+                  { step: "02", icon: <Zap className="w-4 h-4" />, title: t("axisLanding.crossStep1Title"), desc: t("axisLanding.crossStep1Desc"), result: t("axisLanding.crossStep1Result"), color: LP.secondary, colorRgb: LP.secondaryRgb },
+                  { step: "03", icon: <Check className="w-4 h-4" />, title: t("axisLanding.crossStep2Title"), desc: t("axisLanding.crossStep2Desc"), result: t("axisLanding.crossStep2Result"), color: LP.tertiary, colorRgb: LP.tertiaryRgb },
                 ].map((item, i) => (
                   <motion.div
                     key={i}
@@ -1409,10 +1430,10 @@ export default function Landing() {
           </div>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-white/50 transition-colors" data-testid="link-privacy">
-              Privacidade
+              {t("axisLanding.footerPrivacy")}
             </Link>
             <Link href="/terms" className="hover:text-white/50 transition-colors" data-testid="link-terms">
-              Termos
+              {t("axisLanding.footerTerms")}
             </Link>
           </div>
         </div>

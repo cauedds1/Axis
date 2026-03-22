@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { SetupSheet } from "@/components/setup-sheet";
+import { useTranslation } from "react-i18next";
 
 
 function SkeletonCard() {
@@ -27,6 +28,7 @@ function ModuleCard({
   testId,
   delay = 0,
   isHigh,
+  detailsLabel,
 }: {
   children: ReactNode;
   color: string;
@@ -34,6 +36,7 @@ function ModuleCard({
   testId: string;
   delay?: number;
   isHigh: boolean;
+  detailsLabel?: string;
 }) {
   return (
     <motion.div
@@ -60,7 +63,7 @@ function ModuleCard({
             className="mt-4 flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70"
             style={{ color: isHigh ? color : "hsl(var(--muted-foreground))" }}
           >
-            Ver detalhes <ArrowRight className="h-3 w-3" />
+            {detailsLabel || "Ver detalhes"} <ArrowRight className="h-3 w-3" />
           </button>
         </Link>
       </div>
@@ -117,6 +120,7 @@ function CardIcon({
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/dashboard"] });
   const { data: setupStatus } = useQuery<{ completed: boolean }>({ queryKey: ["/api/onboarding/setup/status"] });
   const [showSetupModal, setShowSetupModal] = useState(false);
@@ -126,7 +130,7 @@ export default function Dashboard() {
   const P = getModulePalette(theme);
 
   const hour = new Date().getHours();
-  const greetWord = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const greetWord = hour < 12 ? t("axisDashboard.goodMorning") : hour < 18 ? t("axisDashboard.goodAfternoon") : t("axisDashboard.goodEvening");
   const name = data?.userName || "";
   const disciplineScore = data?.disciplineScore || 5;
 
@@ -154,7 +158,7 @@ export default function Dashboard() {
 
   return (
     <div className="px-6 py-6 pb-28 space-y-6">
-      <title>AXIS — Dashboard</title>
+      <title>{t("axisDashboard.pageTitle")}</title>
 
       {/* Header */}
       <motion.div
@@ -209,10 +213,10 @@ export default function Dashboard() {
 
         {/* Finance */}
         {(showAll || activeModules.includes("finance")) && data?.finance && (
-          <ModuleCard color={P.finance} href="/finance" testId="card-finance-summary" delay={0.12} isHigh={isHigh}>
+          <ModuleCard color={P.finance} href="/finance" testId="card-finance-summary" delay={0.12} isHigh={isHigh} detailsLabel={t("axisDashboard.viewDetails")}>
             <div className="flex items-center gap-2 mb-4">
               <CardIcon icon={DollarSign} color={P.finance} isHigh={isHigh} />
-              <span className="text-sm font-semibold text-muted-foreground">Finanças do mês</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t("axisDashboard.financeMonth")}</span>
             </div>
 
             <div
@@ -222,12 +226,12 @@ export default function Dashboard() {
             >
               R$ {data.finance.balance.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground mb-4">saldo atual</p>
+            <p className="text-xs text-muted-foreground mb-4">{t("axisDashboard.currentBalance")}</p>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <TrendingDown className="h-3 w-3" style={{ color: P.negative }} /> Gastos
+                  <TrendingDown className="h-3 w-3" style={{ color: P.negative }} /> {t("axisDashboard.expenses")}
                 </span>
                 <span className="font-semibold" data-testid="text-total-expenses">
                   R$ {data.finance.totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -242,7 +246,7 @@ export default function Dashboard() {
 
               <div className="flex items-center justify-between text-xs mt-2">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <TrendingUp className="h-3 w-3" style={{ color: P.positive }} /> Receitas
+                  <TrendingUp className="h-3 w-3" style={{ color: P.positive }} /> {t("axisDashboard.income")}
                 </span>
                 <span className="font-semibold" data-testid="text-total-income">
                   R$ {data.finance.totalIncome.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -258,7 +262,7 @@ export default function Dashboard() {
               {data.finance.cardSummary && data.finance.cardSummary.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <CreditCard className="h-3 w-3" /> Cartões
+                    <CreditCard className="h-3 w-3" /> {t("axisDashboard.cards")}
                   </p>
                   {data.finance.cardSummary.map((card: any) => {
                     const pct = Math.min(100, (card.usedThisMonth / Math.max(card.limit, 1)) * 100);
@@ -285,10 +289,10 @@ export default function Dashboard() {
 
         {/* Agenda */}
         {(showAll || activeModules.includes("schedule")) && (
-          <ModuleCard color={P.agenda} href="/agenda" testId="card-schedule-today" delay={0.17} isHigh={isHigh}>
+          <ModuleCard color={P.agenda} href="/agenda" testId="card-schedule-today" delay={0.17} isHigh={isHigh} detailsLabel={t("axisDashboard.viewDetails")}>
             <div className="flex items-center gap-2 mb-4">
               <CardIcon icon={Calendar} color={P.agenda} isHigh={isHigh} />
-              <span className="text-sm font-semibold text-muted-foreground">Agenda de hoje</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t("axisDashboard.todayAgenda")}</span>
             </div>
 
             {data?.schedule?.length > 0 ? (
@@ -316,7 +320,7 @@ export default function Dashboard() {
             ) : (
               <div className="py-4 text-center">
                 <Calendar className="h-8 w-8 mx-auto mb-2 opacity-15" />
-                <p className="text-sm text-muted-foreground">Dia livre — sem compromissos</p>
+                <p className="text-sm text-muted-foreground">{t("axisDashboard.freeDay")}</p>
               </div>
             )}
           </ModuleCard>
@@ -324,10 +328,10 @@ export default function Dashboard() {
 
         {/* Tasks */}
         {(showAll || activeModules.includes("tasks")) && (
-          <ModuleCard color={P.tasks} href="/tasks" testId="card-tasks-summary" delay={0.22} isHigh={isHigh}>
+          <ModuleCard color={P.tasks} href="/tasks" testId="card-tasks-summary" delay={0.22} isHigh={isHigh} detailsLabel={t("axisDashboard.viewDetails")}>
             <div className="flex items-center gap-2 mb-4">
               <CardIcon icon={CheckSquare} color={P.tasks} isHigh={isHigh} />
-              <span className="text-sm font-semibold text-muted-foreground">Tarefas</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t("axisDashboard.tasksLabel")}</span>
             </div>
 
             <div className="flex items-end gap-2 mb-3">
@@ -338,12 +342,12 @@ export default function Dashboard() {
               >
                 {data?.tasks?.pending || 0}
               </span>
-              <span className="text-sm text-muted-foreground mb-1">pendentes</span>
+              <span className="text-sm text-muted-foreground mb-1">{t("axisDashboard.pending")}</span>
             </div>
 
             {data?.tasks?.urgent?.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Urgentes</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{t("axisDashboard.urgent")}</p>
                 {data.tasks.urgent.slice(0, 3).map((t: any) => (
                   <div key={t.id} className="flex items-center gap-2 text-sm">
                     <div
@@ -360,10 +364,10 @@ export default function Dashboard() {
 
         {/* Habits */}
         {(showAll || activeModules.includes("habits")) && data?.habits && (
-          <ModuleCard color={P.habits} href="/tasks" testId="card-habits-summary" delay={0.27} isHigh={isHigh}>
+          <ModuleCard color={P.habits} href="/tasks" testId="card-habits-summary" delay={0.27} isHigh={isHigh} detailsLabel={t("axisDashboard.viewDetails")}>
             <div className="flex items-center gap-2 mb-4">
               <CardIcon icon={Flame} color={P.habits} isHigh={isHigh} />
-              <span className="text-sm font-semibold text-muted-foreground">Compromissos</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t("axisDashboard.habitsLabel")}</span>
             </div>
 
             {data.habits.length > 0 ? (
@@ -402,7 +406,7 @@ export default function Dashboard() {
             ) : (
               <div className="py-4 text-center">
                 <Target className="h-8 w-8 mx-auto mb-2 opacity-15" />
-                <p className="text-sm text-muted-foreground">Nenhum compromisso ainda</p>
+                <p className="text-sm text-muted-foreground">{t("axisDashboard.noHabits")}</p>
               </div>
             )}
           </ModuleCard>
@@ -429,14 +433,14 @@ export default function Dashboard() {
                 ) : (
                   <Sparkles className="h-4 w-4 opacity-50" style={{ color: P.positive }} />
                 )}
-                <span className="text-sm font-semibold text-muted-foreground">Perfil incompleto</span>
+                <span className="text-sm font-semibold text-muted-foreground">{t("axisDashboard.incompleteProfile")}</span>
               </div>
-              <p className="text-lg font-bold mb-1" style={{ color: P.positive }}>Finalize seu cadastro</p>
+              <p className="text-lg font-bold mb-1" style={{ color: P.positive }}>{t("axisDashboard.finishSetup")}</p>
               <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                Adicione sua renda, gastos fixos e rotina para que o AXIS configure tudo automaticamente desde agora.
+                {t("axisDashboard.finishSetupDesc")}
               </p>
               <div className="mt-auto flex items-center gap-1.5 text-xs font-medium" style={{ color: isHigh ? P.positive : "hsl(var(--muted-foreground))" }}>
-                Completar agora <ChevronRight className="h-3 w-3" />
+                {t("axisDashboard.completeNow")} <ChevronRight className="h-3 w-3" />
               </div>
             </div>
           </motion.button>

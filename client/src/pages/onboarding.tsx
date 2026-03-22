@@ -7,9 +7,10 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme, type AxisTheme } from "@/components/theme-provider";
+import { useTranslation } from "react-i18next";
 
 class StepErrorBoundary extends Component<
-  { children: React.ReactNode; onError?: (err: Error) => void },
+  { children: React.ReactNode; onError?: (err: Error) => void; stepErrorText?: string; tryAgainText?: string; detailsText?: string },
   { hasError: boolean; error: Error | null }
 > {
   constructor(props: any) {
@@ -27,16 +28,16 @@ class StepErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="py-6 space-y-3">
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>Erro ao carregar esta etapa.</p>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{this.props.stepErrorText || "Erro ao carregar esta etapa."}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}
           >
-            Tentar novamente
+            {this.props.tryAgainText || "Tentar novamente"}
           </button>
           {this.state.error && (
             <details style={{ textAlign: "left" }}>
-              <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>Detalhes</summary>
+              <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>{this.props.detailsText || "Detalhes"}</summary>
               <code style={{ display: "block", marginTop: 6, fontSize: 9, color: "#FF6B6B", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 8, background: "rgba(255,107,107,0.06)", borderRadius: 6, maxHeight: 120, overflow: "auto" }}>
                 {this.state.error.message}{"\n"}{this.state.error.stack?.slice(0, 400)}
               </code>
@@ -93,19 +94,23 @@ function getDisciplineColor(score: number): { hex: string; hsl: string } {
   return { hex: rgbToHex(rgb), hsl: rgbToHsl(rgb) };
 }
 
-const moduleOptions = [
-  { id: "finance", label: "Finanças", desc: "Gastos, receitas e metas", icon: "💰", color: CORAL },
-  { id: "schedule", label: "Agenda", desc: "Compromissos e calendário", icon: "📅", color: GOLD },
-  { id: "tasks", label: "Tarefas", desc: "To-do list inteligente", icon: "✅", color: LAVANDA },
-  { id: "habits", label: "Hábitos", desc: "Streaks e disciplina", icon: "🔄", color: MINT },
-];
+function getModuleOptions(t: (k: string) => string) {
+  return [
+    { id: "finance", label: t("axisOnboarding.moduleFinance"), desc: t("axisOnboarding.moduleFinanceDesc"), icon: "💰", color: CORAL },
+    { id: "schedule", label: t("axisOnboarding.moduleSchedule"), desc: t("axisOnboarding.moduleScheduleDesc"), icon: "📅", color: GOLD },
+    { id: "tasks", label: t("axisOnboarding.moduleTasks"), desc: t("axisOnboarding.moduleTasksDesc"), icon: "✅", color: LAVANDA },
+    { id: "habits", label: t("axisOnboarding.moduleHabits"), desc: t("axisOnboarding.moduleHabitsDesc"), icon: "🔄", color: MINT },
+  ];
+}
 
-const personalityOptions = [
-  { id: "calm", label: "Calmo", desc: "Tranquilo e paciente", icon: "🌊" },
-  { id: "direct", label: "Direto", desc: "Sem rodeios", icon: "⚡" },
-  { id: "motivator", label: "Motivador", desc: "Sempre incentivando", icon: "🚀" },
-  { id: "strict", label: "Rigoroso", desc: "Cobra resultados", icon: "🎯" },
-];
+function getPersonalityOptions(t: (k: string) => string) {
+  return [
+    { id: "calm", label: t("axisOnboarding.pCalm"), desc: t("axisOnboarding.pCalmDesc"), icon: "🌊" },
+    { id: "direct", label: t("axisOnboarding.pDirect"), desc: t("axisOnboarding.pDirectDesc"), icon: "⚡" },
+    { id: "motivator", label: t("axisOnboarding.pMotivator"), desc: t("axisOnboarding.pMotivatorDesc"), icon: "🚀" },
+    { id: "strict", label: t("axisOnboarding.pStrict"), desc: t("axisOnboarding.pStrictDesc"), icon: "🎯" },
+  ];
+}
 
 function AmbientBackground({ color = CORAL }: { color?: string }) {
   return (
@@ -124,6 +129,9 @@ function AmbientBackground({ color = CORAL }: { color?: string }) {
 type Phase = "question" | "setup";
 
 export default function Onboarding() {
+  const { t } = useTranslation();
+  const moduleOptions = getModuleOptions(t);
+  const personalityOptions = getPersonalityOptions(t);
   const [step, setStep] = useState(0); // 0=nome 1=módulos 2=score 3=personalidade+tema
   const [direction, setDirection] = useState(1);
   const [firstName, setFirstName] = useState("");
@@ -191,7 +199,7 @@ export default function Onboarding() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setPhase("setup");
     } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: t("axisOnboarding.toastError"), description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -282,18 +290,18 @@ export default function Onboarding() {
           className="relative z-10 max-w-md w-full pb-6"
         >
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: MINT }}>Quase lá</span>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: MINT }}>{t("axisOnboarding.almostThere")}</span>
           </div>
-          <h2 className="text-2xl font-bold mb-1">Olá, {firstName || "você"}!</h2>
-          <p className="text-sm text-white/45 mb-1">Configure o AXIS para te conhecer desde o primeiro dia.</p>
-          <p className="text-xs text-white/25 mb-7">Tudo opcional — pode preencher depois nas configurações.</p>
+          <h2 className="text-2xl font-bold mb-1">{t("axisOnboarding.helloName", { name: firstName || "você" })}</h2>
+          <p className="text-sm text-white/45 mb-1">{t("axisOnboarding.setupDesc")}</p>
+          <p className="text-xs text-white/25 mb-7">{t("axisOnboarding.setupOptional")}</p>
 
           <div className="space-y-5">
             {/* RENDA */}
             <div style={sectionCard} className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4" style={{ color: "#4ECDC4" }} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">Rendas automáticas</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">{t("axisOnboarding.incomeSection")}</span>
               </div>
               {setupIncomes.map((inc, i) => (
                 <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2 mb-2"
@@ -309,7 +317,7 @@ export default function Onboarding() {
               ))}
               <div className="flex flex-col sm:flex-row gap-2 mt-1">
                 <div className="flex-1 rounded-xl border px-3 py-2" style={fieldBox}>
-                  <input value={riName} onChange={e => setRiName(e.target.value)} placeholder="Salário, Freelance…" className={inputCls} data-testid="input-ri-name" onKeyDown={e => e.key === "Enter" && addIncome()} />
+                  <input value={riName} onChange={e => setRiName(e.target.value)} placeholder={t("axisOnboarding.incomeNamePh")} className={inputCls} data-testid="input-ri-name" onKeyDown={e => e.key === "Enter" && addIncome()} />
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
@@ -317,7 +325,7 @@ export default function Onboarding() {
                     <input value={riAmount} onChange={e => setRiAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-ri-amount" onKeyDown={e => e.key === "Enter" && addIncome()} />
                   </div>
                   <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                    <span className="text-white/30 text-xs">dia</span>
+                    <span className="text-white/30 text-xs">{t("axisOnboarding.dayPrefix")}</span>
                     <input value={riDay} onChange={e => setRiDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-ri-day" onKeyDown={e => e.key === "Enter" && addIncome()} />
                   </div>
                   <button onClick={addIncome} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80 min-w-[44px]"
@@ -332,7 +340,7 @@ export default function Onboarding() {
             <div style={sectionCard} className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown className="w-4 h-4" style={{ color: "#FF6B6B" }} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">Gastos fixos mensais</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">{t("axisOnboarding.billsSection")}</span>
               </div>
               {setupBills.map((b, i) => (
                 <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2 mb-2"
@@ -348,7 +356,7 @@ export default function Onboarding() {
               ))}
               <div className="flex flex-col sm:flex-row gap-2 mt-1">
                 <div className="flex-1 rounded-xl border px-3 py-2" style={fieldBox}>
-                  <input value={bTitle} onChange={e => setBTitle(e.target.value)} placeholder="Aluguel, Netflix, Academia…" className={inputCls} data-testid="input-bill-title" onKeyDown={e => e.key === "Enter" && addBill()} />
+                  <input value={bTitle} onChange={e => setBTitle(e.target.value)} placeholder={t("axisOnboarding.billTitlePh")} className={inputCls} data-testid="input-bill-title" onKeyDown={e => e.key === "Enter" && addBill()} />
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
@@ -356,7 +364,7 @@ export default function Onboarding() {
                     <input value={bAmount} onChange={e => setBAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-bill-amount" onKeyDown={e => e.key === "Enter" && addBill()} />
                   </div>
                   <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                    <span className="text-white/30 text-xs">dia</span>
+                    <span className="text-white/30 text-xs">{t("axisOnboarding.dayPrefix")}</span>
                     <input value={bDay} onChange={e => setBDay(e.target.value)} type="number" min={1} max={31} className={`${inputCls} w-full`} data-testid="input-bill-day" onKeyDown={e => e.key === "Enter" && addBill()} />
                   </div>
                   <button onClick={addBill} className="rounded-xl px-3 py-2 flex items-center justify-center shrink-0 transition-opacity hover:opacity-80 min-w-[44px]"
@@ -371,7 +379,7 @@ export default function Onboarding() {
             <div style={sectionCard} className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <RefreshCw className="w-4 h-4" style={{ color: "#A78BFA" }} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">Hábitos e rotina</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/60">{t("axisOnboarding.habitsSection")}</span>
               </div>
               {setupHabits.map((h, i) => (
                 <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2 mb-2"
@@ -379,7 +387,7 @@ export default function Onboarding() {
                   <div className="flex items-center gap-2">
                     <span>{h.emoji}</span>
                     <span className="text-sm text-white/80">{h.name}</span>
-                    <span className="text-xs text-white/35">{h.frequency === "daily" ? "diário" : "semanal"}{h.targetTime ? ` · ${h.targetTime}` : ""}</span>
+                    <span className="text-xs text-white/35">{h.frequency === "daily" ? t("axisOnboarding.daily") : t("axisOnboarding.weekly")}{h.targetTime ? ` · ${h.targetTime}` : ""}</span>
                   </div>
                   <button onClick={() => setSetupHabits(p => p.filter((_, j) => j !== i))} data-testid={`remove-habit-${i}`}>
                     <X className="w-3.5 h-3.5 text-white/30 hover:text-white/70" />
@@ -400,7 +408,7 @@ export default function Onboarding() {
               </div>
               <div className="flex gap-2 mb-2">
                 <div className="flex-1 rounded-xl border px-3 py-2" style={fieldBox}>
-                  <input value={hName} onChange={e => setHName(e.target.value)} placeholder="Exercitar, Meditar, Ler…" className={inputCls} data-testid="input-habit-name" onKeyDown={e => e.key === "Enter" && addHabit()} />
+                  <input value={hName} onChange={e => setHName(e.target.value)} placeholder={t("axisOnboarding.habitNamePh")} className={inputCls} data-testid="input-habit-name" onKeyDown={e => e.key === "Enter" && addHabit()} />
                 </div>
                 <div className="w-24 rounded-xl border px-3 py-2" style={fieldBox}>
                   <input value={hTime} onChange={e => setHTime(e.target.value)} placeholder="07:00" type="time" className={inputCls} data-testid="input-habit-time" />
@@ -416,13 +424,13 @@ export default function Onboarding() {
                       color: hFreq === f ? "#A78BFA" : "rgba(255,255,255,0.4)",
                     }}
                     data-testid={`freq-${f}`}
-                  >{f === "daily" ? "Diário" : "Semanal"}</button>
+                  >{f === "daily" ? t("axisOnboarding.daily") : t("axisOnboarding.weekly")}</button>
                 ))}
                 <button onClick={addHabit}
                   className="rounded-xl px-4 py-2 flex items-center justify-center gap-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
                   style={{ background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.25)", color: "#A78BFA" }}
                   data-testid="button-add-habit">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar
+                  <Plus className="w-3.5 h-3.5" /> {t("axisOnboarding.add")}
                 </button>
               </div>
             </div>
@@ -436,7 +444,7 @@ export default function Onboarding() {
               data-testid="button-setup-submit"
             >
               {isSetupSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {isSetupSubmitting ? "Salvando…" : "Salvar e ir ao dashboard"}
+              {isSetupSubmitting ? t("axisOnboarding.saving") : t("axisOnboarding.saveAndGo")}
             </button>
             <button
               onClick={goToDashboard}
@@ -444,7 +452,7 @@ export default function Onboarding() {
               className="w-full py-2 text-sm text-white/30 hover:text-white/50 transition-colors"
               data-testid="button-setup-skip"
             >
-              Fazer depois →
+              {t("axisOnboarding.doLater")}
             </button>
           </div>
         </motion.div>
@@ -454,7 +462,7 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen relative flex flex-col text-white overflow-hidden">
-      <title>AXIS — Configuração inicial</title>
+      <title>{t("axisOnboarding.pageTitle")}</title>
       <AmbientBackground color={currentColor} />
 
       {/* Progress bar */}
@@ -483,7 +491,7 @@ export default function Onboarding() {
               <div className="flex items-center justify-between mb-8">
                 <div />
                 <span className="text-xs text-white/25" data-testid="text-step-counter">
-                  {step + 1} de {TOTAL_STEPS}
+                  {t("axisOnboarding.stepOf", { current: step + 1, total: TOTAL_STEPS })}
                 </span>
               </div>
 
@@ -491,14 +499,14 @@ export default function Onboarding() {
               {step === 0 && (
                 <>
                   <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
-                    Como posso te chamar?
+                    {t("axisOnboarding.step0Title")}
                   </h2>
-                  <p className="text-sm text-white/35 mb-8 leading-relaxed">Para personalizar como o AXIS se comunica com você</p>
+                  <p className="text-sm text-white/35 mb-8 leading-relaxed">{t("axisOnboarding.step0Desc")}</p>
                   <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) goNext(); }}>
                     <input
                       value={firstName}
                       onChange={e => setFirstName(e.target.value)}
-                      placeholder="Seu nome"
+                      placeholder={t("axisOnboarding.step0Ph")}
                       className="auth-input text-base"
                       autoFocus
                       data-testid="input-onboarding"
@@ -511,9 +519,9 @@ export default function Onboarding() {
               {step === 1 && (
                 <>
                   <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
-                    O que você quer usar?
+                    {t("axisOnboarding.step1Title")}
                   </h2>
-                  <p className="text-sm text-white/35 mb-8 leading-relaxed">Ative os módulos que fazem sentido para você — pode mudar a qualquer momento</p>
+                  <p className="text-sm text-white/35 mb-8 leading-relaxed">{t("axisOnboarding.step1Desc")}</p>
                   <div className="space-y-2.5">
                     {moduleOptions.map((mod) => {
                       const active = activeModules.includes(mod.id);
@@ -553,9 +561,9 @@ export default function Onboarding() {
               {step === 2 && (
                 <>
                   <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
-                    De 1 a 10, como você avalia sua disciplina hoje?
+                    {t("axisOnboarding.step2Title")}
                   </h2>
-                  <p className="text-sm text-white/35 mb-8 leading-relaxed">Seja honesto — isso é o ponto de partida real do seu score. Não existe resposta errada.</p>
+                  <p className="text-sm text-white/35 mb-8 leading-relaxed">{t("axisOnboarding.step2Desc")}</p>
                   <div className="space-y-8">
                     <div className="text-center">
                       <span
@@ -581,8 +589,8 @@ export default function Onboarding() {
                         data-testid="slider-discipline"
                       />
                       <div className="flex justify-between mt-2">
-                        <span className="text-xs text-white/25">Sem disciplina</span>
-                        <span className="text-xs text-white/25">Máxima disciplina</span>
+                        <span className="text-xs text-white/25">{t("axisOnboarding.noDiscipline")}</span>
+                        <span className="text-xs text-white/25">{t("axisOnboarding.maxDiscipline")}</span>
                       </div>
                     </div>
                   </div>
@@ -591,12 +599,12 @@ export default function Onboarding() {
 
               {/* ── STEP 3: Personalidade + Tema ── */}
               {step === 3 && (
-                <StepErrorBoundary>
+                <StepErrorBoundary stepErrorText={t("axisOnboarding.stepError")} tryAgainText={t("axisOnboarding.tryAgain")} detailsText={t("axisOnboarding.details")}>
                   <>
                     <h2 className="text-2xl font-bold mb-2 leading-snug" data-testid="text-onboarding-question">
-                      Como prefere que o AXIS fale com você?
+                      {t("axisOnboarding.step3Title")}
                     </h2>
-                    <p className="text-sm text-white/35 mb-6 leading-relaxed">Define o tom de todas as respostas e sugestões do assistente</p>
+                    <p className="text-sm text-white/35 mb-6 leading-relaxed">{t("axisOnboarding.step3Desc")}</p>
 
                     <div className="grid grid-cols-2 gap-2.5 mb-8">
                       {personalityOptions.map((p) => {
@@ -621,7 +629,7 @@ export default function Onboarding() {
                       })}
                     </div>
 
-                    <p className="text-sm text-white/35 mb-4">Escolha seu visual</p>
+                    <p className="text-sm text-white/35 mb-4">{t("axisOnboarding.chooseTheme")}</p>
                     <ThemeSelector
                       value={theme}
                       onChange={(t) => setThemeVal(t)}
@@ -640,7 +648,7 @@ export default function Onboarding() {
               className="flex items-center gap-1.5 text-sm text-white/30 hover:text-white/60 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
               data-testid="button-onboarding-back"
             >
-              <ArrowLeft className="h-4 w-4" /> Voltar
+              <ArrowLeft className="h-4 w-4" /> {t("axisOnboarding.back")}
             </button>
 
             {step < TOTAL_STEPS - 1 ? (
@@ -650,7 +658,7 @@ export default function Onboarding() {
                 className="auth-submit-button px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="button-onboarding-next"
               >
-                Próximo <ArrowRight className="h-4 w-4" />
+                {t("axisOnboarding.next")} <ArrowRight className="h-4 w-4" />
               </button>
             ) : (
               <button
@@ -660,7 +668,7 @@ export default function Onboarding() {
                 data-testid="button-onboarding-finish"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {isSubmitting ? "Salvando…" : "Concluir"}
+                {isSubmitting ? t("axisOnboarding.saving") : t("axisOnboarding.finish")}
               </button>
             )}
           </div>

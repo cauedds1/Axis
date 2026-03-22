@@ -3,21 +3,17 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, Mic, Calendar, CheckSquare, TrendingUp, Sparkles, Zap, Flame, Coffee, ShoppingCart, Car, LogOut } from "lucide-react";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 const CORAL = "#FF6B6B";
 const GOLD = "#FFB347";
 const LAVANDA = "#A78BFA";
 const MINT = "#4ECDC4";
 
-const steps = [
-  { n: "01", title: "Conte sobre você", desc: "Perguntas rápidas para o AXIS entender seu contexto e objetivos", active: true },
-  { n: "02", title: "Ative os módulos", desc: "Escolha quais áreas da vida você quer organizar agora", active: false },
-  { n: "03", title: "Comece a usar", desc: "Fale por voz, envie texto ou foto — o AXIS organiza tudo", active: false },
-];
-
 const bars = [55, 80, 40, 95, 60, 75, 50];
 
 function FinanceCard({ delay }: { delay: number }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -34,9 +30,9 @@ function FinanceCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${CORAL}18`, border: `1px solid ${CORAL}28` }}>
             <TrendingUp className="w-3.5 h-3.5" style={{ color: CORAL }} />
           </div>
-          <span className="text-white font-bold text-sm">Finanças</span>
+          <span className="text-white font-bold text-sm">{t("axisWelcome.financeCard")}</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${CORAL}15`, color: CORAL }}>Voz + texto</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${CORAL}15`, color: CORAL }}>{t("axisWelcome.financeTag")}</span>
       </div>
 
       <div className="flex items-end gap-1 mb-3 h-10">
@@ -54,7 +50,7 @@ function FinanceCard({ delay }: { delay: number }) {
 
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[10px] text-white/35 mb-0.5">Gastos este mês</p>
+          <p className="text-[10px] text-white/35 mb-0.5">{t("axisWelcome.financeLabel")}</p>
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -79,10 +75,11 @@ function FinanceCard({ delay }: { delay: number }) {
 }
 
 function AgendaCard({ delay }: { delay: number }) {
+  const { t } = useTranslation();
   const events = [
-    { time: "09:00", label: "Daily standup", dot: GOLD },
-    { time: "14:00", label: "Consulta médica", dot: CORAL },
-    { time: "19:00", label: "Academia", dot: MINT },
+    { time: "09:00", label: t("axisWelcome.event0"), dot: GOLD },
+    { time: "14:00", label: t("axisWelcome.event1"), dot: CORAL },
+    { time: "19:00", label: t("axisWelcome.event2"), dot: MINT },
   ];
   return (
     <motion.div
@@ -100,9 +97,9 @@ function AgendaCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${GOLD}18`, border: `1px solid ${GOLD}28` }}>
             <Calendar className="w-3.5 h-3.5" style={{ color: GOLD }} />
           </div>
-          <span className="text-white font-bold text-sm">Agenda</span>
+          <span className="text-white font-bold text-sm">{t("axisWelcome.agendaCard")}</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${GOLD}15`, color: GOLD }}>Hoje</span>
+        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ background: `${GOLD}15`, color: GOLD }}>{t("axisWelcome.agendaToday")}</span>
       </div>
 
       <div className="space-y-2 flex-1">
@@ -123,20 +120,21 @@ function AgendaCard({ delay }: { delay: number }) {
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
         <Sparkles className="w-3 h-3" style={{ color: GOLD }} />
-        <span className="text-[10px] text-white/30">IA sugere o melhor horário</span>
+        <span className="text-[10px] text-white/30">{t("axisWelcome.agendaSuggest")}</span>
       </div>
     </motion.div>
   );
 }
 
 function TasksCard({ delay }: { delay: number }) {
+  const { t } = useTranslation();
   const tasks = [
-    { label: "Enviar relatório", done: true },
-    { label: "Responder emails", done: true },
-    { label: "Reunião às 15h", done: false },
-    { label: "Revisar proposta", done: false },
+    { label: t("axisWelcome.task0"), done: true },
+    { label: t("axisWelcome.task1"), done: true },
+    { label: t("axisWelcome.task2"), done: false },
+    { label: t("axisWelcome.task3"), done: false },
   ];
-  const done = tasks.filter(t => t.done).length;
+  const done = tasks.filter(task => task.done).length;
   const pct = Math.round((done / tasks.length) * 100);
 
   return (
@@ -155,15 +153,15 @@ function TasksCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${LAVANDA}18`, border: `1px solid ${LAVANDA}28` }}>
             <CheckSquare className="w-3.5 h-3.5" style={{ color: LAVANDA }} />
           </div>
-          <span className="text-white font-bold text-sm">Tarefas</span>
+          <span className="text-white font-bold text-sm">{t("axisWelcome.tasksCard")}</span>
         </div>
-        <span className="text-[10px] font-medium" style={{ color: LAVANDA }}>{done}/{tasks.length} feitas</span>
+        <span className="text-[10px] font-medium" style={{ color: LAVANDA }}>{done}/{tasks.length} {t("axisWelcome.tasksDone")}</span>
       </div>
 
       <div className="space-y-1.5 flex-1">
         {tasks.map(({ label, done: isDone }, i) => (
           <motion.div
-            key={label}
+            key={i}
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.35, delay: delay + 0.2 + i * 0.08 }}
@@ -190,17 +188,18 @@ function TasksCard({ delay }: { delay: number }) {
             style={{ background: `linear-gradient(90deg, ${LAVANDA}, ${LAVANDA}80)` }}
           />
         </div>
-        <p className="text-[10px] text-white/25 mt-1">{pct}% concluído hoje</p>
+        <p className="text-[10px] text-white/25 mt-1">{pct}% {t("axisWelcome.tasksCompleted")}</p>
       </div>
     </motion.div>
   );
 }
 
 function HabitsCard({ delay }: { delay: number }) {
+  const { t } = useTranslation();
   const habits = [
-    { label: "Meditar", streak: 12, color: CORAL },
-    { label: "Exercício", streak: 8, color: GOLD },
-    { label: "Leitura", streak: 21, color: MINT },
+    { label: t("axisWelcome.habit0"), streak: 12, color: CORAL },
+    { label: t("axisWelcome.habit1"), streak: 8, color: GOLD },
+    { label: t("axisWelcome.habit2"), streak: 21, color: MINT },
   ];
 
   return (
@@ -219,7 +218,7 @@ function HabitsCard({ delay }: { delay: number }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${MINT}18`, border: `1px solid ${MINT}28` }}>
             <Zap className="w-3.5 h-3.5" style={{ color: MINT }} />
           </div>
-          <span className="text-white font-bold text-sm">Compromissos</span>
+          <span className="text-white font-bold text-sm">{t("axisWelcome.habitsCard")}</span>
         </div>
         <div className="flex items-center gap-1">
           <Flame className="w-3 h-3" style={{ color: CORAL }} />
@@ -230,7 +229,7 @@ function HabitsCard({ delay }: { delay: number }) {
       <div className="space-y-2.5 flex-1">
         {habits.map(({ label, streak, color }, i) => (
           <motion.div
-            key={label}
+            key={i}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: delay + 0.2 + i * 0.1 }}
@@ -257,21 +256,28 @@ function HabitsCard({ delay }: { delay: number }) {
 
       <div className="mt-3 pt-2.5 border-t border-white/[0.05] flex items-center gap-1.5">
         <Car className="w-3 h-3 text-white/20" />
-        <span className="text-[10px] text-white/25">Sem dias pulados essa semana</span>
+        <span className="text-[10px] text-white/25">{t("axisWelcome.habitsNoSkips")}</span>
       </div>
     </motion.div>
   );
 }
 
 export default function Welcome() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    document.title = "AXIS — Bem-vindo";
-  }, []);
+    document.title = "AXIS — " + t("axisWelcome.welcomeTo");
+  }, [t]);
 
   const firstName = user?.firstName || "você";
+
+  const steps = [
+    { n: "01", title: t("axisWelcome.step1Title"), desc: t("axisWelcome.step1Desc"), active: true },
+    { n: "02", title: t("axisWelcome.step2Title"), desc: t("axisWelcome.step2Desc"), active: false },
+    { n: "03", title: t("axisWelcome.step3Title"), desc: t("axisWelcome.step3Desc"), active: false },
+  ];
 
   return (
     <div className="h-screen bg-[#080808] text-white overflow-hidden flex flex-col">
@@ -297,7 +303,7 @@ export default function Welcome() {
             data-testid="button-welcome-logout"
           >
             <LogOut className="w-3.5 h-3.5" />
-            Sair
+            {t("axisWelcome.logout")}
           </button>
         </motion.div>
 
@@ -322,17 +328,17 @@ export default function Welcome() {
               </div>
 
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] mb-4">
-                <span className="text-white/35 block text-2xl md:text-3xl font-medium mb-1">Olá, {firstName}.</span>
+                <span className="text-white/35 block text-2xl md:text-3xl font-medium mb-1">{t("axisWelcome.helloName", { name: firstName })}</span>
                 <span style={{ background: `linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  Bem-vindo ao{" "}
+                  {t("axisWelcome.welcomeTo")}{" "}
                 </span>
                 <span style={{ background: `linear-gradient(135deg, ${CORAL}, ${GOLD})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  AXIS.
+                  {t("axisWelcome.axisBrand")}
                 </span>
               </h1>
 
               <p className="text-white/45 text-base leading-relaxed">
-                Um assistente que aprende como você pensa, fala e vive — e organiza tudo sem burocracia.
+                {t("axisWelcome.description")}
               </p>
             </motion.div>
 
@@ -374,11 +380,11 @@ export default function Welcome() {
                 data-testid="button-prosseguir"
               >
                 <Mic className="w-4 h-4 opacity-75" />
-                Prosseguir para configuração
+                {t("axisWelcome.ctaButton")}
                 <ArrowRight className="w-4 h-4" />
               </button>
               <p className="text-center text-xs text-white/20 mt-3">
-                Menos de 3 minutos · Pode pular qualquer etapa
+                {t("axisWelcome.ctaCaption")}
               </p>
             </motion.div>
           </div>
@@ -390,7 +396,7 @@ export default function Welcome() {
               transition={{ delay: 0.2 }}
               className="text-[11px] font-semibold tracking-widest uppercase text-white/22 mb-3 flex-shrink-0"
             >
-              O que está te esperando
+              {t("axisWelcome.whatsWaiting")}
             </motion.p>
 
             <div className="grid grid-cols-2 gap-3 flex-1" style={{ gridTemplateRows: "1fr 1fr" }}>

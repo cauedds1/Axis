@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp, Settings2, Pencil, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,15 +20,8 @@ import { EditTransactionDialog } from "@/components/edit-transaction-dialog";
 import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import type { Transaction, FinancialGoal } from "@shared/schema";
 
-const PAYMENT_METHODS = [
-  { value: "debit", label: "Débito", icon: CreditCard },
-  { value: "credit", label: "Crédito", icon: CreditCard },
-  { value: "pix", label: "Pix", icon: Smartphone },
-  { value: "cash", label: "Dinheiro", icon: Banknote },
-  { value: "other", label: "Outro", icon: Wallet },
-] as const;
-
-type PaymentMethodValue = typeof PAYMENT_METHODS[number]["value"];
+const PAYMENT_METHOD_VALUES = ["debit","credit","pix","cash","other"] as const;
+type PaymentMethodValue = typeof PAYMENT_METHOD_VALUES[number];
 
 function fmtBRL(value: number): string {
   return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -48,21 +42,16 @@ function fmtTxDate(date: Date | string | null | undefined): string {
   return `${day} ${month}`;
 }
 
+const PAYMENT_METHOD_STATIC_LABELS: Record<string, string> = {
+  debit: "Débito", credit: "Crédito", pix: "Pix", cash: "Dinheiro", other: "Outro"
+};
+
 function paymentLabel(method: string | null | undefined): string {
   if (!method) return "";
-  const found = PAYMENT_METHODS.find(m => m.value === method);
-  return found ? found.label : method;
+  return PAYMENT_METHOD_STATIC_LABELS[method] || method;
 }
 
 type TxPeriodFilter = "current" | "last" | "last3" | "last6" | "custom";
-
-const TX_PERIOD_OPTS: { id: TxPeriodFilter; label: string }[] = [
-  { id: "current", label: "Mês atual" },
-  { id: "last", label: "Mês passado" },
-  { id: "last3", label: "3 meses" },
-  { id: "last6", label: "6 meses" },
-  { id: "custom", label: "Personalizado" },
-];
 
 function getTxDateRange(period: TxPeriodFilter, customStart?: string, customEnd?: string): { start: Date; end: Date } {
   const now = new Date();
@@ -94,8 +83,25 @@ function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Dat
 }
 
 export default function Finance() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
+
+  const PAYMENT_METHODS = [
+    { value: "debit",   label: t("axisFinance.pmDebit"),  icon: CreditCard },
+    { value: "credit",  label: t("axisFinance.pmCredit"), icon: CreditCard },
+    { value: "pix",     label: t("axisFinance.pmPix"),    icon: Smartphone },
+    { value: "cash",    label: t("axisFinance.pmCash"),   icon: Banknote },
+    { value: "other",   label: t("axisFinance.pmOther"),  icon: Wallet },
+  ] as const;
+
+  const TX_PERIOD_OPTS: { id: TxPeriodFilter; label: string }[] = [
+    { id: "current", label: t("axisFinance.periodCurrent") },
+    { id: "last",    label: t("axisFinance.periodLast") },
+    { id: "last3",   label: t("axisFinance.period3m") },
+    { id: "last6",   label: t("axisFinance.period6m") },
+    { id: "custom",  label: t("axisFinance.periodCustom") },
+  ];
   const [activeTab, setActiveTab] = useState<"transactions" | "bills" | "cards">("transactions");
   const [showManageBills, setShowManageBills] = useState(false);
   const [showAddTx, setShowAddTx] = useState(false);
@@ -154,9 +160,9 @@ export default function Finance() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setShowBalanceDialog(false);
       setBalanceInput("");
-      toast({ title: "Saldo atualizado com sucesso" });
+      toast({ title: t("axisFinance.balanceUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar saldo", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.balanceError"), variant: "destructive" }),
   });
 
   const resetTxForm = () => setTxForm({ amount: "", description: "", type: "expense", categoryName: "", paymentMethod: "", paymentMethodOther: "", creditCardId: "", installments: "1" });
@@ -172,7 +178,7 @@ export default function Finance() {
       setShowAddTx(false);
       resetTxForm();
     },
-    onError: () => toast({ title: "Erro ao salvar transação", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.txSaveError"), variant: "destructive" }),
   });
 
   const deleteTxMutation = useMutation({
@@ -208,9 +214,9 @@ export default function Finance() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setShowDepositGoal(null);
       setDepositAmount("");
-      toast({ title: "Depósito realizado", description: "O valor foi debitado do saldo e adicionado à reserva." });
+      toast({ title: t("axisFinance.depositDone"), description: t("axisFinance.depositDoneDesc") });
     },
-    onError: () => toast({ title: "Erro ao depositar", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.depositError"), variant: "destructive" }),
   });
 
   const withdrawMutation = useMutation({
@@ -224,9 +230,9 @@ export default function Finance() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setShowWithdrawGoal(null);
       setWithdrawAmount("");
-      toast({ title: "Saque realizado", description: "O valor foi debitado da reserva e creditado no saldo." });
+      toast({ title: t("axisFinance.withdrawDone"), description: t("axisFinance.withdrawDoneDesc") });
     },
-    onError: (e: any) => toast({ title: e?.message || "Erro ao sacar", variant: "destructive" }),
+    onError: (e: any) => toast({ title: e?.message || t("axisFinance.withdrawError"), variant: "destructive" }),
   });
 
   const updateGoalMutation = useMutation({
@@ -237,9 +243,9 @@ export default function Finance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       setEditingGoal(null);
-      toast({ title: "Reserva atualizada" });
+      toast({ title: t("axisFinance.goalUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar reserva", variant: "destructive" }),
+    onError: () => toast({ title: t("axisFinance.goalUpdateError"), variant: "destructive" }),
   });
 
   const deleteGoalMutation = useMutation({
@@ -257,7 +263,7 @@ export default function Finance() {
     onSuccess: (data: { count: number; receipts: any[] }) => {
       const receipts = data.receipts?.filter((r: any) => r.totalAmount) ?? [];
       if (receipts.length === 0) {
-        toast({ title: "Nenhum comprovante identificado", description: "Tente uma foto mais nítida.", variant: "destructive" });
+        toast({ title: t("axisFinance.photoNoReceipt"), description: t("axisFinance.photoNoReceiptDesc"), variant: "destructive" });
       } else {
         setPhotoResults(receipts);
         setExpandedReceiptIdx(receipts.length === 1 ? 0 : null);
@@ -276,7 +282,7 @@ export default function Finance() {
       setPhotoResults(null);
       setExpandedReceiptIdx(null);
       const count = Array.isArray(data) ? data.length : 1;
-      toast({ title: count > 1 ? `${count} comprovantes registrados` : "Comprovante registrado" });
+      toast({ title: count > 1 ? t("axisFinance.receiptsConfirmed", { count }) : t("axisFinance.receiptConfirmed") });
     },
   });
 
@@ -348,33 +354,33 @@ export default function Finance() {
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
         setPdfPreview(null);
         setBillForm({ title: "", amount: "", type: "expense", dueDay: "", recurrenceType: "this_month", categoryName: "", notes: "" });
-        toast({ title: "Conta registrada" });
+        toast({ title: t("axisFinance.billRegistered") });
       } else {
         queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
         setPdfPreview(null);
-        toast({ title: "Extrato importado" });
+        toast({ title: t("axisFinance.statementImported") });
       }
     },
   });
 
   const txDateRange = getTxDateRange(txPeriod, txCustomStart, txCustomEnd);
-  const filteredTx = transactions.filter(t => {
-    const d = new Date(t.date!);
+  const filteredTx = transactions.filter(tx => {
+    const d = new Date(tx.date!);
     return d >= txDateRange.start && d <= txDateRange.end;
   }).sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
-  const totalExpenses = filteredTx.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
-  const totalIncome = filteredTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalCardExpenses = filteredTx.filter(t => t.type === "expense" && !!(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
+  const totalExpenses = filteredTx.filter(tx => tx.type === "expense" && !(tx as any).creditCardId).reduce((s, tx) => s + tx.amount, 0);
+  const totalIncome = filteredTx.filter(tx => tx.type === "income").reduce((s, tx) => s + tx.amount, 0);
+  const totalCardExpenses = filteredTx.filter(tx => tx.type === "expense" && !!(tx as any).creditCardId).reduce((s, tx) => s + tx.amount, 0);
   const today = new Date();
-  const pastTransactions = transactions.filter(t => t.date && new Date(t.date) <= today);
-  const allExpenses = pastTransactions.filter(t => t.type === "expense" && !(t as any).creditCardId).reduce((s, t) => s + t.amount, 0);
-  const allIncome = pastTransactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const pastTransactions = transactions.filter(tx => tx.date && new Date(tx.date) <= today);
+  const allExpenses = pastTransactions.filter(tx => tx.type === "expense" && !(tx as any).creditCardId).reduce((s, tx) => s + tx.amount, 0);
+  const allIncome = pastTransactions.filter(tx => tx.type === "income").reduce((s, tx) => s + tx.amount, 0);
 
   function handleSubmitTx(e: React.FormEvent) {
     e.preventDefault();
     if (!txForm.categoryName.trim()) {
-      toast({ title: "Categoria obrigatória", description: "Informe uma categoria para classificar a transação.", variant: "destructive" });
+      toast({ title: t("axisFinance.categoryRequired"), description: t("axisFinance.categoryRequiredDesc"), variant: "destructive" });
       return;
     }
     const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || "Outro" : txForm.paymentMethod);
@@ -394,10 +400,10 @@ export default function Finance() {
 
   return (
     <div className="px-6 py-6 pb-28 space-y-5">
-      <title>AXIS - Finanças</title>
+      <title>{t("axisFinance.pageTitle")}</title>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" data-testid="text-finance-title">Finanças</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-finance-title">{t("axisFinance.title")}</h1>
         <div className="flex gap-2">
           {activeTab === "transactions" && (<>
             <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files?.[0]) uploadPhotoMutation.mutate(e.target.files[0]); }} />
@@ -409,12 +415,12 @@ export default function Finance() {
               {uploadPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             </Button>
             <Button size="sm" onClick={() => setShowAddTx(true)} data-testid="button-add-transaction">
-              <Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Adicionar</span>
+              <Plus className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">{t("axisFinance.add")}</span>
             </Button>
           </>)}
           <Button variant="outline" size="sm" onClick={() => setShowManageBills(true)} data-testid="button-manage-bills">
             <Settings2 className="h-4 w-4 mr-1" />
-            <span className="hidden sm:inline">Contas Fixas</span>
+            <span className="hidden sm:inline">{t("axisFinance.fixedBills")}</span>
           </Button>
         </div>
       </div>
@@ -422,9 +428,9 @@ export default function Finance() {
       {/* Tab switcher */}
       <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
         {([
-          { id: "transactions", label: "Transações", icon: DollarSign },
-          { id: "bills", label: "Contas", icon: Receipt },
-          { id: "cards", label: "Cartões", icon: CreditCard },
+          { id: "transactions", label: t("axisFinance.tabTransactions"), icon: DollarSign },
+          { id: "bills", label: t("axisFinance.tabBills"), icon: Receipt },
+          { id: "cards", label: t("axisFinance.tabCards"), icon: CreditCard },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -477,7 +483,7 @@ export default function Finance() {
         </div>
         {txShowCustom && (
           <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-white/10 bg-white/[0.02]">
-            <span className="text-xs text-white/40 font-medium">De</span>
+            <span className="text-xs text-white/40 font-medium">{t("axisFinance.from")}</span>
             <input
               type="date"
               data-testid="input-tx-custom-start"
@@ -485,7 +491,7 @@ export default function Finance() {
               onChange={e => setTxCustomStart(e.target.value)}
               className="text-xs border border-white/10 rounded-lg px-2 py-1.5 bg-transparent text-white outline-none focus:ring-1 focus:ring-white/20"
             />
-            <span className="text-xs text-white/40 font-medium">até</span>
+            <span className="text-xs text-white/40 font-medium">{t("axisFinance.to")}</span>
             <input
               type="date"
               data-testid="input-tx-custom-end"
@@ -501,24 +507,24 @@ export default function Finance() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="border-border" data-testid="card-total-expenses">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> Gastos (débito/pix)</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3 text-destructive" /> {t("axisFinance.expensesDebit")}</p>
             <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalExpenses)}</p>
             {totalCardExpenses > 0 && (
               <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                <CreditCard className="h-3 w-3" /> No cartão: R$ {fmtBRL(totalCardExpenses)}
+                <CreditCard className="h-3 w-3" /> {t("axisFinance.onCard", { amount: fmtBRL(totalCardExpenses) })}
               </p>
             )}
           </CardContent>
         </Card>
         <Card className="border-border" data-testid="card-total-income">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3 text-green-500" /> Receitas</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3 text-green-500" /> {t("axisFinance.income")}</p>
             <p className="text-xl font-bold mt-1">R$ {fmtBRL(totalIncome)}</p>
           </CardContent>
         </Card>
         <Card className="border-border relative" data-testid="card-balance">
           <CardContent className="pt-4 pb-10">
-            <p className="text-xs text-muted-foreground">Saldo</p>
+            <p className="text-xs text-muted-foreground">{t("axisFinance.balance")}</p>
             <p className={`text-xl font-bold mt-1 ${initialBalance + allIncome - allExpenses >= 0 ? "text-green-500" : "text-destructive"}`}>
               R$ {fmtBRL(initialBalance + allIncome - allExpenses)}
             </p>
@@ -529,7 +535,7 @@ export default function Finance() {
             data-testid="button-add-balance"
           >
             <PlusCircle className="h-3 w-3" />
-            Adicionar saldo
+            {t("axisFinance.addBalance")}
           </button>
         </Card>
       </div>
@@ -546,8 +552,8 @@ export default function Finance() {
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Receipt className="h-4 w-4" />
                     {photoResults.length === 1
-                      ? "Comprovante detectado"
-                      : `${photoResults.length} comprovantes detectados`}
+                      ? t("axisFinance.receiptDetected")
+                      : t("axisFinance.receiptsDetected", { count: photoResults.length })}
                   </CardTitle>
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setPhotoResults(null); setExpandedReceiptIdx(null); }}><X className="h-4 w-4" /></Button>
                 </div>
@@ -555,7 +561,7 @@ export default function Finance() {
               <CardContent className="space-y-3">
                 {photoResults.map((r: any, idx: number) => {
                   const isExpanded = expandedReceiptIdx === idx || photoResults.length === 1;
-                  const label = r.establishment || r.description || `Comprovante ${idx + 1}`;
+                  const label = r.establishment || r.description || t("axisFinance.receiptN", { n: idx + 1 });
                   const typeColor = r.transactionType === "income" ? "text-green-500" : "text-destructive";
                   return (
                     <div key={idx} className="rounded-lg border border-border/60 overflow-hidden" data-testid={`card-receipt-${idx}`}>
@@ -576,7 +582,7 @@ export default function Finance() {
                       </button>
                       {isExpanded && (
                         <div className="px-3 pb-3 space-y-1 border-t border-border/40 pt-2">
-                          {r.date && <p className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(r.date).toLocaleDateString("pt-BR")}{r.time ? ` às ${r.time}` : ""}</p>}
+                          {r.date && <p className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(r.date).toLocaleDateString()}{r.time ? ` ${t("axisFinance.at")} ${r.time}` : ""}</p>}
                           {r.location && <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.location}</p>}
                           {r.paymentMethod && <p className="text-xs text-muted-foreground flex items-center gap-1"><CreditCard className="h-3 w-3" /> {r.paymentMethod}</p>}
                           {r.items && r.items.length > 1 && (
@@ -598,7 +604,7 @@ export default function Finance() {
                   {confirmPhotoMutation.isPending
                     ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     : <Check className="h-4 w-4 mr-2" />}
-                  {photoResults.length > 1 ? `Confirmar todos (${photoResults.length})` : "Confirmar"}
+                  {photoResults.length > 1 ? t("axisFinance.confirmAll", { count: photoResults.length }) : t("axisFinance.confirm")}
                 </Button>
               </CardContent>
             </Card>
@@ -610,7 +616,7 @@ export default function Finance() {
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Receipt className="h-4 w-4" />
-                    Conta detectada
+                    {t("axisFinance.billDetected")}
                   </CardTitle>
                   <Button variant="ghost" size="icon" onClick={() => setPdfPreview(null)} data-testid="button-close-bill-preview"><X className="h-4 w-4" /></Button>
                 </div>
@@ -622,7 +628,7 @@ export default function Finance() {
                       <div className="flex gap-2" data-testid="text-bill-issuer">
                         <Store className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                         <div>
-                          <span className="text-xs text-muted-foreground">Emissor</span>
+                          <span className="text-xs text-muted-foreground">{t("axisFinance.issuer")}</span>
                           <p className="font-medium">{pdfPreview.issuer}{pdfPreview.issuerCnpj ? <span className="text-muted-foreground font-normal"> ({pdfPreview.issuerCnpj})</span> : ""}</p>
                         </div>
                       </div>
@@ -631,7 +637,7 @@ export default function Finance() {
                       <div className="flex gap-2" data-testid="text-bill-recipient">
                         <ArrowDownCircle className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                         <div>
-                          <span className="text-xs text-muted-foreground">Destinatário</span>
+                          <span className="text-xs text-muted-foreground">{t("axisFinance.recipient")}</span>
                           <p className="font-medium">{pdfPreview.recipient}{pdfPreview.recipientCnpj ? <span className="text-muted-foreground font-normal"> ({pdfPreview.recipientCnpj})</span> : ""}</p>
                         </div>
                       </div>
@@ -640,7 +646,7 @@ export default function Finance() {
                       <div className="flex gap-2" data-testid="text-bill-description">
                         <FileText className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                         <div>
-                          <span className="text-xs text-muted-foreground">Serviço/Produto</span>
+                          <span className="text-xs text-muted-foreground">{t("axisFinance.serviceProduct")}</span>
                           <p>{pdfPreview.description}</p>
                         </div>
                       </div>
@@ -649,7 +655,7 @@ export default function Finance() {
                       <div className="flex gap-2" data-testid="text-bill-payment">
                         <CreditCard className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                         <div>
-                          <span className="text-xs text-muted-foreground">Dados de pagamento</span>
+                          <span className="text-xs text-muted-foreground">{t("axisFinance.paymentData")}</span>
                           <p>{pdfPreview.paymentInfo}</p>
                         </div>
                       </div>
@@ -658,7 +664,7 @@ export default function Finance() {
                 )}
                 {identityNeeded && pdfPreview.issuerCnpj && pdfPreview.recipientCnpj && (
                   <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 space-y-2" data-testid="identity-picker">
-                    <p className="text-sm font-medium">Quem é você nessa nota?</p>
+                    <p className="text-sm font-medium">{t("axisFinance.whoAreYou")}</p>
                     <div className="grid grid-cols-1 gap-2">
                       <button
                         type="button"
@@ -671,7 +677,7 @@ export default function Finance() {
                       >
                         <Store className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <p className="font-medium">{pdfPreview.issuer || "Emissor"}</p>
+                          <p className="font-medium">{pdfPreview.issuer || t("axisFinance.issuer")}</p>
                           <p className="text-xs text-muted-foreground">{pdfPreview.issuerCnpj}</p>
                         </div>
                       </button>
@@ -686,17 +692,17 @@ export default function Finance() {
                       >
                         <ArrowDownCircle className="h-4 w-4 mt-0.5 shrink-0" />
                         <div>
-                          <p className="font-medium">{pdfPreview.recipient || "Destinatário"}</p>
+                          <p className="font-medium">{pdfPreview.recipient || t("axisFinance.recipient")}</p>
                           <p className="text-xs text-muted-foreground">{pdfPreview.recipientCnpj}</p>
                         </div>
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Vou lembrar sua escolha para as próximas notas.</p>
+                    <p className="text-xs text-muted-foreground">{t("axisFinance.rememberChoice")}</p>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">Título</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.titleLabel")}</label>
                     <Input
                       value={billForm.title}
                       onChange={(e) => setBillForm(p => ({ ...p, title: e.target.value }))}
@@ -704,7 +710,7 @@ export default function Finance() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.amountLabel")}</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -714,17 +720,17 @@ export default function Finance() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Tipo</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.typeLabel")}</label>
                     <Select value={billForm.type} onValueChange={(v) => setBillForm(p => ({ ...p, type: v }))}>
                       <SelectTrigger data-testid="select-bill-type"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="expense">A Pagar</SelectItem>
-                        <SelectItem value="income">A Receber</SelectItem>
+                        <SelectItem value="expense">{t("axisFinance.toPay")}</SelectItem>
+                        <SelectItem value="income">{t("axisFinance.toReceive")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Vencimento (dia)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.dueDay")}</label>
                     <Input
                       type="number"
                       min={1}
@@ -735,19 +741,19 @@ export default function Finance() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Recorrência</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.recurrence")}</label>
                     <Select value={billForm.recurrenceType} onValueChange={(v) => setBillForm(p => ({ ...p, recurrenceType: v }))}>
                       <SelectTrigger data-testid="select-bill-recurrence"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="this_month">Este mês</SelectItem>
-                        <SelectItem value="permanent">Permanente</SelectItem>
-                        <SelectItem value="three_months">3 meses</SelectItem>
+                        <SelectItem value="this_month">{t("axisFinance.thisMonth")}</SelectItem>
+                        <SelectItem value="permanent">{t("axisFinance.permanent")}</SelectItem>
+                        <SelectItem value="three_months">{t("axisFinance.threeMonths")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.notes")}</label>
                   <Textarea
                     value={billForm.notes}
                     onChange={(e) => setBillForm(p => ({ ...p, notes: e.target.value }))}
@@ -779,7 +785,7 @@ export default function Finance() {
                   data-testid="button-confirm-bill"
                 >
                   {confirmPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                  Registrar Conta
+                  {t("axisFinance.registerBill")}
                 </Button>
               </CardContent>
             </Card>
@@ -789,30 +795,30 @@ export default function Finance() {
             <Card className="border-primary" data-testid="card-pdf-preview">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Extrato detectado — {pdfPreview.transactions?.length || 0} transações</CardTitle>
+                  <CardTitle className="text-sm">{t("axisFinance.statementDetected", { count: pdfPreview.transactions?.length || 0 })}</CardTitle>
                   <Button variant="ghost" size="icon" onClick={() => setPdfPreview(null)}><X className="h-4 w-4" /></Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-1 max-h-60 overflow-auto">
-                {pdfPreview.transactions?.map((t: any, i: number) => (
+                {pdfPreview.transactions?.map((tx: any, i: number) => (
                   <div key={i} className="flex justify-between text-xs py-1 border-b border-border/50">
-                    <span className="truncate flex-1">{t.description}</span>
-                    <span className={`ml-2 ${t.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {fmtBRL(t.amount ?? 0)}</span>
+                    <span className="truncate flex-1">{tx.description}</span>
+                    <span className={`ml-2 ${tx.type === "income" ? "text-green-500" : "text-destructive"}`}>R$ {fmtBRL(tx.amount ?? 0)}</span>
                   </div>
                 ))}
                 <Button onClick={() => confirmPdfMutation.mutate(pdfPreview)} disabled={confirmPdfMutation.isPending} className="w-full mt-2" data-testid="button-confirm-pdf">
-                  {confirmPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Importar tudo
+                  {confirmPdfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} {t("axisFinance.importAll")}
                 </Button>
               </CardContent>
             </Card>
           )}
 
           <div>
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">Transações recentes</h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("axisFinance.recentTransactions")}</h2>
             {txLoading ? (
               <div className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></div>
             ) : filteredTx.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação neste período</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t("axisFinance.noTransactions")}</p>
             ) : (
               <div className="space-y-1">
                 {filteredTx.slice(0, 50).map((tx) => {
@@ -832,7 +838,7 @@ export default function Finance() {
                           <div className="min-w-0">
                             <p className="text-sm truncate">{formatTxDescription(tx.description)}</p>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
-                              <span>{tx.categoryName || "Sem categoria"}</span>
+                              <span>{tx.categoryName || t("axisFinance.noCategory")}</span>
                               {tx.establishment && <><span>·</span><span>{tx.establishment}</span></>}
                               {(tx as any).creditCardId && (() => {
                                 const card = creditCards.find((c: any) => c.id === (tx as any).creditCardId);
@@ -908,10 +914,10 @@ export default function Finance() {
         {/* Right col (1/3): reservas */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">Reservas</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">{t("axisFinance.reserves")}</h2>
             {goals.length > 0 && (
               <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowAddGoal(true)} data-testid="button-add-goal">
-                <Plus className="h-3 w-3 mr-1" /> Nova reserva
+                <Plus className="h-3 w-3 mr-1" /> {t("axisFinance.newReserve")}
               </Button>
             )}
           </div>
@@ -957,7 +963,7 @@ export default function Finance() {
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                               <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">{Math.round(pct)}% concluído</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t("axisFinance.completed", { pct: Math.round(pct) })}</p>
                           </>
                         )}
                         <div className="flex gap-1.5 mt-2">
@@ -968,7 +974,7 @@ export default function Finance() {
                             onClick={() => { setShowDepositGoal(g.id); setDepositAmount(""); }}
                             data-testid={`button-deposit-${g.id}`}
                           >
-                            <Plus className="h-3 w-3 mr-1" /> Depositar
+                            <Plus className="h-3 w-3 mr-1" /> {t("axisFinance.deposit")}
                           </Button>
                           <Button
                             variant="outline"
@@ -977,7 +983,7 @@ export default function Finance() {
                             onClick={() => { setShowWithdrawGoal(g.id); setWithdrawAmount(""); }}
                             data-testid={`button-withdraw-${g.id}`}
                           >
-                            <Minus className="h-3 w-3 mr-1" /> Sacar
+                            <Minus className="h-3 w-3 mr-1" /> {t("axisFinance.withdraw")}
                           </Button>
                         </div>
                       </div>
@@ -988,7 +994,7 @@ export default function Finance() {
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setShowAddGoal(true)} className="w-full" data-testid="button-add-first-goal">
-              <Plus className="h-4 w-4 mr-1" /> Criar primeira reserva
+              <Plus className="h-4 w-4 mr-1" /> {t("axisFinance.createFirstReserve")}
             </Button>
           )}
         </div>
@@ -997,15 +1003,15 @@ export default function Finance() {
       {/* ── Dialog: Nova Transação ── */}
       <Dialog open={showAddTx} onOpenChange={(open) => { setShowAddTx(open); if (!open) resetTxForm(); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova transação</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("axisFinance.newTransaction")}</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmitTx} className="space-y-3" data-testid="form-add-transaction">
 
             {/* Tipo */}
             <Select value={txForm.type} onValueChange={(v) => setTxForm(p => ({ ...p, type: v }))}>
               <SelectTrigger data-testid="select-tx-type"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="expense">Gasto</SelectItem>
-                <SelectItem value="income">Receita</SelectItem>
+                <SelectItem value="expense">{t("axisFinance.expense")}</SelectItem>
+                <SelectItem value="income">{t("axisFinance.incomeLabel")}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -1013,7 +1019,7 @@ export default function Finance() {
             <Input
               type="number"
               step="0.01"
-              placeholder="Valor"
+              placeholder={t("axisFinance.amount")}
               value={txForm.amount}
               onChange={(e) => setTxForm(p => ({ ...p, amount: e.target.value }))}
               required
@@ -1022,7 +1028,7 @@ export default function Finance() {
 
             {/* Descrição */}
             <Input
-              placeholder="Descrição"
+              placeholder={t("axisFinance.description")}
               value={txForm.description}
               onChange={(e) => setTxForm(p => ({ ...p, description: e.target.value }))}
               required
@@ -1032,20 +1038,20 @@ export default function Finance() {
             {/* Categoria — OBRIGATÓRIA */}
             <div>
               <Input
-                placeholder="Categoria *"
+                placeholder={t("axisFinance.categoryRequired")}
                 value={txForm.categoryName}
                 onChange={(e) => setTxForm(p => ({ ...p, categoryName: e.target.value }))}
                 data-testid="input-tx-category"
                 className={txForm.categoryName === "" && createTxMutation.isError ? "border-destructive" : ""}
               />
-              <p className="text-[11px] text-muted-foreground mt-1 ml-1">Ex: Alimentação, Transporte, Saúde…</p>
+              <p className="text-[11px] text-muted-foreground mt-1 ml-1">{t("axisFinance.categoryExample")}</p>
             </div>
 
             {/* Forma de pagamento */}
             <div>
               <Select value={txForm.paymentMethod} onValueChange={(v) => setTxForm(p => ({ ...p, paymentMethod: v as PaymentMethodValue, paymentMethodOther: "" }))}>
                 <SelectTrigger data-testid="select-tx-payment-method">
-                  <SelectValue placeholder="Forma de pagamento" />
+                  <SelectValue placeholder={t("axisFinance.paymentMethod")} />
                 </SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map(m => (
@@ -1063,7 +1069,7 @@ export default function Finance() {
             {/* Campo "Outro" quando selecionado */}
             {txForm.paymentMethod === "other" && !txForm.creditCardId && (
               <Input
-                placeholder="Especifique a forma de pagamento"
+                placeholder={t("axisFinance.specifyPayment")}
                 value={txForm.paymentMethodOther}
                 onChange={(e) => setTxForm(p => ({ ...p, paymentMethodOther: e.target.value }))}
                 data-testid="input-tx-payment-other"
@@ -1074,13 +1080,13 @@ export default function Finance() {
             {/* Cartão de crédito — exibido apenas para despesas */}
             {txForm.type === "expense" && creditCards.length > 0 && (
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Cartão de crédito (opcional)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.creditCardOptional")}</label>
                 <Select value={txForm.creditCardId || "_none"} onValueChange={(v) => setTxForm(p => ({ ...p, creditCardId: v === "_none" ? "" : v, paymentMethod: v !== "_none" ? "credit" as PaymentMethodValue : p.paymentMethod, installments: "1" }))}>
                   <SelectTrigger data-testid="select-tx-credit-card">
-                    <SelectValue placeholder="Selecionar cartão" />
+                    <SelectValue placeholder={t("axisFinance.selectCard")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">Nenhum cartão</SelectItem>
+                    <SelectItem value="_none">{t("axisFinance.noCard")}</SelectItem>
                     {creditCards.map((card: any) => (
                       <SelectItem key={card.id} value={card.id}>
                         <div className="flex items-center gap-2">
@@ -1097,7 +1103,7 @@ export default function Finance() {
             {/* Parcelamento — somente quando cartão selecionado */}
             {txForm.creditCardId && (
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Parcelar em quantas vezes?</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisFinance.installmentsQ")}</label>
                 <Select value={txForm.installments} onValueChange={(v) => setTxForm(p => ({ ...p, installments: v }))}>
                   <SelectTrigger data-testid="select-tx-installments">
                     <SelectValue />
@@ -1105,7 +1111,7 @@ export default function Finance() {
                   <SelectContent>
                     {[1,2,3,4,5,6,7,8,9,10,11,12,18,24].map(n => (
                       <SelectItem key={n} value={String(n)}>
-                        {n === 1 ? "À vista" : `${n}x`}
+                        {n === 1 ? t("axisFinance.inCash") : `${n}x`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1120,7 +1126,7 @@ export default function Finance() {
               data-testid="button-submit-transaction"
             >
               {createTxMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Salvar
+              {t("axisFinance.save")}
             </Button>
           </form>
         </DialogContent>
@@ -1129,7 +1135,7 @@ export default function Finance() {
       {/* ── Dialog: Nova Reserva ── */}
       <Dialog open={showAddGoal} onOpenChange={setShowAddGoal}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova reserva</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("axisFinance.newReserve")}</DialogTitle></DialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1146,7 +1152,7 @@ export default function Finance() {
           >
             {/* Emoji picker */}
             <div>
-              <p className="text-xs text-muted-foreground mb-2">Ícone</p>
+              <p className="text-xs text-muted-foreground mb-2">{t("axisFinance.icon")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {["💰","🏦","🚗","🏠","✈️","💊","📚","💍","🐾","🎓","🏋️","💻","🎯","🌴","🛒","⚡"].map(em => (
                   <button
@@ -1165,7 +1171,7 @@ export default function Finance() {
             </div>
 
             <Input
-              placeholder="Nome da reserva *"
+              placeholder={t("axisFinance.reserveName")}
               value={goalForm.title}
               onChange={(e) => setGoalForm(p => ({ ...p, title: e.target.value }))}
               required
@@ -1173,7 +1179,7 @@ export default function Finance() {
             />
 
             <Input
-              placeholder="Descrição (opcional) — ex: Viagem para Europa"
+              placeholder={t("axisFinance.reserveDescription")}
               value={goalForm.description}
               onChange={(e) => setGoalForm(p => ({ ...p, description: e.target.value }))}
               data-testid="input-goal-description"
@@ -1184,13 +1190,13 @@ export default function Finance() {
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="Valor já guardado (R$) — opcional"
+                placeholder={t("axisFinance.currentAmountOptional")}
                 value={goalForm.currentAmount}
                 onChange={(e) => setGoalForm(p => ({ ...p, currentAmount: e.target.value }))}
                 data-testid="input-goal-current"
               />
               {goalForm.currentAmount && parseFloat(goalForm.currentAmount) > 0 && (
-                <p className="text-xs text-muted-foreground mt-1 ml-1">⚠ Será lançado como saída no seu saldo</p>
+                <p className="text-xs text-muted-foreground mt-1 ml-1">{t("axisFinance.willDebitBalance")}</p>
               )}
             </div>
 
@@ -1198,14 +1204,14 @@ export default function Finance() {
               type="number"
               step="0.01"
               min="0"
-              placeholder="Valor alvo (R$) — opcional"
+              placeholder={t("axisFinance.targetAmountOptional")}
               value={goalForm.targetAmount}
               onChange={(e) => setGoalForm(p => ({ ...p, targetAmount: e.target.value }))}
               data-testid="input-goal-amount"
             />
 
             <Button type="submit" className="w-full" disabled={createGoalMutation.isPending} data-testid="button-submit-goal">
-              {createGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Criar reserva
+              {createGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisFinance.createReserve")}
             </Button>
           </form>
         </DialogContent>
@@ -1219,7 +1225,7 @@ export default function Finance() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {depositGoal ? `${depositGoal.emoji || "💰"} Depositar em ${depositGoal.title}` : "Depositar"}
+                  {depositGoal ? `${depositGoal.emoji || "💰"} ${t("axisFinance.depositInto")} ${depositGoal.title}` : t("axisFinance.deposit")}
                 </DialogTitle>
               </DialogHeader>
               <form
@@ -1233,7 +1239,7 @@ export default function Finance() {
                 data-testid="form-deposit-goal"
               >
                 <p className="text-sm text-muted-foreground">
-                  Este valor será debitado do seu saldo e adicionado à reserva.
+                  {t("axisFinance.depositDesc")}
                 </p>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
@@ -1251,7 +1257,7 @@ export default function Finance() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={depositMutation.isPending} data-testid="button-confirm-deposit">
-                  {depositMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Confirmar depósito
+                  {depositMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisFinance.confirmDeposit")}
                 </Button>
               </form>
             </DialogContent>
@@ -1268,7 +1274,7 @@ export default function Finance() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {withdrawGoal ? `${withdrawGoal.emoji || "💰"} Sacar de ${withdrawGoal.title}` : "Sacar"}
+                  {withdrawGoal ? `${withdrawGoal.emoji || "💰"} ${t("axisFinance.withdrawFrom")} ${withdrawGoal.title}` : t("axisFinance.withdraw")}
                 </DialogTitle>
               </DialogHeader>
               <form
@@ -1282,8 +1288,8 @@ export default function Finance() {
                 data-testid="form-withdraw-goal"
               >
                 <p className="text-sm text-muted-foreground">
-                  O valor sacado será debitado da reserva e adicionado ao seu saldo.
-                  {withdrawGoal && <span className="block mt-1 font-medium">Disponível: R$ {fmtBRL(withdrawGoal.currentAmount)}</span>}
+                  {t("axisFinance.withdrawDesc")}
+                  {withdrawGoal && <span className="block mt-1 font-medium">{t("axisFinance.available")}: R$ {fmtBRL(withdrawGoal.currentAmount)}</span>}
                 </p>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
@@ -1302,7 +1308,7 @@ export default function Finance() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={withdrawMutation.isPending} data-testid="button-confirm-withdraw">
-                  {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Confirmar saque
+                  {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisFinance.confirmWithdraw")}
                 </Button>
               </form>
             </DialogContent>
@@ -1314,7 +1320,7 @@ export default function Finance() {
       <Dialog open={!!editingGoal} onOpenChange={(open) => { if (!open) setEditingGoal(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar reserva</DialogTitle>
+            <DialogTitle>{t("axisFinance.editReserve")}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -1351,14 +1357,14 @@ export default function Finance() {
               ))}
             </div>
             <Input
-              placeholder="Nome da reserva *"
+              placeholder={t("axisFinance.reserveName")}
               value={editGoalForm.title}
               onChange={(e) => setEditGoalForm(p => ({ ...p, title: e.target.value }))}
               required
               data-testid="input-edit-goal-title"
             />
             <Input
-              placeholder="Descrição (opcional)"
+              placeholder={t("axisFinance.descriptionOptional")}
               value={editGoalForm.description}
               onChange={(e) => setEditGoalForm(p => ({ ...p, description: e.target.value }))}
               data-testid="input-edit-goal-description"
@@ -1367,13 +1373,13 @@ export default function Finance() {
               type="number"
               step="0.01"
               min="0"
-              placeholder="Valor alvo (R$) — opcional"
+              placeholder={t("axisFinance.targetAmountOptional")}
               value={editGoalForm.targetAmount}
               onChange={(e) => setEditGoalForm(p => ({ ...p, targetAmount: e.target.value }))}
               data-testid="input-edit-goal-target"
             />
             <Button type="submit" className="w-full" disabled={updateGoalMutation.isPending} data-testid="button-confirm-edit-goal">
-              {updateGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Salvar alterações
+              {updateGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisFinance.saveChanges")}
             </Button>
           </form>
         </DialogContent>
@@ -1383,19 +1389,19 @@ export default function Finance() {
       <Dialog open={showBalanceDialog} onOpenChange={setShowBalanceDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{initialBalance > 0 ? "Atualizar saldo" : "Adicionar saldo inicial"}</DialogTitle>
+            <DialogTitle>{initialBalance > 0 ? t("axisFinance.updateBalance") : t("axisFinance.addInitialBalance")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {initialBalance > 0
-              ? "Informe o valor total que você tem agora. O sistema vai controlar tudo que entra e sai a partir desse valor."
-              : "Informe quanto dinheiro você tem hoje — salário, poupança, tudo junto. O sistema trabalha em cima desse saldo."}
+              ? t("axisFinance.updateBalanceDesc")
+              : t("axisFinance.addInitialBalanceDesc")}
           </p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const val = parseFloat(balanceInput.replace(",", "."));
               if (isNaN(val) || val < 0) {
-                toast({ title: "Informe um valor válido", variant: "destructive" });
+                toast({ title: t("axisFinance.invalidValue"), variant: "destructive" });
                 return;
               }
               setInitialBalanceMutation.mutate(val);
@@ -1419,7 +1425,7 @@ export default function Finance() {
             </div>
             <Button type="submit" className="w-full" disabled={setInitialBalanceMutation.isPending} data-testid="button-submit-balance">
               {setInitialBalanceMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              {initialBalance > 0 ? "Atualizar saldo" : "Definir saldo"}
+              {initialBalance > 0 ? t("axisFinance.updateBalance") : t("axisFinance.setBalance")}
             </Button>
           </form>
         </DialogContent>
@@ -1431,20 +1437,20 @@ export default function Finance() {
         const txDate = tx.date ? new Date(tx.date) : null;
         const hasTime = txDate && (txDate.getHours() !== 0 || txDate.getMinutes() !== 0);
         const dateStr = txDate
-          ? txDate.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+          ? txDate.toLocaleDateString(undefined, { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
           : null;
         const timeStr = hasTime
-          ? txDate!.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+          ? txDate!.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
           : null;
         const pmLabel = paymentLabel(tx.paymentMethod);
         const PMIcon = pmLabel ? (PM_ICONS[tx.paymentMethod] || Wallet) : null;
         const SOURCE_LABELS: Record<string, { label: string; Icon: any }> = {
-          manual: { label: "Cadastro manual", Icon: Hash },
-          voice: { label: "Voz", Icon: Mic },
-          text: { label: "Texto", Icon: FileText },
-          photo: { label: "Foto / comprovante", Icon: Image },
+          manual: { label: t("axisFinance.srcManual"), Icon: Hash },
+          voice: { label: t("axisFinance.srcVoice"), Icon: Mic },
+          text: { label: t("axisFinance.srcText"), Icon: FileText },
+          photo: { label: t("axisFinance.srcPhoto"), Icon: Image },
           whatsapp: { label: "WhatsApp", Icon: MessageCircle },
-          pdf: { label: "PDF / extrato", Icon: FileText },
+          pdf: { label: t("axisFinance.srcPdf"), Icon: FileText },
         };
         const srcInfo = SOURCE_LABELS[tx.source] ?? null;
         const isIncome = tx.type === "income";
@@ -1467,15 +1473,15 @@ export default function Finance() {
                   {isIncome
                     ? <ArrowDownCircle className="h-4 w-4 text-green-500 shrink-0" />
                     : <ArrowUpCircle className="h-4 w-4 text-destructive shrink-0" />}
-                  <span className="text-muted-foreground">Tipo</span>
-                  <span className="ml-auto font-medium">{isIncome ? "Receita" : "Despesa"}</span>
+                  <span className="text-muted-foreground">{t("axisFinance.type")}</span>
+                  <span className="ml-auto font-medium">{isIncome ? t("axisFinance.incomeLabel") : t("axisFinance.expenseLabel")}</span>
                 </div>
 
                 {/* Category */}
                 {tx.categoryName && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">Categoria</span>
+                    <span className="text-muted-foreground">{t("axisFinance.category")}</span>
                     <span className="ml-auto font-medium capitalize">{tx.categoryName}</span>
                   </div>
                 )}
@@ -1484,7 +1490,7 @@ export default function Finance() {
                 {tx.establishment && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">{isIncome ? "Remetente" : "Destinatário"}</span>
+                    <span className="text-muted-foreground">{isIncome ? t("axisFinance.sender") : t("axisFinance.recipient2")}</span>
                     <span className="ml-auto font-medium text-right max-w-[55%] leading-tight">{tx.establishment}</span>
                   </div>
                 )}
@@ -1493,7 +1499,7 @@ export default function Finance() {
                 {dateStr && (
                   <div className="flex items-start gap-2.5 text-sm">
                     <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground">Data</span>
+                    <span className="text-muted-foreground">{t("axisFinance.date")}</span>
                     <span className="ml-auto font-medium text-right max-w-[60%] leading-tight capitalize">{dateStr}</span>
                   </div>
                 )}
@@ -1502,7 +1508,7 @@ export default function Finance() {
                 {timeStr && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">Horário</span>
+                    <span className="text-muted-foreground">{t("axisFinance.time")}</span>
                     <span className="ml-auto font-medium">{timeStr}</span>
                   </div>
                 )}
@@ -1511,7 +1517,7 @@ export default function Finance() {
                 {pmLabel && (
                   <div className="flex items-center gap-2.5 text-sm">
                     {PMIcon ? <PMIcon className="h-4 w-4 text-muted-foreground shrink-0" /> : <Wallet className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    <span className="text-muted-foreground">Pagamento</span>
+                    <span className="text-muted-foreground">{t("axisFinance.payment")}</span>
                     <span className="ml-auto font-medium">{pmLabel}</span>
                   </div>
                 )}
@@ -1520,7 +1526,7 @@ export default function Finance() {
                 {tx.location && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">Local</span>
+                    <span className="text-muted-foreground">{t("axisFinance.location")}</span>
                     <span className="ml-auto font-medium text-right max-w-[55%] leading-tight">{tx.location}</span>
                   </div>
                 )}
@@ -1529,7 +1535,7 @@ export default function Finance() {
                 {srcInfo && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <srcInfo.Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-muted-foreground">Origem</span>
+                    <span className="text-muted-foreground">{t("axisFinance.source")}</span>
                     <span className="ml-auto font-medium">{srcInfo.label}</span>
                   </div>
                 )}
@@ -1550,10 +1556,10 @@ export default function Finance() {
                       >
                         <span className="flex items-center gap-2.5">
                           <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground">Itens</span>
+                          <span className="text-muted-foreground">{t("axisFinance.items")}</span>
                         </span>
                         <span className="flex items-center gap-1 font-medium" style={{ color: `${accent}CC` }}>
-                          {items.length} {items.length === 1 ? "item" : "itens"}
+                          {items.length} {items.length === 1 ? t("axisFinance.item") : t("axisFinance.items")}
                           {showDetailItems ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                         </span>
                       </button>
@@ -1579,7 +1585,7 @@ export default function Finance() {
                 onClick={() => { setEditingTx(tx); setSelectedTx(null); }}
                 data-testid="button-edit-tx-detail"
               >
-                <Pencil className="h-4 w-4 mr-2" /> Editar transação
+                <Pencil className="h-4 w-4 mr-2" /> {t("axisFinance.editTransaction")}
               </Button>
               <Button
                 variant="destructive"
@@ -1588,7 +1594,7 @@ export default function Finance() {
                 onClick={() => setTxToDelete(tx.id)}
                 data-testid="button-delete-tx-detail"
               >
-                <Trash2 className="h-4 w-4 mr-2" /> Excluir transação
+                <Trash2 className="h-4 w-4 mr-2" /> {t("axisFinance.deleteTransaction")}
               </Button>
             </DialogContent>
           </Dialog>
@@ -1598,13 +1604,13 @@ export default function Finance() {
       <AlertDialog open={!!txToDelete} onOpenChange={(o) => { if (!o) setTxToDelete(null); }}>
         <AlertDialogContent data-testid="dialog-confirm-delete-tx">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
+            <AlertDialogTitle>{t("axisFinance.deleteTxTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação não pode ser desfeita. A transação será removida permanentemente.
+              {t("axisFinance.deleteTxDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-tx">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete-tx">{t("axisFinance.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => {
@@ -1616,7 +1622,7 @@ export default function Finance() {
               }}
               data-testid="button-confirm-delete-tx"
             >
-              Excluir
+              {t("axisFinance.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

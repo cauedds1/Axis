@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock, Ban, Stethoscope, PartyPopper, AlertCircle, Undo2, CalendarClock, Trash2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ function parseWeekdays(raw: string | null | undefined): number[] {
 }
 
 export default function Agenda() {
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startTime: "", endTime: "" });
@@ -189,9 +191,9 @@ export default function Agenda() {
       setCancelReason("");
       setCancelType("other");
       setPanelItemMenuId(null);
-      toast({ title: "Ausência registrada", description: data.disciplineMsg });
+      toast({ title: t("axisAgenda.absenceRegistered"), description: data.disciplineMsg });
     },
-    onError: () => toast({ title: "Erro ao registrar cancelamento", variant: "destructive" }),
+    onError: () => toast({ title: t("axisAgenda.cancelError"), variant: "destructive" }),
   });
 
   const removeCancellationMutation = useMutation({
@@ -201,7 +203,7 @@ export default function Agenda() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setPanelItemMenuId(null);
     },
-    onError: () => toast({ title: "Erro ao desfazer cancelamento", variant: "destructive" }),
+    onError: () => toast({ title: t("axisAgenda.undoCancelError"), variant: "destructive" }),
   });
 
   const postponeMutation = useMutation({
@@ -215,9 +217,9 @@ export default function Agenda() {
       setPostponeDialog({ open: false, item: null });
       setPostponeDate("");
       setPanelItemMenuId(null);
-      toast({ title: "Compromisso adiado" });
+      toast({ title: t("axisAgenda.postponed") });
     },
-    onError: () => toast({ title: "Erro ao adiar compromisso", variant: "destructive" }),
+    onError: () => toast({ title: t("axisAgenda.postponeError"), variant: "destructive" }),
   });
 
   const createTaskMutation = useMutation({
@@ -229,9 +231,9 @@ export default function Agenda() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setTaskTitle("");
       setTaskPriority("medium");
-      toast({ title: "Tarefa criada" });
+      toast({ title: t("axisAgenda.taskCreated") });
     },
-    onError: () => toast({ title: "Erro ao criar tarefa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisAgenda.taskError"), variant: "destructive" }),
   });
 
   const createScheduleFromPanelMutation = useMutation({
@@ -276,9 +278,9 @@ export default function Agenda() {
       setIsRecurring(false);
       setRecurrenceType("this_month");
       setRecurrenceEndDate("");
-      toast({ title: count === 1 ? "Compromisso criado" : `${count} compromissos criados` });
+      toast({ title: count === 1 ? t("axisAgenda.appointmentCreated") : t("axisAgenda.appointmentsCreated", { count }) });
     },
-    onError: () => toast({ title: "Erro ao criar compromisso", variant: "destructive" }),
+    onError: () => toast({ title: t("axisAgenda.appointmentError"), variant: "destructive" }),
   });
 
   const daysInPeriod = periodEnd.getDate() - periodStart.getDate() + 1;
@@ -317,12 +319,12 @@ export default function Agenda() {
 
   return (
     <div className="px-6 py-6 space-y-6 pb-28">
-      <title>AXIS - Agenda</title>
+      <title>{t("axisAgenda.pageTitle")}</title>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" data-testid="text-agenda-title">Agenda</h1>
+        <h1 className="text-2xl font-bold" data-testid="text-agenda-title">{t("axisAgenda.title")}</h1>
         <Button size="sm" onClick={() => setShowAdd(true)} data-testid="button-add-schedule">
-          <Plus className="h-4 w-4 mr-1" /> Novo
+          <Plus className="h-4 w-4 mr-1" /> {t("axisAgenda.new")}
         </Button>
       </div>
 
@@ -333,7 +335,7 @@ export default function Agenda() {
       {pendingApprovals.length > 0 && (
         <Card className="border-primary/30" data-testid="card-pending-approvals">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-primary">Sugestões da IA pendentes</CardTitle>
+            <CardTitle className="text-sm text-primary">{t("axisAgenda.aiSuggestions")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {pendingApprovals.map((item) => (
@@ -341,7 +343,7 @@ export default function Agenda() {
                 <div>
                   <p className="text-sm font-medium">{item.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(item.startTime).toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(item.startTime).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -363,7 +365,7 @@ export default function Agenda() {
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium">
-          {periodStart.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })} — {periodEnd.toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
+          {periodStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} — {periodEnd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </span>
         <Button variant="ghost" size="icon" onClick={next15} data-testid="button-next-period">
           <ChevronRight className="h-4 w-4" />
@@ -386,7 +388,7 @@ export default function Agenda() {
               data-testid={`day-cell-${dayStr}`}
             >
               <p className={`text-xs mb-2 ${isToday ? "font-bold" : "text-muted-foreground"}`} style={isToday ? { color: accent } : undefined}>
-                {day.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+                {day.toLocaleDateString(undefined, { weekday: "short" }).replace(".", "")}
                 <span className="ml-1">{day.getDate()}</span>
               </p>
 
@@ -413,7 +415,7 @@ export default function Agenda() {
                     data-no-panel
                   >
                     {cancelled && <Ban className="inline h-2 w-2 mr-0.5 opacity-70" />}
-                    {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                    {new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} {item.title}
                   </div>
                 );
               })}
@@ -433,7 +435,7 @@ export default function Agenda() {
                       textDecoration: isDone ? "line-through" : "none",
                     }}
                     onClick={(e) => { e.stopPropagation(); isToday && checkHabitMutation.mutate(habit.id); }}
-                    title={isToday ? (isDone ? "Marcar como não feito" : "Marcar como feito") : habit.name}
+                    title={isToday ? (isDone ? t("axisAgenda.markNotDone") : t("axisAgenda.markDone")) : habit.name}
                     data-testid={`habit-agenda-${habit.id}-${dayStr}`}
                     data-no-panel
                   >
@@ -459,7 +461,7 @@ export default function Agenda() {
                       opacity: paid ? 0.6 : 1,
                     }}
                     onClick={(e) => { e.stopPropagation(); toggleBillPaidMutation.mutate(bill); }}
-                    title={paid ? "Marcar como não pago" : (isExpense ? "Marcar como pago" : "Marcar como recebido")}
+                    title={paid ? t("axisAgenda.markUnpaid") : (isExpense ? t("axisAgenda.markPaid") : t("axisAgenda.markReceived"))}
                     data-testid={`bill-agenda-${bill.id}`}
                     data-no-panel
                   >
@@ -485,7 +487,7 @@ export default function Agenda() {
           const panelItems  = items.filter(i => new Date(i.startTime).toDateString() === d.toDateString());
           const panelHabits = habitsForDay(d);
           const panelBills  = billsForDay(d);
-          const headerLabel = d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+          const headerLabel = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
           const SECTION = "text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-2";
 
           return (
@@ -508,7 +510,7 @@ export default function Agenda() {
                 <div className="px-5 pt-5 pb-4 border-b flex items-start justify-between" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
                   <div>
                     <div className="text-base font-bold text-white capitalize">{headerLabel}</div>
-                    {isToday && <div className="text-[10px] mt-0.5" style={{ color: accent }}>Hoje</div>}
+                    {isToday && <div className="text-[10px] mt-0.5" style={{ color: accent }}>{t("axisAgenda.today")}</div>}
                   </div>
                   <button onClick={() => setDayPanelDate(null)} className="p-1 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors" data-testid="button-close-day-panel">
                     <X className="h-4 w-4" />
@@ -520,7 +522,7 @@ export default function Agenda() {
                   {/* Schedule items */}
                   {panelItems.length > 0 && (
                     <div>
-                      <p className={SECTION}>Agenda</p>
+                      <p className={SECTION}>{t("axisAgenda.sectionAgenda")}</p>
                       <div className="space-y-1.5">
                         {panelItems.map(item => {
                           const cancelled = getCancellation(item.id, dStr);
@@ -541,8 +543,8 @@ export default function Agenda() {
                                   <div className={`text-xs ${cancelled ? "line-through text-white/30" : item.status === "done" ? "line-through text-white/30" : "text-white/80"}`}>{item.title}</div>
                                   <div className="text-[10px] flex items-center gap-1" style={{ color: cancelled ? "#fb923c80" : "rgba(255,255,255,0.3)" }}>
                                     <Clock className="h-2.5 w-2.5" />
-                                    {new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                                    {cancelled && <span className="ml-1 capitalize">· {cancelled.type === "holiday" ? "Feriado" : cancelled.type === "medical" ? "Atestado" : "Outro"}</span>}
+                                    {new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                                    {cancelled && <span className="ml-1 capitalize">· {cancelled.type === "holiday" ? t("axisAgenda.holiday") : cancelled.type === "medical" ? t("axisAgenda.medical") : t("axisAgenda.other")}</span>}
                                   </div>
                                 </div>
                               </div>
@@ -554,7 +556,7 @@ export default function Agenda() {
                                       style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
                                       onClick={() => removeCancellationMutation.mutate(cancelled.id)}
                                       data-testid={`button-undo-cancel-${item.id}`}>
-                                      <Undo2 className="h-3 w-3" /> Desfazer cancelamento
+                                      <Undo2 className="h-3 w-3" /> {t("axisAgenda.undoCancel")}
                                     </button>
                                   ) : (
                                     <>
@@ -563,21 +565,21 @@ export default function Agenda() {
                                         style={{ background: `${MP.positive}20`, color: MP.positive }}
                                         onClick={() => { updateStatusMutation.mutate({ id: item.id, status: item.status === "done" ? "approved" : "done" }); setPanelItemMenuId(null); }}
                                         data-testid={`button-done-${item.id}`}>
-                                        <Check className="h-3 w-3" /> {item.status === "done" ? "Desfazer" : "Feito"}
+                                        <Check className="h-3 w-3" /> {item.status === "done" ? t("axisAgenda.undo") : t("axisAgenda.done")}
                                       </button>
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}
                                         onClick={() => { setCancelDialog({ open: true, entityType: "schedule", entityId: item.id, entityTitle: item.title, date: dStr }); setCancelType("other"); setCancelReason(""); }}
                                         data-testid={`button-cancel-today-${item.id}`}>
-                                        <Ban className="h-3 w-3" /> Cancelar hoje
+                                        <Ban className="h-3 w-3" /> {t("axisAgenda.cancelToday")}
                                       </button>
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
-                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
+                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
                                         data-testid={`button-postpone-${item.id}`}>
-                                        <CalendarClock className="h-3 w-3" /> Adiar
+                                        <CalendarClock className="h-3 w-3" /> {t("axisAgenda.postpone")}
                                       </button>
                                       <button
                                         className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
@@ -600,7 +602,7 @@ export default function Agenda() {
                   {/* Habits */}
                   {panelHabits.length > 0 && (
                     <div>
-                      <p className={SECTION}>Compromissos</p>
+                      <p className={SECTION}>{t("axisAgenda.sectionHabits")}</p>
                       <div className="space-y-1.5">
                         {panelHabits.map(habit => {
                           const isDone = (habit as any).lastChecked === dStr;
@@ -619,7 +621,7 @@ export default function Agenda() {
                                   <div className={`text-xs ${habitCancelled ? "line-through text-white/30" : isDone ? "line-through text-white/30" : "text-white/80"}`}>{habit.name}</div>
                                   <div className="text-[10px] flex items-center gap-1" style={{ color: habitCancelled ? "#fb923c80" : "rgba(255,255,255,0.3)" }}>
                                     {(habit as any).targetTime && <><Clock className="h-2.5 w-2.5" />{(habit as any).targetTime}</>}
-                                    {habitCancelled && <span className="ml-1">· {habitCancelled.type === "holiday" ? "🏖️ Feriado" : habitCancelled.type === "medical" ? "🏥 Atestado" : "❌ Cancelado"}</span>}
+                                    {habitCancelled && <span className="ml-1">· {habitCancelled.type === "holiday" ? `🏖️ ${t("axisAgenda.holiday")}` : habitCancelled.type === "medical" ? `🏥 ${t("axisAgenda.medical")}` : `❌ ${t("axisAgenda.cancelled")}`}</span>}
                                   </div>
                                 </div>
                                 {!habitCancelled && isDone && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: MP.positive }} />}
@@ -633,7 +635,7 @@ export default function Agenda() {
                                       style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
                                       onClick={() => removeCancellationMutation.mutate(habitCancelled.id)}
                                       data-testid={`button-undo-cancel-habit-${habit.id}`}>
-                                      <Undo2 className="h-3 w-3" /> Desfazer cancelamento
+                                      <Undo2 className="h-3 w-3" /> {t("axisAgenda.undoCancel")}
                                     </button>
                                   ) : (
                                     <>
@@ -642,14 +644,14 @@ export default function Agenda() {
                                         style={{ background: `${MP.positive}20`, color: MP.positive, opacity: isDone ? 0.5 : 1 }}
                                         onClick={() => { if (isToday && !isDone) { checkHabitMutation.mutate(habit.id); setPanelItemMenuId(null); } }}
                                         data-testid={`button-done-habit-${habit.id}`}>
-                                        <Check className="h-3 w-3" /> {isDone ? "Feito ✓" : "Feito"}
+                                        <Check className="h-3 w-3" /> {isDone ? `${t("axisAgenda.done")} ✓` : t("axisAgenda.done")}
                                       </button>
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}
                                         onClick={() => { setCancelDialog({ open: true, entityType: "habit", entityId: habit.id, entityTitle: habit.name, date: dStr }); setCancelType("other"); setCancelReason(""); setPanelItemMenuId(null); }}
                                         data-testid={`button-cancel-today-habit-${habit.id}`}>
-                                        <Ban className="h-3 w-3" /> Cancelar hoje
+                                        <Ban className="h-3 w-3" /> {t("axisAgenda.cancelToday")}
                                       </button>
                                     </>
                                   )}
@@ -665,7 +667,7 @@ export default function Agenda() {
                   {/* Bills */}
                   {panelBills.length > 0 && (
                     <div>
-                      <p className={SECTION}>Contas</p>
+                      <p className={SECTION}>{t("axisAgenda.sectionBills")}</p>
                       <div className="space-y-1.5">
                         {panelBills.map(bill => {
                           const paid = isBillPaid(bill);
@@ -683,7 +685,7 @@ export default function Agenda() {
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-xs ${paid ? "line-through text-white/30" : "text-white/80"}`}>{bill.title}</div>
                                   <div className="text-[10px]" style={{ color: `${billColor}80` }}>
-                                    R$ {bill.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · Vence dia {bill.dueDay}
+                                    R$ {bill.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} · {t("axisAgenda.dueDay", { day: bill.dueDay })}
                                   </div>
                                 </div>
                                 {paid && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: billColor }} />}
@@ -695,7 +697,7 @@ export default function Agenda() {
                                     style={{ background: `${billColor}20`, color: billColor }}
                                     onClick={() => { toggleBillPaidMutation.mutate(bill); setPanelItemMenuId(null); }}
                                     data-testid={`button-pay-bill-${bill.id}`}>
-                                    <DollarSign className="h-3 w-3" /> {paid ? "Desmarcar pagamento" : isExpense ? "Marcar como pago" : "Marcar como recebido"}
+                                    <DollarSign className="h-3 w-3" /> {paid ? t("axisAgenda.unmarkPayment") : isExpense ? t("axisAgenda.markPaid") : t("axisAgenda.markReceived")}
                                   </button>
                                 </div>
                               )}
@@ -707,7 +709,7 @@ export default function Agenda() {
                   )}
 
                   {panelItems.length === 0 && panelHabits.length === 0 && panelBills.length === 0 && (
-                    <div className="py-6 text-center text-white/25 text-sm">Nenhum item para este dia</div>
+                    <div className="py-6 text-center text-white/25 text-sm">{t("axisAgenda.noItems")}</div>
                   )}
                 </div>
 
@@ -716,7 +718,7 @@ export default function Agenda() {
                   {/* Type toggle: Tarefa / Compromisso */}
                   <div className="flex gap-2">
                     {(["task","schedule"] as const).map(mode => {
-                      const label = mode === "task" ? "Tarefa" : "Compromisso";
+                      const label = mode === "task" ? t("axisAgenda.typeTask") : t("axisAgenda.typeAppointment");
                       const icon = mode === "task" ? <CheckSquare className="h-3 w-3" /> : <Clock className="h-3 w-3" />;
                       const active = addMode === mode;
                       return (
@@ -738,7 +740,7 @@ export default function Agenda() {
                   {addMode === "task" && (
                     <div className="flex gap-1.5">
                       {(["high","medium","low"] as const).map(p => {
-                        const label = p === "high" ? "Alta" : p === "medium" ? "Média" : "Baixa";
+                        const label = p === "high" ? t("axisAgenda.priorityHigh") : p === "medium" ? t("axisAgenda.priorityMedium") : t("axisAgenda.priorityLow");
                         const col = p === "high" ? MP.negative : p === "medium" ? MP.agenda : MP.tasks;
                         return (
                           <button key={p} onClick={() => setTaskPriority(p)}
@@ -770,7 +772,7 @@ export default function Agenda() {
                       {/* Recurrence toggle */}
                       <div className="flex gap-1.5">
                         {([false, true] as const).map(rec => {
-                          const label = rec ? "Recorrente" : "Somente esse dia";
+                          const label = rec ? t("axisAgenda.recurring") : t("axisAgenda.onlyThisDay");
                           const active = isRecurring === rec;
                           return (
                             <button key={String(rec)} onClick={() => setIsRecurring(rec)}
@@ -799,10 +801,10 @@ export default function Agenda() {
                           >
                             <div className="grid grid-cols-2 gap-1.5 pt-1">
                               {([
-                                { key: "this_month", label: "Este mês", sub: "Até fim do mês" },
-                                { key: "three_months", label: "3 meses", sub: "Próximos 3 meses" },
-                                { key: "permanent", label: "1 ano", sub: "Próximos 12 meses" },
-                                { key: "custom", label: "Personalizado", sub: "Escolher data" },
+                                { key: "this_month", label: t("axisAgenda.recThisMonth"), sub: t("axisAgenda.recThisMonthSub") },
+                                { key: "three_months", label: t("axisAgenda.recThreeMonths"), sub: t("axisAgenda.recThreeMonthsSub") },
+                                { key: "permanent", label: t("axisAgenda.recOneYear"), sub: t("axisAgenda.recOneYearSub") },
+                                { key: "custom", label: t("axisAgenda.recCustom"), sub: t("axisAgenda.recCustomSub") },
                               ] as const).map(opt => {
                                 const active = recurrenceType === opt.key;
                                 return (
@@ -854,7 +856,7 @@ export default function Agenda() {
                         if (addMode === "task") createTaskMutation.mutate({ title: taskTitle.trim(), priority: taskPriority, dueDate: d });
                         else createScheduleFromPanelMutation.mutate({ title: taskTitle.trim(), baseDate: d, time: scheduleTime, recurring: isRecurring, recType: recurrenceType, recEndDate: recurrenceEndDate });
                       }}
-                      placeholder={addMode === "task" ? "O que precisa fazer?" : "Título do compromisso..."}
+                      placeholder={addMode === "task" ? t("axisAgenda.placeholderTask") : t("axisAgenda.placeholderAppointment")}
                       className="flex-1 bg-transparent border rounded-xl px-3 py-2 text-sm text-white outline-none placeholder:text-white/20"
                       style={{ borderColor: "rgba(255,255,255,0.1)" }}
                       data-testid="input-day-item-title"
@@ -885,19 +887,19 @@ export default function Agenda() {
       <Dialog open={cancelDialog.open} onOpenChange={(o) => { if (!o) { setCancelDialog({ open: false, entityType: "schedule", entityId: "", entityTitle: "", date: "" }); setCancelReason(""); } }}>
         <DialogContent style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="dialog-cancel-today">
           <DialogHeader>
-            <DialogTitle className="text-white text-base">Cancelar somente hoje?</DialogTitle>
+            <DialogTitle className="text-white text-base">{t("axisAgenda.cancelDialogTitle")}</DialogTitle>
             {cancelDialog.entityTitle && (
               <p className="text-[12px] text-white/40 mt-0.5">{cancelDialog.entityTitle} · {cancelDialog.date}</p>
             )}
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div>
-              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">Motivo</p>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-2">{t("axisAgenda.cancelReason")}</p>
               <div className="flex gap-2">
                 {([
-                  { key: "holiday", label: "Feriado", icon: PartyPopper, color: "#34d399" },
-                  { key: "medical", label: "Atestado", icon: Stethoscope, color: "#60a5fa" },
-                  { key: "other",   label: "Outro",    icon: AlertCircle, color: "#fb923c" },
+                  { key: "holiday", label: t("axisAgenda.holiday"), icon: PartyPopper, color: "#34d399" },
+                  { key: "medical", label: t("axisAgenda.medical"), icon: Stethoscope, color: "#60a5fa" },
+                  { key: "other",   label: t("axisAgenda.other"),   icon: AlertCircle, color: "#fb923c" },
                 ] as const).map(opt => (
                   <button
                     key={opt.key}
@@ -915,15 +917,15 @@ export default function Agenda() {
                 ))}
               </div>
               <div className="mt-2 text-[10px] text-white/30 px-1">
-                {cancelType === "holiday" && "🏖️ Feriado — sem penalidade na disciplina."}
-                {cancelType === "medical" && "🏥 Atestado — -1 ponto, justificativa aceita pela IA."}
-                {cancelType === "other" && "❌ Sem justificativa — -3 pontos de disciplina."}
+                {cancelType === "holiday" && t("axisAgenda.cancelHolidayDesc")}
+                {cancelType === "medical" && t("axisAgenda.cancelMedicalDesc")}
+                {cancelType === "other" && t("axisAgenda.cancelOtherDesc")}
               </div>
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Observação (opcional)</p>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">{t("axisAgenda.cancelNote")}</p>
               <Textarea
-                placeholder="Ex: Dia de folga, consulta médica, viagem..."
+                placeholder={t("axisAgenda.cancelNotePlaceholder")}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 className="resize-none text-xs"
@@ -942,7 +944,7 @@ export default function Agenda() {
               }}
               data-testid="button-confirm-cancel-today">
               {cancelTodayMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : <Ban className="h-4 w-4 inline mr-1" />}
-              Cancelar somente hoje
+              {t("axisAgenda.cancelDialogTitle")}
             </button>
           </div>
         </DialogContent>
@@ -952,18 +954,18 @@ export default function Agenda() {
       <Dialog open={postponeDialog.open} onOpenChange={(o) => { if (!o) setPostponeDialog({ open: false, item: null }); }}>
         <DialogContent style={{ background: "#0d0d12", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="dialog-postpone">
           <DialogHeader>
-            <DialogTitle className="text-white text-base">Adiar compromisso</DialogTitle>
+            <DialogTitle className="text-white text-base">{t("axisAgenda.postponeTitle")}</DialogTitle>
             {postponeDialog.item && <p className="text-[12px] text-white/40 mt-0.5">{postponeDialog.item.title}</p>}
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div>
-              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Nova data</p>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">{t("axisAgenda.postponeNewDate")}</p>
               <Input type="date" value={postponeDate} onChange={e => setPostponeDate(e.target.value)}
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)" }}
                 data-testid="input-postpone-date" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Horário</p>
+              <p className="text-[11px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">{t("axisAgenda.postponeTime")}</p>
               <Input type="time" value={postponeTime} onChange={e => setPostponeTime(e.target.value)}
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)" }}
                 data-testid="input-postpone-time" />
@@ -979,7 +981,7 @@ export default function Agenda() {
               }}
               data-testid="button-confirm-postpone">
               {postponeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : <CalendarClock className="h-4 w-4 inline mr-1" />}
-              Confirmar adiamento
+              {t("axisAgenda.postponeConfirm")}
             </button>
           </div>
         </DialogContent>
@@ -987,7 +989,7 @@ export default function Agenda() {
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo compromisso</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("axisAgenda.newAppointmentTitle")}</DialogTitle></DialogHeader>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1001,12 +1003,12 @@ export default function Agenda() {
             className="space-y-4"
             data-testid="form-add-schedule"
           >
-            <Input placeholder="Título" value={form.title} onChange={(e) => setForm(p => ({ ...p, title: e.target.value }))} required data-testid="input-schedule-title" />
-            <Input placeholder="Descrição (opcional)" value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} data-testid="input-schedule-description" />
+            <Input placeholder={t("axisAgenda.appointmentTitlePlaceholder")} value={form.title} onChange={(e) => setForm(p => ({ ...p, title: e.target.value }))} required data-testid="input-schedule-title" />
+            <Input placeholder={t("axisAgenda.appointmentDescPlaceholder")} value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} data-testid="input-schedule-description" />
             <Input type="datetime-local" value={form.startTime} onChange={(e) => setForm(p => ({ ...p, startTime: e.target.value }))} required data-testid="input-schedule-start" />
             <Input type="datetime-local" value={form.endTime} onChange={(e) => setForm(p => ({ ...p, endTime: e.target.value }))} data-testid="input-schedule-end" />
             <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-schedule">
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Criar
+              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisAgenda.create")}
             </Button>
           </form>
         </DialogContent>

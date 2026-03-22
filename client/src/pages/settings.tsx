@@ -20,13 +20,15 @@ function formatBotPhone(raw: string): string {
 
 type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "conta";
 
-const TABS: { id: SettingsTab; label: string; Icon: any }[] = [
-  { id: "aparencia",  label: "Aparência",  Icon: Palette },
-  { id: "modulos",   label: "Módulos",    Icon: LayoutGrid },
-  { id: "cadastro",  label: "Cadastro",   Icon: UserCog },
-  { id: "whatsapp",  label: "WhatsApp",   Icon: Smartphone },
-  { id: "conta",     label: "Conta",      Icon: TriangleAlert },
-];
+function getTabs(t: (k: string) => string): { id: SettingsTab; label: string; Icon: any }[] {
+  return [
+    { id: "aparencia",  label: t("axisSettings.tabAppearance"), Icon: Palette },
+    { id: "modulos",   label: t("axisSettings.tabModules"),    Icon: LayoutGrid },
+    { id: "cadastro",  label: t("axisSettings.tabProfile"),    Icon: UserCog },
+    { id: "whatsapp",  label: "WhatsApp",                      Icon: Smartphone },
+    { id: "conta",     label: t("axisSettings.tabAccount"),    Icon: TriangleAlert },
+  ];
+}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{children}</p>;
@@ -47,6 +49,7 @@ function Block({ children, danger }: { children: React.ReactNode; danger?: boole
 }
 
 function WhatsAppTab() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const MP = getModulePalette(theme as any);
   const { toast } = useToast();
@@ -68,21 +71,21 @@ function WhatsAppTab() {
   const connectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
     onSuccess: () => setTimeout(() => refetch(), 1500),
-    onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSettings.waConnectError"), variant: "destructive" }),
   });
   const unlinkMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone: "" }),
     onSuccess: () => {
       setPhone("");
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
-      toast({ title: "Número desvinculado com sucesso!" });
+      toast({ title: t("axisSettings.waUnlinked") });
     },
-    onError: () => toast({ title: "Erro ao desvincular número", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSettings.waUnlinkError"), variant: "destructive" }),
   });
   const resetMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
-    onSuccess: () => { toast({ title: "Gerando novo QR code..." }); setTimeout(() => refetch(), 1200); },
-    onError: () => toast({ title: "Erro ao gerar QR", variant: "destructive" }),
+    onSuccess: () => { toast({ title: t("axisSettings.waGeneratingQR") }); setTimeout(() => refetch(), 1200); },
+    onError: () => toast({ title: t("axisSettings.waQRError"), variant: "destructive" }),
   });
   const phoneMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
@@ -90,25 +93,25 @@ function WhatsAppTab() {
       setPhoneSaved(true);
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
-      toast({ title: "Número vinculado com sucesso!" });
+      toast({ title: t("axisSettings.waLinked") });
       setTimeout(() => setPhoneSaved(false), 2500);
     },
-    onError: () => toast({ title: "Erro ao salvar número", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSettings.waSaveError"), variant: "destructive" }),
   });
 
   const wStatus = status?.status || "disconnected";
   const botPhoneDigits = (status?.phone || "").replace(/\D/g, "");
   const statusMap: Record<string, { label: string; color: string; Icon: any }> = {
-    disconnected: { label: "Desconectado", color: MP.negative, Icon: WifiOff },
-    qr_pending:   { label: "Aguardando QR", color: MP.agenda, Icon: QrCode },
-    connected:    { label: "Conectado",     color: MP.positive, Icon: Wifi },
+    disconnected: { label: t("axisSettings.waDisconnected"), color: MP.negative, Icon: WifiOff },
+    qr_pending:   { label: t("axisSettings.waQRPending"),    color: MP.agenda,   Icon: QrCode },
+    connected:    { label: t("axisSettings.waConnected"),    color: MP.positive,  Icon: Wifi },
   };
   const { label, color, Icon } = statusMap[wStatus] ?? statusMap.disconnected;
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Envie mensagens ou fotos de nota fiscal pelo WhatsApp e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
+        {t("axisSettings.waDesc")}
       </p>
 
       {/* Status */}
@@ -120,7 +123,7 @@ function WhatsAppTab() {
               <p className="text-sm font-semibold">{label}</p>
               {wStatus === "connected" && status?.phone && (
                 <p className="text-[11px] font-medium" style={{ color: MP.positive }}>
-                  Bot conectado em {formatBotPhone(status.phone)}
+                  {t("axisSettings.waBotConnectedAt", { phone: formatBotPhone(status.phone) })}
                 </p>
               )}
             </div>
@@ -136,7 +139,7 @@ function WhatsAppTab() {
                   style={{ color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` }}
                   data-testid="button-whatsapp-open-chat"
                 >
-                  <ExternalLink className="h-3 w-3" /> Abrir chat
+                  <ExternalLink className="h-3 w-3" /> {t("axisSettings.waOpenChat")}
                 </a>
               )}
               <button
@@ -146,7 +149,7 @@ function WhatsAppTab() {
                 style={{ color: MP.negative, borderColor: `${MP.negative}4D`, background: `${MP.negative}14` }}
                 data-testid="button-whatsapp-disconnect"
               >
-                {unlinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
+                {unlinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t("axisSettings.waDisconnectBtn")}
               </button>
             </div>
           ) : wStatus === "disconnected" ? (
@@ -157,7 +160,7 @@ function WhatsAppTab() {
               style={{ color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` }}
               data-testid="button-whatsapp-connect"
             >
-              {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Conectar"}
+              {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t("axisSettings.waConnectBtn")}
             </button>
           ) : null}
         </div>
@@ -166,12 +169,12 @@ function WhatsAppTab() {
       {/* QR pending */}
       {wStatus === "qr_pending" && status?.qrCode && (
         <Block>
-          <p className="text-xs text-muted-foreground text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
+          <p className="text-xs text-muted-foreground text-center">{t("axisSettings.waScanQR")}</p>
           <div className="flex justify-center">
             <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
           </div>
           <div className="flex items-center gap-3 justify-center">
-            <p className="text-[10px] text-muted-foreground">QR expira em 60s</p>
+            <p className="text-[10px] text-muted-foreground">{t("axisSettings.waQRExpires")}</p>
             <button
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
@@ -180,7 +183,7 @@ function WhatsAppTab() {
               data-testid="button-whatsapp-new-qr"
             >
               {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Gerar novo QR
+              {t("axisSettings.waNewQR")}
             </button>
           </div>
         </Block>
@@ -190,7 +193,7 @@ function WhatsAppTab() {
           <div className="flex flex-col items-center gap-3 py-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Gerando QR code...</span>
+              <span className="text-xs text-muted-foreground">{t("axisSettings.waGeneratingQRLabel")}</span>
             </div>
             <button
               onClick={() => resetMutation.mutate()}
@@ -199,7 +202,7 @@ function WhatsAppTab() {
               style={{ color: MP.agenda, borderColor: `${MP.agenda}4D`, background: `${MP.agenda}14` }}
               data-testid="button-whatsapp-new-qr-fallback"
             >
-              <RefreshCw className="h-3 w-3" /> Tentar novamente
+              <RefreshCw className="h-3 w-3" /> {t("axisSettings.waRetry")}
             </button>
           </div>
         </Block>
@@ -207,15 +210,15 @@ function WhatsAppTab() {
 
       {/* Phone number */}
       <Block>
-        <SectionLabel>Seu número de WhatsApp</SectionLabel>
-        <p className="text-xs text-muted-foreground">Vincule seu número para que o bot reconheça suas mensagens.</p>
+        <SectionLabel>{t("axisSettings.waYourNumber")}</SectionLabel>
+        <p className="text-xs text-muted-foreground">{t("axisSettings.waYourNumberDesc")}</p>
         {wStatus === "connected" && !profile?.profile?.whatsappPhone && (
           <div
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
             style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", color: "#eab308" }}
             data-testid="alert-whatsapp-no-phone"
           >
-            <span>⚠ Nenhum número vinculado. O bot está conectado mas não reconhecerá suas mensagens.</span>
+            <span>⚠ {t("axisSettings.waNoNumber")}</span>
           </div>
         )}
         <div className="flex gap-2">
@@ -234,22 +237,16 @@ function WhatsAppTab() {
             style={phoneSaved ? { color: MP.positive, borderColor: `${MP.positive}4D`, background: `${MP.positive}14` } : {}}
             data-testid="button-save-whatsapp-phone"
           >
-            {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : "Salvar"}
+            {phoneMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : phoneSaved ? <Check className="h-4 w-4" /> : t("axisSettings.save")}
           </button>
         </div>
       </Block>
 
       {/* Examples */}
       <Block>
-        <SectionLabel>Exemplos de mensagens</SectionLabel>
+        <SectionLabel>{t("axisSettings.waExamples")}</SectionLabel>
         <div className="space-y-1.5">
-          {[
-            "gastei 50 no almoço",
-            "criar tarefa reunião de equipe sexta",
-            "hábito academia todo dia às 7h",
-            "agendar consulta médica segunda 10h",
-            "[foto de nota fiscal] → registra automaticamente",
-          ].map(ex => (
+          {(t("axisSettings.waExamplesList", { returnObjects: true }) as string[]).map((ex: string) => (
             <div key={ex} className="flex items-start gap-2">
               <MessageCircle className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
               <span className="text-xs text-muted-foreground italic">"{ex}"</span>
@@ -261,19 +258,19 @@ function WhatsAppTab() {
       <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
         <AlertDialogContent data-testid="dialog-confirm-whatsapp-disconnect">
           <AlertDialogHeader>
-            <AlertDialogTitle>Desvincular número?</AlertDialogTitle>
+            <AlertDialogTitle>{t("axisSettings.waUnlinkTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Seu número de WhatsApp será removido e o bot não reconhecerá mais suas mensagens. Você poderá vincular novamente quando quiser.
+              {t("axisSettings.waUnlinkDialogDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-whatsapp-disconnect">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-whatsapp-disconnect">{t("axisSettings.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { setConfirmDisconnect(false); unlinkMutation.mutate(); }}
               data-testid="button-confirm-whatsapp-disconnect"
             >
-              Desvincular
+              {t("axisSettings.waUnlinkBtn")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -284,6 +281,7 @@ function WhatsAppTab() {
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  const TABS = getTabs(t);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("aparencia");
@@ -300,7 +298,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Configurações salvas" });
+      toast({ title: t("axisSettings.saved") });
     },
   });
 
@@ -308,14 +306,14 @@ export default function SettingsPage() {
     mutationFn: () => apiRequest("POST", "/api/user/reset-data"),
     onSuccess: () => {
       queryClient.clear();
-      toast({ title: "Conta zerada com sucesso", description: "Todos os seus dados foram apagados." });
+      toast({ title: t("axisSettings.resetSuccess"), description: t("axisSettings.resetSuccessDesc") });
     },
-    onError: () => toast({ title: "Erro ao zerar conta", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSettings.resetError"), variant: "destructive" }),
   });
 
-  const handleThemeChange = (t: AxisTheme) => {
-    setTheme(t);
-    updateMutation.mutate({ theme: t });
+  const handleThemeChange = (thm: AxisTheme) => {
+    setTheme(thm);
+    updateMutation.mutate({ theme: thm });
   };
 
   const handlePersonalityChange = (p: string) => {
@@ -323,12 +321,17 @@ export default function SettingsPage() {
   };
 
   const moduleList = ["finance", "schedule", "tasks", "habits"];
-  const moduleLabels: Record<string, string> = { finance: "Finanças", schedule: "Agenda", tasks: "Tarefas", habits: "Compromissos" };
+  const moduleLabels: Record<string, string> = {
+    finance: t("axisSettings.moduleFinance"),
+    schedule: t("axisSettings.moduleSchedule"),
+    tasks: t("axisSettings.moduleTasks"),
+    habits: t("axisSettings.moduleHabits"),
+  };
   const moduleDescs: Record<string, string> = {
-    finance: "Gastos, receitas e reservas",
-    schedule: "Compromissos e calendário",
-    tasks: "To-do list inteligente",
-    habits: "Streaks e disciplina",
+    finance: t("axisSettings.moduleFinanceDesc"),
+    schedule: t("axisSettings.moduleScheduleDesc"),
+    tasks: t("axisSettings.moduleTasksDesc"),
+    habits: t("axisSettings.moduleHabitsDesc"),
   };
   const currentModules: string[] = userData?.user?.activeModules || [];
 
@@ -341,14 +344,14 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-56px)] overflow-hidden" data-testid="page-settings">
-      <title>AXIS - Configurações</title>
+      <title>{t("axisSettings.pageTitle")}</title>
 
       {/* Desktop Sidebar */}
       <div
         className="hidden md:flex w-48 flex-shrink-0 border-r border-border flex-col py-4 px-2 gap-1"
         style={{ background: "rgba(255,255,255,0.01)" }}
       >
-        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">Configurações</p>
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 mb-2">{t("axisSettings.sectionLabel")}</p>
         {TABS.map(({ id, label, Icon }) => {
           const active = activeTab === id;
           const isDanger = id === "conta";
@@ -406,41 +409,41 @@ export default function SettingsPage() {
           {/* ── Aparência ── */}
           {activeTab === "aparencia" && (
             <div className="space-y-6" data-testid="tab-content-aparencia">
-              <h2 className="text-base font-semibold">Aparência</h2>
+              <h2 className="text-base font-semibold">{t("axisSettings.tabAppearance")}</h2>
 
               <div>
-                <SectionLabel>Tema visual</SectionLabel>
+                <SectionLabel>{t("axisSettings.visualTheme")}</SectionLabel>
                 <ThemeSelector value={theme} onChange={handleThemeChange} />
               </div>
 
               <div>
-                <SectionLabel>{t("settings.language")}</SectionLabel>
-                <p className="text-xs text-muted-foreground mb-3">{t("settings.languageSelectLabel")}</p>
+                <SectionLabel>{t("axisSettings.language")}</SectionLabel>
+                <p className="text-xs text-muted-foreground mb-3">{t("axisSettings.languageDesc")}</p>
                 <Select
                   value={i18n.language}
                   onValueChange={(lng) => {
                     i18n.changeLanguage(lng);
-                    toast({ title: t("settings.languageChanged") });
+                    toast({ title: t("axisSettings.languageChanged") });
                   }}
                 >
                   <SelectTrigger data-testid="select-language"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pt-BR">🇧🇷 {t("settings.langPtBR")}</SelectItem>
-                    <SelectItem value="en">🇺🇸 {t("settings.langEn")}</SelectItem>
+                    <SelectItem value="pt-BR">🇧🇷 {t("axisSettings.langPtBR")}</SelectItem>
+                    <SelectItem value="en">🇺🇸 {t("axisSettings.langEn")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <SectionLabel>Personalidade da IA</SectionLabel>
-                <p className="text-xs text-muted-foreground mb-3">Define o tom de todas as respostas e sugestões do assistente.</p>
+                <SectionLabel>{t("axisSettings.aiPersonality")}</SectionLabel>
+                <p className="text-xs text-muted-foreground mb-3">{t("axisSettings.aiPersonalityDesc")}</p>
                 <Select value={userData?.user?.aiPersonality || "calm"} onValueChange={handlePersonalityChange}>
                   <SelectTrigger data-testid="select-personality"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="calm">🌊 Calmo — tranquilo e paciente</SelectItem>
-                    <SelectItem value="direct">⚡ Direto — sem rodeios</SelectItem>
-                    <SelectItem value="motivator">🚀 Motivador — sempre incentivando</SelectItem>
-                    <SelectItem value="strict">🎯 Rigoroso — cobra resultados</SelectItem>
+                    <SelectItem value="calm">🌊 {t("axisSettings.pCalm")}</SelectItem>
+                    <SelectItem value="direct">⚡ {t("axisSettings.pDirect")}</SelectItem>
+                    <SelectItem value="motivator">🚀 {t("axisSettings.pMotivator")}</SelectItem>
+                    <SelectItem value="strict">🎯 {t("axisSettings.pStrict")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -450,8 +453,8 @@ export default function SettingsPage() {
           {/* ── Módulos ── */}
           {activeTab === "modulos" && (
             <div className="space-y-4" data-testid="tab-content-modulos">
-              <h2 className="text-base font-semibold">Módulos ativos</h2>
-              <p className="text-sm text-muted-foreground">Ative apenas os módulos que você usa — eles aparecem na navegação lateral.</p>
+              <h2 className="text-base font-semibold">{t("axisSettings.activeModules")}</h2>
+              <p className="text-sm text-muted-foreground">{t("axisSettings.activeModulesDesc")}</p>
               <div className="space-y-2">
                 {moduleList.map((mod) => {
                   const active = currentModules.includes(mod);
@@ -487,16 +490,16 @@ export default function SettingsPage() {
           {/* ── Cadastro ── */}
           {activeTab === "cadastro" && (
             <div className="space-y-4" data-testid="tab-content-cadastro">
-              <h2 className="text-base font-semibold">Editar cadastro</h2>
+              <h2 className="text-base font-semibold">{t("axisSettings.editProfile")}</h2>
               <p className="text-sm text-muted-foreground">
-                Atualize sua renda, gastos fixos, rotina e preferências de alerta. Qualquer mudança é aplicada automaticamente no sistema.
+                {t("axisSettings.editProfileDesc")}
               </p>
               <Block>
                 <div className="flex items-center gap-3 mb-2">
                   <UserCog className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Configurar perfil</p>
-                    <p className="text-xs text-muted-foreground">Renda, gastos fixos, hábitos, alertas e WhatsApp</p>
+                    <p className="text-sm font-medium">{t("axisSettings.configureProfile")}</p>
+                    <p className="text-xs text-muted-foreground">{t("axisSettings.configureProfileDesc")}</p>
                   </div>
                 </div>
                 <Button
@@ -505,7 +508,7 @@ export default function SettingsPage() {
                   onClick={() => setShowSetupModal(true)}
                   data-testid="button-open-edit-profile"
                 >
-                  Abrir cadastro
+                  {t("axisSettings.openProfile")}
                 </Button>
               </Block>
             </div>
@@ -514,7 +517,7 @@ export default function SettingsPage() {
           {/* ── WhatsApp ── */}
           {activeTab === "whatsapp" && (
             <div data-testid="tab-content-whatsapp">
-              <h2 className="text-base font-semibold mb-4">WhatsApp Bot</h2>
+              <h2 className="text-base font-semibold mb-4">{t("axisSettings.whatsappBot")}</h2>
               <WhatsAppTab />
             </div>
           )}
@@ -522,15 +525,15 @@ export default function SettingsPage() {
           {/* ── Conta ── */}
           {activeTab === "conta" && (
             <div className="space-y-4" data-testid="tab-content-conta">
-              <h2 className="text-base font-semibold">Conta</h2>
+              <h2 className="text-base font-semibold">{t("axisSettings.tabAccount")}</h2>
 
               <Block danger>
                 <div className="flex items-center gap-2 mb-1">
                   <TriangleAlert className="h-4 w-4 text-destructive" />
-                  <p className="text-sm font-semibold text-destructive">Zona de perigo</p>
+                  <p className="text-sm font-semibold text-destructive">{t("axisSettings.dangerZone")}</p>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Apaga todas as transações, contas, hábitos, tarefas, metas, agenda e memória da IA. Sua conta de acesso é mantida, mas você começa do zero.
+                  {t("axisSettings.resetDesc")}
                 </p>
                 <Button
                   variant="destructive"
@@ -538,7 +541,7 @@ export default function SettingsPage() {
                   onClick={() => setShowResetConfirm(true)}
                   data-testid="button-reset-account"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" /> Zerar a conta
+                  <Trash2 className="h-4 w-4 mr-2" /> {t("axisSettings.resetAccount")}
                 </Button>
               </Block>
             </div>
@@ -551,19 +554,13 @@ export default function SettingsPage() {
       <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
         <AlertDialogContent data-testid="dialog-reset-confirm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Zerar a conta?</AlertDialogTitle>
+            <AlertDialogTitle>{t("axisSettings.resetConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação é <strong>irreversível</strong>. Todos os seus dados serão apagados permanentemente:<br /><br />
-              • Transações e extratos<br />
-              • Contas e cobranças<br />
-              • Hábitos e tarefas<br />
-              • Agenda e metas<br />
-              • Memória e contexto da IA<br /><br />
-              Sua conta de login será mantida.
+              {t("axisSettings.resetConfirmDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-reset-cancel">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-reset-cancel">{t("axisSettings.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
@@ -571,7 +568,7 @@ export default function SettingsPage() {
               data-testid="button-reset-confirm"
             >
               {resetMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Sim, apagar tudo
+              {t("axisSettings.resetConfirmButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
