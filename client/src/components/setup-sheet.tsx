@@ -7,7 +7,6 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import {
-  X,
   Infinity,
   Calendar,
   CalendarRange,
@@ -31,6 +30,7 @@ import {
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 const MINT = "#4ECDC4";
 const LAVANDA = "#A78BFA";
@@ -43,13 +43,6 @@ interface Recurrence {
   type: RecurrenceType;
   endDate?: string;
 }
-
-const RECURRENCE_OPTIONS: { type: RecurrenceType; label: string; sub: string; icon: any }[] = [
-  { type: "permanent", label: "Permanente", sub: "Até você desativar", icon: Infinity },
-  { type: "this_month", label: "Este mês", sub: "Só até o fim do mês", icon: Calendar },
-  { type: "three_months", label: "3 meses", sub: "Próximos 3 meses", icon: CalendarRange },
-  { type: "custom", label: "Personalizado", sub: "Escolher data", icon: CalendarDays },
-];
 
 function getEndDate(rec: Recurrence): Date {
   const now = new Date();
@@ -72,14 +65,6 @@ function getEndDate(rec: Recurrence): Date {
   return new Date(now.getFullYear(), now.getMonth() + 1, 0);
 }
 
-function recurrenceLabel(rec: Recurrence): string {
-  if (rec.type === "permanent") return "Permanente";
-  if (rec.type === "this_month") return "Este mês";
-  if (rec.type === "three_months") return "3 meses";
-  if (rec.type === "custom" && rec.endDate) return rec.endDate;
-  return "Este mês";
-}
-
 interface RecurrenceSelectorProps {
   value: Recurrence;
   onChange: (r: Recurrence) => void;
@@ -87,9 +72,18 @@ interface RecurrenceSelectorProps {
 }
 
 function RecurrenceSelector({ value, onChange, accentColor }: RecurrenceSelectorProps) {
+  const { t } = useTranslation();
+
+  const RECURRENCE_OPTIONS: { type: RecurrenceType; label: string; sub: string; icon: any }[] = [
+    { type: "permanent", label: t("axisSetup.recurrence.permanent"), sub: t("axisSetup.recurrence.permanentSub"), icon: Infinity },
+    { type: "this_month", label: t("axisSetup.recurrence.thisMonth"), sub: t("axisSetup.recurrence.thisMonthSub"), icon: Calendar },
+    { type: "three_months", label: t("axisSetup.recurrence.threeMonths"), sub: t("axisSetup.recurrence.threeMonthsSub"), icon: CalendarRange },
+    { type: "custom", label: t("axisSetup.recurrence.custom"), sub: t("axisSetup.recurrence.customSub"), icon: CalendarDays },
+  ];
+
   return (
     <div>
-      <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">Duração</p>
+      <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{t("axisSetup.recurrence.label")}</p>
       <div className="grid grid-cols-2 gap-2 mb-2">
         {RECURRENCE_OPTIONS.map((opt) => {
           const Icon = opt.icon;
@@ -147,45 +141,6 @@ function RecurrenceSelector({ value, onChange, accentColor }: RecurrenceSelector
   );
 }
 
-const CATEGORIES = [
-  { id: "moradia", label: "Moradia", emoji: "🏠" },
-  { id: "alimentação", label: "Alimentação", emoji: "🍔" },
-  { id: "transporte", label: "Transporte", emoji: "🚗" },
-  { id: "saúde", label: "Saúde", emoji: "💊" },
-  { id: "educação", label: "Educação", emoji: "📚" },
-  { id: "lazer", label: "Lazer", emoji: "🎬" },
-  { id: "assinatura", label: "Assinatura", emoji: "📱" },
-  { id: "outros", label: "Outros", emoji: "📦" },
-];
-
-const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const DURATIONS = [
-  { label: "30min", minutes: 30 },
-  { label: "1h", minutes: 60 },
-  { label: "1h30", minutes: 90 },
-  { label: "2h", minutes: 120 },
-  { label: "3h", minutes: 180 },
-  { label: "4h+", minutes: 240 },
-];
-
-interface AddedExpense {
-  ids: string[];
-  description: string;
-  amount: number;
-  category: string;
-  emoji: string;
-  months: number;
-}
-
-interface AddedRoutine {
-  ids: string[];
-  title: string;
-  days: number[];
-  time: string;
-  durationLabel: string;
-  recurrenceLabel: string;
-}
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{children}</p>
@@ -220,11 +175,12 @@ function SectionRenda({
   savedIncome: string;
   onSave: (v: string) => void;
 }) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [val, setVal] = useState(savedIncome);
   const [saved, setSaved] = useState(false);
   const { toast } = useToast();
 
-  // New recurring income form state
   const [riName, setRiName] = useState("");
   const [riAmount, setRiAmount] = useState("");
   const [riDay, setRiDay] = useState("5");
@@ -268,7 +224,7 @@ function SectionRenda({
       setTimeout(() => setSaved(false), 2500);
     },
     onError: () => {
-      toast({ title: "Erro ao salvar renda", variant: "destructive" });
+      toast({ title: t("axisSetup.income.errorSave"), variant: "destructive" });
     },
   });
 
@@ -289,10 +245,10 @@ function SectionRenda({
       setRiCustomCategory("");
       queryClient.invalidateQueries({ queryKey: ["/api/recurring-incomes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Renda recorrente adicionada!" });
+      toast({ title: t("axisSetup.income.added") });
     },
     onError: (e: any) => {
-      toast({ title: e.message || "Erro ao adicionar renda", variant: "destructive" });
+      toast({ title: e.message || t("axisSetup.income.errorAdd"), variant: "destructive" });
     },
   });
 
@@ -305,23 +261,31 @@ function SectionRenda({
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: () => {
-      toast({ title: "Erro ao remover renda", variant: "destructive" });
+      toast({ title: t("axisSetup.income.errorDelete"), variant: "destructive" });
     },
   });
 
   const totalRecurring = recurringIncomes.filter(r => r.active).reduce((s, r) => s + r.amount, 0);
 
+  const riCategoryOptions = [
+    { value: "trabalho", label: t("axisSetup.income.catWork") },
+    { value: "freelance", label: t("axisSetup.income.catFreelance") },
+    { value: "investimentos", label: t("axisSetup.income.catInvestments") },
+    { value: "aluguel", label: t("axisSetup.income.catRent") },
+    { value: "outros", label: t("axisSetup.income.catOther") },
+  ];
+  const selectedLabel = riCategoryOptions.find(o => o.value === riCategory)?.label ?? riCategory;
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl p-4" style={{ background: `${MINT}08`, border: `1px solid ${MINT}18` }}>
         <p className="text-xs text-white/40 leading-relaxed">
-          Adicione suas rendas recorrentes. O sistema lançará automaticamente cada renda no dia certo, todo mês.
+          {t("axisSetup.income.info")}
         </p>
       </div>
 
-      {/* Recurring incomes list */}
       <div>
-        <FieldLabel>Rendas automáticas</FieldLabel>
+        <FieldLabel>{t("axisSetup.income.recurringTitle")}</FieldLabel>
 
         {riLoading ? (
           <div className="flex items-center justify-center py-4">
@@ -345,13 +309,13 @@ function SectionRenda({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{ri.name}</p>
                   <p className="text-xs text-white/40">
-                    R${ri.amount.toFixed(2).replace(".", ",")} · Todo dia {ri.dayOfMonth}
+                    R${ri.amount.toFixed(2).replace(".", ",")} · {t("axisSetup.income.everyDay")} {ri.dayOfMonth}
                     {ri.lastPostedMonth === currentMonth && (
                       <span
                         className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                         style={{ background: `${MINT}22`, color: MINT }}
                       >
-                        Postado em {new Date().toLocaleString("pt-BR", { month: "short" })}
+                        {t("axisSetup.income.postedIn")} {new Date().toLocaleString(lang, { month: "short" })}
                       </span>
                     )}
                   </p>
@@ -368,73 +332,58 @@ function SectionRenda({
               </div>
             ))}
             <p className="text-xs text-white/25 text-right">
-              Total mensal automático: R${totalRecurring.toFixed(2).replace(".", ",")}
+              {t("axisSetup.income.monthlyTotal")}: R${totalRecurring.toFixed(2).replace(".", ",")}
             </p>
           </div>
         ) : (
-          <p className="text-xs text-white/25 mb-3">Nenhuma renda automática cadastrada ainda.</p>
+          <p className="text-xs text-white/25 mb-3">{t("axisSetup.income.noRecurring")}</p>
         )}
 
-        {/* Add form */}
         <div
           className="rounded-2xl p-3 space-y-2.5"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <p className="text-[11px] text-white/30 font-medium uppercase tracking-wider">Adicionar renda</p>
+          <p className="text-[11px] text-white/30 font-medium uppercase tracking-wider">{t("axisSetup.income.addForm")}</p>
           <StyledInput
-            placeholder="Nome (ex: Salário, Freelance)"
+            placeholder={t("axisSetup.income.namePlaceholder")}
             value={riName}
             onChange={e => setRiName(e.target.value)}
             data-testid="input-recurring-name"
           />
-          {(() => {
-            const riCategoryOptions = [
-              { value: "trabalho", label: "💼 Trabalho / Salário" },
-              { value: "freelance", label: "🧑‍💻 Freelance / Autônomo" },
-              { value: "investimentos", label: "📈 Investimentos" },
-              { value: "aluguel", label: "🏠 Aluguel" },
-              { value: "outros", label: "📦 Outros" },
-            ];
-            const selectedLabel = riCategoryOptions.find(o => o.value === riCategory)?.label ?? riCategory;
-            return (
-              <div ref={riCategoryRef} className="relative" data-testid="select-recurring-category">
-                <button
-                  type="button"
-                  onClick={() => setRiCategoryOpen(o => !o)}
-                  className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-white cursor-pointer"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
-                >
-                  <span>{selectedLabel}</span>
-                  <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${riCategoryOpen ? "rotate-180" : ""}`} />
-                </button>
-                {riCategoryOpen && (
-                  <div
-                    className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-50"
-                    style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+          <div ref={riCategoryRef} className="relative" data-testid="select-recurring-category">
+            <button
+              type="button"
+              onClick={() => setRiCategoryOpen(o => !o)}
+              className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-white cursor-pointer"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+            >
+              <span>{selectedLabel}</span>
+              <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${riCategoryOpen ? "rotate-180" : ""}`} />
+            </button>
+            {riCategoryOpen && (
+              <div
+                className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-50"
+                style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
+              >
+                {riCategoryOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setRiCategory(opt.value); setRiCategoryOpen(false); }}
+                    className="w-full text-left px-3 py-2.5 text-sm text-white/85 transition-colors"
+                    style={{ background: riCategory === opt.value ? "rgba(255,255,255,0.08)" : "transparent" }}
+                    onMouseEnter={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                    onMouseLeave={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    {riCategoryOptions.map(opt => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => { setRiCategory(opt.value); setRiCategoryOpen(false); }}
-                        className="w-full text-left px-3 py-2.5 text-sm text-white/85 transition-colors"
-                        style={{
-                          background: riCategory === opt.value ? "rgba(255,255,255,0.08)" : "transparent",
-                        }}
-                        onMouseEnter={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-                        onMouseLeave={e => { if (riCategory !== opt.value) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            );
-          })()}
+            )}
+          </div>
           {riCategory === "outros" && (
             <StyledInput
-              placeholder="Nome da categoria (ex: Pensão, Bolsa...)"
+              placeholder={t("axisSetup.income.customCatPlaceholder")}
               value={riCustomCategory}
               onChange={e => setRiCustomCategory(e.target.value)}
               data-testid="input-recurring-custom-category"
@@ -453,7 +402,7 @@ function SectionRenda({
               />
             </div>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 w-28 flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-              <span className="text-white/40 text-xs flex-shrink-0">Dia</span>
+              <span className="text-white/40 text-xs flex-shrink-0">{t("axisSetup.income.day")}</span>
               <input
                 type="number"
                 min={1}
@@ -475,15 +424,14 @@ function SectionRenda({
             {addRIMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <><Plus className="h-4 w-4" /> Adicionar renda</>
+              <><Plus className="h-4 w-4" /> {t("axisSetup.income.addBtn")}</>
             )}
           </button>
         </div>
       </div>
 
-      {/* Reference income for AI */}
       <div>
-        <FieldLabel>Referência de renda mensal (para a IA)</FieldLabel>
+        <FieldLabel>{t("axisSetup.income.refTitle")}</FieldLabel>
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
           <span className="text-white/40 text-sm font-medium">R$</span>
           <input
@@ -495,7 +443,7 @@ function SectionRenda({
             data-testid="input-income"
           />
         </div>
-        <p className="text-xs text-white/25 mt-1.5">Usado pela IA para calcular metas e alertas</p>
+        <p className="text-xs text-white/25 mt-1.5">{t("axisSetup.income.refHint")}</p>
       </div>
 
       <button
@@ -508,9 +456,9 @@ function SectionRenda({
         {saveMutation.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : saved ? (
-          <><Check className="h-4 w-4" /> Renda salva!</>
+          <><Check className="h-4 w-4" /> {t("axisSetup.income.saved")}</>
         ) : (
-          "Salvar renda"
+          t("axisSetup.income.saveBtn")
         )}
       </button>
     </div>
@@ -518,6 +466,7 @@ function SectionRenda({
 }
 
 function SectionGastos() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
@@ -528,6 +477,17 @@ function SectionGastos() {
   const [addedItems, setAddedItems] = useState<AddedExpense[]>([]);
   const [customCategory, setCustomCategory] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const CATEGORIES = [
+    { id: "moradia", label: t("axisSetup.expenses.catHousing"), emoji: "🏠" },
+    { id: "alimentação", label: t("axisSetup.expenses.catFood"), emoji: "🍔" },
+    { id: "transporte", label: t("axisSetup.expenses.catTransport"), emoji: "🚗" },
+    { id: "saúde", label: t("axisSetup.expenses.catHealth"), emoji: "💊" },
+    { id: "educação", label: t("axisSetup.expenses.catEducation"), emoji: "📚" },
+    { id: "lazer", label: t("axisSetup.expenses.catLeisure"), emoji: "🎬" },
+    { id: "assinatura", label: t("axisSetup.expenses.catSubscription"), emoji: "📱" },
+    { id: "outros", label: t("axisSetup.expenses.catOther"), emoji: "📦" },
+  ];
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -586,7 +546,7 @@ function SectionGastos() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: (e: any) => {
-      toast({ title: "Erro ao adicionar gasto", description: e.message, variant: "destructive" });
+      toast({ title: t("axisSetup.expenses.errorAdd"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -598,7 +558,7 @@ function SectionGastos() {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     } catch {
-      toast({ title: "Erro ao remover gasto", variant: "destructive" });
+      toast({ title: t("axisSetup.expenses.errorDelete"), variant: "destructive" });
     } finally {
       setDeletingId(null);
     }
@@ -610,17 +570,17 @@ function SectionGastos() {
   return (
     <div className="space-y-5">
       <div>
-        <FieldLabel>Descrição</FieldLabel>
+        <FieldLabel>{t("axisSetup.expenses.descLabel")}</FieldLabel>
         <StyledInput
           value={desc}
           onChange={e => setDesc(e.target.value)}
-          placeholder="Ex: Netflix, Aluguel, Plano de saúde..."
+          placeholder={t("axisSetup.expenses.descPlaceholder")}
           data-testid="input-expense-desc"
         />
       </div>
 
       <div>
-        <FieldLabel>Valor mensal</FieldLabel>
+        <FieldLabel>{t("axisSetup.expenses.amountLabel")}</FieldLabel>
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
           <span className="text-white/40 text-sm font-medium">R$</span>
           <input
@@ -635,7 +595,7 @@ function SectionGastos() {
       </div>
 
       <div>
-        <FieldLabel>Categoria</FieldLabel>
+        <FieldLabel>{t("axisSetup.expenses.categoryLabel")}</FieldLabel>
         <div className="grid grid-cols-4 gap-1.5">
           {CATEGORIES.map(cat => (
             <button
@@ -667,7 +627,7 @@ function SectionGastos() {
               <StyledInput
                 value={customCategory}
                 onChange={e => setCustomCategory(e.target.value)}
-                placeholder="Nome da categoria personalizada..."
+                placeholder={t("axisSetup.expenses.customCatPlaceholder")}
                 data-testid="input-custom-category"
                 autoFocus
               />
@@ -678,7 +638,7 @@ function SectionGastos() {
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <FieldLabel>Dia de vencimento</FieldLabel>
+          <FieldLabel>{t("axisSetup.expenses.dueDay")}</FieldLabel>
           <button
             type="button"
             onClick={() => setDiaToggle(!diaToggle)}
@@ -690,7 +650,7 @@ function SectionGastos() {
             }}
             data-testid="toggle-due-date"
           >
-            {diaToggle ? "✓ Ativado" : "Opcional"}
+            {diaToggle ? t("axisSetup.expenses.enabled") : t("axisSetup.expenses.optional")}
           </button>
         </div>
         <AnimatePresence>
@@ -707,7 +667,7 @@ function SectionGastos() {
                   style={{ width: "100px" }}
                   data-testid="input-due-day"
                 />
-                <span className="text-xs text-white/30">de cada mês</span>
+                <span className="text-xs text-white/30">{t("axisSetup.expenses.ofEachMonth")}</span>
               </div>
             </motion.div>
           )}
@@ -724,13 +684,13 @@ function SectionGastos() {
         data-testid="button-add-expense"
       >
         {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {addMutation.isPending ? "Adicionando..." : "Adicionar gasto →"}
+        {addMutation.isPending ? t("axisSetup.expenses.adding") : t("axisSetup.expenses.addBtn")}
       </button>
 
       <AnimatePresence>
         {addedItems.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-            <p className="text-xs text-white/30 font-medium">Adicionados nesta sessão</p>
+            <p className="text-xs text-white/30 font-medium">{t("axisSetup.expenses.addedSession")}</p>
             {addedItems.map((item) => (
               <motion.div
                 key={item.ids[0]}
@@ -744,7 +704,7 @@ function SectionGastos() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white/80 truncate">{item.description}</p>
                   <p className="text-[10px] text-white/30">
-                    R$ {item.amount.toFixed(2)}/mês · {item.months} {item.months === 1 ? "mês" : "meses"}
+                    R$ {item.amount.toFixed(2)}/mês · {item.months} {item.months === 1 ? t("axisSetup.expenses.month") : t("axisSetup.expenses.months")}
                   </p>
                 </div>
                 <button
@@ -764,7 +724,26 @@ function SectionGastos() {
   );
 }
 
+interface AddedExpense {
+  ids: string[];
+  description: string;
+  amount: number;
+  category: string;
+  emoji: string;
+  months: number;
+}
+
+interface AddedRoutine {
+  ids: string[];
+  title: string;
+  days: number[];
+  time: string;
+  durationLabel: string;
+  recurrenceLabel: string;
+}
+
 function SectionRotina() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -773,6 +752,24 @@ function SectionRotina() {
   const [recurrence, setRecurrence] = useState<Recurrence>({ type: "permanent" });
   const [addedItems, setAddedItems] = useState<AddedRoutine[]>([]);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+
+  const DAYS = t("axisSetup.routine.dayNames", { returnObjects: true }) as string[];
+  const DURATIONS = [
+    { label: "30min", minutes: 30 },
+    { label: "1h", minutes: 60 },
+    { label: "1h30", minutes: 90 },
+    { label: "2h", minutes: 120 },
+    { label: "3h", minutes: 180 },
+    { label: "4h+", minutes: 240 },
+  ];
+
+  const recurrenceLabel = (rec: Recurrence): string => {
+    if (rec.type === "permanent") return t("axisSetup.recurrence.permanent");
+    if (rec.type === "this_month") return t("axisSetup.recurrence.thisMonth");
+    if (rec.type === "three_months") return t("axisSetup.recurrence.threeMonths");
+    if (rec.type === "custom" && rec.endDate) return rec.endDate;
+    return t("axisSetup.recurrence.thisMonth");
+  };
 
   const toggleDay = (d: number) => {
     setSelectedDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
@@ -832,7 +829,7 @@ function SectionRotina() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: (e: any) => {
-      toast({ title: "Erro ao adicionar rotina", description: e.message, variant: "destructive" });
+      toast({ title: t("axisSetup.routine.errorAdd"), description: e.message, variant: "destructive" });
     },
   });
 
@@ -844,7 +841,7 @@ function SectionRotina() {
       queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     } catch {
-      toast({ title: "Erro ao remover rotina", variant: "destructive" });
+      toast({ title: t("axisSetup.routine.errorDelete"), variant: "destructive" });
     } finally {
       setDeletingKey(null);
     }
@@ -855,17 +852,17 @@ function SectionRotina() {
   return (
     <div className="space-y-5">
       <div>
-        <FieldLabel>Atividade</FieldLabel>
+        <FieldLabel>{t("axisSetup.routine.activityLabel")}</FieldLabel>
         <StyledInput
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Ex: Trabalho, Academia, Faculdade..."
+          placeholder={t("axisSetup.routine.activityPlaceholder")}
           data-testid="input-routine-title"
         />
       </div>
 
       <div>
-        <FieldLabel>Dias da semana</FieldLabel>
+        <FieldLabel>{t("axisSetup.routine.daysLabel")}</FieldLabel>
         <div className="flex gap-1.5">
           {DAYS.map((day, i) => {
             const isActive = selectedDays.includes(i);
@@ -891,7 +888,7 @@ function SectionRotina() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <FieldLabel>Horário</FieldLabel>
+          <FieldLabel>{t("axisSetup.routine.timeLabel")}</FieldLabel>
           <input
             type="time"
             value={time}
@@ -902,7 +899,7 @@ function SectionRotina() {
           />
         </div>
         <div>
-          <FieldLabel>Duração</FieldLabel>
+          <FieldLabel>{t("axisSetup.routine.durationLabel")}</FieldLabel>
           <div className="grid grid-cols-3 gap-1">
             {DURATIONS.map((d) => (
               <button
@@ -934,13 +931,13 @@ function SectionRotina() {
         data-testid="button-add-routine"
       >
         {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        {addMutation.isPending ? "Adicionando..." : "Adicionar rotina →"}
+        {addMutation.isPending ? t("axisSetup.routine.adding") : t("axisSetup.routine.addBtn")}
       </button>
 
       <AnimatePresence>
         {addedItems.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-            <p className="text-xs text-white/30 font-medium">Adicionados nesta sessão</p>
+            <p className="text-xs text-white/30 font-medium">{t("axisSetup.routine.addedSession")}</p>
             {addedItems.map((item) => (
               <motion.div
                 key={item.ids[0]}
@@ -989,6 +986,7 @@ type NotifPrefs = {
 type NotifKey = "billDueSoon" | "offlineReminder" | "overdueTask" | "weeklySummary" | "goalDeadline" | "lowDiscipline";
 
 function SectionNotificacoes() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { data, isLoading } = useQuery<NotifPrefs>({ queryKey: ["/api/user/notifications"] });
 
@@ -998,10 +996,10 @@ function SectionNotificacoes() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user/notifications"] });
-      toast({ title: "Preferências salvas" });
+      toast({ title: t("axisSetup.alerts.saved") });
     },
     onError: () => {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
+      toast({ title: t("axisSetup.alerts.errorSave"), variant: "destructive" });
     },
   });
 
@@ -1071,7 +1069,7 @@ function SectionNotificacoes() {
       <div className="rounded-2xl p-4" style={{ background: `${HIGH}08`, border: `1px solid ${HIGH}18` }}>
         <div className="flex items-center gap-2 mb-2">
           <Mail className="h-3.5 w-3.5" style={{ color: HIGH }} />
-          <p className="text-xs font-semibold" style={{ color: HIGH }}>Alertas enviados para</p>
+          <p className="text-xs font-semibold" style={{ color: HIGH }}>{t("axisSetup.alerts.sentTo")}</p>
         </div>
         <p className="text-sm text-white font-medium truncate" data-testid="text-notif-email">
           {data?.email || "—"}
@@ -1079,56 +1077,26 @@ function SectionNotificacoes() {
       </div>
 
       <div>
-        <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider mb-3">Alertas imediatos</p>
+        <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider mb-3">{t("axisSetup.alerts.immediate")}</p>
         <div className="space-y-2">
-          <ToggleRow
-            label="Conta vencendo"
-            description="Aviso 3 dias antes do vencimento de uma conta"
-            field="billDueSoon"
-            testId="toggle-bill-due-soon"
-          />
-          <ToggleRow
-            label="Tarefas atrasadas"
-            description="Avisa quando você tem tarefas com prazo vencido"
-            field="overdueTask"
-            testId="toggle-overdue-task"
-          />
-          <ToggleRow
-            label="Meta próxima do prazo"
-            description="Avisa quando uma meta de poupança está quase vencendo"
-            field="goalDeadline"
-            testId="toggle-goal-deadline"
-          />
-          <ToggleRow
-            label="Disciplina em queda"
-            description="Avisa quando seu score de disciplina cai abaixo de 4"
-            field="lowDiscipline"
-            testId="toggle-low-discipline"
-          />
+          <ToggleRow label={t("axisSetup.alerts.billDue")} description={t("axisSetup.alerts.billDueDesc")} field="billDueSoon" testId="toggle-bill-due-soon" />
+          <ToggleRow label={t("axisSetup.alerts.overdue")} description={t("axisSetup.alerts.overdueDesc")} field="overdueTask" testId="toggle-overdue-task" />
+          <ToggleRow label={t("axisSetup.alerts.goalDeadline")} description={t("axisSetup.alerts.goalDeadlineDesc")} field="goalDeadline" testId="toggle-goal-deadline" />
+          <ToggleRow label={t("axisSetup.alerts.discipline")} description={t("axisSetup.alerts.disciplineDesc")} field="lowDiscipline" testId="toggle-low-discipline" />
         </div>
       </div>
 
       <div>
-        <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider mb-3">Resumos periódicos</p>
+        <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider mb-3">{t("axisSetup.alerts.periodic")}</p>
         <div className="space-y-2">
-          <ToggleRow
-            label="Resumo semanal"
-            description="Toda segunda-feira: tarefas, contas, hábitos e score"
-            field="weeklySummary"
-            testId="toggle-weekly-summary"
-          />
-          <ToggleRow
-            label="Lembrete de inatividade"
-            description="Alerta quando você está offline por mais de 7 dias"
-            field="offlineReminder"
-            testId="toggle-offline-reminder"
-          />
+          <ToggleRow label={t("axisSetup.alerts.weekly")} description={t("axisSetup.alerts.weeklyDesc")} field="weeklySummary" testId="toggle-weekly-summary" />
+          <ToggleRow label={t("axisSetup.alerts.offline")} description={t("axisSetup.alerts.offlineDesc")} field="offlineReminder" testId="toggle-offline-reminder" />
         </div>
       </div>
 
       <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
         <p className="text-xs text-white/25 leading-relaxed">
-          Os alertas são enviados automaticamente. O AXIS verifica contas e tarefas sempre que você acessa o app, e roda checagens periódicas a cada 6 horas quando o servidor está ativo.
+          {t("axisSetup.alerts.footer")}
         </p>
       </div>
     </div>
@@ -1146,7 +1114,16 @@ function formatBotPhone(raw: string): string {
   return `+${d}`;
 }
 
+function getModulePalette(theme: string) {
+  return {
+    positive: "#4ECDC4",
+    negative: "#FF6B6B",
+    agenda: "#A78BFA",
+  };
+}
+
 function SectionWhatsApp() {
+  const { t } = useTranslation();
   const { theme: _wt } = useTheme();
   const _WMP = getModulePalette(_wt as any);
   const { toast } = useToast();
@@ -1176,43 +1153,50 @@ function SectionWhatsApp() {
       setTimeout(() => refetch(), 1500);
       setTimeout(() => refetch(), 3500);
     },
-    onError: () => toast({ title: "Erro ao conectar WhatsApp", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSetup.whatsapp.errorConnect"), variant: "destructive" }),
   });
 
   const disconnectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/disconnect"),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/status"] }); refetch(); },
-    onError: () => toast({ title: "Erro ao desconectar", variant: "destructive" }),
+    onError: () => toast({ title: t("axisSetup.whatsapp.errorDisconnect"), variant: "destructive" }),
   });
 
   const resetMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
-    onSuccess: () => { toast({ title: "Gerando novo QR code..." }); setTimeout(() => refetch(), 1200); },
-    onError: () => toast({ title: "Erro ao gerar QR", variant: "destructive" }),
+    onSuccess: () => { toast({ title: t("axisSetup.whatsapp.generatingQrNew") }); setTimeout(() => refetch(), 1200); },
+    onError: () => toast({ title: t("axisSetup.whatsapp.errorQr"), variant: "destructive" }),
   });
 
   const phoneMutation = useMutation({
     mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone }),
-    onSuccess: () => { setPhoneSaved(true); toast({ title: "Número vinculado com sucesso!" }); setTimeout(() => setPhoneSaved(false), 2000); },
-    onError: () => toast({ title: "Erro ao salvar número", variant: "destructive" }),
+    onSuccess: () => { setPhoneSaved(true); toast({ title: t("axisSetup.whatsapp.phoneSaved") }); setTimeout(() => setPhoneSaved(false), 2000); },
+    onError: () => toast({ title: t("axisSetup.whatsapp.errorPhone"), variant: "destructive" }),
   });
 
   const wStatus = status?.status || "disconnected";
 
   const statusConfig = {
-    disconnected: { label: "Desconectado", color: _WMP.negative, icon: WifiOff },
-    qr_pending:   { label: "Aguardando QR", color: _WMP.agenda, icon: QrCode },
-    connected:    { label: "Conectado", color: _WMP.positive, icon: Wifi },
-  }[wStatus] || { label: "Desconectado", color: _WMP.negative, icon: WifiOff };
+    disconnected: { label: t("axisSetup.whatsapp.statusDisconnected"), color: _WMP.negative, icon: WifiOff },
+    qr_pending:   { label: t("axisSetup.whatsapp.statusPending"), color: _WMP.agenda, icon: QrCode },
+    connected:    { label: t("axisSetup.whatsapp.statusConnected"), color: _WMP.positive, icon: Wifi },
+  }[wStatus] || { label: t("axisSetup.whatsapp.statusDisconnected"), color: _WMP.negative, icon: WifiOff };
 
   const StatusIcon = statusConfig.icon;
+
+  const waExamples = [
+    t("axisSetup.whatsapp.ex1"),
+    t("axisSetup.whatsapp.ex2"),
+    t("axisSetup.whatsapp.ex3"),
+    t("axisSetup.whatsapp.ex4"),
+  ];
 
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1">WhatsApp Bot</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-1">{t("axisSetup.whatsapp.title")}</p>
         <p className="text-xs text-white/40 leading-relaxed">
-          Envie mensagens para o número vinculado e o AXIS processa automaticamente — gastos, tarefas, hábitos e compromissos.
+          {t("axisSetup.whatsapp.description")}
         </p>
       </div>
 
@@ -1223,7 +1207,7 @@ function SectionWhatsApp() {
             <p className="text-sm font-semibold text-white">{statusConfig.label}</p>
             {wStatus === "connected" && status?.phone && (
               <p className="text-[11px] font-medium" style={{ color: _WMP.positive }}>
-                Bot conectado em {formatBotPhone(status.phone)}
+                {t("axisSetup.whatsapp.botConnectedAt")} {formatBotPhone(status.phone)}
               </p>
             )}
           </div>
@@ -1236,7 +1220,7 @@ function SectionWhatsApp() {
             style={{ background: `${_WMP.negative}1A`, color: _WMP.negative, border: `1px solid ${_WMP.negative}33` }}
             data-testid="button-whatsapp-disconnect"
           >
-            {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Desconectar"}
+            {disconnectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t("axisSetup.whatsapp.disconnect")}
           </button>
         ) : isAdmin && (wStatus === "disconnected" || wStatus === "qr_pending") ? (
           <button
@@ -1246,17 +1230,17 @@ function SectionWhatsApp() {
             style={{ background: `${_WMP.positive}1A`, color: _WMP.positive, border: `1px solid ${_WMP.positive}33` }}
             data-testid="button-whatsapp-connect"
           >
-            {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : wStatus === "qr_pending" ? "Reconectar" : "Conectar"}
+            {connectMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : wStatus === "qr_pending" ? t("axisSetup.whatsapp.reconnect") : t("axisSetup.whatsapp.connect")}
           </button>
         ) : null}
       </div>
 
       {isAdmin && wStatus === "qr_pending" && status?.qrCode && (
         <div className="rounded-2xl p-4 flex flex-col items-center gap-3" style={{ background: "rgba(255,160,0,0.05)", border: "1px solid rgba(255,160,0,0.2)" }}>
-          <p className="text-xs text-white/60 text-center">Abra o WhatsApp → Aparelhos conectados → Escanear QR</p>
+          <p className="text-xs text-white/60 text-center">{t("axisSetup.whatsapp.qrInstructions")}</p>
           <img src={status.qrCode} alt="QR Code WhatsApp" className="w-48 h-48 rounded-xl" data-testid="img-whatsapp-qr" />
           <div className="flex items-center gap-3">
-            <p className="text-[10px] text-white/30">QR expira em 60s</p>
+            <p className="text-[10px] text-white/30">{t("axisSetup.whatsapp.qrExpires")}</p>
             <button
               onClick={() => resetMutation.mutate()}
               disabled={resetMutation.isPending}
@@ -1265,7 +1249,7 @@ function SectionWhatsApp() {
               data-testid="button-whatsapp-new-qr"
             >
               {resetMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              Gerar novo QR
+              {t("axisSetup.whatsapp.newQr")}
             </button>
           </div>
         </div>
@@ -1275,7 +1259,7 @@ function SectionWhatsApp() {
         <div className="flex flex-col items-center gap-3 py-4">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-white/40" />
-            <span className="text-xs text-white/40">Gerando QR code...</span>
+            <span className="text-xs text-white/40">{t("axisSetup.whatsapp.generatingQr")}</span>
           </div>
           <button
             onClick={() => resetMutation.mutate()}
@@ -1285,20 +1269,20 @@ function SectionWhatsApp() {
             data-testid="button-whatsapp-new-qr-fallback"
           >
             <RefreshCw className="h-3 w-3" />
-            Tentar novamente
+            {t("axisSetup.whatsapp.tryAgain")}
           </button>
         </div>
       )}
 
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">Seu número de WhatsApp</p>
-        <p className="text-xs text-white/40">Vincule seu número para receber e enviar mensagens ao AXIS.</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{t("axisSetup.whatsapp.yourPhone")}</p>
+        <p className="text-xs text-white/40">{t("axisSetup.whatsapp.phoneDesc")}</p>
         <div className="flex gap-2">
           <input
             type="tel"
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="+55 11 99999-9999"
+            placeholder={t("axisSetup.whatsapp.phonePlaceholder")}
             className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-white/20"
             data-testid="input-whatsapp-phone"
           />
@@ -1309,19 +1293,14 @@ function SectionWhatsApp() {
             style={{ background: phoneSaved ? `${_WMP.positive}26` : "rgba(255,255,255,0.06)", color: phoneSaved ? _WMP.positive : "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
             data-testid="button-save-whatsapp-phone"
           >
-            {phoneMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : phoneSaved ? <Check className="h-3.5 w-3.5" /> : "Salvar"}
+            {phoneMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : phoneSaved ? <Check className="h-3.5 w-3.5" /> : t("axisSetup.whatsapp.save")}
           </button>
         </div>
       </div>
 
       <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Exemplos de mensagens</p>
-        {[
-          "gastei 50 no almoço",
-          "criar tarefa reunião de equipe sexta",
-          "hábito academia todo dia às 7h",
-          "agendar consulta médica segunda 10h",
-        ].map(ex => (
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">{t("axisSetup.whatsapp.examplesTitle")}</p>
+        {waExamples.map(ex => (
           <div key={ex} className="flex items-start gap-2">
             <MessageCircle className="h-3 w-3 text-white/20 mt-0.5 shrink-0" />
             <span className="text-[11px] text-white/35 italic">"{ex}"</span>
@@ -1332,21 +1311,21 @@ function SectionWhatsApp() {
   );
 }
 
-const TAB_META: { id: Tab; label: string; description: string; icon: any; accent: string }[] = [
-  { id: "renda",        label: "Renda",        description: "Salário e receitas",    icon: DollarSign,   accent: MINT },
-  { id: "gastos",       label: "Gastos Fixos", description: "Contas recorrentes",    icon: ClipboardList, accent: CORAL },
-  { id: "rotina",       label: "Rotina",       description: "Hábitos e horários",    icon: Calendar,      accent: LAVANDA },
-  { id: "notificacoes", label: "Alertas",      description: "Avisos por e-mail",     icon: Bell,          accent: "PRIMARY" },
-  { id: "whatsapp",     label: "WhatsApp",     description: "Integração com bot",    icon: MessageCircle, accent: "#25D366" },
-];
-
 export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("renda");
   const [savedIncome, setSavedIncome] = useState("");
   const { toast } = useToast();
   const { theme } = useTheme();
   const primaryHex = getPrimaryHex(theme);
-  const resolvedTabs = TAB_META.map(t => t.accent === "PRIMARY" ? { ...t, accent: primaryHex } : t);
+
+  const TAB_META: { id: Tab; label: string; description: string; icon: any; accent: string }[] = [
+    { id: "renda",        label: t("axisSetup.tabs.renda"),        description: t("axisSetup.tabs.rendaDesc"),        icon: DollarSign,    accent: MINT },
+    { id: "gastos",       label: t("axisSetup.tabs.gastos"),       description: t("axisSetup.tabs.gastosDesc"),       icon: ClipboardList,  accent: CORAL },
+    { id: "rotina",       label: t("axisSetup.tabs.rotina"),       description: t("axisSetup.tabs.rotinaDesc"),       icon: Calendar,       accent: LAVANDA },
+    { id: "notificacoes", label: t("axisSetup.tabs.notificacoes"), description: t("axisSetup.tabs.notificacoesDesc"), icon: Bell,           accent: primaryHex },
+    { id: "whatsapp",     label: t("axisSetup.tabs.whatsapp"),     description: t("axisSetup.tabs.whatsappDesc"),     icon: MessageCircle,  accent: "#25D366" },
+  ];
 
   const finishMutation = useMutation({
     mutationFn: async () => {
@@ -1362,12 +1341,12 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
       onClose();
     },
     onError: () => {
-      toast({ title: "Erro ao concluir configuração", variant: "destructive" });
+      toast({ title: t("axisSetup.errorFinish"), variant: "destructive" });
       onClose();
     },
   });
 
-  const activeMeta = resolvedTabs.find(t => t.id === activeTab)!;
+  const activeMeta = TAB_META.find(t => t.id === activeTab)!;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -1386,18 +1365,17 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
         data-testid="dialog-setup"
       >
         <div className="flex flex-1 min-h-0">
-          {/* Left sidebar nav */}
           <div
             className="flex flex-col w-56 shrink-0 py-5 px-3"
             style={{ borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}
           >
             <div className="px-2 mb-5">
-              <h2 className="text-sm font-bold text-white">Configurar perfil</h2>
-              <p className="text-[11px] text-white/35 mt-0.5 leading-tight">A IA usará isso para personalizar tudo</p>
+              <h2 className="text-sm font-bold text-white">{t("axisSetup.title")}</h2>
+              <p className="text-[11px] text-white/35 mt-0.5 leading-tight">{t("axisSetup.subtitle")}</p>
             </div>
 
             <nav className="flex flex-col gap-1 flex-1">
-              {resolvedTabs.map((tab, idx) => {
+              {TAB_META.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -1413,26 +1391,15 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
-                      style={{
-                        background: isActive ? `${tab.accent}20` : "rgba(255,255,255,0.05)",
-                      }}
+                      style={{ background: isActive ? `${tab.accent}20` : "rgba(255,255,255,0.05)" }}
                     >
-                      <Icon
-                        className="h-3.5 w-3.5"
-                        style={{ color: isActive ? tab.accent : "rgba(255,255,255,0.3)" }}
-                      />
+                      <Icon className="h-3.5 w-3.5" style={{ color: isActive ? tab.accent : "rgba(255,255,255,0.3)" }} />
                     </div>
                     <div className="min-w-0">
-                      <p
-                        className="text-xs font-semibold leading-tight"
-                        style={{ color: isActive ? "white" : "rgba(255,255,255,0.45)" }}
-                      >
+                      <p className="text-xs font-semibold leading-tight" style={{ color: isActive ? "white" : "rgba(255,255,255,0.45)" }}>
                         {tab.label}
                       </p>
-                      <p
-                        className="text-[10px] leading-tight mt-0.5"
-                        style={{ color: isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.2)" }}
-                      >
+                      <p className="text-[10px] leading-tight mt-0.5" style={{ color: isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.2)" }}>
                         {tab.description}
                       </p>
                     </div>
@@ -1453,21 +1420,19 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
                 data-testid="button-finish-setup"
               >
                 {finishMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                {finishMutation.isPending ? "Salvando..." : "Concluir configuração"}
+                {finishMutation.isPending ? t("axisSetup.saving") : t("axisSetup.finish")}
               </button>
               <button
                 onClick={onClose}
                 className="w-full py-2 text-[11px] text-white/25 hover:text-white/45 transition-colors"
                 data-testid="button-skip-setup"
               >
-                Fazer depois
+                {t("axisSetup.doLater")}
               </button>
             </div>
           </div>
 
-          {/* Right content area */}
           <div className="flex flex-col flex-1 min-w-0">
-            {/* Content header */}
             <div
               className="flex items-center gap-3 px-6 py-4 shrink-0"
               style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
@@ -1484,7 +1449,6 @@ export function SetupSheet({ open, onClose }: { open: boolean; onClose: () => vo
               </div>
             </div>
 
-            {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <AnimatePresence mode="wait">
                 <motion.div
