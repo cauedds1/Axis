@@ -1864,7 +1864,16 @@
     "newCreditCard": "New credit card",
     "adding": "Adding...",
     "removeCardTitle": "Remove card?",
-    "removeCardDesc": "The card and its invoices will be removed. Linked transactions will remain in history."
+    "removeCardDesc": "The card and its invoices will be removed. Linked transactions will remain in history.",
+    "newBill": "New bill",
+    "editBill": "Edit bill",
+    "observation": "Note",
+    "billTitlePlaceholder": "e.g. Rent, Netflix, Salary...",
+    "billCategoryPlaceholder": "e.g. Housing...",
+    "deactivateBill": "Deactivate",
+    "reactivateBill": "Reactivate",
+    "billsActiveSummary": "{{active}} active · {{inactive}} inactive",
+    "purchase": "Purchase"
   },
   "axisAgenda": {
     "pageTitle": "AXIS - Agenda",
@@ -2484,16 +2493,7 @@
     "intentVoice": "Recorded by voice",
     "processed": "Processed",
     "error": "Error",
-    "noMicrophone": "No microphone access",
-    "newBill": "New bill",
-    "editBill": "Edit bill",
-    "observation": "Note",
-    "billTitlePlaceholder": "e.g. Rent, Netflix, Salary...",
-    "billCategoryPlaceholder": "e.g. Housing...",
-    "deactivateBill": "Deactivate",
-    "reactivateBill": "Reactivate",
-    "billsActiveSummary": "{{active}} active · {{inactive}} inactive",
-    "purchase": "Purchase"
+    "noMicrophone": "No microphone access"
   },
   "axisSetup": {
     "title": "Configure profile",

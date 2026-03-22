@@ -1864,7 +1864,16 @@
     "newCreditCard": "Novo cartão de crédito",
     "adding": "Adicionando...",
     "removeCardTitle": "Remover cartão?",
-    "removeCardDesc": "O cartão e suas faturas serão removidos. As transações vinculadas continuarão no histórico."
+    "removeCardDesc": "O cartão e suas faturas serão removidos. As transações vinculadas continuarão no histórico.",
+    "newBill": "Nova conta",
+    "editBill": "Editar conta",
+    "observation": "Observação",
+    "billTitlePlaceholder": "Ex: Aluguel, Netflix, Salário...",
+    "billCategoryPlaceholder": "Ex: Moradia...",
+    "deactivateBill": "Desativar conta",
+    "reactivateBill": "Reativar conta",
+    "billsActiveSummary": "{{active}} ativa(s) · {{inactive}} inativa(s)",
+    "purchase": "Compra"
   },
   "axisAgenda": {
     "pageTitle": "AXIS - Agenda",
@@ -2484,16 +2493,7 @@
     "intentVoice": "Registrado por voz",
     "processed": "Processado",
     "error": "Erro",
-    "noMicrophone": "Sem acesso ao microfone",
-    "newBill": "Nova conta",
-    "editBill": "Editar conta",
-    "observation": "Observação",
-    "billTitlePlaceholder": "Ex: Aluguel, Netflix, Salário...",
-    "billCategoryPlaceholder": "Ex: Moradia...",
-    "deactivateBill": "Desativar conta",
-    "reactivateBill": "Reativar conta",
-    "billsActiveSummary": "{{active}} ativa(s) · {{inactive}} inativa(s)",
-    "purchase": "Compra"
+    "noMicrophone": "Sem acesso ao microfone"
   },
   "axisSetup": {
     "title": "Configurar perfil",
