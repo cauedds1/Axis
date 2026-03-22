@@ -2988,6 +2988,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         name: z.string().min(1),
         tradeName: z.string().optional(),
         cnpj: z.string().optional(),
+        country: z.string().optional(),
         segment: z.string().optional(),
         closingDay: z.number().int().min(1).max(28).optional(),
         jobTitle: z.string().optional(),

@@ -162,14 +162,124 @@ function BrandPanel() {
   );
 }
 
-function formatCnpj(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+type RegionDef = {
+  code: string;
+  name: string;
+  regLabel: string;
+  placeholder: string;
+  inputMode: "numeric" | "text";
+  format: (v: string) => string;
+};
+
+function fmtDigits(v: string, maxDigits: number): string {
+  return v.replace(/\D/g, "").slice(0, maxDigits);
 }
+
+const REGIONS: RegionDef[] = [
+  {
+    code: "BR", name: "🇧🇷 Brasil", regLabel: "CNPJ",
+    placeholder: "00.000.000/0000-00", inputMode: "numeric",
+    format: (v) => {
+      const d = fmtDigits(v, 14);
+      if (d.length <= 2) return d;
+      if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+      if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+      if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+      return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+    },
+  },
+  {
+    code: "US", name: "🇺🇸 United States", regLabel: "EIN",
+    placeholder: "00-0000000", inputMode: "numeric",
+    format: (v) => {
+      const d = fmtDigits(v, 9);
+      if (d.length <= 2) return d;
+      return `${d.slice(0, 2)}-${d.slice(2)}`;
+    },
+  },
+  {
+    code: "CL", name: "🇨🇱 Chile", regLabel: "RUT",
+    placeholder: "00.000.000-0", inputMode: "text",
+    format: (v) => {
+      const clean = v.replace(/[^0-9kK]/g, "").slice(0, 9);
+      const body = clean.slice(0, -1);
+      const dv = clean.slice(-1);
+      if (body.length === 0) return clean;
+      const n = parseInt(body, 10).toLocaleString("es-CL");
+      return dv ? `${n}-${dv}` : n;
+    },
+  },
+  {
+    code: "AR", name: "🇦🇷 Argentina", regLabel: "CUIT",
+    placeholder: "00-00000000-0", inputMode: "numeric",
+    format: (v) => {
+      const d = fmtDigits(v, 11);
+      if (d.length <= 2) return d;
+      if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
+      return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
+    },
+  },
+  {
+    code: "MX", name: "🇲🇽 México", regLabel: "RFC",
+    placeholder: "XAXX010101000", inputMode: "text",
+    format: (v) => v.toUpperCase().slice(0, 13),
+  },
+  {
+    code: "PT", name: "🇵🇹 Portugal", regLabel: "NIPC",
+    placeholder: "000000000", inputMode: "numeric",
+    format: (v) => fmtDigits(v, 9),
+  },
+  {
+    code: "CO", name: "🇨🇴 Colombia", regLabel: "NIT",
+    placeholder: "000000000-0", inputMode: "numeric",
+    format: (v) => {
+      const d = fmtDigits(v, 10);
+      if (d.length <= 9) return d;
+      return `${d.slice(0, 9)}-${d.slice(9)}`;
+    },
+  },
+  {
+    code: "GB", name: "🇬🇧 United Kingdom", regLabel: "CRN",
+    placeholder: "00000000", inputMode: "text",
+    format: (v) => v.replace(/[^0-9A-Za-z]/g, "").slice(0, 8).toUpperCase(),
+  },
+  {
+    code: "DE", name: "🇩🇪 Deutschland", regLabel: "Handelsreg.",
+    placeholder: "HRB 00000", inputMode: "text",
+    format: (v) => v.slice(0, 20),
+  },
+  {
+    code: "ES", name: "🇪🇸 España", regLabel: "CIF",
+    placeholder: "A00000000", inputMode: "text",
+    format: (v) => v.replace(/[^0-9A-Za-z]/g, "").slice(0, 9).toUpperCase(),
+  },
+  {
+    code: "FR", name: "🇫🇷 France", regLabel: "SIRET",
+    placeholder: "00000000000000", inputMode: "numeric",
+    format: (v) => fmtDigits(v, 14),
+  },
+  {
+    code: "AU", name: "🇦🇺 Australia", regLabel: "ABN",
+    placeholder: "00 000 000 000", inputMode: "numeric",
+    format: (v) => {
+      const d = fmtDigits(v, 11);
+      if (d.length <= 2) return d;
+      if (d.length <= 5) return `${d.slice(0, 2)} ${d.slice(2)}`;
+      if (d.length <= 8) return `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}`;
+      return `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8)}`;
+    },
+  },
+  {
+    code: "CA", name: "🇨🇦 Canada", regLabel: "BN",
+    placeholder: "000000000", inputMode: "numeric",
+    format: (v) => fmtDigits(v, 9),
+  },
+  {
+    code: "OTHER", name: "🌐 Other", regLabel: "Registration number",
+    placeholder: "", inputMode: "text",
+    format: (v) => v.slice(0, 30),
+  },
+];
 
 const STEP_LABEL_KEYS = ["stepLabel0", "stepLabel1", "stepLabel2"];
 
@@ -231,7 +341,8 @@ export default function BusinessAuthPage() {
 
   const [companyName, setCompanyName] = useState("");
   const [tradeName, setTradeName] = useState("");
-  const [cnpj, setCnpj] = useState("");
+  const [country, setCountry] = useState("BR");
+  const [registrationNumber, setRegistrationNumber] = useState("");
   const [segment, setSegment] = useState("");
 
   const [closingDay, setClosingDay] = useState("5");
@@ -303,11 +414,12 @@ export default function BusinessAuthPage() {
       const registerRes = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
       const userData = await registerRes.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
-      const rawCnpj = cnpj.replace(/\D/g, "");
+      const rawReg = registrationNumber.replace(/\s/g, "");
       await apiRequest("POST", "/api/business/organizations", {
         name: companyName,
         tradeName: tradeName || undefined,
-        cnpj: rawCnpj || undefined,
+        cnpj: rawReg || undefined,
+        country: country || undefined,
         segment: segment || undefined,
         closingDay: closingDay ? parseInt(closingDay) : undefined,
         jobTitle: jobTitle || undefined,
@@ -517,16 +629,34 @@ export default function BusinessAuthPage() {
                       <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder={t("axisBizAuth.tradeNamePh")} className={inputClass} data-testid="input-trade-name" />
                     </div>
                     <div>
-                      <label className={labelClass}>{t("axisBizAuth.cnpj")} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
-                      <input
-                        value={cnpj}
-                        onChange={(e) => setCnpj(formatCnpj(e.target.value))}
-                        placeholder="00.000.000/0000-00"
-                        inputMode="numeric"
-                        className={inputClass}
-                        data-testid="input-cnpj"
-                      />
+                      <label className={labelClass}>{t("axisBizAuth.region")}</label>
+                      <select
+                        value={country}
+                        onChange={(e) => { setCountry(e.target.value); setRegistrationNumber(""); }}
+                        style={selectStyle}
+                        data-testid="select-country"
+                      >
+                        {REGIONS.map((r) => (
+                          <option key={r.code} value={r.code} style={{ background: "#1a1a1f" }}>{r.name}</option>
+                        ))}
+                      </select>
                     </div>
+                    {(() => {
+                      const region = REGIONS.find((r) => r.code === country) ?? REGIONS[0];
+                      return (
+                        <div>
+                          <label className={labelClass}>{region.regLabel} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
+                          <input
+                            value={registrationNumber}
+                            onChange={(e) => setRegistrationNumber(region.format(e.target.value))}
+                            placeholder={region.placeholder}
+                            inputMode={region.inputMode}
+                            className={inputClass}
+                            data-testid="input-registration-number"
+                          />
+                        </div>
+                      );
+                    })()}
                     <div>
                       <label className={labelClass}>{t("axisBizAuth.segment")}</label>
                       <select value={segment} onChange={(e) => setSegment(e.target.value)} required style={selectStyle} data-testid="select-segment">

@@ -284,6 +284,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   tradeName: text("trade_name"),
   cnpj: text("cnpj"),
+  country: text("country"),
   segment: text("segment"),
   closingDay: integer("closing_day"),
   adminUserId: varchar("admin_user_id").notNull(),
