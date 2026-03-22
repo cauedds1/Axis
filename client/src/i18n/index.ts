@@ -4,7 +4,19 @@ import ptBR from "./pt-BR.json";
 import en from "./en.json";
 
 const STORAGE_KEY = "axis-language";
-const savedLang = localStorage.getItem(STORAGE_KEY) || "pt-BR";
+const SUPPORTED_LANGUAGES = ["pt-BR", "en"] as const;
+type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+function normalizeLang(lang: string): SupportedLanguage {
+  if (lang === "pt-BR" || lang.startsWith("pt")) return "pt-BR";
+  if (lang === "en" || lang.startsWith("en")) return "en";
+  return "pt-BR";
+}
+
+const rawSaved = localStorage.getItem(STORAGE_KEY) ?? "";
+const savedLang: SupportedLanguage = SUPPORTED_LANGUAGES.includes(rawSaved as SupportedLanguage)
+  ? (rawSaved as SupportedLanguage)
+  : normalizeLang(rawSaved || "pt-BR");
 
 i18n.use(initReactI18next).init({
   resources: {
@@ -19,7 +31,8 @@ i18n.use(initReactI18next).init({
 });
 
 i18n.on("languageChanged", (lng) => {
-  localStorage.setItem(STORAGE_KEY, lng);
+  const normalized = normalizeLang(lng);
+  localStorage.setItem(STORAGE_KEY, normalized);
 });
 
 export default i18n;
