@@ -10,22 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LogoCropModal } from "@/components/logo-crop-modal";
 import i18n from "@/i18n";
+import { useTranslation } from "react-i18next";
 
 type Tab = "aparencia" | "empresa" | "conta" | "categorias";
-
-const TABS: { id: Tab; label: string; Icon: any }[] = [
-  { id: "aparencia",   label: "Aparência",  Icon: Palette },
-  { id: "empresa",     label: "Empresa",    Icon: Building2 },
-  { id: "conta",       label: "Conta",      Icon: User },
-  { id: "categorias",  label: "Categorias", Icon: Tag },
-];
-
-const SEGMENTS = [
-  "Tecnologia e Software","Consultoria e Serviços","Varejo e Comércio",
-  "Logística e Transporte","Construção e Engenharia","Saúde e Bem-estar",
-  "Educação","Indústria e Manufatura","Agronegócio","Marketing e Publicidade",
-  "Alimentação e Hospitalidade","Outro",
-];
 
 const DEFAULT_CATEGORIES = [
   { name: "Alimentação",    icon: "🍽️" },
@@ -38,10 +25,26 @@ const DEFAULT_CATEGORIES = [
   { name: "Outros",         icon: "📋" },
 ];
 
+const SEGMENTS_KEYS = [
+  { key: "tech",         value: "Tecnologia e Software" },
+  { key: "consulting",   value: "Consultoria e Serviços" },
+  { key: "retail",       value: "Varejo e Comércio" },
+  { key: "logistics",    value: "Logística e Transporte" },
+  { key: "construction", value: "Construção e Engenharia" },
+  { key: "health",       value: "Saúde e Bem-estar" },
+  { key: "education",    value: "Educação" },
+  { key: "industry",     value: "Indústria e Manufatura" },
+  { key: "agribusiness", value: "Agronegócio" },
+  { key: "marketing",    value: "Marketing e Publicidade" },
+  { key: "food",         value: "Alimentação e Hospitalidade" },
+  { key: "other",        value: "Outro" },
+];
+
 const inputClass = "w-full px-3 py-2.5 rounded-xl text-sm bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all";
 const labelClass = "block text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wide";
 
 export default function BusinessSettingsPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("aparencia");
   const { user } = useAuth();
   const { toast } = useToast();
@@ -49,6 +52,13 @@ export default function BusinessSettingsPage() {
   const primaryHex = getBusinessPrimaryHex(businessTheme);
   const isExecutive = !isCorporateTheme(businessTheme);
   const [currentLang, setCurrentLang] = useState(i18n.language);
+
+  const TABS: { id: Tab; label: string; Icon: any }[] = [
+    { id: "aparencia",   label: t("axisBiz.settings.tabs.appearance"), Icon: Palette },
+    { id: "empresa",     label: t("axisBiz.settings.tabs.company"),    Icon: Building2 },
+    { id: "conta",       label: t("axisBiz.settings.tabs.account"),    Icon: User },
+    { id: "categorias",  label: t("axisBiz.settings.tabs.categories"), Icon: Tag },
+  ];
 
   const handleLangChange = (lang: string) => {
     i18n.changeLanguage(lang);
@@ -106,10 +116,10 @@ export default function BusinessSettingsPage() {
     mutationFn: (data: any) => apiRequest("PATCH", `/api/business/organizations/${org?.id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations"] });
-      toast({ title: "Dados da empresa atualizados" });
+      toast({ title: t("axisBiz.settings.toasts.companySaved") });
     },
     onError: (err: any) => {
-      toast({ title: "Erro ao salvar", description: err?.message ?? "Tente novamente.", variant: "destructive" });
+      toast({ title: t("axisBiz.settings.toasts.saveError"), description: err?.message ?? t("axisBiz.settings.toasts.tryAgain"), variant: "destructive" });
     },
   });
 
@@ -120,12 +130,12 @@ export default function BusinessSettingsPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations"] });
-      toast({ title: "Limites de gastos salvos!" });
+      toast({ title: t("axisBiz.settings.toasts.limitsSaved") });
     },
   });
 
-  const handleThemeChange = (t: BusinessTheme) => {
-    setBusinessTheme(t);
+  const handleThemeChange = (theme: BusinessTheme) => {
+    setBusinessTheme(theme);
     setThemeSaved(true);
     setTimeout(() => setThemeSaved(false), 2000);
   };
@@ -134,7 +144,7 @@ export default function BusinessSettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Imagem muito grande", description: "A imagem deve ter menos de 10MB.", variant: "destructive" });
+      toast({ title: t("axisBiz.settings.toasts.imageTooLarge"), description: t("axisBiz.settings.toasts.imageSizeHint"), variant: "destructive" });
       return;
     }
     const reader = new FileReader();
@@ -207,8 +217,8 @@ export default function BusinessSettingsPage() {
       />
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-1">Configurações</h1>
-        <p className="text-sm text-muted-foreground">Personalize sua experiência no AXIS Business</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1">{t("axisBiz.settings.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("axisBiz.settings.subtitle")}</p>
       </div>
 
       <div className="flex gap-1 mb-8 p-1 rounded-xl flex-wrap" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -242,9 +252,9 @@ export default function BusinessSettingsPage() {
                 {isExecutive ? <span className="text-sm">⚡</span> : <span className="text-sm">◾</span>}
               </div>
               <div>
-                <p className="text-sm font-semibold">Modo {isExecutive ? "Executive" : "Corporate"} ativo</p>
+                <p className="text-sm font-semibold">{t("axisBiz.settings.appearance.modeActive", { mode: isExecutive ? "Executive" : "Corporate" })}</p>
                 <p className="text-xs text-muted-foreground">
-                  {isExecutive ? "Vibrante, com animações e glow. Alto impacto visual." : "Minimalista, sem animações. Foco e clareza profissional."}
+                  {isExecutive ? t("axisBiz.settings.appearance.executiveDesc") : t("axisBiz.settings.appearance.corporateDesc")}
                 </p>
               </div>
               {themeSaved && <Check className="h-4 w-4 text-emerald-500 ml-auto" />}
@@ -253,13 +263,13 @@ export default function BusinessSettingsPage() {
           </div>
 
           <div className="rounded-2xl p-5 space-y-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Prévia do tema</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("axisBiz.settings.appearance.themePreview")}</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Total do mês", value: "R$ 18.340,00", color: primaryHex },
-                { label: "Aprovadas", value: "R$ 12.890,00", color: "#34D399" },
-                { label: "Aprovações pendentes", value: "7 itens", color: "#F59E0B" },
-                { label: "Rejeitadas", value: "3 itens", color: "#F87171" },
+                { label: t("axisBiz.settings.appearance.previewCards.monthTotal"), value: "R$ 18.340,00", color: primaryHex },
+                { label: t("axisBiz.settings.appearance.previewCards.approved"), value: "R$ 12.890,00", color: "#34D399" },
+                { label: t("axisBiz.settings.appearance.previewCards.pendingApprovals"), value: "7 itens", color: "#F59E0B" },
+                { label: t("axisBiz.settings.appearance.previewCards.rejected"), value: "3 itens", color: "#F87171" },
               ].map((card) => (
                 <div key={card.label} className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="text-xs text-muted-foreground mb-1">{card.label}</p>
@@ -275,8 +285,8 @@ export default function BusinessSettingsPage() {
                 <Languages className="w-4 h-4" style={{ color: primaryHex }} />
               </div>
               <div>
-                <p className="text-sm font-semibold">Idioma</p>
-                <p className="text-xs text-muted-foreground">Escolha o idioma da interface</p>
+                <p className="text-sm font-semibold">{t("axisBiz.settings.appearance.language")}</p>
+                <p className="text-xs text-muted-foreground">{t("axisBiz.settings.appearance.languageSubtitle")}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -313,11 +323,11 @@ export default function BusinessSettingsPage() {
         <form onSubmit={handleOrgSave} className="space-y-5">
 
           <div className="rounded-2xl p-5 space-y-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Identidade Visual</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.settings.company.visualIdentity")}</p>
 
             <div>
-              <label className={labelClass}>Logo da empresa</label>
-              <p className="text-xs text-muted-foreground mb-3">Aparece nos relatórios compartilhados. PNG, JPG ou WebP — máx. 2MB.</p>
+              <label className={labelClass}>{t("axisBiz.settings.company.logoLabel")}</label>
+              <p className="text-xs text-muted-foreground mb-3">{t("axisBiz.settings.company.logoHint")}</p>
               <div className="flex items-start gap-4">
                 <div
                   className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden"
@@ -346,7 +356,7 @@ export default function BusinessSettingsPage() {
                     data-testid="button-upload-logo"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    {logoPreview ? "Trocar logo" : "Enviar logo"}
+                    {logoPreview ? t("axisBiz.settings.company.changeLogo") : t("axisBiz.settings.company.uploadLogo")}
                   </button>
                   {logoPreview && (
                     <button
@@ -357,7 +367,7 @@ export default function BusinessSettingsPage() {
                       data-testid="button-remove-logo"
                     >
                       <X className="w-3.5 h-3.5" />
-                      Remover logo
+                      {t("axisBiz.settings.company.removeLogo")}
                     </button>
                   )}
                 </div>
@@ -365,8 +375,8 @@ export default function BusinessSettingsPage() {
             </div>
 
             <div>
-              <label className={labelClass}>Cor principal da marca</label>
-              <p className="text-xs text-muted-foreground mb-3">Usada nos relatórios públicos para representar a identidade visual da empresa.</p>
+              <label className={labelClass}>{t("axisBiz.settings.company.brandColor")}</label>
+              <p className="text-xs text-muted-foreground mb-3">{t("axisBiz.settings.company.brandColorHint")}</p>
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/10 flex-shrink-0 cursor-pointer" style={{ background: primaryColor }}>
                   <input
@@ -405,30 +415,34 @@ export default function BusinessSettingsPage() {
           </div>
 
           <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dados da empresa</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.settings.company.companyData")}</p>
             <div>
-              <label className={labelClass}>Razão Social <span style={{ color: primaryHex }}>*</span></label>
+              <label className={labelClass}>{t("axisBiz.settings.company.legalName")} <span style={{ color: primaryHex }}>*</span></label>
               <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Empresa Ltda." required className={inputClass} data-testid="input-company-name" />
             </div>
             <div>
-              <label className={labelClass}>Nome Fantasia</label>
-              <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder="Como a empresa é conhecida" className={inputClass} data-testid="input-trade-name" />
+              <label className={labelClass}>{t("axisBiz.settings.company.tradeName")}</label>
+              <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder={t("axisBiz.settings.company.tradeNamePlaceholder")} className={inputClass} data-testid="input-trade-name" />
             </div>
             <div>
-              <label className={labelClass}>Segmento</label>
+              <label className={labelClass}>{t("axisBiz.settings.company.segment")}</label>
               <select value={segment} onChange={(e) => setSegment(e.target.value)} className={inputClass} style={{ appearance: "none" }} data-testid="select-segment">
-                <option value="">Selecione o segmento</option>
-                {SEGMENTS.map((s) => <option key={s} value={s} style={{ background: "#1a1a1f" }}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Dia de Fechamento Mensal</label>
-              <select value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className={inputClass} style={{ appearance: "none" }} data-testid="select-closing-day">
-                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d} style={{ background: "#1a1a1f" }}>Dia {d}</option>
+                <option value="">{t("axisBiz.settings.company.segmentPlaceholder")}</option>
+                {SEGMENTS_KEYS.map(({ key, value }) => (
+                  <option key={key} value={value} style={{ background: "#1a1a1f" }}>
+                    {t(`axisBiz.settings.company.segments.${key}`)}
+                  </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground mt-1.5">O AXIS enviará relatórios automáticos neste dia todo mês.</p>
+            </div>
+            <div>
+              <label className={labelClass}>{t("axisBiz.settings.company.closingDay")}</label>
+              <select value={closingDay} onChange={(e) => setClosingDay(e.target.value)} className={inputClass} style={{ appearance: "none" }} data-testid="select-closing-day">
+                {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d} style={{ background: "#1a1a1f" }}>{t("axisBiz.settings.company.day", { n: d })}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1.5">{t("axisBiz.settings.company.closingDayHint")}</p>
             </div>
           </div>
           <button
@@ -438,7 +452,7 @@ export default function BusinessSettingsPage() {
             style={{ background: `linear-gradient(135deg, ${primaryHex}, ${primaryHex}cc)`, boxShadow: `0 4px 20px ${primaryHex}30` }}
             data-testid="button-save-company"
           >
-            {orgMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" />Salvar alterações</>}
+            {orgMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" />{t("axisBiz.settings.company.saveChanges")}</>}
           </button>
         </form>
       )}
@@ -446,26 +460,26 @@ export default function BusinessSettingsPage() {
       {activeTab === "conta" && (
         <div className="space-y-5">
           <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informações pessoais</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.settings.account.personalInfo")}</p>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={labelClass}>Nome</label><input value={user?.firstName ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
-              <div><label className={labelClass}>Sobrenome</label><input value={user?.lastName ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
+              <div><label className={labelClass}>{t("axisBiz.settings.account.firstName")}</label><input value={user?.firstName ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
+              <div><label className={labelClass}>{t("axisBiz.settings.account.lastName")}</label><input value={user?.lastName ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
             </div>
-            <div><label className={labelClass}>E-mail</label><input value={user?.email ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
+            <div><label className={labelClass}>{t("axisBiz.settings.account.email")}</label><input value={user?.email ?? ""} readOnly className={inputClass + " opacity-60 cursor-not-allowed"} /></div>
             <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: primaryHex + "0d", border: `1px solid ${primaryHex}20` }}>
               <span className="text-xs" style={{ color: primaryHex }}>ℹ</span>
-              <p className="text-xs" style={{ color: primaryHex + "cc" }}>Para alterar nome, e-mail ou senha, entre em contato com o suporte.</p>
+              <p className="text-xs" style={{ color: primaryHex + "cc" }}>{t("axisBiz.settings.account.editHint")}</p>
             </div>
           </div>
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Tipo de conta</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("axisBiz.settings.account.accountType")}</p>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: primaryHex + "18", border: `1px solid ${primaryHex}25` }}>
                 <Building2 className="h-4 w-4" style={{ color: primaryHex }} />
               </div>
               <div>
                 <p className="text-sm font-medium">AXIS Business</p>
-                <p className="text-xs text-muted-foreground">Conta corporativa · {org?.name ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">{t("axisBiz.settings.account.corporateAccount")} · {org?.name ?? "—"}</p>
               </div>
             </div>
           </div>
@@ -475,21 +489,21 @@ export default function BusinessSettingsPage() {
       {activeTab === "categorias" && (
         <div className="space-y-6">
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Limites de gasto por categoria</p>
-            <p className="text-xs text-muted-foreground mb-4">Defina um valor máximo em R$ por despesa. Itens acima do limite serão marcados com um aviso.</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("axisBiz.settings.categories.spendingLimits")}</p>
+            <p className="text-xs text-muted-foreground mb-4">{t("axisBiz.settings.categories.spendingLimitsHint")}</p>
             <div className="flex flex-col gap-3">
               {DEFAULT_CATEGORIES.map(({ name, icon }) => (
                 <div key={name} className="flex items-center gap-3" data-testid={`row-category-limit-${name}`}>
                   <span className="text-lg w-7 text-center">{icon}</span>
-                  <span className="text-sm text-foreground flex-1">{name}</span>
-                  <Badge className="text-[9px] py-0" style={{ background: "rgba(255,255,255,0.05)", color: "hsl(var(--muted-foreground))", border: "1px solid rgba(255,255,255,0.08)" }}>Padrão</Badge>
+                  <span className="text-sm text-foreground flex-1">{t(`axisBiz.settings.categories.defaultCategories.${name}`, name)}</span>
+                  <Badge className="text-[9px] py-0" style={{ background: "rgba(255,255,255,0.05)", color: "hsl(var(--muted-foreground))", border: "1px solid rgba(255,255,255,0.08)" }}>{t("axisBiz.settings.categories.default")}</Badge>
                   <div className="flex items-center gap-1 w-32">
                     <span className="text-xs text-muted-foreground">R$</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      placeholder="Sem limite"
+                      placeholder={t("axisBiz.settings.categories.noLimit")}
                       value={spendingLimits[name] ?? ""}
                       onChange={e => setSpendingLimits(prev => ({ ...prev, [name]: e.target.value }))}
                       className="w-full px-2 py-1.5 rounded-lg text-xs bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 transition-all text-right"
@@ -507,16 +521,16 @@ export default function BusinessSettingsPage() {
               style={{ background: `linear-gradient(135deg, ${primaryHex}, ${primaryHex}cc)` }}
               data-testid="button-save-limits"
             >
-              {limitsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" />Salvar limites</>}
+              {limitsMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" />{t("axisBiz.settings.categories.saveLimits")}</>}
             </button>
           </div>
 
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Categorias personalizadas</p>
-            <p className="text-xs text-muted-foreground mb-4">Categorias adicionais para a sua empresa (salvas localmente).</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("axisBiz.settings.categories.customCategories")}</p>
+            <p className="text-xs text-muted-foreground mb-4">{t("axisBiz.settings.categories.customCategoriesHint")}</p>
             <div className="flex gap-2 mb-3">
               <Input
-                placeholder="Ex: Marketing, Jurídico..."
+                placeholder={t("axisBiz.settings.categories.customPlaceholder")}
                 value={newCategory}
                 onChange={e => setNewCategory(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleAddCustomCategory()}
@@ -535,12 +549,12 @@ export default function BusinessSettingsPage() {
             </div>
             <div className="flex flex-col gap-2">
               {customCategories.length === 0 ? (
-                <p className="text-xs text-muted-foreground/50 text-center py-3">Nenhuma categoria personalizada ainda.</p>
+                <p className="text-xs text-muted-foreground/50 text-center py-3">{t("axisBiz.settings.categories.noneYet")}</p>
               ) : customCategories.map(cat => (
                 <div key={cat} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }} data-testid={`row-custom-category-${cat}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{cat}</span>
-                    <Badge className="text-[9px] py-0" style={{ background: `${primaryHex}12`, color: primaryHex, border: `1px solid ${primaryHex}20` }}>Personalizada</Badge>
+                    <Badge className="text-[9px] py-0" style={{ background: `${primaryHex}12`, color: primaryHex, border: `1px solid ${primaryHex}20` }}>{t("axisBiz.settings.categories.custom")}</Badge>
                   </div>
                   <button onClick={() => handleRemoveCustomCategory(cat)} className="text-muted-foreground hover:text-red-400 transition-colors" data-testid={`button-remove-category-${cat}`}>
                     <Trash2 className="w-3.5 h-3.5" />

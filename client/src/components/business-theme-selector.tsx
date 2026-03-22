@@ -1,19 +1,20 @@
 import { Layers, Zap, Check, Briefcase } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useBusinessTheme, type BusinessTheme, getBusinessPrimaryHex, isCorporateTheme } from "@/components/theme-provider";
 
-const CORPORATE_PALETTES: { id: BusinessTheme; label: string }[] = [
-  { id: "biz-slate",   label: "Azul" },
-  { id: "biz-ocean",   label: "Oceano" },
-  { id: "biz-emerald", label: "Esmeralda" },
-  { id: "biz-amber",   label: "Âmbar" },
+const CORPORATE_PALETTES: { id: BusinessTheme; tKey: string }[] = [
+  { id: "biz-slate",   tKey: "blue" },
+  { id: "biz-ocean",   tKey: "ocean" },
+  { id: "biz-emerald", tKey: "emerald" },
+  { id: "biz-amber",   tKey: "amber" },
 ];
 
-const EXECUTIVE_PALETTES: { id: BusinessTheme; label: string }[] = [
-  { id: "biz-blue",   label: "Azul" },
-  { id: "biz-indigo", label: "Índigo" },
-  { id: "biz-cyan",   label: "Ciano" },
-  { id: "biz-green",  label: "Verde" },
-  { id: "biz-gold",   label: "Ouro" },
+const EXECUTIVE_PALETTES: { id: BusinessTheme; tKey: string }[] = [
+  { id: "biz-blue",   tKey: "blue" },
+  { id: "biz-indigo", tKey: "indigo" },
+  { id: "biz-cyan",   tKey: "cyan" },
+  { id: "biz-green",  tKey: "green" },
+  { id: "biz-gold",   tKey: "gold" },
 ];
 
 function PaletteCircle({
@@ -21,10 +22,11 @@ function PaletteCircle({
   selected,
   onClick,
 }: {
-  palette: { id: BusinessTheme; label: string };
+  palette: { id: BusinessTheme; tKey: string };
   selected: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const hex = getBusinessPrimaryHex(palette.id);
   const darkCheck = palette.id === "biz-amber" || palette.id === "biz-gold";
   return (
@@ -51,7 +53,7 @@ function PaletteCircle({
         className="text-[11px] font-medium leading-none"
         style={{ color: selected ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))" }}
       >
-        {palette.label}
+        {t(`axisBiz.themeSelector.palettes.${palette.tKey}`)}
       </span>
     </button>
   );
@@ -64,6 +66,7 @@ export function BusinessThemeSelector({
   value: BusinessTheme;
   onChange: (theme: BusinessTheme) => void;
 }) {
+  const { t } = useTranslation();
   const currentGroup = isCorporateTheme(value) ? "corporate" : "executive";
 
   return (
@@ -72,7 +75,7 @@ export function BusinessThemeSelector({
         <div className="flex items-center gap-2 mb-3">
           <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Corporate</span>
-          <span className="text-xs text-muted-foreground">— minimalista, foco profissional</span>
+          <span className="text-xs text-muted-foreground">— {t("axisBiz.themeSelector.corporateSubtitle")}</span>
         </div>
         <div
           className="rounded-xl px-4 py-3 flex justify-between transition-all duration-200"
@@ -96,7 +99,7 @@ export function BusinessThemeSelector({
         <div className="flex items-center gap-2 mb-3">
           <Zap className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Executive</span>
-          <span className="text-xs text-muted-foreground">— vibrante, com brilho e glow</span>
+          <span className="text-xs text-muted-foreground">— {t("axisBiz.themeSelector.executiveSubtitle")}</span>
         </div>
         <div
           className="rounded-xl px-4 py-3 flex justify-between transition-all duration-200"
@@ -120,6 +123,7 @@ export function BusinessThemeSelector({
 }
 
 export function BusinessThemeToggleCompact() {
+  const { t } = useTranslation();
   const { businessTheme, setBusinessTheme } = useBusinessTheme();
   const isExecutive = !isCorporateTheme(businessTheme);
   const hex = getBusinessPrimaryHex(businessTheme);
@@ -136,7 +140,7 @@ export function BusinessThemeToggleCompact() {
       }}
       className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all duration-200 hover:bg-white/5"
       data-testid="button-business-theme-toggle"
-      title={isExecutive ? "Modo Executive — clique para Corporate" : "Modo Corporate — clique para Executive"}
+      title={isExecutive ? t("axisBiz.themeSelector.toggleTitleExecutive") : t("axisBiz.themeSelector.toggleTitleCorporate")}
     >
       {isExecutive ? (
         <Zap className="h-3.5 w-3.5" style={{ color: hex }} />

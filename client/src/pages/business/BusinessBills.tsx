@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Plus, ArrowDownCircle, CheckCircle2, Clock, AlertTriangle,
   Trash2, CheckSquare, Square, X, Paperclip, ExternalLink,
@@ -31,18 +32,18 @@ function getDueStatus(dueDate: string | Date, status: string) {
   return "pending";
 }
 
-function StatusBadge({ status, dueDate }: { status: string; dueDate: string }) {
+function StatusBadge({ status, dueDate, t }: { status: string; dueDate: string; t: (k: string) => string }) {
   const s = getDueStatus(dueDate, status);
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    paid: { label: "Paga", color: GREEN, bg: "rgba(52,211,153,0.12)" },
-    overdue: { label: "Vencida", color: ACCENT, bg: "rgba(248,113,113,0.12)" },
-    urgent: { label: "Vence hoje/amanhã", color: AMBER, bg: "rgba(245,158,11,0.12)" },
-    pending: { label: "Pendente", color: BLUE, bg: "rgba(59,130,246,0.12)" },
+  const map: Record<string, { labelKey: string; color: string; bg: string }> = {
+    paid: { labelKey: "axisBiz.bills.statusPaid", color: GREEN, bg: "rgba(52,211,153,0.12)" },
+    overdue: { labelKey: "axisBiz.bills.statusOverdue", color: ACCENT, bg: "rgba(248,113,113,0.12)" },
+    urgent: { labelKey: "axisBiz.bills.statusUrgent", color: AMBER, bg: "rgba(245,158,11,0.12)" },
+    pending: { labelKey: "axisBiz.bills.statusPending", color: BLUE, bg: "rgba(59,130,246,0.12)" },
   };
   const cfg = map[s] ?? map.pending;
   return (
     <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ color: cfg.color, background: cfg.bg }}>
-      {cfg.label}
+      {t(cfg.labelKey)}
     </span>
   );
 }
@@ -53,12 +54,14 @@ function BillRow({
   onToggle,
   onPay,
   onDelete,
+  t,
 }: {
   bill: BusinessBill;
   selected: boolean;
   onToggle: () => void;
   onPay: () => void;
   onDelete: () => void;
+  t: (k: string) => string;
 }) {
   const s = getDueStatus(bill.dueDate as string, bill.status);
   const leftColor = s === "paid" ? GREEN : s === "overdue" ? ACCENT : s === "urgent" ? AMBER : BLUE;
@@ -80,7 +83,7 @@ function BillRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold truncate">{bill.description}</p>
-            <StatusBadge status={bill.status} dueDate={bill.dueDate as string} />
+            <StatusBadge status={bill.status} dueDate={bill.dueDate as string} t={t} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             {bill.supplier && <span className="text-xs text-muted-foreground">{bill.supplier}</span>}
@@ -95,21 +98,21 @@ function BillRow({
 
         <div className="flex-shrink-0 text-right">
           <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtCurrency(bill.amount)}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Vence {fmtDate(bill.dueDate as string)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{t("axisBiz.bills.dueLabel")} {fmtDate(bill.dueDate as string)}</p>
         </div>
 
         <div className="flex items-center gap-1 ml-2 flex-shrink-0">
           {bill.receiptImageUrl && (
-            <a href={bill.receiptImageUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Ver comprovante" data-testid={`link-receipt-${bill.id}`}>
+            <a href={bill.receiptImageUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={t("axisBiz.bills.viewReceipt")} data-testid={`link-receipt-${bill.id}`}>
               <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
             </a>
           )}
           {bill.status !== "paid" && (
-            <button onClick={onPay} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors" title="Marcar como paga" data-testid={`button-pay-${bill.id}`}>
+            <button onClick={onPay} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors" title={t("axisBiz.bills.markAsPaid")} data-testid={`button-pay-${bill.id}`}>
               <CheckCircle2 className="w-3.5 h-3.5" style={{ color: GREEN }} />
             </button>
           )}
-          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" title="Excluir" data-testid={`button-delete-bill-${bill.id}`}>
+          <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" title={t("common.delete")} data-testid={`button-delete-bill-${bill.id}`}>
             <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
           </button>
         </div>
@@ -123,6 +126,7 @@ const EMPTY_FORM = {
 };
 
 function NewBillModal({ orgId, onClose }: { orgId: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
 
   const mutation = useMutation({
@@ -159,28 +163,28 @@ function NewBillModal({ orgId, onClose }: { orgId: string; onClose: () => void }
       >
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div>
-            <h2 className="font-bold text-base">Nova Conta a Pagar</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Registrar boleto, fornecedor ou despesa futura</p>
+            <h2 className="font-bold text-base">{t("axisBiz.bills.modalTitle")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("axisBiz.bills.modalSubtitle")}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted transition-colors" data-testid="button-close-modal">
             <X className="w-4 h-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          {field("description", "Descrição", "text", true, "Aluguel, internet, fornecedor...")}
+          {field("description", t("axisBiz.bills.fieldDescription"), "text", true, t("axisBiz.bills.fieldDescriptionPlaceholder"))}
           <div className="grid grid-cols-2 gap-3">
-            {field("amount", "Valor (R$)", "number", true, "0,00")}
-            {field("dueDate", "Vencimento", "date", true)}
+            {field("amount", t("axisBiz.bills.fieldAmount"), "number", true, "0.00")}
+            {field("dueDate", t("axisBiz.bills.fieldDueDate"), "date", true)}
           </div>
-          {field("supplier", "Fornecedor", "text", false, "Nome do fornecedor")}
+          {field("supplier", t("axisBiz.bills.fieldSupplier"), "text", false, t("axisBiz.bills.fieldSupplierPlaceholder"))}
           <div className="grid grid-cols-2 gap-3">
-            {field("categoryName", "Categoria", "text", false, "Ex: Utilities")}
-            {field("costCenter", "Centro de Custo", "text", false, "Ex: Projeto X")}
+            {field("categoryName", t("axisBiz.bills.fieldCategory"), "text", false, t("axisBiz.bills.fieldCategoryPlaceholder"))}
+            {field("costCenter", t("axisBiz.bills.fieldCostCenter"), "text", false, t("axisBiz.bills.fieldCostCenterPlaceholder"))}
           </div>
-          {field("notes", "Observações", "text", false, "Opcional...")}
+          {field("notes", t("axisBiz.bills.fieldNotes"), "text", false, t("common.optional"))}
           <div className="pt-2">
             <button type="submit" disabled={mutation.isPending} className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all disabled:opacity-50" style={{ background: "linear-gradient(135deg, #2563EB, #6366F1)" }} data-testid="button-submit-bill">
-              {mutation.isPending ? "Salvando..." : "Salvar conta"}
+              {mutation.isPending ? t("common.saving") : t("axisBiz.bills.saveBill")}
             </button>
           </div>
         </form>
@@ -192,6 +196,7 @@ function NewBillModal({ orgId, onClose }: { orgId: string; onClose: () => void }
 type TabFilter = "all" | "pending" | "overdue" | "paid";
 
 export default function BusinessBills() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
@@ -236,10 +241,10 @@ export default function BusinessBills() {
   const toggleSelect = (id: string) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const tabs: { key: TabFilter; label: string }[] = [
-    { key: "all", label: "Todas" },
-    { key: "pending", label: "Pendentes" },
-    { key: "overdue", label: "Vencidas" },
-    { key: "paid", label: "Pagas" },
+    { key: "all", label: t("axisBiz.bills.tabAll") },
+    { key: "pending", label: t("axisBiz.bills.tabPending") },
+    { key: "overdue", label: t("axisBiz.bills.tabOverdue") },
+    { key: "paid", label: t("axisBiz.bills.tabPaid") },
   ];
 
   return (
@@ -249,20 +254,20 @@ export default function BusinessBills() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Contas a Pagar</h1>
-            <p className="text-sm text-muted-foreground">Controle de boletos, fornecedores e despesas futuras</p>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">{t("axisBiz.bills.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("axisBiz.bills.subtitle")}</p>
           </div>
           <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: "linear-gradient(135deg, #2563EB, #6366F1)" }} data-testid="button-new-bill">
             <Plus className="w-4 h-4" />
-            Nova Conta
+            {t("axisBiz.bills.newBill")}
           </button>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: "A Pagar (mês)", value: fmtCurrency(totalPending), color: ACCENT, icon: ArrowDownCircle },
-            { label: "Vencidas", value: fmtCurrency(totalOverdue), color: AMBER, icon: AlertTriangle },
-            { label: "Contas cadastradas", value: String(bills.length), color: BLUE, icon: Clock },
+            { label: t("axisBiz.bills.cardDue"), value: fmtCurrency(totalPending), color: ACCENT, icon: ArrowDownCircle },
+            { label: t("axisBiz.bills.cardOverdue"), value: fmtCurrency(totalOverdue), color: AMBER, icon: AlertTriangle },
+            { label: t("axisBiz.bills.cardTotal"), value: String(bills.length), color: BLUE, icon: Clock },
           ].map((card, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
               className="rounded-2xl border border-border/50 bg-card p-4"
@@ -301,7 +306,7 @@ export default function BusinessBills() {
               data-testid="button-batch-pay"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Pagar {selected.size} selecionada{selected.size > 1 ? "s" : ""}
+              {t("axisBiz.bills.paySelected", { count: selected.size })}
             </motion.button>
           )}
         </div>
@@ -315,8 +320,8 @@ export default function BusinessBills() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <ArrowDownCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Nenhuma conta aqui</p>
-            <p className="text-xs mt-1 opacity-60">Adicione uma conta a pagar com o botão acima</p>
+            <p className="text-sm font-medium">{t("axisBiz.bills.emptyTitle")}</p>
+            <p className="text-xs mt-1 opacity-60">{t("axisBiz.bills.emptyHint")}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -329,6 +334,7 @@ export default function BusinessBills() {
                   onToggle={() => toggleSelect(bill.id)}
                   onPay={() => payMutation.mutate(bill.id)}
                   onDelete={() => deleteMutation.mutate(bill.id)}
+                  t={t}
                 />
               ))}
             </AnimatePresence>

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,10 +14,10 @@ function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusBadge(status: string) {
-  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>Aprovada</Badge>;
-  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>Rejeitada</Badge>;
-  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>Pendente</Badge>;
+function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
+  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.expenses.statusApproved")}</Badge>;
+  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>{t("axisBiz.expenses.statusRejected")}</Badge>;
+  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>{t("axisBiz.expenses.statusPending")}</Badge>;
 }
 
 type Period = "this_month" | "last_month" | "last_3_months" | "this_year";
@@ -42,6 +43,7 @@ function MemberAvatar({ name, email, hex }: { name?: string; email?: string; hex
 }
 
 export default function BusinessReports() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -135,7 +137,7 @@ export default function BusinessReports() {
   const handleExportExcel = useCallback(async () => {
     if (!activeOrg?.id) return;
     const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses/export-excel?${expenseParams.toString()}`, { credentials: "include" });
-    if (!res.ok) { toast({ title: "Erro ao exportar", variant: "destructive" }); return; }
+    if (!res.ok) { toast({ title: t("axisBiz.reports.exportError"), variant: "destructive" }); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
@@ -145,14 +147,21 @@ export default function BusinessReports() {
 
   const handleExportCSV = useCallback(() => {
     if (!expenses || !activeOrg) return;
-    const header = ["Data", "Colaborador", "Categoria", "Descrição", "Valor", "Status"];
+    const header = [
+      t("axisBiz.expenses.date"),
+      t("axisBiz.reports.collaborator"),
+      t("axisBiz.expenses.category"),
+      t("axisBiz.expenses.description"),
+      t("axisBiz.expenses.amount"),
+      t("axisBiz.reports.statusHeader"),
+    ];
     const rows = expenses.map((e: any) => [
       e.date ? format(new Date(e.date), "dd/MM/yyyy") : "",
       e.userName || e.userEmail || "",
       e.categoryName || "",
       e.establishment || e.description || "",
       e.amount.toFixed(2).replace(".", ","),
-      e.status === "approved" ? "Aprovada" : e.status === "rejected" ? "Rejeitada" : "Pendente",
+      e.status === "approved" ? t("axisBiz.expenses.statusApproved") : e.status === "rejected" ? t("axisBiz.expenses.statusRejected") : t("axisBiz.expenses.statusPending"),
     ]);
     const csv = [header, ...rows].map(r => r.map((v: string) => `"${v}"`).join(";")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -172,7 +181,7 @@ export default function BusinessReports() {
   if (!activeOrg) return (
     <div className="p-6 max-w-5xl mx-auto flex flex-col items-center justify-center py-20 text-center gap-4">
       <BarChart3 className="w-12 h-12 text-muted-foreground opacity-40" />
-      <p className="text-muted-foreground">Crie uma empresa para ver os relatórios.</p>
+      <p className="text-muted-foreground">{t("axisBiz.reports.noOrg")}</p>
     </div>
   );
 
@@ -180,8 +189,8 @@ export default function BusinessReports() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Análise de despesas · {activeOrg.name}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("axisBiz.reports.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("axisBiz.reports.analysisSubtitle")} · {activeOrg.name}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportCSV} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl border border-border/50 text-muted-foreground hover:text-foreground transition-all" data-testid="button-export-csv">
@@ -195,24 +204,24 @@ export default function BusinessReports() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Período</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.reports.period")}</label>
           <Select value={period} onValueChange={v => setPeriod(v as Period)}>
             <SelectTrigger className="h-9 text-xs" data-testid="select-period"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="this_month">Este mês</SelectItem>
-              <SelectItem value="last_month">Mês passado</SelectItem>
-              <SelectItem value="last_3_months">Últimos 3 meses</SelectItem>
-              <SelectItem value="this_year">Este ano</SelectItem>
+              <SelectItem value="this_month">{t("axisBiz.reports.thisMonth")}</SelectItem>
+              <SelectItem value="last_month">{t("axisBiz.reports.lastMonth")}</SelectItem>
+              <SelectItem value="last_3_months">{t("axisBiz.reports.last3Months")}</SelectItem>
+              <SelectItem value="this_year">{t("axisBiz.reports.thisYear")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         {!isCollaborator && (
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.reports.collaborator")}</label>
             <Select value={filterUser} onValueChange={setFilterUser}>
               <SelectTrigger className="h-9 text-xs" data-testid="select-filter-user"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">{t("axisBiz.reports.allCollaborators")}</SelectItem>
                 {members?.map((m: any) => (
                   <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
                 ))}
@@ -221,11 +230,11 @@ export default function BusinessReports() {
           </div>
         )}
         <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+          <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.reports.categoryFilter")}</label>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="h-9 text-xs" data-testid="select-filter-category"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="all">{t("axisBiz.reports.allCategories")}</SelectItem>
               {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -234,10 +243,10 @@ export default function BusinessReports() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total do período", value: formatBRL(metrics.total), color: primaryHex, Icon: TrendingUp },
-          { label: "Aprovadas", value: formatBRL(metrics.approvedTotal), color: "#10B981", Icon: CheckCircle2 },
-          { label: "Pendentes", value: `${metrics.pendingCount} despesa${metrics.pendingCount !== 1 ? "s" : ""}`, color: "#F59E0B", Icon: Clock, sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : undefined },
-          { label: "Rejeitadas", value: `${metrics.rejectedCount} despesa${metrics.rejectedCount !== 1 ? "s" : ""}`, color: "#EF4444", Icon: XCircle },
+          { label: t("axisBiz.reports.periodTotal"), value: formatBRL(metrics.total), color: primaryHex, Icon: TrendingUp },
+          { label: t("axisBiz.expenses.statusApproved"), value: formatBRL(metrics.approvedTotal), color: "#10B981", Icon: CheckCircle2 },
+          { label: t("axisBiz.expenses.statusPending"), value: `${metrics.pendingCount} ${t("axisBiz.reports.expenseCount", { count: metrics.pendingCount })}`, color: "#F59E0B", Icon: Clock, sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : undefined },
+          { label: t("axisBiz.expenses.statusRejected"), value: `${metrics.rejectedCount} ${t("axisBiz.reports.expenseCount", { count: metrics.rejectedCount })}`, color: "#EF4444", Icon: XCircle },
         ].map((card, i) => (
           <div key={i} className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }} data-testid={`card-report-metric-${i}`}>
             <div className="flex items-center justify-between mb-2">
@@ -255,9 +264,9 @@ export default function BusinessReports() {
       ) : (
         <div className={`grid grid-cols-1 ${!isCollaborator ? "sm:grid-cols-2" : ""} gap-4 mb-6`}>
           <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por categoria</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.reports.byCategory")}</p>
             {byCategory.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Sem dados no período</p>
+              <p className="text-xs text-muted-foreground text-center py-4">{t("axisBiz.reports.noDataForPeriod")}</p>
             ) : byCategory.map(([cat, total]) => (
               <div key={cat} className="mb-3" data-testid={`row-category-${cat}`}>
                 <div className="flex items-center justify-between mb-1.5">
@@ -276,9 +285,9 @@ export default function BusinessReports() {
 
           {!isCollaborator && (
             <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por colaborador</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.reports.byCollaborator")}</p>
               {byCollaborator.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Sem dados no período</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{t("axisBiz.reports.noDataForPeriod")}</p>
               ) : byCollaborator.map(([userId, data]) => (
                 <div key={userId} className="mb-3" data-testid={`row-collab-${userId}`}>
                   <div className="flex items-center gap-2 mb-1.5">
@@ -288,7 +297,7 @@ export default function BusinessReports() {
                         <span className="text-xs text-foreground truncate">{data.name || data.email}</span>
                         <span className="text-xs font-semibold text-foreground ml-2">{formatBRL(data.total)}</span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{data.count} despesa{data.count !== 1 ? "s" : ""}</span>
+                      <span className="text-[10px] text-muted-foreground">{data.count} {t("axisBiz.reports.expenseCount", { count: data.count })}</span>
                     </div>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -304,13 +313,20 @@ export default function BusinessReports() {
       {expenses && expenses.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="px-5 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Despesas detalhadas</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.reports.detailedExpenses")}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                  {["Data", "Colaborador", "Categoria", "Descrição", "Valor", "Status"].map(h => (
+                  {[
+                    t("axisBiz.expenses.date"),
+                    t("axisBiz.reports.collaborator"),
+                    t("axisBiz.expenses.category"),
+                    t("axisBiz.expenses.description"),
+                    t("axisBiz.expenses.amount"),
+                    t("axisBiz.reports.statusHeader"),
+                  ].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 text-muted-foreground font-medium">{h}</th>
                   ))}
                 </tr>
@@ -323,7 +339,7 @@ export default function BusinessReports() {
                     <td className="px-4 py-3 text-muted-foreground">{e.categoryName || "—"}</td>
                     <td className="px-4 py-3 text-foreground max-w-[180px] truncate">{e.establishment || e.description || "—"}</td>
                     <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{formatBRL(e.amount)}</td>
-                    <td className="px-4 py-3">{statusBadge(e.status)}</td>
+                    <td className="px-4 py-3"><StatusBadge status={e.status} t={t} /></td>
                   </tr>
                 ))}
               </tbody>

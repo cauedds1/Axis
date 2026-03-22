@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ function MemberAvatar({ name, email, primaryHex }: { name?: string; email?: stri
 }
 
 export default function BusinessCollaborators() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -88,12 +90,12 @@ export default function BusinessCollaborators() {
       apiRequest("POST", `/api/business/organizations/${activeOrg!.id}/members`, { email }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "members"] });
-      toast({ title: "Colaborador convidado!", description: `${inviteEmail} foi adicionado à empresa.` });
+      toast({ title: t("axisBiz.collaborators.invited"), description: `${inviteEmail} ${t("axisBiz.collaborators.addedToCompany")}` });
       setInviteEmail("");
       setInviteOpen(false);
     },
     onError: (err: any) => {
-      const msg = err?.message ?? "Erro ao convidar colaborador";
+      const msg = err?.message ?? t("axisBiz.collaborators.inviteError");
       toast({ title: msg, variant: "destructive" });
     },
   });
@@ -103,9 +105,9 @@ export default function BusinessCollaborators() {
       apiRequest("PATCH", `/api/business/organizations/${activeOrg!.id}/members/${memberId}`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "members"] });
-      toast({ title: "Permissão atualizada!" });
+      toast({ title: t("axisBiz.collaborators.roleUpdated") });
     },
-    onError: () => toast({ title: "Erro ao atualizar permissão", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.collaborators.roleUpdateError"), variant: "destructive" }),
   });
 
   const removeMutation = useMutation({
@@ -113,9 +115,9 @@ export default function BusinessCollaborators() {
       apiRequest("DELETE", `/api/business/organizations/${activeOrg!.id}/members/${memberId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "members"] });
-      toast({ title: "Colaborador removido." });
+      toast({ title: t("axisBiz.collaborators.removed") });
     },
-    onError: () => toast({ title: "Erro ao remover colaborador", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.collaborators.removeError"), variant: "destructive" }),
   });
 
   const addCollaboratorMutation = useMutation({
@@ -127,7 +129,7 @@ export default function BusinessCollaborators() {
       setNewFirstName(""); setNewLastName(""); setNewEmail(""); setNewPassword(""); setNewJobTitle("");
     },
     onError: (err: any) => {
-      toast({ title: err?.message ?? "Erro ao criar colaborador", variant: "destructive" });
+      toast({ title: err?.message ?? t("axisBiz.collaborators.createError"), variant: "destructive" });
     },
   });
 
@@ -148,7 +150,7 @@ export default function BusinessCollaborators() {
   if (!activeOrg) return (
     <div className="p-6 max-w-3xl mx-auto flex flex-col items-center justify-center py-20 text-center gap-4">
       <Users className="w-12 h-12 text-muted-foreground opacity-40" />
-      <p className="text-muted-foreground">Crie uma empresa primeiro.</p>
+      <p className="text-muted-foreground">{t("axisBiz.collaborators.noOrg")}</p>
     </div>
   );
 
@@ -157,9 +159,9 @@ export default function BusinessCollaborators() {
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Colaboradores</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("axisBiz.collaborators.title")}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {members?.length ?? 0} {(members?.length ?? 0) === 1 ? "membro" : "membros"} em {activeOrg.name}
+              {t("axisBiz.collaborators.memberCount", { count: members?.length ?? 0, org: activeOrg.name })}
             </p>
           </div>
           {isAdmin && (
@@ -168,14 +170,14 @@ export default function BusinessCollaborators() {
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline" className="gap-2" data-testid="button-add-collaborator">
                     <UserCog className="w-4 h-4" />
-                    Adicionar colaborador
+                    {t("axisBiz.collaborators.addCollaborator")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-sm">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <UserCog className="w-4 h-4" style={{ color: primaryHex }} />
-                      Adicionar colaborador
+                      {t("axisBiz.collaborators.addCollaborator")}
                     </DialogTitle>
                   </DialogHeader>
                   {addedCreds ? (
@@ -185,8 +187,8 @@ export default function BusinessCollaborators() {
                           <CheckCircle2 className="w-6 h-6" style={{ color: primaryHex }} />
                         </div>
                         <div className="text-center">
-                          <p className="font-semibold text-sm">Colaborador criado com sucesso!</p>
-                          <p className="text-xs text-muted-foreground mt-1">Compartilhe as credenciais abaixo. Após fechar, a senha não poderá ser recuperada.</p>
+                          <p className="font-semibold text-sm">{t("axisBiz.collaborators.createdSuccess")}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{t("axisBiz.collaborators.shareCredentials")}</p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
@@ -201,7 +203,7 @@ export default function BusinessCollaborators() {
                         </div>
                         <div className="flex items-center justify-between rounded-lg px-3 py-2.5 gap-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                           <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Senha provisória</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{t("axisBiz.collaborators.temporaryPassword")}</p>
                             <p className="text-sm font-mono font-medium" data-testid="text-created-password">{addedCreds.password}</p>
                           </div>
                           <button onClick={() => copyToClipboard(addedCreds.password, "password")} className="flex-shrink-0 p-1.5 rounded-md hover:bg-white/5 transition-colors" data-testid="button-copy-password">
@@ -210,42 +212,42 @@ export default function BusinessCollaborators() {
                         </div>
                       </div>
                       <Button onClick={() => { setAddCollabOpen(false); setAddedCreds(null); }} style={{ background: primaryHex }} data-testid="button-close-credentials">
-                        Fechar
+                        {t("axisBiz.collaborators.close")}
                       </Button>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4 pt-2">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1.5">Nome *</label>
-                          <Input placeholder="João" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} data-testid="input-collab-first-name" />
+                          <label className="block text-xs text-muted-foreground mb-1.5">{t("axisBiz.collaborators.firstName")} *</label>
+                          <Input placeholder={t("axisBiz.collaborators.firstNamePlaceholder")} value={newFirstName} onChange={e => setNewFirstName(e.target.value)} data-testid="input-collab-first-name" />
                         </div>
                         <div>
-                          <label className="block text-xs text-muted-foreground mb-1.5">Sobrenome *</label>
-                          <Input placeholder="Silva" value={newLastName} onChange={e => setNewLastName(e.target.value)} data-testid="input-collab-last-name" />
+                          <label className="block text-xs text-muted-foreground mb-1.5">{t("axisBiz.collaborators.lastName")} *</label>
+                          <Input placeholder={t("axisBiz.collaborators.lastNamePlaceholder")} value={newLastName} onChange={e => setNewLastName(e.target.value)} data-testid="input-collab-last-name" />
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs text-muted-foreground mb-1.5">E-mail *</label>
-                        <Input type="email" placeholder="joao@empresa.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} data-testid="input-collab-email-create" />
+                        <Input type="email" placeholder={t("axisBiz.collaborators.emailPlaceholder")} value={newEmail} onChange={e => setNewEmail(e.target.value)} data-testid="input-collab-email-create" />
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Senha provisória *</label>
+                        <label className="block text-xs text-muted-foreground mb-1.5">{t("axisBiz.collaborators.temporaryPassword")} *</label>
                         <div className="relative">
-                          <Input type={showPassword ? "text" : "password"} placeholder="Mínimo 6 caracteres" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="pr-10" data-testid="input-collab-password-create" />
+                          <Input type={showPassword ? "text" : "password"} placeholder={t("axisBiz.collaborators.passwordPlaceholder")} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="pr-10" data-testid="input-collab-password-create" />
                           <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs text-muted-foreground mb-1.5">Cargo / Função <span className="text-muted-foreground/50">(opcional)</span></label>
-                        <Input placeholder="ex: Vendedor, Analista..." value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} data-testid="input-collab-job-title" />
+                        <label className="block text-xs text-muted-foreground mb-1.5">{t("axisBiz.collaborators.jobTitle")} <span className="text-muted-foreground/50">({t("axisBiz.collaborators.optional")})</span></label>
+                        <Input placeholder={t("axisBiz.collaborators.jobTitlePlaceholder")} value={newJobTitle} onChange={e => setNewJobTitle(e.target.value)} data-testid="input-collab-job-title" />
                       </div>
                       <Button
                         onClick={() => {
                           if (!newFirstName || !newLastName || !newEmail || !newPassword) {
-                            toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" }); return;
+                            toast({ title: t("axisBiz.collaborators.fillRequired"), variant: "destructive" }); return;
                           }
                           addCollaboratorMutation.mutate({ firstName: newFirstName, lastName: newLastName, email: newEmail, password: newPassword, jobTitle: newJobTitle || undefined });
                         }}
@@ -253,7 +255,7 @@ export default function BusinessCollaborators() {
                         style={{ background: primaryHex }}
                         data-testid="button-create-collaborator"
                       >
-                        {addCollaboratorMutation.isPending ? "Criando..." : "Criar colaborador"}
+                        {addCollaboratorMutation.isPending ? t("axisBiz.collaborators.creating") : t("axisBiz.collaborators.createCollaborator")}
                       </Button>
                     </div>
                   )}
@@ -264,19 +266,19 @@ export default function BusinessCollaborators() {
                 <DialogTrigger asChild>
                   <Button size="sm" className="gap-2" style={{ background: primaryHex }} data-testid="button-invite-collaborator">
                     <UserPlus className="w-4 h-4" />
-                    Convidar
+                    {t("axisBiz.collaborators.invite")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-sm">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <UserPlus className="w-4 h-4" style={{ color: primaryHex }} />
-                      Convidar colaborador
+                      {t("axisBiz.collaborators.inviteCollaborator")}
                     </DialogTitle>
                   </DialogHeader>
                   <div className="flex flex-col gap-4 pt-2">
                     <p className="text-sm text-muted-foreground">
-                      O usuário precisa ter uma conta no AXIS com esse e-mail.
+                      {t("axisBiz.collaborators.inviteNote")}
                     </p>
                     <Input
                       type="email"
@@ -292,7 +294,7 @@ export default function BusinessCollaborators() {
                       style={{ background: primaryHex }}
                       data-testid="button-send-invite"
                     >
-                      {inviteMutation.isPending ? "Convidando..." : "Enviar convite"}
+                      {inviteMutation.isPending ? t("axisBiz.collaborators.inviting") : t("axisBiz.collaborators.sendInvite")}
                     </Button>
                   </div>
                 </DialogContent>
@@ -339,7 +341,7 @@ export default function BusinessCollaborators() {
                     )}
                     {!isOwner && member.role !== "admin" && (
                       <Badge className="text-[10px] py-0" style={{ background: "rgba(255,255,255,0.05)", color: "hsl(var(--muted-foreground))", border: "1px solid rgba(255,255,255,0.1)" }}>
-                        Colaborador
+                        {t("axisBiz.collaborators.collaboratorRole")}
                       </Badge>
                     )}
                   </div>
@@ -353,7 +355,7 @@ export default function BusinessCollaborators() {
                     {formatBRL(stats.total)}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    {stats.count} despesa{stats.count !== 1 ? "s" : ""} este mês
+                    {t("axisBiz.collaborators.expensesThisMonth", { count: stats.count })}
                   </p>
                 </div>
 
@@ -374,7 +376,7 @@ export default function BusinessCollaborators() {
                           data-testid={`menu-make-admin-${member.id}`}
                         >
                           <ShieldCheck className="w-4 h-4 mr-2 text-indigo-400" />
-                          Tornar Admin
+                          {t("axisBiz.collaborators.makeAdmin")}
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem
@@ -382,7 +384,7 @@ export default function BusinessCollaborators() {
                           data-testid={`menu-make-member-${member.id}`}
                         >
                           <Users className="w-4 h-4 mr-2 text-muted-foreground" />
-                          Tornar Colaborador
+                          {t("axisBiz.collaborators.makeCollaborator")}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -392,7 +394,7 @@ export default function BusinessCollaborators() {
                         data-testid={`menu-remove-member-${member.id}`}
                       >
                         <UserMinus className="w-4 h-4 mr-2" />
-                        Remover
+                        {t("axisBiz.collaborators.remove")}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -404,9 +406,9 @@ export default function BusinessCollaborators() {
           {(members ?? []).length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
               <Users className="w-10 h-10 text-muted-foreground opacity-30" />
-              <p className="text-sm text-muted-foreground">Nenhum colaborador ainda.</p>
+              <p className="text-sm text-muted-foreground">{t("axisBiz.collaborators.noCollaborators")}</p>
               {isAdmin && (
-                <p className="text-xs text-muted-foreground/60">Clique em "Convidar" para adicionar membros à equipe.</p>
+                <p className="text-xs text-muted-foreground/60">{t("axisBiz.collaborators.inviteHint")}</p>
               )}
             </div>
           )}

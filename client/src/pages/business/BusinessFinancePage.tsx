@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { format, isAfter, isBefore, addDays, startOfMonth, endOfMonth, subMonths, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -42,13 +43,7 @@ function fmtDateShort(d: Date | string | null | undefined) {
 
 type Period = "current" | "last" | "last3" | "last6" | "custom";
 
-const PERIOD_OPTS: { id: Period; label: string }[] = [
-  { id: "current", label: "Mês atual" },
-  { id: "last", label: "Mês passado" },
-  { id: "last3", label: "3 meses" },
-  { id: "last6", label: "6 meses" },
-  { id: "custom", label: "Personalizado" },
-];
+const PERIOD_OPT_IDS: Period[] = ["current", "last", "last3", "last6", "custom"];
 
 function getDateRange(period: Period, customStart?: string, customEnd?: string) {
   const now = new Date();
@@ -98,6 +93,7 @@ function SmallSummaryCard({ label, value, sub, color, icon: Icon }: { label: str
 // ─── LANÇAMENTOS TAB ─────────────────────────────────────────────────────────
 
 function LancamentosTab({ orgId }: { orgId: string }) {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<Period>("current");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -130,34 +126,34 @@ function LancamentosTab({ orgId }: { orgId: string }) {
   }
 
   function statusLabel(s: string) {
-    if (s === "approved") return "Aprovado";
-    if (s === "rejected") return "Rejeitado";
-    return "Pendente";
+    if (s === "approved") return t("axisBiz.expenses.statusApproved");
+    if (s === "rejected") return t("axisBiz.expenses.statusRejected");
+    return t("axisBiz.expenses.statusPending");
   }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
-        {PERIOD_OPTS.map(opt => (
+        {PERIOD_OPT_IDS.map(id => (
           <button
-            key={opt.id}
-            onClick={() => setPeriod(opt.id)}
+            key={id}
+            onClick={() => setPeriod(id)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all font-medium"
             style={{
-              background: period === opt.id ? `${PRIMARY}20` : "rgba(255,255,255,0.04)",
-              color: period === opt.id ? PRIMARY : "rgba(255,255,255,0.5)",
-              border: `1px solid ${period === opt.id ? `${PRIMARY}40` : "rgba(255,255,255,0.06)"}`,
+              background: period === id ? `${PRIMARY}20` : "rgba(255,255,255,0.04)",
+              color: period === id ? PRIMARY : "rgba(255,255,255,0.5)",
+              border: `1px solid ${period === id ? `${PRIMARY}40` : "rgba(255,255,255,0.06)"}`,
             }}
-            data-testid={`tab-period-${opt.id}`}
+            data-testid={`tab-period-${id}`}
           >
             <Calendar className="w-3 h-3" />
-            {opt.label}
+            {t(`axisBiz.finance.period.${id}`)}
           </button>
         ))}
         {period === "custom" && (
           <div className="flex items-center gap-2">
             <Input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="h-7 text-xs w-36" />
-            <span className="text-xs text-muted-foreground">até</span>
+            <span className="text-xs text-muted-foreground">{t("axisBiz.finance.to")}</span>
             <Input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="h-7 text-xs w-36" />
           </div>
         )}
@@ -166,20 +162,20 @@ function LancamentosTab({ orgId }: { orgId: string }) {
       <p className="text-xs text-muted-foreground -mt-3">{getPeriodLabel(period, range)}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <SummaryCard label="Despesas" value={fmtBRL(totalSubmitted)} sub={`${filtered.length} lançamento(s)`} color={RED} icon={TrendingDown} />
-        <SummaryCard label="Aprovadas" value={fmtBRL(totalApproved)} sub={`${filtered.filter(e => e.status === "approved").length} aprovado(s)`} color={EMERALD} icon={TrendingUp} />
-        <SummaryCard label="Pendentes" value={fmtBRL(totalPending)} sub={`${filtered.filter(e => e.status === "pending_review").length} aguardando`} color={AMBER} icon={Clock} />
+        <SummaryCard label={t("axisBiz.finance.expenses")} value={fmtBRL(totalSubmitted)} sub={t("axisBiz.finance.entries", { count: filtered.length })} color={RED} icon={TrendingDown} />
+        <SummaryCard label={t("axisBiz.finance.approved")} value={fmtBRL(totalApproved)} sub={t("axisBiz.finance.approvedCount", { count: filtered.filter(e => e.status === "approved").length })} color={EMERALD} icon={TrendingUp} />
+        <SummaryCard label={t("axisBiz.finance.pending")} value={fmtBRL(totalPending)} sub={t("axisBiz.finance.pendingCount", { count: filtered.filter(e => e.status === "pending_review").length })} color={AMBER} icon={Clock} />
       </div>
 
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">Lançamentos recentes</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("axisBiz.finance.recentEntries")}</h2>
         {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <ReceiptText className="w-8 h-8 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum lançamento neste período</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Colaboradores enviam recibos pelo WhatsApp</p>
+            <p className="text-sm text-muted-foreground">{t("axisBiz.finance.noEntries")}</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">{t("axisBiz.finance.noEntriesHint")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-1">
@@ -218,9 +214,9 @@ function LancamentosTab({ orgId }: { orgId: string }) {
                       />
                     )}
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      {exp.notes && <div className="col-span-2"><span className="text-muted-foreground">Obs: </span>{exp.notes}</div>}
-                      <div><span className="text-muted-foreground">Data: </span>{fmtDateShort(exp.date ?? exp.createdAt)}</div>
-                      <div><span className="text-muted-foreground">Fonte: </span>{exp.source}</div>
+                      {exp.notes && <div className="col-span-2"><span className="text-muted-foreground">{t("axisBiz.expenses.labelNotes")}: </span>{exp.notes}</div>}
+                      <div><span className="text-muted-foreground">{t("axisBiz.expenses.labelDate")}: </span>{fmtDateShort(exp.date ?? exp.createdAt)}</div>
+                      <div><span className="text-muted-foreground">{t("axisBiz.finance.source")}: </span>{exp.source}</div>
                     </div>
                   </div>
                 )}
@@ -239,6 +235,7 @@ type ContasFilter = "all" | "bills" | "receivables";
 type StatusFilter = "all" | "pending" | "paid" | "overdue";
 
 function ContasTab({ orgId }: { orgId: string }) {
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<Period>("current");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -263,12 +260,12 @@ function ContasTab({ orgId }: { orgId: string }) {
 
   const payBillMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("PATCH", `/api/business/organizations/${orgId}/bills/${id}`, { status: "paid", paidAt: new Date().toISOString() }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "bills"] }); toast({ title: "Conta marcada como paga" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "bills"] }); toast({ title: t("axisBiz.finance.markedAsPaid") }); },
   });
 
   const receiveReceivableMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("PATCH", `/api/business/organizations/${orgId}/receivables/${id}`, { status: "received", receivedAt: new Date().toISOString() }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "receivables"] }); toast({ title: "Recebimento registrado" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "receivables"] }); toast({ title: t("axisBiz.finance.receivableRegistered") }); },
   });
 
   const pendingBills = bills.filter(b => b.status === "pending");
@@ -311,38 +308,38 @@ function ContasTab({ orgId }: { orgId: string }) {
   }
 
   function itemStatusLabel(item: CombinedItem) {
-    if (item.status === "paid") return "Pago";
-    if (item.status === "received") return "Recebido";
-    if (isBefore(item.dueDate, today)) return "Vencido";
-    return "Pendente";
+    if (item.status === "paid") return t("axisBiz.bills.statusPaid");
+    if (item.status === "received") return t("axisBiz.receivables.statusReceived");
+    if (isBefore(item.dueDate, today)) return t("axisBiz.bills.statusOverdue");
+    return t("axisBiz.bills.statusPending");
   }
 
   const typeFilters: { id: ContasFilter; label: string }[] = [
-    { id: "all", label: "Todos" },
-    { id: "bills", label: "A pagar" },
-    { id: "receivables", label: "A receber" },
+    { id: "all", label: t("axisBiz.finance.typeAll") },
+    { id: "bills", label: t("axisBiz.finance.typeBills") },
+    { id: "receivables", label: t("axisBiz.finance.typeReceivables") },
   ];
   const statusFilters: { id: StatusFilter; label: string }[] = [
-    { id: "all", label: "Todos status" },
-    { id: "pending", label: "Pendentes" },
-    { id: "paid", label: "Pagos" },
-    { id: "overdue", label: "Vencidos" },
+    { id: "all", label: t("axisBiz.finance.statusAll") },
+    { id: "pending", label: t("axisBiz.finance.statusPending") },
+    { id: "paid", label: t("axisBiz.finance.statusPaid") },
+    { id: "overdue", label: t("axisBiz.finance.statusOverdue") },
   ];
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
-        {PERIOD_OPTS.map(opt => (
-          <button key={opt.id} onClick={() => setPeriod(opt.id)}
+        {PERIOD_OPT_IDS.map(id => (
+          <button key={id} onClick={() => setPeriod(id)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all font-medium"
-            style={{ background: period === opt.id ? `${PRIMARY}20` : "rgba(255,255,255,0.04)", color: period === opt.id ? PRIMARY : "rgba(255,255,255,0.5)", border: `1px solid ${period === opt.id ? `${PRIMARY}40` : "rgba(255,255,255,0.06)"}` }}>
-            <Calendar className="w-3 h-3" />{opt.label}
+            style={{ background: period === id ? `${PRIMARY}20` : "rgba(255,255,255,0.04)", color: period === id ? PRIMARY : "rgba(255,255,255,0.5)", border: `1px solid ${period === id ? `${PRIMARY}40` : "rgba(255,255,255,0.06)"}` }}>
+            <Calendar className="w-3 h-3" />{t(`axisBiz.finance.period.${id}`)}
           </button>
         ))}
         {period === "custom" && (
           <div className="flex items-center gap-2">
             <Input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="h-7 text-xs w-36" />
-            <span className="text-xs text-muted-foreground">até</span>
+            <span className="text-xs text-muted-foreground">{t("axisBiz.finance.to")}</span>
             <Input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="h-7 text-xs w-36" />
           </div>
         )}
@@ -351,12 +348,12 @@ function ContasTab({ orgId }: { orgId: string }) {
       <p className="text-xs text-muted-foreground -mt-3">{getPeriodLabel(period, range)}</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SmallSummaryCard label="A Pagar" value={fmtBRL(totalAPagar)} sub={`${pendingBills.length} conta(s)`} color={RED} icon={TrendingDown} />
-        <SmallSummaryCard label="A Receber" value={fmtBRL(totalAReceber)} sub={`${pendingReceivables.length} conta(s)`} color={EMERALD} icon={TrendingUp} />
-        <SmallSummaryCard label="Saldo Previsto" value={fmtBRL(saldoPrevisto)} sub="" color={saldoPrevisto >= 0 ? EMERALD : RED} icon={Wallet} />
-        <SmallSummaryCard label="Vencidas" value={String(overdueBills.length + overdueReceivables.length)} sub={fmtBRL(overdueBills.reduce((s, b) => s + b.amount, 0) + overdueReceivables.reduce((s, r) => s + r.amount, 0))} color={RED} icon={AlertCircle} />
-        <SmallSummaryCard label="Próximos 7 dias" value={String(near7Bills.length + near7Receivables.length)} sub={fmtBRL(near7Bills.reduce((s, b) => s + b.amount, 0) + near7Receivables.reduce((s, r) => s + r.amount, 0))} color={AMBER} icon={Clock} />
-        <SmallSummaryCard label="Pago este mês" value={fmtBRL(paidThisMonth + receivedThisMonth)} sub={`Pago + Recebido`} color={EMERALD} icon={CheckCircle2} />
+        <SmallSummaryCard label={t("axisBiz.cashflow.totalDue")} value={fmtBRL(totalAPagar)} sub={t("axisBiz.finance.billsCount", { count: pendingBills.length })} color={RED} icon={TrendingDown} />
+        <SmallSummaryCard label={t("axisBiz.cashflow.totalReceivable")} value={fmtBRL(totalAReceber)} sub={t("axisBiz.finance.billsCount", { count: pendingReceivables.length })} color={EMERALD} icon={TrendingUp} />
+        <SmallSummaryCard label={t("axisBiz.finance.projectedBalance")} value={fmtBRL(saldoPrevisto)} sub="" color={saldoPrevisto >= 0 ? EMERALD : RED} icon={Wallet} />
+        <SmallSummaryCard label={t("axisBiz.finance.overdue")} value={String(overdueBills.length + overdueReceivables.length)} sub={fmtBRL(overdueBills.reduce((s, b) => s + b.amount, 0) + overdueReceivables.reduce((s, r) => s + r.amount, 0))} color={RED} icon={AlertCircle} />
+        <SmallSummaryCard label={t("axisBiz.finance.next7Days")} value={String(near7Bills.length + near7Receivables.length)} sub={fmtBRL(near7Bills.reduce((s, b) => s + b.amount, 0) + near7Receivables.reduce((s, r) => s + r.amount, 0))} color={AMBER} icon={Clock} />
+        <SmallSummaryCard label={t("axisBiz.finance.paidThisMonth")} value={fmtBRL(paidThisMonth + receivedThisMonth)} sub={t("axisBiz.finance.paidReceived")} color={EMERALD} icon={CheckCircle2} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -381,7 +378,7 @@ function ContasTab({ orgId }: { orgId: string }) {
         {visibleItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Receipt className="w-8 h-8 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum item encontrado</p>
+            <p className="text-sm text-muted-foreground">{t("axisBiz.finance.noItems")}</p>
           </div>
         ) : visibleItems.map(item => {
           const color = itemColor(item);
@@ -400,7 +397,7 @@ function ContasTab({ orgId }: { orgId: string }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
                   <p className="text-[11px] text-muted-foreground truncate">
-                    {item.party || (item.type === "bill" ? "Fornecedor" : "Cliente")} · Venc. {fmtDateShort(item.dueDate)}
+                    {item.party || (item.type === "bill" ? t("axisBiz.bills.defaultParty") : t("axisBiz.receivables.defaultParty"))} · {t("axisBiz.bills.due")} {fmtDateShort(item.dueDate)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -416,7 +413,7 @@ function ContasTab({ orgId }: { orgId: string }) {
               {isExpanded && (
                 <div className="px-4 pb-3 pt-1 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.015)" }}>
                   <p className="text-xs text-muted-foreground">
-                    {item.type === "bill" ? "Conta a pagar" : "Conta a receber"} · Vencimento: {fmtDateShort(item.dueDate)}
+                    {item.type === "bill" ? t("axisBiz.finance.billLabel") : t("axisBiz.finance.receivableLabel")} · {t("axisBiz.bills.due")}: {fmtDateShort(item.dueDate)}
                   </p>
                   {item.status === "pending" && (
                     <Button
@@ -427,7 +424,7 @@ function ContasTab({ orgId }: { orgId: string }) {
                       data-testid={`button-mark-paid-${item.id}`}
                     >
                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                      {item.type === "bill" ? "Marcar como pago" : "Dar baixa"}
+                      {item.type === "bill" ? t("axisBiz.bills.markAsPaid") : t("axisBiz.receivables.markAsReceived")}
                     </Button>
                   )}
                 </div>
@@ -461,6 +458,7 @@ const CARD_GRADIENTS = [
 ];
 
 function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCorporateCard; orgId: string; onEdit: (c: BusinessCorporateCard) => void; onDelete: (id: string) => void }) {
+  const { t } = useTranslation();
   const available = card.limitAmount - card.currentBalance;
   const usedPct = card.limitAmount > 0 ? Math.min((card.currentBalance / card.limitAmount) * 100, 100) : 0;
   const gradient = CARD_GRADIENTS[parseInt(card.id?.slice(-1) ?? "0", 16) % CARD_GRADIENTS.length] ?? CARD_GRADIENTS[0];
@@ -471,7 +469,7 @@ function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCo
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3) 0%, transparent 50%)" }} />
         <div className="relative flex items-start justify-between mb-4">
           <div>
-            <p className="text-white/60 text-[11px] font-medium tracking-widest uppercase">Cartão Corporativo</p>
+            <p className="text-white/60 text-[11px] font-medium tracking-widest uppercase">{t("axisBiz.finance.corporateCard")}</p>
             <p className="text-white font-bold text-base mt-0.5">{card.name}</p>
           </div>
           <div className="flex gap-1.5">
@@ -486,24 +484,24 @@ function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCo
         <p className="text-white/80 text-lg font-mono tracking-widest">•••• •••• •••• {card.last4}</p>
         <div className="flex items-end justify-between mt-3">
           <div>
-            <p className="text-white/50 text-[10px]">TITULAR</p>
+            <p className="text-white/50 text-[10px]">{t("axisBiz.finance.cardHolderLabel").toUpperCase()}</p>
             <p className="text-white text-xs font-semibold">{card.holder.toUpperCase()}</p>
           </div>
           <div className="text-right">
-            <p className="text-white/50 text-[10px]">FECHAMENTO</p>
-            <p className="text-white text-xs font-semibold">Dia {card.closingDay}</p>
+            <p className="text-white/50 text-[10px]">{t("axisBiz.finance.cardClosingLabel").toUpperCase()}</p>
+            <p className="text-white text-xs font-semibold">{t("axisBiz.finance.cardClosingDay", { day: card.closingDay })}</p>
           </div>
           <div className="text-right">
-            <p className="text-white/50 text-[10px]">BANDEIRA</p>
+            <p className="text-white/50 text-[10px]">{t("axisBiz.finance.cardBrandLabel").toUpperCase()}</p>
             <p className="text-white text-xs font-bold">{card.brand.toUpperCase()}</p>
           </div>
         </div>
       </div>
       <div className="p-3 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.028)" }}>
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Gasto: <span className="font-semibold text-foreground">{fmtBRL(card.currentBalance)}</span></span>
-          <span className="text-muted-foreground">Limite: <span className="font-semibold text-foreground">{fmtBRL(card.limitAmount)}</span></span>
-          <span className="text-muted-foreground">Disponível: <span className="font-semibold" style={{ color: EMERALD }}>{fmtBRL(available)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardSpent")}: <span className="font-semibold text-foreground">{fmtBRL(card.currentBalance)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardLimitLabel")}: <span className="font-semibold text-foreground">{fmtBRL(card.limitAmount)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardAvailable")}: <span className="font-semibold" style={{ color: EMERALD }}>{fmtBRL(available)}</span></span>
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${usedPct}%`, background: usedPct > 80 ? RED : usedPct > 60 ? AMBER : PRIMARY }} />
@@ -514,6 +512,7 @@ function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCo
 }
 
 function CartoesTab({ orgId }: { orgId: string }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editCard, setEditCard] = useState<BusinessCorporateCard | null>(null);
@@ -526,17 +525,17 @@ function CartoesTab({ orgId }: { orgId: string }) {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => apiRequest("POST", `/api/business/organizations/${orgId}/cards`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: "Cartão adicionado" }); closeModal(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: t("axisBiz.finance.cardAdded") }); closeModal(); },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => apiRequest("PATCH", `/api/business/organizations/${orgId}/cards/${id}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: "Cartão atualizado" }); closeModal(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: t("axisBiz.finance.cardUpdated") }); closeModal(); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => apiRequest("DELETE", `/api/business/organizations/${orgId}/cards/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: "Cartão removido" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "cards"] }); toast({ title: t("axisBiz.finance.cardRemoved") }); },
   });
 
   function openNew() { setForm({ name: "", last4: "", brand: "Visa", limitAmount: "", currentBalance: "", holder: "", closingDay: "1" }); setEditCard(null); setShowModal(true); }
@@ -553,7 +552,7 @@ function CartoesTab({ orgId }: { orgId: string }) {
     <div className="flex flex-col gap-5">
       <div className="flex justify-end">
         <Button onClick={openNew} size="sm" className="gap-2" style={{ background: `${PRIMARY}20`, color: PRIMARY, border: `1px solid ${PRIMARY}40` }} data-testid="button-add-card">
-          <Plus className="w-4 h-4" /> Novo Cartão
+          <Plus className="w-4 h-4" /> {t("axisBiz.finance.newCard")}
         </Button>
       </div>
 
@@ -562,10 +561,10 @@ function CartoesTab({ orgId }: { orgId: string }) {
       ) : cards.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <CreditCard className="w-10 h-10 text-muted-foreground/25 mb-4" />
-          <p className="text-sm font-medium text-muted-foreground">Nenhum cartão corporativo</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Cadastre os cartões da empresa para rastrear gastos</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("axisBiz.finance.noCards")}</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">{t("axisBiz.finance.noCardsHint")}</p>
           <Button onClick={openNew} size="sm" className="mt-4 gap-2" style={{ background: `${PRIMARY}20`, color: PRIMARY, border: `1px solid ${PRIMARY}40` }}>
-            <Plus className="w-3.5 h-3.5" /> Adicionar primeiro cartão
+            <Plus className="w-3.5 h-3.5" /> {t("axisBiz.finance.addFirstCard")}
           </Button>
         </div>
       ) : (
@@ -581,47 +580,47 @@ function CartoesTab({ orgId }: { orgId: string }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-4 h-4" style={{ color: PRIMARY }} />
-              {editCard ? "Editar Cartão" : "Novo Cartão Corporativo"}
+              {editCard ? t("axisBiz.finance.editCard") : t("axisBiz.finance.newCorporateCard")}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="text-xs text-muted-foreground mb-1 block">Nome do cartão</label>
-                <Input placeholder="Ex: Cartão Diretoria" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} data-testid="input-card-name" />
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardName")}</label>
+                <Input placeholder={t("axisBiz.finance.cardNamePlaceholder")} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} data-testid="input-card-name" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Últimos 4 dígitos</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardLast4")}</label>
                 <Input placeholder="1234" maxLength={4} value={form.last4} onChange={e => setForm(f => ({ ...f, last4: e.target.value.replace(/\D/g, "") }))} data-testid="input-card-last4" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Bandeira</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardBrand")}</label>
                 <Select value={form.brand} onValueChange={v => setForm(f => ({ ...f, brand: v }))}>
                   <SelectTrigger data-testid="select-card-brand"><SelectValue /></SelectTrigger>
                   <SelectContent>{CARD_BRANDS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="col-span-2">
-                <label className="text-xs text-muted-foreground mb-1 block">Titular</label>
-                <Input placeholder="Nome do titular" value={form.holder} onChange={e => setForm(f => ({ ...f, holder: e.target.value }))} data-testid="input-card-holder" />
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardHolder")}</label>
+                <Input placeholder={t("axisBiz.finance.cardHolderPlaceholder")} value={form.holder} onChange={e => setForm(f => ({ ...f, holder: e.target.value }))} data-testid="input-card-holder" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Limite (R$)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardLimit")}</label>
                 <Input type="number" placeholder="5000" value={form.limitAmount} onChange={e => setForm(f => ({ ...f, limitAmount: e.target.value }))} data-testid="input-card-limit" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Fatura atual (R$)</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardCurrentBalance")}</label>
                 <Input type="number" placeholder="0" value={form.currentBalance} onChange={e => setForm(f => ({ ...f, currentBalance: e.target.value }))} data-testid="input-card-balance" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Dia de fechamento</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.finance.cardClosingDay")}</label>
                 <Input type="number" min={1} max={28} placeholder="15" value={form.closingDay} onChange={e => setForm(f => ({ ...f, closingDay: e.target.value }))} data-testid="input-card-closing-day" />
               </div>
             </div>
             <div className="flex gap-2 mt-2">
-              <Button variant="outline" onClick={closeModal} className="flex-1">Cancelar</Button>
+              <Button variant="outline" onClick={closeModal} className="flex-1">{t("common.cancel")}</Button>
               <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="flex-1" style={{ background: PRIMARY }} data-testid="button-save-card">
-                {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : editCard ? "Salvar" : "Adicionar"}
+                {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : editCard ? t("common.save") : t("common.add")}
               </Button>
             </div>
           </div>
@@ -635,13 +634,11 @@ function CartoesTab({ orgId }: { orgId: string }) {
 
 type Tab = "lancamentos" | "contas" | "cartoes";
 
-const TABS: { id: Tab; label: string; icon: any }[] = [
-  { id: "lancamentos", label: "Lançamentos", icon: DollarSign },
-  { id: "contas", label: "Contas", icon: Receipt },
-  { id: "cartoes", label: "Cartões Corporativos", icon: CreditCard },
-];
+const TAB_IDS: Tab[] = ["lancamentos", "contas", "cartoes"];
+const TAB_ICONS: Record<Tab, any> = { lancamentos: DollarSign, contas: Receipt, cartoes: CreditCard };
 
 export default function BusinessFinancePage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("lancamentos");
 
   const { data: orgs = [] } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
@@ -650,25 +647,28 @@ export default function BusinessFinancePage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold tracking-tight">Finanças Corporativas</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("axisBiz.finance.title")}</h1>
       </div>
 
       <div className="flex items-center gap-1 p-1 rounded-xl w-fit" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-all font-medium"
-            style={{
-              background: activeTab === tab.id ? "rgba(255,255,255,0.08)" : "transparent",
-              color: activeTab === tab.id ? "white" : "rgba(255,255,255,0.35)",
-            }}
-            data-testid={`tab-finance-${tab.id}`}
-          >
-            <tab.icon className="h-3.5 w-3.5" />
-            {tab.label}
-          </button>
-        ))}
+        {TAB_IDS.map(id => {
+          const Icon = TAB_ICONS[id];
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg transition-all font-medium"
+              style={{
+                background: activeTab === id ? "rgba(255,255,255,0.08)" : "transparent",
+                color: activeTab === id ? "white" : "rgba(255,255,255,0.35)",
+              }}
+              data-testid={`tab-finance-${id}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t(`axisBiz.finance.tab.${id}`)}
+            </button>
+          );
+        })}
       </div>
 
       {orgId ? (

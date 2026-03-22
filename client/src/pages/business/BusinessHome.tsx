@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +28,11 @@ function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusBadge(status: string) {
-  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>Aprovada</Badge>;
-  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>Rejeitada</Badge>;
-  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>Pendente</Badge>;
+function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
+  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.home.approved")}</Badge>;
+  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>{t("axisBiz.home.rejected")}</Badge>;
+  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>{t("axisBiz.home.pending")}</Badge>;
 }
 
 function MemberAvatar({ name, email, primaryHex }: { name?: string; email?: string; primaryHex: string }) {
@@ -100,6 +102,7 @@ function CreateOrgDialog({ onCreated }: { onCreated: () => void }) {
 }
 
 export default function BusinessHome() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -169,7 +172,7 @@ export default function BusinessHome() {
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Configure sua empresa para começar.</p>
+          <p className="text-sm text-muted-foreground mt-1">{t("axisBiz.home.noOrgHint")}</p>
         </div>
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -180,8 +183,8 @@ export default function BusinessHome() {
             <Building2 className="w-7 h-7" style={{ color: primaryHex }} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Nenhuma empresa ainda</h3>
-            <p className="text-sm text-muted-foreground mt-1 max-w-xs">Crie sua empresa para começar a gerenciar as despesas da equipe</p>
+            <h3 className="text-lg font-semibold text-foreground">{t("axisBiz.home.noOrg")}</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs">{t("axisBiz.home.noOrgHint")}</p>
           </div>
           <CreateOrgDialog onCreated={() => {}} />
         </motion.div>
@@ -195,7 +198,7 @@ export default function BusinessHome() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Olá, {user?.firstName ?? "gestor"}. Resumo de {format(now, "MMMM 'de' yyyy", { locale: ptBR })}.
+            {t("axisBiz.home.greeting.morning")}, {user?.firstName ?? ""}. {format(now, "MMMM 'de' yyyy", { locale: ptBR })}.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -235,7 +238,7 @@ export default function BusinessHome() {
               )}
               <div>
                 <h2 className="text-sm font-bold text-foreground" data-testid="text-org-name">{activeOrg.name}</h2>
-                <p className="text-xs text-muted-foreground">{members?.length ?? 0} colaborador{(members?.length ?? 0) !== 1 ? "es" : ""}</p>
+                <p className="text-xs text-muted-foreground">{members?.length ?? 0} {t("axisBiz.collaborators.title").toLowerCase()}</p>
               </div>
               <Badge className="ml-1 text-[10px]" style={{ background: `${primaryHex}20`, color: primaryHex, border: `1px solid ${primaryHex}35` }}>
                 {activeOrg.isAdmin ? "Administrador" : "Colaborador"}
@@ -243,7 +246,7 @@ export default function BusinessHome() {
             </div>
             <Link href="/business/app/colaboradores">
               <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" data-testid="link-view-team">
-                <Users className="w-3.5 h-3.5" />Ver equipe <ArrowRight className="w-3 h-3" />
+                <Users className="w-3.5 h-3.5" />{t("axisBiz.collaborators.title")} <ArrowRight className="w-3 h-3" />
               </button>
             </Link>
           </div>
@@ -251,25 +254,25 @@ export default function BusinessHome() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               {
-                label: "Total do mês", value: formatBRL(metrics.total), color: primaryHex,
-                sub: "despesas não rejeitadas", Icon: TrendingUp, testId: "card-total-month",
+                label: t("axisBiz.home.totalMonth"), value: formatBRL(metrics.total), color: primaryHex,
+                sub: t("axisBiz.home.monthlyExpenses"), Icon: TrendingUp, testId: "card-total-month",
               },
               {
-                label: "Aprovadas", value: formatBRL(metrics.approved), color: EMERALD,
-                sub: "total aprovado", Icon: CheckCircle2, testId: "card-approved",
+                label: t("axisBiz.home.approved"), value: formatBRL(metrics.approved), color: EMERALD,
+                sub: t("axisBiz.home.approvedAmount"), Icon: CheckCircle2, testId: "card-approved",
               },
               {
-                label: "Aguardando aprovação",
+                label: t("axisBiz.home.pendingApprovals"),
                 value: String(metrics.pendingCount),
                 color: metrics.pendingCount > 0 ? AMBER : EMERALD,
-                sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : "Tudo em dia",
+                sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : "✓",
                 Icon: metrics.pendingCount > 0 ? AlertCircle : CheckCircle2,
                 testId: "card-pending",
                 highlight: metrics.pendingCount > 0,
               },
               {
-                label: "Rejeitadas", value: String(metrics.rejectedCount), color: RED,
-                sub: "no mês atual", Icon: XCircle, testId: "card-rejected",
+                label: t("axisBiz.home.rejected"), value: String(metrics.rejectedCount), color: RED,
+                sub: "", Icon: XCircle, testId: "card-rejected",
               },
             ].map((card, i) => (
               <motion.div
@@ -304,17 +307,17 @@ export default function BusinessHome() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Últimas despesas</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.home.recentExpenses")}</p>
                 <Link href="/business/app/expenses">
                   <button className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="link-all-expenses">
-                    Ver todas <ArrowRight className="w-2.5 h-2.5" />
+                    {t("axisBiz.home.viewAll")} <ArrowRight className="w-2.5 h-2.5" />
                   </button>
                 </Link>
               </div>
               {recentExpenses.length === 0 ? (
                 <div className="flex flex-col items-center py-6 gap-2">
                   <ReceiptText className="w-7 h-7 text-muted-foreground opacity-30" />
-                  <p className="text-xs text-muted-foreground">Nenhuma despesa registrada</p>
+                  <p className="text-xs text-muted-foreground">{t("axisBiz.home.noRecentExpenses")}</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -326,7 +329,7 @@ export default function BusinessHome() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <p className="text-xs font-semibold text-foreground">{formatBRL(e.amount)}</p>
-                        {statusBadge(e.status)}
+                        <StatusBadge status={e.status} />
                       </div>
                     </div>
                   ))}
@@ -336,9 +339,9 @@ export default function BusinessHome() {
 
             <div className="flex flex-col gap-4">
               <div className="rounded-2xl p-5 flex-1" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Top colaboradores do mês</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.collaborators.title")}</p>
                 {topCollaborators.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">Sem dados este mês</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">{t("axisBiz.home.noExpenses")}</p>
                 ) : (
                   <div className="flex flex-col gap-3">
                     {topCollaborators.map(([userId, data]) => (
@@ -355,9 +358,9 @@ export default function BusinessHome() {
               </div>
 
               <div className="rounded-2xl p-5 flex-1" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por categoria</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.reports.byCategory")}</p>
                 {categoryBreakdown.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">Sem dados este mês</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">{t("axisBiz.home.noExpenses")}</p>
                 ) : (
                   <div className="flex flex-col gap-2.5">
                     {categoryBreakdown.map(([cat, total]) => (

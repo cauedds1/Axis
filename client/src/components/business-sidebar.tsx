@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarMenu, SidebarMenuItem, SidebarMenuButton,
@@ -14,6 +15,7 @@ import {
 } from "@/components/theme-provider";
 
 function PendingBar({ count, primaryHex }: { count: number; primaryHex: string }) {
+  const { t } = useTranslation();
   const hasItems = count > 0;
   const color = hasItems ? "#F59E0B" : primaryHex;
   return (
@@ -21,10 +23,10 @@ function PendingBar({ count, primaryHex }: { count: number; primaryHex: string }
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
           <AlertCircle className="h-3 w-3" style={{ color }} />
-          <span className="text-[11px] text-muted-foreground font-medium">Aprovações</span>
+          <span className="text-[11px] text-muted-foreground font-medium">{t("axisBiz.sidebar.approvals")}</span>
         </div>
         <span className="text-[11px] font-bold" style={{ color }}>
-          {count} {count === 1 ? "pendente" : "pendentes"}
+          {count} {t("axisBiz.sidebar.pending", { count })}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -58,6 +60,7 @@ function UserAvatar({ name, email, primaryHex }: { name?: string; email?: string
 }
 
 export function BusinessSidebar() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { businessTheme } = useBusinessTheme();
@@ -76,30 +79,30 @@ export function BusinessSidebar() {
   const isCollaborator = user?.accountType === "collaborator";
 
   const adminMainNav = [
-    { href: "/business/app",              icon: LayoutDashboard, label: "Dashboard",    color: palette.dashboard },
-    { href: "/business/app/expenses",     icon: ReceiptText,     label: "Despesas",     color: palette.expenses },
-    { href: "/business/app/colaboradores",icon: Users,           label: "Colaboradores",color: palette.colaboradores },
+    { href: "/business/app",               icon: LayoutDashboard, label: t("axisBiz.sidebar.nav.dashboard"),     color: palette.dashboard },
+    { href: "/business/app/expenses",      icon: ReceiptText,     label: t("axisBiz.sidebar.nav.expenses"),      color: palette.expenses },
+    { href: "/business/app/colaboradores", icon: Users,           label: t("axisBiz.sidebar.nav.collaborators"), color: palette.colaboradores },
   ];
 
   const adminManagementNav = [
-    { href: "/business/app/reports", icon: BarChart3, label: "Relatórios", color: palette.reports },
-    { href: "/business/app/config",  icon: Settings,  label: "Config",     color: palette.config },
+    { href: "/business/app/reports", icon: BarChart3, label: t("axisBiz.sidebar.nav.reports"),  color: palette.reports },
+    { href: "/business/app/config",  icon: Settings,  label: t("axisBiz.sidebar.nav.settings"), color: palette.config },
   ];
 
   const collabMainNav = [
-    { href: "/business/app",          icon: LayoutDashboard, label: "Dashboard", color: palette.dashboard },
-    { href: "/business/app/expenses", icon: ReceiptText,     label: "Despesas",  color: palette.expenses },
+    { href: "/business/app",          icon: LayoutDashboard, label: t("axisBiz.sidebar.nav.dashboard"), color: palette.dashboard },
+    { href: "/business/app/expenses", icon: ReceiptText,     label: t("axisBiz.sidebar.nav.expenses"),  color: palette.expenses },
   ];
 
   const collabPersonalNav = [
-    { href: "/business/app/relatorio",   icon: FileText,    label: "Relatório",  color: palette.reports },
-    { href: "/business/app/reembolsos",  icon: Banknote,    label: "Reembolsos", color: palette.expenses },
-    { href: "/business/app/perfil",      icon: UserCircle,  label: "Perfil",     color: palette.colaboradores },
+    { href: "/business/app/relatorio",  icon: FileText,   label: t("axisBiz.sidebar.nav.report"),         color: palette.reports },
+    { href: "/business/app/reembolsos", icon: Banknote,   label: t("axisBiz.sidebar.nav.reimbursements"), color: palette.expenses },
+    { href: "/business/app/perfil",     icon: UserCircle, label: t("axisBiz.sidebar.nav.profile"),        color: palette.colaboradores },
   ];
 
   const mainNav = isCollaborator ? collabMainNav : adminMainNav;
   const managementNav = isCollaborator ? collabPersonalNav : adminManagementNav;
-  const managementLabel = isCollaborator ? "Pessoal" : "Gestão";
+  const managementLabel = isCollaborator ? t("axisBiz.sidebar.personal") : t("axisBiz.sidebar.management");
 
   function NavItem({ item }: { item: typeof mainNav[0] }) {
     const isActive = location === item.href;
@@ -138,7 +141,7 @@ export function BusinessSidebar() {
               <span style={{ color: primaryHex }}>Business</span>
             </h1>
             <span className="text-[10px] text-muted-foreground font-medium tracking-wide mt-0.5 block">
-              Controle de despesas
+              {t("axisBiz.sidebar.expenseControl")}
             </span>
           </div>
         </Link>
@@ -193,7 +196,7 @@ export function BusinessSidebar() {
           data-testid="button-business-logout"
         >
           <LogOut className="h-3.5 w-3.5" />
-          Sair
+          {t("axisBiz.sidebar.logout")}
         </button>
       </SidebarFooter>
     </Sidebar>

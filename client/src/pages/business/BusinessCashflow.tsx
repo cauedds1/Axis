@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { TrendingUp, ArrowDownCircle, ArrowUpCircle, AlertTriangle, Calendar } from "lucide-react";
 import type { BusinessBill, BusinessReceivable } from "@shared/schema";
+import { useTranslation } from "react-i18next";
 
 const GREEN = "#34D399";
 const ACCENT = "#F87171";
@@ -22,26 +23,28 @@ function isThisMonth(d: string | Date) {
   return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
 }
 
-function getWeekLabel(dueDate: string | Date): string {
+const WEEK_KEYS = ["overdue", "thisWeek", "nextWeek", "in3Weeks", "in4WeeksOrMore"] as const;
+type WeekKey = typeof WEEK_KEYS[number];
+
+function getWeekKey(dueDate: string | Date): WeekKey {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil((due.getTime() - now.getTime()) / 86400000);
-  if (diffDays < 0) return "Vencidos";
-  if (diffDays <= 7) return "Esta semana";
-  if (diffDays <= 14) return "Próxima semana";
-  if (diffDays <= 21) return "Em 3 semanas";
-  return "Em 4 semanas ou mais";
+  if (diffDays < 0) return "overdue";
+  if (diffDays <= 7) return "thisWeek";
+  if (diffDays <= 14) return "nextWeek";
+  if (diffDays <= 21) return "in3Weeks";
+  return "in4WeeksOrMore";
 }
-
-const WEEK_ORDER = ["Vencidos", "Esta semana", "Próxima semana", "Em 3 semanas", "Em 4 semanas ou mais"];
 
 type TimelineItem =
   | { kind: "bill"; data: BusinessBill }
   | { kind: "receivable"; data: BusinessReceivable };
 
 export default function BusinessCashflow() {
+  const { t } = useTranslation();
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const orgId = orgs?.[0]?.id;
 
@@ -75,19 +78,18 @@ export default function BusinessCashflow() {
     ...pendingRec.map(r => ({ kind: "receivable" as const, data: r })),
   ].sort((a, b) => new Date(a.data.dueDate as string).getTime() - new Date(b.data.dueDate as string).getTime());
 
-  const grouped: Record<string, TimelineItem[]> = {};
+  const grouped: Record<WeekKey, TimelineItem[]> = { overdue: [], thisWeek: [], nextWeek: [], in3Weeks: [], in4WeeksOrMore: [] };
   for (const item of allItems) {
-    const label = getWeekLabel(item.data.dueDate as string);
-    if (!grouped[label]) grouped[label] = [];
-    grouped[label].push(item);
+    const key = getWeekKey(item.data.dueDate as string);
+    grouped[key].push(item);
   }
 
   const summaryCards = [
-    { label: "Total a Pagar", sublabel: "mês atual — pendente", value: fmtCurrency(totalAPagar), color: ACCENT, icon: ArrowDownCircle },
-    { label: "Total a Receber", sublabel: "mês atual — pendente", value: fmtCurrency(totalAReceber), color: GREEN, icon: ArrowUpCircle },
+    { label: t("axisBiz.cashflow.totalDue"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtCurrency(totalAPagar), color: ACCENT, icon: ArrowDownCircle },
+    { label: t("axisBiz.cashflow.totalReceivable"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtCurrency(totalAReceber), color: GREEN, icon: ArrowUpCircle },
     {
-      label: "Saldo Projetado",
-      sublabel: saldoProjetado >= 0 ? "resultado positivo" : "atenção: déficit",
+      label: t("axisBiz.cashflow.projectedBalance"),
+      sublabel: saldoProjetado >= 0 ? t("axisBiz.cashflow.positiveResult") : t("axisBiz.cashflow.deficitWarning"),
       value: fmtCurrency(saldoProjetado),
       color: saldoProjetado >= 0 ? BLUE : ACCENT,
       icon: TrendingUp,
@@ -98,8 +100,8 @@ export default function BusinessCashflow() {
     <div className="p-6 max-w-5xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Fluxo de Caixa</h1>
-          <p className="text-sm text-muted-foreground">Visão geral das entradas e saídas do mês</p>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">{t("axisBiz.cashflow.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("axisBiz.cashflow.subtitle")}</p>
         </div>
 
         {saldoProjetado < 0 && !isLoading && (
@@ -111,11 +113,11 @@ export default function BusinessCashflow() {
           >
             <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: ACCENT }} />
             <div>
-              <p className="text-sm font-bold" style={{ color: ACCENT }}>Atenção: Furo de Caixa Projetado</p>
+              <p className="text-sm font-bold" style={{ color: ACCENT }}>{t("axisBiz.cashflow.cashGapWarningTitle")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                As contas a pagar superam os recebíveis este mês em{" "}
-                <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(Math.abs(saldoProjetado))}</span>.
-                Revise seus prazos ou antecipe cobranças.
+                {t("axisBiz.cashflow.cashGapWarningDesc")}{" "}
+                <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(Math.abs(saldoProjetado))}</span>.{" "}
+                {t("axisBiz.cashflow.cashGapAdvice")}
               </p>
             </div>
           </motion.div>
@@ -143,8 +145,8 @@ export default function BusinessCashflow() {
 
         <div className="mb-4 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Próximos 30 dias</h2>
-          <span className="text-xs text-muted-foreground">— entradas e saídas pendentes</span>
+          <h2 className="text-sm font-semibold">{t("axisBiz.cashflow.next30Days")}</h2>
+          <span className="text-xs text-muted-foreground">— {t("axisBiz.cashflow.pendingInOut")}</span>
         </div>
 
         {isLoading ? (
@@ -154,28 +156,28 @@ export default function BusinessCashflow() {
         ) : allItems.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Nenhuma movimentação futura</p>
-            <p className="text-xs mt-1 opacity-60">Adicione contas a pagar e a receber para ver o fluxo</p>
+            <p className="text-sm font-medium">{t("axisBiz.cashflow.noMovements")}</p>
+            <p className="text-xs mt-1 opacity-60">{t("axisBiz.cashflow.noMovementsHint")}</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {WEEK_ORDER.filter(w => grouped[w]?.length > 0).map(weekLabel => (
-              <div key={weekLabel}>
+            {WEEK_KEYS.filter(k => grouped[k]?.length > 0).map(weekKey => (
+              <div key={weekKey}>
                 <div className="flex items-center gap-3 mb-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{weekLabel}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t(`axisBiz.cashflow.week.${weekKey}`)}</p>
                   <div className="flex-1 h-px bg-border/40" />
                   <div className="text-xs text-muted-foreground">
-                    {grouped[weekLabel].reduce((acc, item) => {
+                    {grouped[weekKey].reduce((acc, item) => {
                       return item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount;
                     }, 0) >= 0 ? (
-                      <span style={{ color: GREEN }}>+{fmtCurrency(grouped[weekLabel].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
+                      <span style={{ color: GREEN }}>+{fmtCurrency(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
                     ) : (
-                      <span style={{ color: ACCENT }}>{fmtCurrency(grouped[weekLabel].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
+                      <span style={{ color: ACCENT }}>{fmtCurrency(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
                     )}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {grouped[weekLabel].map((item, idx) => {
+                  {grouped[weekKey].map((item, idx) => {
                     const isBill = item.kind === "bill";
                     const color = isBill ? ACCENT : GREEN;
                     const d = item.data;

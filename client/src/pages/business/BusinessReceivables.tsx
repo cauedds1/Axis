@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, ArrowUpCircle, CheckCircle2, AlertTriangle, Trash2, X, Clock,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { BusinessReceivable } from "@shared/schema";
 
 const GREEN = "#34D399";
@@ -32,18 +33,18 @@ function getDueStatus(dueDate: string | Date, status: string) {
   return "pending";
 }
 
-function StatusBadge({ status, dueDate }: { status: string; dueDate: string }) {
+function StatusBadge({ status, dueDate, t }: { status: string; dueDate: string; t: (k: string) => string }) {
   const s = getDueStatus(dueDate, status);
-  const map: Record<string, { label: string; color: string; bg: string }> = {
-    received: { label: "Recebida", color: GREEN, bg: "rgba(52,211,153,0.12)" },
-    overdue: { label: "Vencida", color: ACCENT, bg: "rgba(248,113,113,0.12)" },
-    urgent: { label: "Vence hoje/amanhã", color: AMBER, bg: "rgba(245,158,11,0.12)" },
-    pending: { label: "Pendente", color: BLUE, bg: "rgba(59,130,246,0.12)" },
+  const map: Record<string, { labelKey: string; color: string; bg: string }> = {
+    received: { labelKey: "axisBiz.receivables.statusReceived", color: GREEN, bg: "rgba(52,211,153,0.12)" },
+    overdue: { labelKey: "axisBiz.receivables.statusOverdue", color: ACCENT, bg: "rgba(248,113,113,0.12)" },
+    urgent: { labelKey: "axisBiz.receivables.statusUrgent", color: AMBER, bg: "rgba(245,158,11,0.12)" },
+    pending: { labelKey: "axisBiz.receivables.statusPending", color: BLUE, bg: "rgba(59,130,246,0.12)" },
   };
   const cfg = map[s] ?? map.pending;
   return (
     <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ color: cfg.color, background: cfg.bg }}>
-      {cfg.label}
+      {t(cfg.labelKey)}
     </span>
   );
 }
@@ -52,10 +53,12 @@ function ReceivableRow({
   rec,
   onReceive,
   onDelete,
+  t,
 }: {
   rec: BusinessReceivable;
   onReceive: (paymentMethod: string) => void;
   onDelete: () => void;
+  t: (k: string) => string;
 }) {
   const [showPayModal, setShowPayModal] = useState(false);
   const [payMethod, setPayMethod] = useState("Pix");
@@ -67,8 +70,8 @@ function ReceivableRow({
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-background border border-border rounded-2xl w-full max-w-xs shadow-2xl p-5">
-            <h3 className="font-bold mb-1">Dar Baixa</h3>
-            <p className="text-xs text-muted-foreground mb-4">Como o valor foi recebido?</p>
+            <h3 className="font-bold mb-1">{t("axisBiz.receivables.settleTitle")}</h3>
+            <p className="text-xs text-muted-foreground mb-4">{t("axisBiz.receivables.settleQuestion")}</p>
             <div className="space-y-1.5 mb-4">
               {PAYMENT_METHODS.map(m => (
                 <button key={m} onClick={() => setPayMethod(m)}
@@ -81,9 +84,9 @@ function ReceivableRow({
               ))}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowPayModal(false)} className="flex-1 py-2 rounded-xl text-sm bg-muted" data-testid="button-cancel-baixa">Cancelar</button>
+              <button onClick={() => setShowPayModal(false)} className="flex-1 py-2 rounded-xl text-sm bg-muted" data-testid="button-cancel-baixa">{t("common.cancel")}</button>
               <button onClick={() => { onReceive(payMethod); setShowPayModal(false); }} className="flex-1 py-2 rounded-xl text-sm text-white font-semibold" style={{ background: GREEN }} data-testid="button-confirm-baixa">
-                Confirmar
+                {t("common.confirm")}
               </button>
             </div>
           </motion.div>
@@ -102,7 +105,7 @@ function ReceivableRow({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-semibold truncate">{rec.description}</p>
-              <StatusBadge status={rec.status} dueDate={rec.dueDate as string} />
+              <StatusBadge status={rec.status} dueDate={rec.dueDate as string} t={t} />
               {rec.paymentMethod && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{rec.paymentMethod}</span>
               )}
@@ -118,17 +121,19 @@ function ReceivableRow({
           <div className="flex-shrink-0 text-right">
             <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtCurrency(rec.amount)}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {rec.status === "received" ? `Recebido ${fmtDate(rec.receivedAt as string ?? rec.dueDate as string)}` : `Vence ${fmtDate(rec.dueDate as string)}`}
+              {rec.status === "received"
+                ? `${t("axisBiz.receivables.receivedOn")} ${fmtDate(rec.receivedAt as string ?? rec.dueDate as string)}`
+                : `${t("axisBiz.receivables.dueLabel")} ${fmtDate(rec.dueDate as string)}`}
             </p>
           </div>
 
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
             {rec.status !== "received" && (
-              <button onClick={() => setShowPayModal(true)} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors" title="Dar Baixa" data-testid={`button-receive-${rec.id}`}>
+              <button onClick={() => setShowPayModal(true)} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors" title={t("axisBiz.receivables.settle")} data-testid={`button-receive-${rec.id}`}>
                 <CheckCircle2 className="w-3.5 h-3.5" style={{ color: GREEN }} />
               </button>
             )}
-            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" title="Excluir" data-testid={`button-delete-receivable-${rec.id}`}>
+            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors" title={t("common.delete")} data-testid={`button-delete-receivable-${rec.id}`}>
               <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-red-400" />
             </button>
           </div>
@@ -143,6 +148,7 @@ const EMPTY_FORM = {
 };
 
 function NewReceivableModal({ orgId, onClose }: { orgId: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
 
   const mutation = useMutation({
@@ -175,37 +181,37 @@ function NewReceivableModal({ orgId, onClose }: { orgId: string; onClose: () => 
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-background border border-border rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div>
-            <h2 className="font-bold text-base">Novo Recebível</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Registrar venda, serviço ou cobrança futura</p>
+            <h2 className="font-bold text-base">{t("axisBiz.receivables.modalTitle")}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("axisBiz.receivables.modalSubtitle")}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted transition-colors" data-testid="button-close-modal-receivable">
             <X className="w-4 h-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          {field("description", "Descrição", "text", true, "Venda, prestação de serviço...")}
+          {field("description", t("axisBiz.receivables.fieldDescription"), "text", true, t("axisBiz.receivables.fieldDescriptionPlaceholder"))}
           <div className="grid grid-cols-2 gap-3">
-            {field("amount", "Valor (R$)", "number", true, "0,00")}
-            {field("dueDate", "Vencimento", "date", true)}
+            {field("amount", t("axisBiz.receivables.fieldAmount"), "number", true, "0.00")}
+            {field("dueDate", t("axisBiz.receivables.fieldDueDate"), "date", true)}
           </div>
-          {field("client", "Cliente", "text", false, "Nome do cliente")}
+          {field("client", t("axisBiz.receivables.fieldClient"), "text", false, t("axisBiz.receivables.fieldClientPlaceholder"))}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">Forma de Pagamento</label>
+            <label className="block text-xs text-muted-foreground mb-1.5 font-medium">{t("axisBiz.receivables.fieldPaymentMethod")}</label>
             <select value={form.paymentMethod} onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
               className="w-full bg-muted/50 border border-border/50 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               data-testid="select-receivable-paymentMethod"
             >
-              <option value="">Selecione...</option>
+              <option value="">{t("axisBiz.receivables.selectPlaceholder")}</option>
               {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {field("costCenter", "Centro de Custo", "text", false, "Ex: Projeto X")}
-            {field("notes", "Observações", "text", false, "Opcional...")}
+            {field("costCenter", t("axisBiz.bills.fieldCostCenter"), "text", false, t("axisBiz.bills.fieldCostCenterPlaceholder"))}
+            {field("notes", t("axisBiz.bills.fieldNotes"), "text", false, t("common.optional"))}
           </div>
           <div className="pt-2">
             <button type="submit" disabled={mutation.isPending} className="w-full py-3 rounded-xl font-semibold text-sm text-white transition-all disabled:opacity-50" style={{ background: "linear-gradient(135deg, #059669, #34D399)" }} data-testid="button-submit-receivable">
-              {mutation.isPending ? "Salvando..." : "Salvar recebível"}
+              {mutation.isPending ? t("common.saving") : t("axisBiz.receivables.saveReceivable")}
             </button>
           </div>
         </form>
@@ -217,6 +223,7 @@ function NewReceivableModal({ orgId, onClose }: { orgId: string; onClose: () => 
 type TabFilter = "all" | "pending" | "overdue" | "received";
 
 export default function BusinessReceivables() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabFilter>("all");
   const [showModal, setShowModal] = useState(false);
 
@@ -254,10 +261,10 @@ export default function BusinessReceivables() {
   });
 
   const tabs: { key: TabFilter; label: string }[] = [
-    { key: "all", label: "Todas" },
-    { key: "pending", label: "Pendentes" },
-    { key: "overdue", label: "Vencidas" },
-    { key: "received", label: "Recebidas" },
+    { key: "all", label: t("axisBiz.receivables.tabAll") },
+    { key: "pending", label: t("axisBiz.receivables.tabPending") },
+    { key: "overdue", label: t("axisBiz.receivables.tabOverdue") },
+    { key: "received", label: t("axisBiz.receivables.tabReceived") },
   ];
 
   return (
@@ -267,12 +274,12 @@ export default function BusinessReceivables() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight mb-1">Contas a Receber</h1>
-            <p className="text-sm text-muted-foreground">Vendas, cobranças e recebimentos futuros</p>
+            <h1 className="text-2xl font-bold tracking-tight mb-1">{t("axisBiz.receivables.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("axisBiz.receivables.subtitle")}</p>
           </div>
           <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: "linear-gradient(135deg, #059669, #34D399)" }} data-testid="button-new-receivable">
             <Plus className="w-4 h-4" />
-            Novo Recebível
+            {t("axisBiz.receivables.newReceivable")}
           </button>
         </div>
 
@@ -280,19 +287,19 @@ export default function BusinessReceivables() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5 rounded-2xl p-4 border" style={{ background: "rgba(248,113,113,0.06)", borderColor: "rgba(248,113,113,0.2)" }}>
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-4 h-4" style={{ color: ACCENT }} />
-              <p className="text-sm font-semibold" style={{ color: ACCENT }}>Inadimplência — {overdueItems.length} conta{overdueItems.length > 1 ? "s" : ""} vencida{overdueItems.length > 1 ? "s" : ""}</p>
+              <p className="text-sm font-semibold" style={{ color: ACCENT }}>{t("axisBiz.receivables.overdueAlert", { count: overdueItems.length })}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Total em atraso: <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(overdueItems.reduce((acc, r) => acc + r.amount, 0))}</span>
+              {t("axisBiz.receivables.overdueTotal")} <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(overdueItems.reduce((acc, r) => acc + r.amount, 0))}</span>
             </p>
           </motion.div>
         )}
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: "A Receber (mês)", value: fmtCurrency(totalPending), color: BLUE, icon: ArrowUpCircle },
-            { label: "Já Recebido", value: fmtCurrency(totalReceived), color: GREEN, icon: CheckCircle2 },
-            { label: "Vencidos sem baixa", value: String(overdueItems.length), color: ACCENT, icon: AlertTriangle },
+            { label: t("axisBiz.receivables.cardPending"), value: fmtCurrency(totalPending), color: BLUE, icon: ArrowUpCircle },
+            { label: t("axisBiz.receivables.cardReceived"), value: fmtCurrency(totalReceived), color: GREEN, icon: CheckCircle2 },
+            { label: t("axisBiz.receivables.cardOverdue"), value: String(overdueItems.length), color: ACCENT, icon: AlertTriangle },
           ].map((card, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
               className="rounded-2xl border border-border/50 bg-card p-4"
@@ -326,8 +333,8 @@ export default function BusinessReceivables() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <ArrowUpCircle className="w-10 h-10 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">Nenhum recebível aqui</p>
-            <p className="text-xs mt-1 opacity-60">Adicione um recebível com o botão acima</p>
+            <p className="text-sm font-medium">{t("axisBiz.receivables.emptyTitle")}</p>
+            <p className="text-xs mt-1 opacity-60">{t("axisBiz.receivables.emptyHint")}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -338,6 +345,7 @@ export default function BusinessReceivables() {
                   rec={rec}
                   onReceive={(pm) => receiveMutation.mutate({ id: rec.id, paymentMethod: pm })}
                   onDelete={() => deleteMutation.mutate(rec.id)}
+                  t={t}
                 />
               ))}
             </AnimatePresence>

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,14 +23,16 @@ function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusBadge(status: string) {
-  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>Aprovado</Badge>;
-  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>Rejeitado</Badge>;
-  if (status === "paid") return <Badge className="text-[10px] font-semibold" style={{ background: "#6366F115", color: "#818CF8", border: "1px solid #6366F130" }}>Pago</Badge>;
-  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>Pendente</Badge>;
+function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
+  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.expenses.statusApproved")}</Badge>;
+  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>{t("axisBiz.expenses.statusRejected")}</Badge>;
+  if (status === "paid") return <Badge className="text-[10px] font-semibold" style={{ background: "#6366F115", color: "#818CF8", border: "1px solid #6366F130" }}>{t("axisBiz.expenses.statusPaid")}</Badge>;
+  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>{t("axisBiz.expenses.statusPending")}</Badge>;
 }
 
 function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <Dialog open={!!expense} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -52,24 +55,24 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
           )}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-xs text-muted-foreground mb-1">Valor</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelAmount")}</p>
               <p className="font-bold text-foreground" data-testid="text-expense-amount">{formatBRL(expense?.amount ?? 0)}</p>
             </div>
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-xs text-muted-foreground mb-1">Data</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelDate")}</p>
               <p className="font-medium text-foreground">{expense?.date ? format(new Date(expense.date), "dd/MM/yyyy") : "—"}</p>
             </div>
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-xs text-muted-foreground mb-1">Colaborador</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.filterCollaborator")}</p>
               <p className="font-medium text-foreground truncate">{expense?.userName || expense?.userEmail || "—"}</p>
             </div>
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <p className="text-xs text-muted-foreground mb-1">Pagamento</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelPayment")}</p>
               <p className="font-medium text-foreground">{expense?.paymentMethod || "—"}</p>
             </div>
             {expense?.categoryName && (
               <div className="rounded-xl p-3 col-span-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-xs text-muted-foreground mb-1">Categoria</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelCategory")}</p>
                 <p className="font-medium text-foreground">{expense.categoryName}</p>
               </div>
             )}
@@ -79,7 +82,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
                 if (!items.length) return null;
                 return (
                   <div className="rounded-xl p-3 col-span-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <p className="text-xs text-muted-foreground mb-2">Itens do cupom</p>
+                    <p className="text-xs text-muted-foreground mb-2">{t("axisBiz.expenses.receiptItems")}</p>
                     <div className="flex flex-col gap-1.5">
                       {items.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-2 text-sm">
@@ -98,13 +101,13 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
             })()}
             {expense?.notes && (
               <div className="rounded-xl p-3 col-span-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelNotes")}</p>
                 <p className="text-sm text-foreground">{expense.notes}</p>
               </div>
             )}
             <div className="col-span-2 flex items-center gap-2">
               <p className="text-xs text-muted-foreground">Status:</p>
-              {statusBadge(expense?.status ?? "pending_review")}
+              <StatusBadge status={expense?.status ?? "pending_review"} />
             </div>
           </div>
         </div>
@@ -114,6 +117,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
 }
 
 function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -136,10 +140,10 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
     onSuccess: (data: any) => {
       if (data?.error) { toast({ title: data.error, variant: "destructive" }); return; }
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", orgId, "expenses"] });
-      toast({ title: "Despesa reenviada para aprovação!" });
+      toast({ title: t("axisBiz.expenses.resubmitted") });
       onClose();
     },
-    onError: () => toast({ title: "Erro ao editar despesa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.expenses.editError"), variant: "destructive" }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -156,13 +160,13 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Pencil className="w-4 h-4" style={{ color: BLUE_LIGHT }} />
-            Editar despesa
+            {t("axisBiz.expenses.editExpense")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Valor (R$)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelAmount")}</label>
               <Input
                 type="number"
                 step="0.01"
@@ -174,7 +178,7 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Data</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelDate")}</label>
               <Input
                 type="date"
                 className="h-9 text-sm"
@@ -185,60 +189,60 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Estabelecimento</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelEstablishment")}</label>
             <Input
               className="h-9 text-sm"
               value={form.establishment}
               onChange={e => setForm(f => ({ ...f, establishment: e.target.value }))}
-              placeholder="Nome do estabelecimento"
+              placeholder={t("axisBiz.expenses.placeholderEstablishment")}
               data-testid="input-edit-establishment"
             />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelDescription")}</label>
             <Input
               className="h-9 text-sm"
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Descrição da despesa"
+              placeholder={t("axisBiz.expenses.placeholderDescription")}
               data-testid="input-edit-description"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelCategory")}</label>
               <Input
                 className="h-9 text-sm"
                 value={form.categoryName}
                 onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
-                placeholder="ex: Alimentação"
+                placeholder={t("axisBiz.expenses.placeholderCategory")}
                 data-testid="input-edit-category"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Pagamento</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelPayment")}</label>
               <Input
                 className="h-9 text-sm"
                 value={form.paymentMethod}
                 onChange={e => setForm(f => ({ ...f, paymentMethod: e.target.value }))}
-                placeholder="ex: Cartão"
+                placeholder={t("axisBiz.expenses.placeholderPayment")}
                 data-testid="input-edit-payment"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
+            <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.labelNotes")}</label>
             <Textarea
               className="text-sm min-h-[72px]"
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Informações adicionais..."
+              placeholder={t("axisBiz.expenses.placeholderNotes")}
               data-testid="input-edit-notes"
             />
           </div>
           <DialogFooter className="pt-1">
             <Button type="button" variant="outline" size="sm" className="text-xs" onClick={onClose} data-testid="button-edit-cancel">
-              Cancelar
+              {t("axisBiz.expenses.cancel")}
             </Button>
             <Button
               type="submit"
@@ -248,7 +252,7 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
               disabled={editMutation.isPending}
               data-testid="button-edit-submit"
             >
-              {editMutation.isPending ? "Enviando..." : "Reenviar para aprovação"}
+              {editMutation.isPending ? t("axisBiz.expenses.sending") : t("axisBiz.expenses.resubmitForApproval")}
             </Button>
           </DialogFooter>
         </form>
@@ -259,18 +263,19 @@ function EditExpenseModal({ expense, orgId, onClose }: { expense: any; orgId: st
 
 type StatusTab = "all" | "pending_review" | "approved" | "rejected";
 
-const STATUS_TABS: { id: StatusTab; label: string; color: string }[] = [
-  { id: "all",            label: "Todas",     color: BLUE_LIGHT },
-  { id: "pending_review", label: "Pendentes", color: "#F59E0B" },
-  { id: "approved",       label: "Aprovadas", color: "#10B981" },
-  { id: "rejected",       label: "Rejeitadas", color: "#EF4444" },
-];
-
 export default function BusinessExpenses() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
+
+  const STATUS_TABS: { id: StatusTab; label: string; color: string }[] = [
+    { id: "all",            label: t("axisBiz.expenses.allStatuses"), color: BLUE_LIGHT },
+    { id: "pending_review", label: t("axisBiz.expenses.statusPending"), color: "#F59E0B" },
+    { id: "approved",       label: t("axisBiz.expenses.statusApproved"), color: "#10B981" },
+    { id: "rejected",       label: t("axisBiz.expenses.statusRejected"), color: "#EF4444" },
+  ];
 
   const isCollaborator = user?.accountType === "collaborator";
 
@@ -343,11 +348,11 @@ export default function BusinessExpenses() {
       apiRequest("PATCH", `/api/business/organizations/${activeOrg!.id}/expenses/${id}`, { status, rejectionComment }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations", activeOrg?.id, "expenses"] });
-      toast({ title: "Despesa atualizada!" });
+      toast({ title: t("axisBiz.expenses.updated") });
       setRejectingExpense(null);
       setRejectionComment("");
     },
-    onError: () => toast({ title: "Erro ao atualizar despesa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.expenses.updateError"), variant: "destructive" }),
   });
 
   const grouped = (expenses ?? []).reduce((acc: Record<string, any[]>, e) => {
@@ -383,7 +388,7 @@ export default function BusinessExpenses() {
   if (!orgs || orgs.length === 0) return (
     <div className="p-6 max-w-5xl mx-auto flex flex-col items-center justify-center py-20 text-center gap-4">
       <ReceiptText className="w-12 h-12 text-muted-foreground" />
-      <p className="text-muted-foreground">Crie uma empresa primeiro na página <strong>Config</strong>.</p>
+      <p className="text-muted-foreground">{t("axisBiz.expenses.noOrg")}</p>
     </div>
   );
 
@@ -399,7 +404,7 @@ export default function BusinessExpenses() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="w-4 h-4 text-red-400" />
-              Rejeitar despesa
+              {t("axisBiz.expenses.rejectExpense")}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-1">
@@ -408,12 +413,12 @@ export default function BusinessExpenses() {
               {" — "}{formatBRL(rejectingExpense?.amount ?? 0)}
             </p>
             <div>
-              <label className="text-xs text-muted-foreground mb-1.5 block">Motivo da rejeição (opcional)</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">{t("axisBiz.expenses.rejectionReasonOptional")}</label>
               <Textarea
                 className="text-sm min-h-[80px]"
                 value={rejectionComment}
                 onChange={e => setRejectionComment(e.target.value)}
-                placeholder="ex: Falta comprovante, Categoria incorreta..."
+                placeholder={t("axisBiz.expenses.rejectionPlaceholder")}
                 data-testid="input-rejection-comment"
               />
             </div>
@@ -426,7 +431,7 @@ export default function BusinessExpenses() {
               onClick={() => { setRejectingExpense(null); setRejectionComment(""); }}
               data-testid="button-reject-cancel"
             >
-              Cancelar
+              {t("axisBiz.expenses.cancel")}
             </Button>
             <Button
               size="sm"
@@ -435,7 +440,7 @@ export default function BusinessExpenses() {
               disabled={approveMutation.isPending}
               data-testid="button-reject-confirm"
             >
-              {approveMutation.isPending ? "Rejeitando..." : "Confirmar rejeição"}
+              {approveMutation.isPending ? t("axisBiz.expenses.rejecting") : t("axisBiz.expenses.confirmRejection")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -443,20 +448,20 @@ export default function BusinessExpenses() {
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 print:hidden">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Despesas</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("axisBiz.expenses.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isCollaborator ? "Suas despesas submetidas" : "Gerencie e exporte as despesas da equipe"}
+            {t("axisBiz.expenses.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()} className="text-xs" data-testid="button-print">
             <Printer className="w-3.5 h-3.5 mr-1.5" />
-            Imprimir / PDF
+            {t("axisBiz.expenses.printPdf")}
           </Button>
           {!isCollaborator && (
             <Button size="sm" onClick={handleExportExcel} className="text-xs border-0" style={{ background: BLUE, color: "white" }} data-testid="button-export-excel">
               <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
-              Exportar Excel
+              {t("axisBiz.expenses.exportExcel")}
             </Button>
           )}
         </div>
@@ -518,7 +523,7 @@ export default function BusinessExpenses() {
           data-testid="button-toggle-filters"
         >
           <Filter className="w-4 h-4" />
-          Filtros adicionais
+          {t("axisBiz.expenses.additionalFilters")}
           {showFilters ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </button>
         {showFilters && (
@@ -528,13 +533,13 @@ export default function BusinessExpenses() {
           >
             {!isCollaborator && (
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Colaborador</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.filterCollaborator")}</label>
                 <Select value={filterUser} onValueChange={setFilterUser}>
                   <SelectTrigger className="h-8 text-xs" data-testid="select-filter-user">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="all">{t("axisBiz.expenses.filterAll")}</SelectItem>
                     {members?.map((m: any) => (
                       <SelectItem key={m.userId} value={m.userId}>{m.userName || m.userEmail}</SelectItem>
                     ))}
@@ -543,11 +548,11 @@ export default function BusinessExpenses() {
               </div>
             )}
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Data início</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.startDate")}</label>
               <Input type="date" className="h-8 text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} data-testid="input-start-date" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Data fim</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t("axisBiz.expenses.endDate")}</label>
               <Input type="date" className="h-8 text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} data-testid="input-end-date" />
             </div>
           </div>
@@ -556,7 +561,7 @@ export default function BusinessExpenses() {
 
       {activeOrg && (
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">{expenses?.length ?? 0} despesas encontradas</p>
+          <p className="text-xs text-muted-foreground">{t("axisBiz.expenses.found", { count: expenses?.length ?? 0 })}</p>
           <p className="text-sm font-semibold text-foreground">
             Total: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalAmount)}</span>
           </p>
@@ -570,13 +575,8 @@ export default function BusinessExpenses() {
       ) : Object.keys(grouped).length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <ReceiptText className="w-10 h-10 text-muted-foreground opacity-40" />
-          <p className="text-sm text-muted-foreground">Nenhuma despesa encontrada.</p>
-          {isCollaborator && (
-            <p className="text-xs text-muted-foreground">As suas despesas enviadas aparecerão aqui.</p>
-          )}
-          {!isCollaborator && (
-            <p className="text-xs text-muted-foreground">Os colaboradores podem enviar fotos pelo WhatsApp para registrar despesas aqui.</p>
-          )}
+          <p className="text-sm text-muted-foreground">{t("axisBiz.expenses.noExpenses")}</p>
+          <p className="text-xs text-muted-foreground">{t("axisBiz.expenses.noExpensesHint")}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -629,13 +629,13 @@ export default function BusinessExpenses() {
                           <div className="text-right">
                             <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
                             {overLimit && (
-                              <div className="flex items-center gap-1 mt-0.5" title={`Limite: ${formatBRL(limit!)}`}>
+                              <div className="flex items-center gap-1 mt-0.5" title={`${t("axisBiz.expenses.limitLabel")}: ${formatBRL(limit!)}`}>
                                 <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
-                                <span className="text-[9px] text-amber-400 font-semibold">Acima do limite</span>
+                                <span className="text-[9px] text-amber-400 font-semibold">{t("axisBiz.expenses.overLimit")}</span>
                               </div>
                             )}
                           </div>
-                          {statusBadge(expense.status)}
+                          <StatusBadge status={expense.status} />
                           {isAdmin && expense.status === "pending_review" && (
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                               <button
@@ -664,11 +664,11 @@ export default function BusinessExpenses() {
                                 onClick={() => approveMutation.mutate({ id: expense.id, status: "paid" })}
                                 className="flex items-center gap-1 px-2.5 h-7 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                 style={{ background: "#6366F115", border: "1px solid #6366F130", color: "#818CF8" }}
-                                title="Marcar como pago"
+                                title={t("axisBiz.expenses.markAsPaid")}
                                 data-testid={`button-paid-${expense.id}`}
                               >
                                 <Banknote className="w-3.5 h-3.5" />
-                                Pagar
+                                {t("axisBiz.expenses.pay")}
                               </button>
                             </div>
                           )}
@@ -681,7 +681,7 @@ export default function BusinessExpenses() {
                                 data-testid={`button-edit-${expense.id}`}
                               >
                                 <Pencil className="w-3 h-3" />
-                                {expense.status === "rejected" ? "Reenviar" : "Editar"}
+                                {expense.status === "rejected" ? t("axisBiz.expenses.resubmit") : t("axisBiz.expenses.edit")}
                               </button>
                             </div>
                           )}
@@ -695,7 +695,7 @@ export default function BusinessExpenses() {
                         >
                           <AlertCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
                           <div>
-                            <p className="text-[10px] font-semibold text-red-400 mb-0.5">Motivo da rejeição</p>
+                            <p className="text-[10px] font-semibold text-red-400 mb-0.5">{t("axisBiz.expenses.rejectionReason")}</p>
                             <p className="text-xs text-red-300">{expense.rejectionComment}</p>
                           </div>
                         </div>

@@ -8,19 +8,21 @@ import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusBadge(status: string) {
-  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>Aprovado</Badge>;
-  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>Rejeitado</Badge>;
-  if (status === "paid") return <Badge className="text-[10px] font-semibold" style={{ background: "#6366F115", color: "#818CF8", border: "1px solid #6366F130" }}>Pago</Badge>;
-  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>Pendente</Badge>;
+function StatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
+  if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.expenses.statusApproved")}</Badge>;
+  if (status === "rejected") return <Badge className="text-[10px] font-semibold" style={{ background: "#EF444415", color: "#EF4444", border: "1px solid #EF444430" }}>{t("axisBiz.expenses.statusRejected")}</Badge>;
+  if (status === "paid") return <Badge className="text-[10px] font-semibold" style={{ background: "#6366F115", color: "#818CF8", border: "1px solid #6366F130" }}>{t("axisBiz.expenses.statusPaid")}</Badge>;
+  return <Badge className="text-[10px] font-semibold" style={{ background: "#F59E0B15", color: "#F59E0B", border: "1px solid #F59E0B30" }}>{t("axisBiz.expenses.statusPending")}</Badge>;
 }
 
 export default function CollaboratorHome() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -100,16 +102,16 @@ export default function CollaboratorHome() {
 
   const greeting = () => {
     const h = now.getHours();
-    if (h < 12) return "Bom dia";
-    if (h < 18) return "Boa tarde";
-    return "Boa noite";
+    if (h < 12) return t("axisBiz.collabHome.greeting.morning");
+    if (h < 18) return t("axisBiz.collabHome.greeting.afternoon");
+    return t("axisBiz.collabHome.greeting.evening");
   };
 
   const statCards = [
-    { label: "Total gasto no mês", value: formatBRL(stats.totalMonth), icon: ReceiptText, color: primaryHex },
-    { label: "Pendentes de aprovação", value: stats.pending.toString(), icon: Clock, color: "#F59E0B" },
-    { label: "Aprovadas este mês", value: stats.approvedMonth.toString(), icon: CheckCircle2, color: "#10B981" },
-    { label: "A receber", value: formatBRL(stats.aReceber), icon: Wallet, color: "#818CF8" },
+    { label: t("axisBiz.collabHome.statMonthTotal"), value: formatBRL(stats.totalMonth), icon: ReceiptText, color: primaryHex },
+    { label: t("axisBiz.collabHome.statPendingApproval"), value: stats.pending.toString(), icon: Clock, color: "#F59E0B" },
+    { label: t("axisBiz.collabHome.statApprovedMonth"), value: stats.approvedMonth.toString(), icon: CheckCircle2, color: "#10B981" },
+    { label: t("axisBiz.collabHome.statToReceive"), value: formatBRL(stats.aReceber), icon: Wallet, color: "#818CF8" },
   ];
 
   return (
@@ -117,7 +119,7 @@ export default function CollaboratorHome() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">
-            {greeting()}, {user?.firstName || "Colaborador"} 👋
+            {greeting()}, {user?.firstName || t("axisBiz.collabHome.defaultName")} 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {myMember?.jobTitle && <span>{myMember.jobTitle} · </span>}
@@ -156,7 +158,7 @@ export default function CollaboratorHome() {
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-foreground">Limite de gastos</p>
+              <p className="text-sm font-semibold text-foreground">{t("axisBiz.collabHome.spendingLimit")}</p>
               <span className="text-xs text-muted-foreground">
                 {formatBRL(stats.totalMonth)} / {formatBRL(myLimit)}
               </span>
@@ -173,7 +175,7 @@ export default function CollaboratorHome() {
             {stats.totalMonth > myLimit && (
               <div className="flex items-center gap-1.5 mt-2">
                 <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                <p className="text-xs text-red-400">Limite excedido em {formatBRL(stats.totalMonth - myLimit)}</p>
+                <p className="text-xs text-red-400">{t("axisBiz.collabHome.limitExceeded", { amount: formatBRL(stats.totalMonth - myLimit) })}</p>
               </div>
             )}
           </motion.div>
@@ -188,7 +190,7 @@ export default function CollaboratorHome() {
               className="rounded-2xl p-5"
               style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Por categoria (este mês)</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.collabHome.byCategory")}</p>
               {topCategories.map(([cat, total]) => (
                 <div key={cat} className="mb-3" data-testid={`collab-cat-${cat}`}>
                   <div className="flex items-center justify-between mb-1.5">
@@ -213,11 +215,11 @@ export default function CollaboratorHome() {
             className="rounded-2xl p-5"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Últimas despesas</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("axisBiz.collabHome.recentExpenses")}</p>
             {recentExpenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-6 gap-2">
                 <ReceiptText className="w-8 h-8 text-muted-foreground opacity-30" />
-                <p className="text-xs text-muted-foreground">Sem despesas ainda</p>
+                <p className="text-xs text-muted-foreground">{t("axisBiz.collabHome.noExpenses")}</p>
               </div>
             ) : recentExpenses.map((expense: any) => (
               <div key={expense.id} className="mb-3 last:mb-0" data-testid={`recent-expense-${expense.id}`}>
@@ -239,7 +241,7 @@ export default function CollaboratorHome() {
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                     <p className="text-xs font-bold text-foreground">{formatBRL(expense.amount)}</p>
-                    {statusBadge(expense.status)}
+                    <StatusBadge status={expense.status} t={t} />
                   </div>
                 </div>
               </div>

@@ -13,21 +13,13 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusConfig(status: string) {
-  switch (status) {
-    case "approved": return { label: "Aprovado",  color: "#22C55E", bg: "#22C55E18", icon: CheckCircle2, border: "#22C55E40" };
-    case "paid":     return { label: "Pago",       color: "#818CF8", bg: "#818CF818", icon: Banknote,     border: "#818CF840" };
-    case "rejected": return { label: "Rejeitado",  color: "#F87171", bg: "#F8717118", icon: XCircle,      border: "#F8717140" };
-    default:         return { label: "Pendente",   color: "#F59E0B", bg: "#F59E0B18", icon: Clock,        border: "#F59E0B40" };
-  }
-}
-
-function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+function ReceiptLightbox({ src, onClose, receipt }: { src: string; onClose: () => void; receipt: string }) {
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
@@ -42,7 +34,7 @@ function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void })
       </button>
       <img
         src={src}
-        alt="Comprovante"
+        alt={receipt}
         className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
         onClick={e => e.stopPropagation()}
       />
@@ -61,11 +53,21 @@ function SummaryCard({ label, value, color }: { label: string; value: number; co
 }
 
 export default function ReportView() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const statusConfig = (status: string) => {
+    switch (status) {
+      case "approved": return { label: t("axisBiz.collabReport.statusApproved"), color: "#22C55E", bg: "#22C55E18", icon: CheckCircle2, border: "#22C55E40" };
+      case "paid":     return { label: t("axisBiz.collabReport.statusPaid"),     color: "#818CF8", bg: "#818CF818", icon: Banknote,     border: "#818CF840" };
+      case "rejected": return { label: t("axisBiz.collabReport.statusRejected"), color: "#F87171", bg: "#F8717118", icon: XCircle,      border: "#F8717140" };
+      default:         return { label: t("axisBiz.collabReport.statusPending"),  color: "#F59E0B", bg: "#F59E0B18", icon: Clock,        border: "#F59E0B40" };
+    }
+  };
 
   const params = new URLSearchParams(window.location.search);
   const orgId     = params.get("orgId") ?? "";
@@ -93,7 +95,7 @@ export default function ReportView() {
 
   const sorted = (expenses ?? []).slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const collaboratorName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Colaborador";
+  const collaboratorName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || t("axisBiz.collabHome.defaultName");
 
   const totalGeral    = sorted.reduce((s, e) => s + e.amount, 0);
   const totalAprovado = sorted.filter(e => e.status === "approved" || e.status === "paid").reduce((s, e) => s + e.amount, 0);
@@ -120,7 +122,7 @@ export default function ReportView() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {lightboxSrc && <ReceiptLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxSrc && <ReceiptLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} receipt={t("reportView.receipt")} />}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
 
@@ -131,12 +133,12 @@ export default function ReportView() {
             data-testid="button-back-report"
           >
             <ArrowLeft className="w-4 h-4" />
-            Voltar
+            {t("common.back")}
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5" style={{ color: primaryHex }} />
-            <span className="text-lg font-bold text-foreground">Relatório de Despesas</span>
+            <span className="text-lg font-bold text-foreground">{t("axisBiz.collabReport.title")}</span>
           </div>
         </div>
 
@@ -153,30 +155,32 @@ export default function ReportView() {
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Relatório de Reembolso</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">{t("axisBiz.collabReport.reimbursementReport")}</p>
                 <h2 className="text-2xl font-bold text-foreground">{collaboratorName}</h2>
                 <p className="text-sm mt-0.5" style={{ color: primaryHex }}>{activeOrg?.tradeName || activeOrg?.name || "—"}</p>
               </div>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Período</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">{t("axisBiz.collabReport.period")}</p>
               <p className="text-sm font-semibold text-foreground">{periodLabel}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{sorted.length} {sorted.length === 1 ? "despesa" : "despesas"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("axisBiz.collabReport.expense", { count: sorted.length })}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="flex gap-3 mb-6 flex-wrap">
-          <SummaryCard label="Total Geral"  value={totalGeral}    color={primaryHex} />
-          <SummaryCard label="Aprovado"     value={totalAprovado} color="#22C55E" />
-          <SummaryCard label="Pendente"     value={totalPendente} color="#F59E0B" />
-          <SummaryCard label="Pago"         value={totalPago}     color="#818CF8" />
+          <SummaryCard label={t("axisBiz.collabReport.summaryTotal")}      value={totalGeral}    color={primaryHex} />
+          <SummaryCard label={t("axisBiz.collabReport.summaryApproved")}   value={totalAprovado} color="#22C55E" />
+          <SummaryCard label={t("axisBiz.collabReport.summaryPending")}    value={totalPendente} color="#F59E0B" />
+          <SummaryCard label={t("axisBiz.collabReport.summaryReimbursed")} value={totalPago}     color="#818CF8" />
         </div>
 
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
             <FileText className="w-10 h-10 text-muted-foreground opacity-30" />
-            <p className="text-muted-foreground text-sm">Nenhuma despesa encontrada para este período.</p>
+            <p className="text-muted-foreground text-sm">{t("axisBiz.collabReport.noExpenses")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -211,7 +215,7 @@ export default function ReportView() {
                       <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
                         style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                         {receiptSrc
-                          ? <img src={receiptSrc} alt="Comprovante" className="w-full h-full object-cover" />
+                          ? <img src={receiptSrc} alt={t("reportView.receipt")} className="w-full h-full object-cover" />
                           : <ImageOff className="w-5 h-5 text-muted-foreground opacity-40" />
                         }
                       </div>
@@ -220,7 +224,7 @@ export default function ReportView() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground leading-tight truncate">
-                              {expense.establishment || expense.description || "Sem descrição"}
+                              {expense.establishment || expense.description || t("axisBiz.collabReport.noDescription")}
                             </p>
                             {expense.establishment && expense.description && expense.description !== expense.establishment && (
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">{expense.description}</p>
@@ -262,7 +266,7 @@ export default function ReportView() {
                             style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1"
                               style={{ background: "rgba(255,255,255,0.02)" }}>
-                              Itens do cupom
+                              {t("reportView.receiptItems")}
                             </p>
                             <div className="flex flex-col divide-y divide-border/20">
                               {receiptItems.map((item, idx) => (
@@ -273,7 +277,7 @@ export default function ReportView() {
                               ))}
                               <div className="flex items-center justify-between gap-3 px-3 py-1.5"
                                 style={{ background: "rgba(255,255,255,0.03)" }}>
-                                <span className="text-xs font-semibold text-muted-foreground">Total</span>
+                                <span className="text-xs font-semibold text-muted-foreground">{t("reportView.total")}</span>
                                 <span className="text-xs font-bold" style={{ color: primaryHex }}>{formatBRL(expense.amount)}</span>
                               </div>
                             </div>
@@ -290,7 +294,7 @@ export default function ReportView() {
                               data-testid={`button-show-receipt-${expense.id}`}
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              Mostrar comprovante
+                              {t("reportView.showReceipt")}
                             </Button>
                           </div>
                         )}
@@ -309,7 +313,7 @@ export default function ReportView() {
             <span className="text-xs font-semibold" style={{ color: primaryHex }}>AXIS Business</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            {t("reportView.generatedAt", { date: format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR }) })}
           </p>
         </div>
 

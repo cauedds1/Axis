@@ -13,19 +13,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { KeyRound, User, Building2, MessageCircle, CheckCircle2 } from "lucide-react";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
-
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Informe a senha atual"),
-  newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres"),
-  confirmPassword: z.string().min(1, "Confirme a nova senha"),
-}).refine(d => d.newPassword === d.confirmPassword, {
-  message: "As senhas não conferem",
-  path: ["confirmPassword"],
-});
-
-type ChangePasswordData = z.infer<typeof changePasswordSchema>;
+import { useTranslation } from "react-i18next";
 
 export default function CollaboratorProfile() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -34,6 +25,17 @@ export default function CollaboratorProfile() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [whatsappInput, setWhatsappInput] = useState("");
   const [whatsappSaved, setWhatsappSaved] = useState(false);
+
+  const changePasswordSchema = z.object({
+    currentPassword: z.string().min(1, t("axisBiz.collabProfile.validation.currentPasswordRequired")),
+    newPassword: z.string().min(6, t("axisBiz.collabProfile.validation.newPasswordMin")),
+    confirmPassword: z.string().min(1, t("axisBiz.collabProfile.validation.currentPasswordRequired")),
+  }).refine(d => d.newPassword === d.confirmPassword, {
+    message: t("axisBiz.collabProfile.validation.passwordsMustMatch"),
+    path: ["confirmPassword"],
+  });
+
+  type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 
   const { data: orgs, isLoading: orgsLoading } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const activeOrg = orgs?.[0];
@@ -65,9 +67,9 @@ export default function CollaboratorProfile() {
     },
     onSuccess: () => {
       setWhatsappSaved(true);
-      toast({ title: "WhatsApp vinculado com sucesso!" });
+      toast({ title: t("axisBiz.collabProfile.toasts.whatsappSaved") });
     },
-    onError: () => toast({ title: "Erro ao salvar número de WhatsApp", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.collabProfile.toasts.whatsappError"), variant: "destructive" }),
   });
 
   const changePasswordMutation = useMutation({
@@ -83,11 +85,11 @@ export default function CollaboratorProfile() {
         toast({ title: data.error, variant: "destructive" });
         return;
       }
-      toast({ title: "Senha alterada com sucesso!" });
+      toast({ title: t("axisBiz.collabProfile.toasts.passwordSaved") });
       form.reset();
       setShowPasswordForm(false);
     },
-    onError: () => toast({ title: "Erro ao alterar senha", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.collabProfile.toasts.passwordError"), variant: "destructive" }),
   });
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase() || "?";
@@ -106,8 +108,8 @@ export default function CollaboratorProfile() {
     <div className="p-6 max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Perfil</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Suas informações pessoais</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("axisBiz.collabProfile.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("axisBiz.collabProfile.personalInfo")}</p>
         </div>
 
         <div
@@ -134,7 +136,7 @@ export default function CollaboratorProfile() {
             <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2 mb-1">
                 <User className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Cargo</p>
+                <p className="text-xs text-muted-foreground">{t("axisBiz.collabProfile.jobTitle")}</p>
               </div>
               <p className="text-sm font-medium text-foreground" data-testid="text-jobtitle">
                 {myMember?.jobTitle || "—"}
@@ -143,7 +145,7 @@ export default function CollaboratorProfile() {
             <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
               <div className="flex items-center gap-2 mb-1">
                 <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Empresa</p>
+                <p className="text-xs text-muted-foreground">{t("axisBiz.collabProfile.company")}</p>
               </div>
               <p className="text-sm font-medium text-foreground" data-testid="text-orgname">
                 {activeOrg?.tradeName || activeOrg?.name || "—"}
@@ -158,14 +160,14 @@ export default function CollaboratorProfile() {
         >
           <div className="flex items-center gap-2 mb-4">
             <MessageCircle className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Notificações via WhatsApp</h2>
+            <h2 className="text-sm font-semibold text-foreground">{t("axisBiz.collabProfile.whatsappTitle")}</h2>
           </div>
 
           <div className="flex flex-col gap-3">
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Número vinculado</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.collabProfile.whatsappLinked")}</p>
               <p className="text-sm font-medium text-foreground" data-testid="text-whatsapp-phone">
-                {profileData?.profile?.whatsappPhone || "Não vinculado"}
+                {profileData?.profile?.whatsappPhone || t("axisBiz.collabProfile.whatsappNotLinked")}
               </p>
             </div>
 
@@ -186,7 +188,11 @@ export default function CollaboratorProfile() {
                 onClick={() => saveWhatsappMutation.mutate(whatsappInput)}
                 data-testid="button-save-whatsapp"
               >
-                {saveWhatsappMutation.isPending ? "Salvando..." : whatsappSaved ? <><CheckCircle2 className="w-3.5 h-3.5" /> Salvo</> : "Salvar"}
+                {saveWhatsappMutation.isPending
+                  ? t("axisBiz.collabProfile.saving")
+                  : whatsappSaved
+                    ? <><CheckCircle2 className="w-3.5 h-3.5" /> {t("axisBiz.collabProfile.saved")}</>
+                    : t("common.save")}
               </Button>
             </div>
 
@@ -194,7 +200,7 @@ export default function CollaboratorProfile() {
               className="rounded-xl p-3 text-xs text-muted-foreground leading-relaxed"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              Após salvar, envie <span className="font-semibold text-foreground">vincular {whatsappInput || "seu-número"}</span> para o bot do AXIS para ativar o recebimento de notificações e o envio de recibos por foto.
+              {t("axisBiz.collabProfile.whatsappHint", { number: whatsappInput || t("axisBiz.collabProfile.whatsappHintPlaceholder") })}
             </div>
           </div>
         </div>
@@ -206,7 +212,7 @@ export default function CollaboratorProfile() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Segurança</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t("axisBiz.collabProfile.security")}</h2>
             </div>
             {!showPasswordForm && (
               <Button
@@ -216,13 +222,13 @@ export default function CollaboratorProfile() {
                 onClick={() => setShowPasswordForm(true)}
                 data-testid="button-change-password"
               >
-                Alterar senha
+                {t("axisBiz.collabProfile.changePassword")}
               </Button>
             )}
           </div>
 
           {!showPasswordForm ? (
-            <p className="text-xs text-muted-foreground">Clique em "Alterar senha" para definir uma nova senha de acesso.</p>
+            <p className="text-xs text-muted-foreground">{t("axisBiz.collabProfile.changePasswordHint")}</p>
           ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(d => changePasswordMutation.mutate(d))} className="flex flex-col gap-4">
@@ -231,7 +237,7 @@ export default function CollaboratorProfile() {
                   name="currentPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Senha atual</FormLabel>
+                      <FormLabel className="text-xs">{t("axisBiz.collabProfile.currentPassword")}</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
@@ -250,12 +256,12 @@ export default function CollaboratorProfile() {
                   name="newPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Nova senha</FormLabel>
+                      <FormLabel className="text-xs">{t("axisBiz.collabProfile.newPassword")}</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
                           className="h-9 text-sm"
-                          placeholder="Mínimo 6 caracteres"
+                          placeholder={t("axisBiz.collabProfile.newPasswordPlaceholder")}
                           data-testid="input-new-password"
                           {...field}
                         />
@@ -269,12 +275,12 @@ export default function CollaboratorProfile() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs">Confirmar nova senha</FormLabel>
+                      <FormLabel className="text-xs">{t("axisBiz.collabProfile.confirmPassword")}</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
                           className="h-9 text-sm"
-                          placeholder="Repita a nova senha"
+                          placeholder={t("axisBiz.collabProfile.confirmPasswordPlaceholder")}
                           data-testid="input-confirm-password"
                           {...field}
                         />
@@ -292,7 +298,7 @@ export default function CollaboratorProfile() {
                     disabled={changePasswordMutation.isPending}
                     data-testid="button-submit-password"
                   >
-                    {changePasswordMutation.isPending ? "Salvando..." : "Salvar senha"}
+                    {changePasswordMutation.isPending ? t("axisBiz.collabProfile.savingPassword") : t("axisBiz.collabProfile.savePassword")}
                   </Button>
                   <Button
                     type="button"
@@ -302,7 +308,7 @@ export default function CollaboratorProfile() {
                     onClick={() => { setShowPasswordForm(false); form.reset(); }}
                     data-testid="button-cancel-password"
                   >
-                    Cancelar
+                    {t("axisBiz.collabProfile.cancel")}
                   </Button>
                 </div>
               </form>
