@@ -855,14 +855,14 @@ export function BillsTab() {
                               for (const line of lines) {
                                 const trimmed = line.trim();
                                 if (!trimmed) continue;
-                                if (trimmed.startsWith("Emissor:")) {
-                                  info.push({ label: t("axisFinance.issuer"), value: trimmed.replace("Emissor:", "").trim(), icon: Store });
-                                } else if (trimmed.startsWith("Destinatário:") || trimmed.startsWith("Destinatario:")) {
-                                  info.push({ label: t("axisFinance.recipient"), value: trimmed.replace(/Destinat[áa]rio:/, "").trim(), icon: User });
-                                } else if (trimmed.startsWith("Pagamento:")) {
-                                  info.push({ label: t("axisFinance.paymentData"), value: trimmed.replace("Pagamento:", "").trim(), icon: CreditCard });
-                                } else if (trimmed.startsWith("Descrição:") || trimmed.startsWith("Descricao:")) {
-                                  info.push({ label: t("axisFinance.serviceProduct"), value: trimmed.replace(/Descri[çc][ãa]o:/, "").trim(), icon: FileText });
+                                if (trimmed.startsWith("Emissor:") || trimmed.startsWith("Issuer:")) {
+                                  info.push({ label: t("axisFinance.issuer"), value: trimmed.replace(/^(Emissor|Issuer):/, "").trim(), icon: Store });
+                                } else if (trimmed.startsWith("Destinatário:") || trimmed.startsWith("Destinatario:") || trimmed.startsWith("Recipient:")) {
+                                  info.push({ label: t("axisFinance.recipient"), value: trimmed.replace(/^(Destinat[áa]rio|Recipient):/, "").trim(), icon: User });
+                                } else if (trimmed.startsWith("Pagamento:") || trimmed.startsWith("Payment:")) {
+                                  info.push({ label: t("axisFinance.paymentData"), value: trimmed.replace(/^(Pagamento|Payment):/, "").trim(), icon: CreditCard });
+                                } else if (trimmed.startsWith("Descrição:") || trimmed.startsWith("Descricao:") || trimmed.startsWith("Description:")) {
+                                  info.push({ label: t("axisFinance.serviceProduct"), value: trimmed.replace(/^(Descri[çc][ãa]o|Description):/, "").trim(), icon: FileText });
                                 } else {
                                   info.push({ label: t("axisFinance.observation"), value: trimmed, icon: FileText });
                                 }

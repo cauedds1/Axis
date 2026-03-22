@@ -177,7 +177,7 @@ function SectionRenda({
   onSave: (v: string) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { symbol, fmtMoney, currency } = useCurrency();
+  const { symbol, fmtMoney } = useCurrency();
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [val, setVal] = useState(savedIncome);
   const [saved, setSaved] = useState(false);
@@ -311,7 +311,7 @@ function SectionRenda({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{ri.name}</p>
                   <p className="text-xs text-white/40">
-                    {fmtMoney(ri.amount, currency)} · {t("axisSetup.income.everyDay")} {ri.dayOfMonth}
+                    {fmtMoney(ri.amount)} · {t("axisSetup.income.everyDay")} {ri.dayOfMonth}
                     {ri.lastPostedMonth === currentMonth && (
                       <span
                         className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
@@ -334,7 +334,7 @@ function SectionRenda({
               </div>
             ))}
             <p className="text-xs text-white/25 text-right">
-              {t("axisSetup.income.monthlyTotal")}: {fmtMoney(totalRecurring, currency)}
+              {t("axisSetup.income.monthlyTotal")}: {fmtMoney(totalRecurring)}
             </p>
           </div>
         ) : (
@@ -469,7 +469,7 @@ function SectionRenda({
 
 function SectionGastos() {
   const { t } = useTranslation();
-  const { symbol, fmtMoney, currency } = useCurrency();
+  const { symbol, fmtMoney } = useCurrency();
   const { toast } = useToast();
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
@@ -707,7 +707,7 @@ function SectionGastos() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white/80 truncate">{item.description}</p>
                   <p className="text-[10px] text-white/30">
-                    {fmtMoney(item.amount, currency)}{t("axisSetup.expenses.perMonth")} · {item.months} {item.months === 1 ? t("axisSetup.expenses.month") : t("axisSetup.expenses.months")}
+                    {fmtMoney(item.amount)}{t("axisSetup.expenses.perMonth")} · {item.months} {item.months === 1 ? t("axisSetup.expenses.month") : t("axisSetup.expenses.months")}
                   </p>
                 </div>
                 <button
