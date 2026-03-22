@@ -5,6 +5,7 @@ import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -28,7 +29,7 @@ function getPieColors(theme: string): string[] {
   return [P.primary, P.finance, P.agenda, P.tasks, P.habits, P.primary + "CC", P.primary + "99", P.primary + "66"];
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label, fmtValue }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-card shadow-xl p-3 text-xs min-w-[120px]">
@@ -39,7 +40,7 @@ function CustomTooltip({ active, payload, label }: any) {
             <div className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill }} />
             <span className="text-muted-foreground">{p.name}</span>
           </div>
-          <span className="font-semibold text-foreground">{typeof p.value === "number" && p.name?.includes("R$") ? `R$ ${p.value.toFixed(2)}` : p.value}</span>
+          <span className="font-semibold text-foreground">{typeof p.value === "number" && fmtValue ? fmtValue(p.value) : p.value}</span>
         </div>
       ))}
     </div>
@@ -148,6 +149,7 @@ function getFilterDates(filter: DateFilter, customStart: string, customEnd: stri
 
 function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const { t, i18n } = useTranslation();
+  const { fmtMoney, symbol } = useCurrency();
   const dateLocale = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const { theme } = useTheme();
   const RP = getReportPalette(theme);
@@ -306,21 +308,21 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.income")}</p>
                 <p className="text-xl font-bold" style={{ color: RP.positive }} data-testid="metric-receitas-mes">
-                  R$ {currentMonth.income.toFixed(0)}
+                  {fmtMoney(currentMonth.income)}
                 </p>
                 <TrendBadge value={currentMonth.incomeTrend} invertColor={false} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.expenses")}</p>
                 <p className="text-xl font-bold" style={{ color: RP.negative }} data-testid="metric-gastos-mes">
-                  R$ {currentMonth.expenses.toFixed(0)}
+                  {fmtMoney(currentMonth.expenses)}
                 </p>
                 <TrendBadge value={currentMonth.expenseTrend} invertColor={true} />
               </div>
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">{t("axisReports.balance")}</p>
                 <p className="text-xl font-bold" style={{ color: currentMonth.balance >= 0 ? (RP.positive) : (RP.negative) }} data-testid="metric-saldo-mes">
-                  R$ {currentMonth.balance.toFixed(0)}
+                  {fmtMoney(currentMonth.balance)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-1">{currentMonth.savingsRate}% {t("axisReports.saved")}</p>
               </div>
@@ -336,8 +338,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (currentMonth.expenses / currentMonth.income) * 100)}%`, background: currentMonth.expenses <= currentMonth.income ? (RP.positive) : (RP.negative) }} />
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>R$ {currentMonth.expenses.toFixed(0)} {t("axisReports.spentLabel")}</span>
-                  <span>R$ {currentMonth.income.toFixed(0)} {t("axisReports.receivedLabel")}</span>
+                  <span>{fmtMoney(currentMonth.expenses)} {t("axisReports.spentLabel")}</span>
+                  <span>{fmtMoney(currentMonth.income)} {t("axisReports.receivedLabel")}</span>
                 </div>
               </div>
             )}
@@ -356,8 +358,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 <BarChart data={dailyThisMonth} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.10)" />
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
+                  <Tooltip content={<CustomTooltip fmtValue={fmtMoney} />} />
                   <Bar dataKey="expenses" name={t("axisReports.expenses")} fill={RP.negative} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -382,7 +384,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{cat.pct}%</span>
-                      <span className="text-sm font-semibold">R$ {cat.amount.toFixed(0)}</span>
+                      <span className="text-sm font-semibold">{fmtMoney(cat.amount)}</span>
                     </div>
                   </div>
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -410,7 +412,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                         <p className="text-xs font-semibold">{pmLabel}</p>
                         {isTop && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${c}15`, color: c }}>↑</span>}
                       </div>
-                      <p className="text-base font-bold" style={{ color: c }}>R$ {pm.amount.toFixed(0)}</p>
+                      <p className="text-base font-bold" style={{ color: c }}>{fmtMoney(pm.amount)}</p>
                       <p className="text-[10px] text-muted-foreground">{pm.count}x</p>
                       <div className="h-1 rounded-full bg-muted overflow-hidden mt-0.5">
                         <div className="h-full rounded-full" style={{ width: `${pm.pct}%`, background: c }} />
@@ -445,8 +447,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.10)" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
+                <Tooltip content={<CustomTooltip fmtValue={fmtMoney} />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Area type="monotone" dataKey="income" name={t("axisReports.income")} stroke={RP.positive} fill="url(#colorIncome)" strokeWidth={2} dot={false} />
                 <Area type="monotone" dataKey="expenses" name={t("axisReports.expenses")} stroke={RP.negative} fill="url(#colorExpenses)" strokeWidth={2} dot={false} />
@@ -472,7 +474,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                       <span className="text-[10px] text-muted-foreground">{place.count}x</span>
-                      <span className="text-xs font-semibold">R$ {place.amount.toFixed(0)}</span>
+                      <span className="text-xs font-semibold">{fmtMoney(place.amount)}</span>
                     </div>
                   </div>
                   <div className="h-1 rounded-full bg-muted overflow-hidden">
@@ -507,7 +509,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                           {isTopPeriod && <span className="text-[9px] font-bold px-1 py-0.5 rounded uppercase" style={{ background: `${color}15`, color }}>{t("axisReports.peak")}</span>}
                         </div>
                         <p className="text-xs font-semibold">{periodLabel}</p>
-                        <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>R$ {period.amount.toFixed(0)}</p>
+                        <p className="text-sm font-bold" style={{ color: isTopPeriod ? color : "inherit" }}>{fmtMoney(period.amount)}</p>
                         <p className="text-[10px] text-muted-foreground">{period.count}x</p>
                         <div className="h-1 rounded-full bg-muted overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${period.pct}%`, background: isTopPeriod ? color : "hsl(var(--muted-foreground))" }} />
@@ -526,8 +528,8 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                       <BarChart data={byHour} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
                         <XAxis dataKey="hour" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} interval={3} />
-                        <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `R$${v}`} />
-                        <Tooltip content={<CustomTooltip />} />
+                        <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={v => `${symbol}${v}`} />
+                        <Tooltip content={<CustomTooltip fmtValue={fmtMoney} />} />
                         <Bar dataKey="amount" name={t("axisReports.expenses")} radius={[3, 3, 0, 0]}>
                           {byHour.map((entry: any, i: number) => <Cell key={i} fill={entry.hour === peakHour ? color : `${color}40`} />)}
                         </Bar>
@@ -541,9 +543,9 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
 
           {/* 6-month summary metrics */}
           <div className="xl:col-span-2 grid grid-cols-2 gap-3 content-start">
-            <MetricCard icon={TrendingUp} label={t("axisReports.income")} value={`R$ ${summary.totalIncome.toFixed(0)}`} color={RP.positive} />
-            <MetricCard icon={TrendingDown} label={t("axisReports.expenses")} value={`R$ ${summary.totalExpenses.toFixed(0)}`} color={RP.negative} />
-            <MetricCard icon={ShoppingBag} label={t("axisReports.filterLast6")} value={`R$ ${summary.avgMonthlyExpense?.toFixed(0) ?? "0"}`} sub={t("axisReports.spentLabel")} color={color} />
+            <MetricCard icon={TrendingUp} label={t("axisReports.income")} value={fmtMoney(summary.totalIncome ?? 0)} color={RP.positive} />
+            <MetricCard icon={TrendingDown} label={t("axisReports.expenses")} value={fmtMoney(summary.totalExpenses ?? 0)} color={RP.negative} />
+            <MetricCard icon={ShoppingBag} label={t("axisReports.filterLast6")} value={fmtMoney(summary.avgMonthlyExpense ?? 0)} sub={t("axisReports.spentLabel")} color={color} />
             <MetricCard icon={Target} label={t("axisReports.completionRate")} value={`${summary.savingsRate}%`} sub={`${summary.transactionCount ?? 0} ${t("axisReports.transactions")}`} color={color} />
 
             {/* Global pie + goals in same column */}
@@ -555,7 +557,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     <Pie data={byCategory} dataKey="amount" nameKey="name" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
                       {byCategory.map((_: any, i: number) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<CustomTooltip fmtValue={fmtMoney} />} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -582,7 +584,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
                   </div>
                   <div className="flex justify-between mt-1.5">
-                    <span className="text-[11px] text-muted-foreground">R$ {Number(g.currentAmount || 0).toFixed(0)} {t("axisReports.saved2")}</span>
+                    <span className="text-[11px] text-muted-foreground">{fmtMoney(Number(g.currentAmount || 0))} {t("axisReports.saved2")}</span>
                     <span className="text-[11px] text-muted-foreground">{t("axisReports.remaining")} {remaining > 0 ? remaining.toFixed(0) : "0"}</span>
                   </div>
                 </div>
@@ -631,7 +633,7 @@ function FinanceReport({ color, isHigh }: { color: string; isHigh: boolean }) {
                     </div>
                   </div>
                   <span className="text-sm font-bold ml-3 flex-shrink-0" style={{ color: txColor }}>
-                    {isIncome ? "+" : "-"}R$ {Number(tx.amount).toFixed(2)}
+                    {isIncome ? "+" : "-"}{fmtMoney(Number(tx.amount))}
                   </span>
                 </div>
               );

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeSelector } from "@/components/theme-toggle";
 import { useTheme, type AxisTheme } from "@/components/theme-provider";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 
 class StepErrorBoundary extends Component<
   { children: React.ReactNode; onError?: (err: Error) => void; stepErrorText?: string; tryAgainText?: string; detailsText?: string },
@@ -130,6 +131,7 @@ type Phase = "question" | "setup";
 
 export default function Onboarding() {
   const { t } = useTranslation();
+  const { symbol, fmtMoney } = useCurrency();
   const moduleOptions = getModuleOptions(t);
   const personalityOptions = getPersonalityOptions(t);
   const [step, setStep] = useState(0); // 0=nome 1=módulos 2=score 3=personalidade+tema
@@ -308,7 +310,7 @@ export default function Onboarding() {
                   style={{ background: "rgba(78,205,196,0.08)", border: "1px solid rgba(78,205,196,0.15)" }}>
                   <div>
                     <span className="text-sm text-white/80">{inc.name}</span>
-                    <span className="text-xs text-white/40 ml-2">R${inc.amount.toFixed(2)} {t("axisOnboarding.dotDay", { n: inc.dayOfMonth })}</span>
+                    <span className="text-xs text-white/40 ml-2">{fmtMoney(inc.amount)} {t("axisOnboarding.dotDay", { n: inc.dayOfMonth })}</span>
                   </div>
                   <button onClick={() => setSetupIncomes(p => p.filter((_, j) => j !== i))} data-testid={`remove-income-${i}`}>
                     <X className="w-3.5 h-3.5 text-white/30 hover:text-white/70" />
@@ -321,7 +323,7 @@ export default function Onboarding() {
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                    <span className="text-white/30 text-xs">R$</span>
+                    <span className="text-white/30 text-xs">{symbol}</span>
                     <input value={riAmount} onChange={e => setRiAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-ri-amount" onKeyDown={e => e.key === "Enter" && addIncome()} />
                   </div>
                   <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
@@ -347,7 +349,7 @@ export default function Onboarding() {
                   style={{ background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)" }}>
                   <div>
                     <span className="text-sm text-white/80">{b.title}</span>
-                    <span className="text-xs text-white/40 ml-2">R${b.amount.toFixed(2)} {t("axisOnboarding.dotDay", { n: b.dueDay })}</span>
+                    <span className="text-xs text-white/40 ml-2">{fmtMoney(b.amount)} {t("axisOnboarding.dotDay", { n: b.dueDay })}</span>
                   </div>
                   <button onClick={() => setSetupBills(p => p.filter((_, j) => j !== i))} data-testid={`remove-bill-${i}`}>
                     <X className="w-3.5 h-3.5 text-white/30 hover:text-white/70" />
@@ -360,7 +362,7 @@ export default function Onboarding() {
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 sm:w-24 sm:flex-none rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>
-                    <span className="text-white/30 text-xs">R$</span>
+                    <span className="text-white/30 text-xs">{symbol}</span>
                     <input value={bAmount} onChange={e => setBAmount(e.target.value)} placeholder="0" type="number" className={`${inputCls} w-full`} data-testid="input-bill-amount" onKeyDown={e => e.key === "Enter" && addBill()} />
                   </div>
                   <div className="w-20 rounded-xl border px-3 py-2 flex items-center gap-1" style={fieldBox}>

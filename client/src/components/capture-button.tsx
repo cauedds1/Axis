@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 
 interface CaptureResult {
   intent: string;
@@ -23,6 +24,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
   const chunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { symbol } = useCurrency();
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -123,8 +125,8 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
   };
 
   const intentIcons: Record<string, string> = {
-    expense: "R$",
-    income: "R$",
+    expense: symbol,
+    income: symbol,
     task: "T",
     schedule: "A",
     habit: "H",

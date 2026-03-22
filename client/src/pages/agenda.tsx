@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, TrendingDown, TrendingUp, CheckSquare, Clock, Ban, Stethoscope, PartyPopper, AlertCircle, Undo2, CalendarClock, Trash2, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ function parseWeekdays(raw: string | null | undefined): number[] {
 
 export default function Agenda() {
   const { t, i18n } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
@@ -686,7 +688,7 @@ export default function Agenda() {
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-xs ${paid ? "line-through text-white/30" : "text-white/80"}`}>{bill.title}</div>
                                   <div className="text-[10px]" style={{ color: `${billColor}80` }}>
-                                    R$ {bill.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} · {t("axisAgenda.dueDay", { day: bill.dueDay })}
+                                    {fmtMoney(bill.amount)} · {t("axisAgenda.dueDay", { day: bill.dueDay })}
                                   </div>
                                 </div>
                                 {paid && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: billColor }} />}

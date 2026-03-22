@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
 import { SetupSheet } from "@/components/setup-sheet";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 
 
 function SkeletonCard() {
@@ -122,6 +123,7 @@ function CardIcon({
 
 export default function Dashboard() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/dashboard"] });
   const { data: setupStatus } = useQuery<{ completed: boolean }>({ queryKey: ["/api/onboarding/setup/status"] });
   const [showSetupModal, setShowSetupModal] = useState(false);
@@ -225,7 +227,7 @@ export default function Dashboard() {
               style={{ color: data.finance.balance >= 0 ? P.positive : P.negative }}
               data-testid="text-balance"
             >
-              R$ {data.finance.balance.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {fmtMoney(data.finance.balance)}
             </div>
             <p className="text-xs text-muted-foreground mb-4">{t("axisDashboard.currentBalance")}</p>
 
@@ -235,7 +237,7 @@ export default function Dashboard() {
                   <TrendingDown className="h-3 w-3" style={{ color: P.negative }} /> {t("axisDashboard.expenses")}
                 </span>
                 <span className="font-semibold" data-testid="text-total-expenses">
-                  R$ {data.finance.totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {fmtMoney(data.finance.totalExpenses)}
                 </span>
               </div>
               <ProgressBar
@@ -250,7 +252,7 @@ export default function Dashboard() {
                   <TrendingUp className="h-3 w-3" style={{ color: P.positive }} /> {t("axisDashboard.income")}
                 </span>
                 <span className="font-semibold" data-testid="text-total-income">
-                  R$ {data.finance.totalIncome.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {fmtMoney(data.finance.totalIncome)}
                 </span>
               </div>
               <ProgressBar
@@ -276,8 +278,8 @@ export default function Dashboard() {
                         </span>
                         <span className={`font-semibold flex items-center gap-1 ${isHighUsage ? "text-destructive" : ""}`}>
                           {isHighUsage && <AlertCircle className="h-3 w-3" />}
-                          R$ {card.usedThisMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          <span className="text-muted-foreground font-normal">/{card.limit.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                          {fmtMoney(card.usedThisMonth)}
+                          <span className="text-muted-foreground font-normal">/{fmtMoney(card.limit)}</span>
                         </span>
                       </div>
                     );
