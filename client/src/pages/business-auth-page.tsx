@@ -621,14 +621,6 @@ export default function BusinessAuthPage() {
                     data-testid="form-step2"
                   >
                     <div>
-                      <label className={labelClass}>{t("axisBizAuth.companyName")} <span style={{ color: PRIMARY }}>*</span></label>
-                      <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("axisBizAuth.companyNamePh")} required className={inputClass} data-testid="input-company-name" />
-                    </div>
-                    <div>
-                      <label className={labelClass}>{t("axisBizAuth.tradeName")} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
-                      <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder={t("axisBizAuth.tradeNamePh")} className={inputClass} data-testid="input-trade-name" />
-                    </div>
-                    <div>
                       <label className={labelClass}>{t("axisBizAuth.region")}</label>
                       <select
                         value={country}
@@ -640,6 +632,14 @@ export default function BusinessAuthPage() {
                           <option key={r.code} value={r.code} style={{ background: "#1a1a1f" }}>{r.name}</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("axisBizAuth.companyName")} <span style={{ color: PRIMARY }}>*</span></label>
+                      <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("axisBizAuth.companyNamePh")} required className={inputClass} data-testid="input-company-name" />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t("axisBizAuth.tradeName")} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
+                      <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder={t("axisBizAuth.tradeNamePh")} className={inputClass} data-testid="input-trade-name" />
                     </div>
                     {(() => {
                       const region = REGIONS.find((r) => r.code === country) ?? REGIONS[0];
