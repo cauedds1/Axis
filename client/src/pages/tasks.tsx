@@ -478,7 +478,8 @@ export default function Tasks() {
   const [manageHabits, setManageHabits] = useState(false);
   const { toast } = useToast();
   const { theme } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const accent = getPrimaryHex(theme);
   const MP = getModulePalette(theme as any);
 
@@ -624,11 +625,11 @@ export default function Tasks() {
     tomorrow.setDate(today.getDate() + 1);
     const isToday = d.toDateString() === today.toDateString();
     const isTomorrow = d.toDateString() === tomorrow.toDateString();
-    const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    const timeStr = d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
     const hasTime = timeStr !== "23:59";
     if (isToday) return `${t("axisTasks.today")}${hasTime ? ` · ${timeStr}` : ""}`;
     if (isTomorrow) return `${t("axisTasks.tomorrow")}${hasTime ? ` · ${timeStr}` : ""}`;
-    return d.toLocaleDateString(undefined, { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");
+    return d.toLocaleDateString(lang, { day: "2-digit", month: "short" }) + (hasTime ? ` · ${timeStr}` : "");
   }
 
   function closeJustifyDialog() {
@@ -1046,7 +1047,7 @@ export default function Tasks() {
                   <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">{t("axisTasks.lastCheck")}</p>
                   <p className="text-sm font-medium text-white">
                     {detailHabit.lastChecked
-                      ? new Date(detailHabit.lastChecked + "T12:00:00").toLocaleDateString(undefined, { day: "2-digit", month: "long", year: "numeric" })
+                      ? new Date(detailHabit.lastChecked + "T12:00:00").toLocaleDateString(lang, { day: "2-digit", month: "long", year: "numeric" })
                       : t("axisTasks.noneYet")}
                   </p>
                 </div>

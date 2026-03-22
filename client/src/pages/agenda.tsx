@@ -20,7 +20,8 @@ function parseWeekdays(raw: string | null | undefined): number[] {
 }
 
 export default function Agenda() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startTime: "", endTime: "" });
@@ -343,7 +344,7 @@ export default function Agenda() {
                 <div>
                   <p className="text-sm font-medium">{item.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(item.startTime).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(item.startTime).toLocaleString(lang, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -365,7 +366,7 @@ export default function Agenda() {
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium">
-          {periodStart.toLocaleDateString(undefined, { month: "short", day: "numeric" })} — {periodEnd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          {periodStart.toLocaleDateString(lang, { month: "short", day: "numeric" })} — {periodEnd.toLocaleDateString(lang, { month: "short", day: "numeric" })}
         </span>
         <Button variant="ghost" size="icon" onClick={next15} data-testid="button-next-period">
           <ChevronRight className="h-4 w-4" />
@@ -388,7 +389,7 @@ export default function Agenda() {
               data-testid={`day-cell-${dayStr}`}
             >
               <p className={`text-xs mb-2 ${isToday ? "font-bold" : "text-muted-foreground"}`} style={isToday ? { color: accent } : undefined}>
-                {day.toLocaleDateString(undefined, { weekday: "short" }).replace(".", "")}
+                {day.toLocaleDateString(lang, { weekday: "short" }).replace(".", "")}
                 <span className="ml-1">{day.getDate()}</span>
               </p>
 
@@ -415,7 +416,7 @@ export default function Agenda() {
                     data-no-panel
                   >
                     {cancelled && <Ban className="inline h-2 w-2 mr-0.5 opacity-70" />}
-                    {new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} {item.title}
+                    {new Date(item.startTime).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })} {item.title}
                   </div>
                 );
               })}
@@ -487,7 +488,7 @@ export default function Agenda() {
           const panelItems  = items.filter(i => new Date(i.startTime).toDateString() === d.toDateString());
           const panelHabits = habitsForDay(d);
           const panelBills  = billsForDay(d);
-          const headerLabel = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+          const headerLabel = d.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" });
           const SECTION = "text-[10px] font-semibold uppercase tracking-wider text-white/30 mb-2";
 
           return (
@@ -543,7 +544,7 @@ export default function Agenda() {
                                   <div className={`text-xs ${cancelled ? "line-through text-white/30" : item.status === "done" ? "line-through text-white/30" : "text-white/80"}`}>{item.title}</div>
                                   <div className="text-[10px] flex items-center gap-1" style={{ color: cancelled ? "#fb923c80" : "rgba(255,255,255,0.3)" }}>
                                     <Clock className="h-2.5 w-2.5" />
-                                    {new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                                    {new Date(item.startTime).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}
                                     {cancelled && <span className="ml-1 capitalize">· {cancelled.type === "holiday" ? t("axisAgenda.holiday") : cancelled.type === "medical" ? t("axisAgenda.medical") : t("axisAgenda.other")}</span>}
                                   </div>
                                 </div>
@@ -577,7 +578,7 @@ export default function Agenda() {
                                       <button
                                         className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all hover:opacity-80"
                                         style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa" }}
-                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
+                                        onClick={() => { setPostponeDialog({ open: true, item }); setPostponeDate(dStr); setPostponeTime(new Date(item.startTime).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })); setPanelItemMenuId(null); }}
                                         data-testid={`button-postpone-${item.id}`}>
                                         <CalendarClock className="h-3 w-3" /> {t("axisAgenda.postpone")}
                                       </button>
