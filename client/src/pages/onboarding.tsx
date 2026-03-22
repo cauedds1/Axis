@@ -209,11 +209,16 @@ export default function Onboarding() {
       const currencyCode = selectedCurrency ?? "BRL";
       try {
         await apiRequest("PATCH", "/api/user/currency", { currency: currencyCode });
-      } catch {
-        // ignore 409 (already set) or other non-critical errors
+      } catch (currErr: any) {
+        const status = currErr?.status ?? currErr?.response?.status;
+        if (status !== 409) {
+          toast({ title: t("axisOnboarding.toastError"), description: currErr?.message ?? String(currErr), variant: "destructive" });
+          return;
+        }
+        // 409 means currency was already set — safe to continue
       }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       setPhase("setup");
     } catch (error: any) {
       toast({ title: t("axisOnboarding.toastError"), description: error.message, variant: "destructive" });
