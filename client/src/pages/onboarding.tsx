@@ -28,16 +28,16 @@ class StepErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="py-6 space-y-3">
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{this.props.stepErrorText || "Erro ao carregar esta etapa."}</p>
+          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{this.props.stepErrorText}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "6px 14px", cursor: "pointer" }}
           >
-            {this.props.tryAgainText || "Tentar novamente"}
+            {this.props.tryAgainText}
           </button>
           {this.state.error && (
             <details style={{ textAlign: "left" }}>
-              <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>{this.props.detailsText || "Detalhes"}</summary>
+              <summary style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", cursor: "pointer" }}>{this.props.detailsText}</summary>
               <code style={{ display: "block", marginTop: 6, fontSize: 9, color: "#FF6B6B", whiteSpace: "pre-wrap", wordBreak: "break-all", padding: 8, background: "rgba(255,107,107,0.06)", borderRadius: 6, maxHeight: 120, overflow: "auto" }}>
                 {this.state.error.message}{"\n"}{this.state.error.stack?.slice(0, 400)}
               </code>
