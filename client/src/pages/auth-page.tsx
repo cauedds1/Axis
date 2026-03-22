@@ -295,7 +295,7 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder={t("axisAuth.emailPlaceholder")}
                 required
                 className="auth-input"
                 data-testid="input-email"

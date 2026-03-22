@@ -292,7 +292,7 @@ export default function Onboarding() {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: MINT }}>{t("axisOnboarding.almostThere")}</span>
           </div>
-          <h2 className="text-2xl font-bold mb-1">{t("axisOnboarding.helloName", { name: firstName || "você" })}</h2>
+          <h2 className="text-2xl font-bold mb-1">{t("axisOnboarding.helloName", { name: firstName || t("axisOnboarding.youFallback") })}</h2>
           <p className="text-sm text-white/45 mb-1">{t("axisOnboarding.setupDesc")}</p>
           <p className="text-xs text-white/25 mb-7">{t("axisOnboarding.setupOptional")}</p>
 

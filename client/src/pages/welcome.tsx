@@ -60,8 +60,8 @@ function FinanceCard({ delay }: { delay: number }) {
         </div>
         <div className="space-y-1">
           {[
-            { icon: Coffee, label: "Café R$8" },
-            { icon: ShoppingCart, label: "Mercado R$180" },
+            { icon: Coffee, label: t("axisWelcome.demoExpenseLabel1") },
+            { icon: ShoppingCart, label: t("axisWelcome.demoExpenseLabel2") },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-1.5 text-[10px] text-white/35">
               <Icon className="w-2.5 h-2.5" />
@@ -271,7 +271,7 @@ export default function Welcome() {
     document.title = "AXIS — " + t("axisWelcome.welcomeTo");
   }, [t]);
 
-  const firstName = user?.firstName || "você";
+  const firstName = user?.firstName || t("axisWelcome.youFallback");
 
   const steps = [
     { n: "01", title: t("axisWelcome.step1Title"), desc: t("axisWelcome.step1Desc"), active: true },

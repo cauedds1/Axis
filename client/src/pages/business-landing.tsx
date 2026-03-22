@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
 import { ArrowRight, Camera, FileSpreadsheet, Users, Check, ArrowLeft, Building2, Smartphone, Receipt, BarChart3, Zap, Shield, ChevronRight, Mic, Calendar, Flame, Palette } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 type BizPalette = {
   primary: string; secondary: string; tertiary: string; accent: string; success: string;
@@ -105,13 +106,13 @@ function CorporateOrbital() {
         <g className="landing-orbit-reverse" style={{ transformOrigin: "210px 210px" }}>
           <circle cx="310" cy="210" r="8" fill={BIZ.primary} opacity="0.9" />
           <circle cx="310" cy="210" r="12" fill={BIZ.primary} opacity="0.15" />
-          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Recibos</text>
+          <text x="310" y="235" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Receipts</text>
         </g>
 
         <g className="landing-orbit-slow" style={{ transformOrigin: "210px 210px" }}>
           <circle cx="270" cy="210" r="7" fill={BIZ.secondary} opacity="0.9" />
           <circle cx="270" cy="210" r="11" fill={BIZ.secondary} opacity="0.15" />
-          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Relatório</text>
+          <text x="270" y="233" textAnchor="middle" fill="rgba(255,255,255,0.65)" fontSize="10" fontWeight="600">Report</text>
         </g>
 
         <g className="landing-orbit-mid" style={{ transformOrigin: "210px 210px" }}>
@@ -144,11 +145,12 @@ function CorporateOrbital() {
 
 function ReceiptFlowDemo() {
   const BIZ = useContext(BizContext);
+  const { t } = useTranslation();
   const receiptExamples = [
-    { input: "📷 Restaurante Amadeus — cupom fiscal", result: "R$ 94,70 · Alimentação · 4 itens extraídos", label: "Itens do cupom lidos pela IA", color: BIZ.primary, bg: BIZ.primaryMuted, category: "Alimentação" },
-    { input: "📷 Uber Business — recibo de corrida", result: "R$ 38,90 · Transporte · Corporativo", label: "Despesa salva · gestor notificado", color: BIZ.secondary, bg: BIZ.secondaryMuted, category: "Transporte" },
-    { input: "📷 Hotel Ibis SP — nota de estadia", result: "R$ 420,00 · Hospedagem · 2 diárias", label: "Imagem original salva na nuvem", color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: "Hospedagem" },
-    { input: "📷 Shell — abastecimento frota", result: "R$ 215,40 · Combustível · Pendente", label: "Aguardando aprovação do gestor", color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: "Combustível" },
+    { input: t("axisBizLanding.receiptInput0"), result: t("axisBizLanding.receiptResult0"), label: t("axisBizLanding.receiptLabel0"), color: BIZ.primary, bg: BIZ.primaryMuted, category: t("axisBizLanding.catFood") },
+    { input: t("axisBizLanding.receiptInput1"), result: t("axisBizLanding.receiptResult1"), label: t("axisBizLanding.receiptLabel1"), color: BIZ.secondary, bg: BIZ.secondaryMuted, category: t("axisBizLanding.catTransport") },
+    { input: t("axisBizLanding.receiptInput2"), result: t("axisBizLanding.receiptResult2"), label: t("axisBizLanding.receiptLabel2"), color: BIZ.tertiary, bg: BIZ.tertiaryMuted, category: t("axisBizLanding.catLodging") },
+    { input: t("axisBizLanding.receiptInput3"), result: t("axisBizLanding.receiptResult3"), label: t("axisBizLanding.receiptLabel3"), color: BIZ.accent, bg: "rgba(14,165,233,0.12)", category: t("axisBizLanding.catFuel") },
   ];
   const [exampleIdx, setExampleIdx] = useState(0);
   const [displayText, setDisplayText] = useState("");
@@ -200,7 +202,7 @@ function ReceiptFlowDemo() {
           <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: example.color }} />
           <span className="text-xs uppercase tracking-widest flex items-center gap-2" style={{ color: example.color }}>
             <Camera className="w-3.5 h-3.5" />
-            Colaborador envia
+            {t("axisBizLanding.collabSends")}
           </span>
         </div>
         <p className="text-xl md:text-2xl font-medium text-white/90 mb-6 min-h-[2em] font-mono relative z-10" data-testid="text-biz-demo-input">
@@ -228,7 +230,7 @@ function ReceiptFlowDemo() {
               <span className="px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: `${example.color}20`, color: example.color }}>
                 {example.category}
               </span>
-              <span className="text-xs text-white/30">imagem salva · pendente revisão</span>
+              <span className="text-xs text-white/30">{t("axisBizLanding.imageSaved")}</span>
             </div>
           </div>
         </motion.div>
@@ -255,16 +257,17 @@ function ReceiptFlowDemo() {
 
 function BizWhatsAppChat() {
   const BIZ = useContext(BizContext);
+  const { t } = useTranslation();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   const messages = [
-    { type: "user", text: "[foto do cupom fiscal]", time: "09:14", isPhoto: true },
-    { type: "bot", text: "📋 Despesa detectada:\n**Restaurante Amadeus — R$ 94,70**\n4 itens extraídos do cupom.\n\nEssa despesa é *pessoal* ou corporativa?\n(Acme Corp)", time: "09:14" },
-    { type: "user", text: "Corporativo", time: "09:15" },
-    { type: "bot", text: "✅ Salvo em **Acme Corp**.\nImagem e itens registrados. O gestor já pode ver no painel e aprovar.", time: "09:15" },
-    { type: "user", text: "Quero gerar meu relatório de reembolso", time: "09:22" },
-    { type: "bot", text: "Abra a aba *Relatório* no app e clique em **Gerar relatório**. Um link público será criado — válido por 30 dias — e você encaminha direto pro financeiro. Nenhum login necessário.", time: "09:22" },
+    { type: "user", text: t("axisBizLanding.chatMsg0"), time: "09:14", isPhoto: true },
+    { type: "bot", text: t("axisBizLanding.chatMsg1"), time: "09:14" },
+    { type: "user", text: t("axisBizLanding.chatMsg2"), time: "09:15" },
+    { type: "bot", text: t("axisBizLanding.chatMsg3"), time: "09:15" },
+    { type: "user", text: t("axisBizLanding.chatMsg4"), time: "09:22" },
+    { type: "bot", text: t("axisBizLanding.chatMsg5"), time: "09:22" },
   ];
 
   return (
@@ -273,8 +276,8 @@ function BizWhatsAppChat() {
         <div className="px-4 py-3 flex items-center gap-3" style={{ background: "linear-gradient(135deg, #075E54, #128C7E)" }}>
           <img src="/logo-business.png" alt="AXIS Business" className="w-9 h-9 rounded-full object-cover" />
           <div>
-            <p className="text-white text-sm font-semibold">AXIS Business Bot</p>
-            <p className="text-white/60 text-[11px]">Acme Corp · online</p>
+            <p className="text-white text-sm font-semibold">{t("axisBizLanding.chatBotName")}</p>
+            <p className="text-white/60 text-[11px]">Acme Corp · {t("axisBizLanding.online")}</p>
           </div>
           <div className="ml-auto flex gap-1">
             <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -303,7 +306,7 @@ function BizWhatsAppChat() {
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.2)` }}>
                       <Camera className="w-3.5 h-3.5" style={{ color: BIZ.primary }} />
                     </div>
-                    <span className="text-[13px] text-white/70">foto da nota fiscal</span>
+                    <span className="text-[13px] text-white/70">{t("axisBizLanding.photoReceipt")}</span>
                   </div>
                 ) : (
                   <p className="text-[13px] text-white/85 whitespace-pre-line leading-relaxed"
@@ -318,7 +321,7 @@ function BizWhatsAppChat() {
 
         <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: "#0d1117", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex-1 rounded-full px-4 py-2 text-xs text-white/30 bg-white/[0.04] border border-white/[0.06]">
-            Mensagem ou foto...
+            {t("axisBizLanding.chatInputPh")}
           </div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `rgba(${BIZ.primaryRgb},0.15)` }}>
             <Camera className="w-4 h-4" style={{ color: BIZ.primary }} />
@@ -331,20 +334,21 @@ function BizWhatsAppChat() {
 
 function ExpensePanelPreview() {
   const BIZ = useContext(BizContext);
+  const { t } = useTranslation();
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   const expenses = [
-    { collaborator: "Ana Lima", description: "Restaurante Central", amount: "R$ 87,50", category: "Alimentação", status: "approved", date: "06/03" },
-    { collaborator: "Carlos M.", description: "Uber Trip", amount: "R$ 34,20", category: "Transporte", status: "pending", date: "06/03" },
-    { collaborator: "Juliana R.", description: "Hotel Ibis SP", amount: "R$ 320,00", category: "Hospedagem", status: "pending", date: "05/03" },
-    { collaborator: "Ana Lima", description: "Posto Ipiranga", amount: "R$ 180,60", category: "Combustível", status: "rejected", date: "04/03" },
+    { collaborator: "Ana Lima", description: t("axisBizLanding.expenseDesc0"), amount: "R$ 87,50", category: t("axisBizLanding.catFood"), status: "approved", date: "06/03" },
+    { collaborator: "Carlos M.", description: "Uber Trip", amount: "R$ 34,20", category: t("axisBizLanding.catTransport"), status: "pending", date: "06/03" },
+    { collaborator: "Juliana R.", description: "Hotel Ibis SP", amount: "R$ 320,00", category: t("axisBizLanding.catLodging"), status: "pending", date: "05/03" },
+    { collaborator: "Ana Lima", description: t("axisBizLanding.expenseDesc3"), amount: "R$ 180,60", category: t("axisBizLanding.catFuel"), status: "rejected", date: "04/03" },
   ];
 
   const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-    approved: { label: "Aprovado", color: BIZ.success, bg: `rgba(${BIZ.successRgb},0.12)` },
-    pending: { label: "Pendente", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
-    rejected: { label: "Rejeitado", color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+    approved: { label: t("axisBizLanding.statusApproved"), color: BIZ.success, bg: `rgba(${BIZ.successRgb},0.12)` },
+    pending: { label: t("axisBizLanding.statusPending"), color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+    rejected: { label: t("axisBizLanding.statusRejected"), color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
   };
 
   return (
@@ -366,7 +370,7 @@ function ExpensePanelPreview() {
             <img src="/logo-business.png" alt="AXIS Business" className="w-8 h-8 rounded-lg object-cover" />
             <div>
               <p className="text-sm font-bold text-white/90">Acme Corp</p>
-              <p className="text-[11px] text-white/40">Painel de Despesas · Março 2026</p>
+              <p className="text-[11px] text-white/40">{t("axisBizLanding.expensePanelTitle")}</p>
             </div>
             <motion.div
               initial={{ scale: 0 }}
@@ -376,15 +380,15 @@ function ExpensePanelPreview() {
               style={{ background: `rgba(${BIZ.successRgb},0.1)`, border: `1px solid rgba(${BIZ.successRgb},0.2)` }}
             >
               <FileSpreadsheet className="w-3.5 h-3.5" style={{ color: BIZ.success }} />
-              <span className="text-xs font-medium" style={{ color: BIZ.success }}>Exportar Excel</span>
+              <span className="text-xs font-medium" style={{ color: BIZ.success }}>{t("axisBizLanding.exportExcel")}</span>
             </motion.div>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
             {[
-              { label: "Total Mês", value: "R$ 622,30", color: BIZ.primary },
-              { label: "Pendentes", value: "2 despesas", color: "#F59E0B" },
-              { label: "Aprovados", value: "R$ 87,50", color: BIZ.success },
+              { label: t("axisBizLanding.totalMonth"), value: "R$ 622,30", color: BIZ.primary },
+              { label: t("axisBizLanding.pendingExpenses"), value: t("axisBizLanding.pendingCount"), color: "#F59E0B" },
+              { label: t("axisBizLanding.approvedExpenses"), value: "R$ 87,50", color: BIZ.success },
             ].map((card, i) => (
               <motion.div
                 key={i}
@@ -402,7 +406,7 @@ function ExpensePanelPreview() {
 
           <div className="rounded-xl border border-white/[0.06] overflow-hidden">
             <div className="grid grid-cols-5 gap-2 px-4 py-2 border-b border-white/[0.04]">
-              {["Colaborador", "Descrição", "Valor", "Categoria", "Status"].map((h) => (
+              {[t("axisBizLanding.colCollaborator"), t("axisBizLanding.colDesc"), t("axisBizLanding.colAmount"), t("axisBizLanding.colCategory"), t("axisBizLanding.colStatus")].map((h) => (
                 <p key={h} className="text-[10px] text-white/30 uppercase tracking-wider font-medium">{h}</p>
               ))}
             </div>
@@ -434,6 +438,7 @@ function ExpensePanelPreview() {
 }
 
 export default function BusinessLanding() {
+  const { t } = useTranslation();
   const [bizTheme, setBizTheme] = useState<BizTheme>("blue");
   const BIZ = getBizPalette(bizTheme);
 
@@ -472,7 +477,7 @@ export default function BusinessLanding() {
               onClick={cycleTheme}
               className="w-7 h-7 rounded-full flex items-center justify-center border border-white/10 hover:border-white/20 transition-all group relative"
               style={{ background: `rgba(${BIZ.primaryRgb},0.15)` }}
-              title={`Tema: ${bizTheme}`}
+              title={`${t("axisBizLanding.theme")}: ${bizTheme}`}
               data-testid="button-biz-cycle-theme"
             >
               <Palette className="w-3 h-3 transition-colors" style={{ color: BIZ.primary }} />
@@ -488,7 +493,7 @@ export default function BusinessLanding() {
                 data-testid="button-back-personal"
               >
                 <ArrowLeft className="w-3 h-3" />
-                AXIS Pessoal
+                {t("axisBizLanding.axisPersonal")}
               </button>
             </Link>
             <Link href="/business/auth">
@@ -496,7 +501,7 @@ export default function BusinessLanding() {
                 className="landing-cta-button group relative px-5 py-2 rounded-xl font-semibold text-sm transition-all border-0"
                 data-testid="button-biz-header-cta"
               >
-                Começar grátis
+                {t("axisBizLanding.startFree")}
               </button>
             </Link>
           </div>
@@ -514,15 +519,15 @@ export default function BusinessLanding() {
             >
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" data-testid="text-biz-hero-title">
-                Despesas{" "}
-                <span className="landing-gradient-text">da equipe.</span>
+                {t("axisBizLanding.heroTitle1")}{" "}
+                <span className="landing-gradient-text">{t("axisBizLanding.heroTitle2")}</span>
                 <br />
-                <span className="text-white/50">Zero planilha</span>
+                <span className="text-white/50">{t("axisBizLanding.heroTitle3")}</span>
                 <br className="md:hidden" />
-                <span className="text-white/50"> manual.</span>
+                <span className="text-white/50"> {t("axisBizLanding.heroTitle4")}</span>
               </h1>
               <p className="text-lg md:text-xl text-white/45 max-w-lg mb-10 leading-relaxed" data-testid="text-biz-hero-subtitle">
-                Colaboradores fotografam o recibo pelo WhatsApp. O AXIS registra, extrai os itens, classifica por categoria e gera o link de relatório para o financeiro — sem app novo, sem digitação manual.
+                {t("axisBizLanding.heroSubtitle")}
               </p>
             </motion.div>
 
@@ -538,14 +543,14 @@ export default function BusinessLanding() {
                   data-testid="button-biz-hero-start"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Começar agora — é grátis
+                    {t("axisBizLanding.startNowFree")}
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
               </Link>
               <div className="flex items-center gap-2 text-sm text-white/30">
                 <Check className="w-4 h-4" style={{ color: BIZ.success }} />
-                <span>Sem cartão de crédito</span>
+                <span>{t("axisBizLanding.noCard")}</span>
               </div>
             </motion.div>
 
@@ -556,11 +561,11 @@ export default function BusinessLanding() {
               className="flex items-center gap-6 mt-8"
             >
               {[
-                { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto" },
+                { icon: <Camera className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipPhoto") },
                 { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp" },
                 { icon: <FileSpreadsheet className="w-3.5 h-3.5" />, label: "Excel" },
-                { icon: <Zap className="w-3.5 h-3.5" />, label: "IA" },
-                { icon: <Shield className="w-3.5 h-3.5" />, label: "Link público" },
+                { icon: <Zap className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipAI") },
+                { icon: <Shield className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipPublicLink") },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-white/30 text-xs">
                   {item.icon}
@@ -602,14 +607,14 @@ export default function BusinessLanding() {
               viewport={{ once: true }}
             >
               <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.primary }}>
-                Veja na prática
+                {t("axisBizLanding.seeInAction")}
               </p>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-demo-title">
-                Foto do recibo.{" "}
-                <span className="landing-gradient-text">AXIS faz o resto.</span>
+                {t("axisBizLanding.demoTitle1")}{" "}
+                <span className="landing-gradient-text">{t("axisBizLanding.demoTitle2")}</span>
               </h2>
               <p className="text-white/35 text-base leading-relaxed mb-6 max-w-md">
-                A IA lê o cupom, extrai estabelecimento, valor, categoria e itens — e registra na empresa com a imagem original. Tudo em segundos, sem digitar nada.
+                {t("axisBizLanding.demoDesc")}
               </p>
               <ReceiptFlowDemo />
             </motion.div>
@@ -623,9 +628,9 @@ export default function BusinessLanding() {
             >
               <div className="grid grid-cols-1 gap-4">
                 {[
-                  { value: 0, suffix: "", prefix: "", label: "digitação manual por despesa", color: BIZ.primary },
-                  { value: 2, suffix: "s", prefix: "< ", label: "para registrar uma nota fiscal", color: BIZ.secondary },
-                  { value: 100, suffix: "%", prefix: "", label: "das imagens salvas e acessíveis", color: BIZ.tertiary },
+                  { value: 0, suffix: "", prefix: "", label: t("axisBizLanding.statLabel0"), color: BIZ.primary },
+                  { value: 2, suffix: "s", prefix: "< ", label: t("axisBizLanding.statLabel1"), color: BIZ.secondary },
+                  { value: 100, suffix: "%", prefix: "", label: t("axisBizLanding.statLabel2"), color: BIZ.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -646,11 +651,11 @@ export default function BusinessLanding() {
 
               <div className="flex flex-wrap gap-3 mt-2">
                 {[
-                  { icon: <Camera className="w-3.5 h-3.5" />, label: "Foto", color: BIZ.primary },
+                  { icon: <Camera className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipPhoto"), color: BIZ.primary },
                   { icon: <Smartphone className="w-3.5 h-3.5" />, label: "WhatsApp", color: BIZ.success },
-                  { icon: <Receipt className="w-3.5 h-3.5" />, label: "Nota Fiscal", color: BIZ.secondary },
+                  { icon: <Receipt className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipReceipt"), color: BIZ.secondary },
                   { icon: <FileSpreadsheet className="w-3.5 h-3.5" />, label: "Excel", color: BIZ.tertiary },
-                  { icon: <Zap className="w-3.5 h-3.5" />, label: "IA", color: BIZ.accent },
+                  { icon: <Zap className="w-3.5 h-3.5" />, label: t("axisBizLanding.chipAI"), color: BIZ.accent },
                 ].map((input, i) => (
                   <motion.div
                     key={i}
@@ -683,16 +688,16 @@ export default function BusinessLanding() {
               viewport={{ once: true }}
             >
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-whatsapp-title">
-                Tudo pelo{" "}
+                {t("axisBizLanding.waTitle1")}{" "}
                 <span className="landing-whatsapp-glow">WhatsApp.</span>
                 <br />
-                <span className="text-white/40">Que a equipe já usa.</span>
+                <span className="text-white/40">{t("axisBizLanding.waTitle2")}</span>
               </h2>
               <p className="text-white/40 text-base leading-relaxed mb-6 max-w-md">
-                Nenhum app para baixar. Colaboradores enviam a foto do recibo pelo WhatsApp — o bot pergunta se é pessoal ou corporativo, extrai os itens do cupom, registra a despesa com a imagem e notifica o gestor.
+                {t("axisBizLanding.waDesc")}
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Foto → itens extraídos", "Pessoal ou corporativo?", "Gestor notificado", "Consultar pendências", "Link público de relatório"].map((tag) => (
+                {[t("axisBizLanding.waTag0"), t("axisBizLanding.waTag1"), t("axisBizLanding.waTag2"), t("axisBizLanding.waTag3"), t("axisBizLanding.waTag4")].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: `rgba(${BIZ.successRgb},0.1)`, color: BIZ.success, border: `1px solid rgba(${BIZ.successRgb},0.15)` }}>
                     {tag}
@@ -702,9 +707,9 @@ export default function BusinessLanding() {
 
               <div className="space-y-3">
                 {[
-                  { cmd: "[foto do cupom fiscal]", result: "Itens extraídos · R$ 94,70 registrado", color: BIZ.primary },
-                  { cmd: '"Corporativo"', result: "Salvo em Acme Corp · gestor notificado", color: BIZ.secondary },
-                  { cmd: '"Quais minhas pendentes?"', result: "2 despesas · R$ 133,60 aguardando", color: BIZ.success },
+                  { cmd: t("axisBizLanding.waEx0Cmd"), result: t("axisBizLanding.waEx0Result"), color: BIZ.primary },
+                  { cmd: t("axisBizLanding.waEx1Cmd"), result: t("axisBizLanding.waEx1Result"), color: BIZ.secondary },
+                  { cmd: t("axisBizLanding.waEx2Cmd"), result: t("axisBizLanding.waEx2Result"), color: BIZ.success },
                 ].map((ex, i) => (
                   <motion.div
                     key={i}
@@ -724,9 +729,9 @@ export default function BusinessLanding() {
 
               <div className="grid grid-cols-3 gap-3 mt-6">
                 {[
-                  { value: 24, suffix: "h", label: "Disponível", color: BIZ.success },
-                  { value: 3, suffix: "s", prefix: "< ", label: "Resposta", color: BIZ.secondary },
-                  { value: 0, suffix: "", label: "Downloads", color: BIZ.tertiary },
+                  { value: 24, suffix: "h", label: t("axisBizLanding.waStatLabel0"), color: BIZ.success },
+                  { value: 3, suffix: "s", prefix: "< ", label: t("axisBizLanding.waStatLabel1"), color: BIZ.secondary },
+                  { value: 0, suffix: "", label: t("axisBizLanding.waStatLabel2"), color: BIZ.tertiary },
                 ].map((stat, i) => (
                   <motion.div
                     key={i}
@@ -768,13 +773,13 @@ export default function BusinessLanding() {
             viewport={{ once: true }}
             className="text-center mb-14"
           >
-            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.primary }}>Painel do Gestor</p>
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.primary }}>{t("axisBizLanding.managerPanel")}</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-biz-panel-title">
-              Tudo organizado,{" "}
-              <span className="landing-gradient-text">pronto para aprovar.</span>
+              {t("axisBizLanding.panelTitle1")}{" "}
+              <span className="landing-gradient-text">{t("axisBizLanding.panelTitle2")}</span>
             </h2>
             <p className="text-white/35 text-base max-w-lg mx-auto leading-relaxed">
-              Veja despesas de toda a equipe, filtre por período ou colaborador, aprove ou rejeite com comentário e exporte para Excel.
+              {t("axisBizLanding.panelDesc")}
             </p>
           </motion.div>
 
@@ -789,10 +794,10 @@ export default function BusinessLanding() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
             {[
-              { icon: <Camera className="w-5 h-5" />, title: "Comprovante salvo", desc: "Imagem original e itens do cupom acessíveis com um clique", color: BIZ.primary },
-              { icon: <Check className="w-5 h-5" />, title: "Aprovação com comentário", desc: "Aprove ou rejeite com justificativa — colaborador vê o motivo", color: BIZ.success },
-              { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Excel formatado", desc: "Planilha agrupada por colaborador, data e categoria", color: BIZ.secondary },
-              { icon: <Users className="w-5 h-5" />, title: "Relatório público", desc: "Colaborador gera link — financeiro abre sem precisar de conta", color: BIZ.tertiary },
+              { icon: <Camera className="w-5 h-5" />, title: t("axisBizLanding.featTitle0"), desc: t("axisBizLanding.featDesc0"), color: BIZ.primary },
+              { icon: <Check className="w-5 h-5" />, title: t("axisBizLanding.featTitle1"), desc: t("axisBizLanding.featDesc1"), color: BIZ.success },
+              { icon: <FileSpreadsheet className="w-5 h-5" />, title: t("axisBizLanding.featTitle2"), desc: t("axisBizLanding.featDesc2"), color: BIZ.secondary },
+              { icon: <Users className="w-5 h-5" />, title: t("axisBizLanding.featTitle3"), desc: t("axisBizLanding.featDesc3"), color: BIZ.tertiary },
             ].map((feat, i) => (
               <motion.div
                 key={i}
@@ -834,11 +839,11 @@ export default function BusinessLanding() {
           </div>
 
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight" data-testid="text-biz-cta-title">
-            Sua equipe pronta{" "}
-            <span className="landing-gradient-text">em minutos.</span>
+            {t("axisBizLanding.ctaTitle1")}{" "}
+            <span className="landing-gradient-text">{t("axisBizLanding.ctaTitle2")}</span>
           </h2>
           <p className="text-lg text-white/40 max-w-xl leading-relaxed">
-            Crie sua organização, convide colaboradores por email e comece a registrar despesas pelo WhatsApp — aprovação, relatório público compartilhável e Excel prontos em minutos.
+            {t("axisBizLanding.ctaDesc")}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
@@ -848,14 +853,14 @@ export default function BusinessLanding() {
                 data-testid="button-biz-cta-final"
               >
                 <span className="relative z-10 flex items-center gap-2">
-                  Criar conta grátis
+                  {t("axisBizLanding.createFreeAccount")}
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
             </Link>
             <div className="flex items-center gap-2 text-sm text-white/30">
               <Check className="w-4 h-4" style={{ color: BIZ.success }} />
-              <span>Sem cartão de crédito · Cancele quando quiser</span>
+              <span>{t("axisBizLanding.noCardCancel")}</span>
             </div>
           </div>
         </motion.div>
@@ -872,17 +877,17 @@ export default function BusinessLanding() {
               viewport={{ once: true }}
             >
               <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: BIZ.secondary }}>
-                Para você também
+                {t("axisBizLanding.forYouToo")}
               </p>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-                E a sua vida pessoal?{" "}
-                <span className="landing-gradient-text">O AXIS cuida.</span>
+                {t("axisBizLanding.personalTitle1")}{" "}
+                <span className="landing-gradient-text">{t("axisBizLanding.personalTitle2")}</span>
               </h2>
               <p className="text-white/40 text-base leading-relaxed mb-8 max-w-md">
-                Além do trabalho, o AXIS organiza suas finanças, agenda, tarefas e hábitos — tudo com IA, pelo WhatsApp ou na web. Grátis pra começar.
+                {t("axisBizLanding.personalDesc")}
               </p>
               <div className="flex flex-wrap gap-2 mb-8">
-                {["Finanças pessoais", "Agenda inteligente", "Hábitos com streaks", "Tarefas com IA", "WhatsApp"].map((tag) => (
+                {[t("axisBizLanding.perTag0"), t("axisBizLanding.perTag1"), t("axisBizLanding.perTag2"), t("axisBizLanding.perTag3"), "WhatsApp"].map((tag) => (
                   <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium"
                     style={{ background: `rgba(${BIZ.secondaryRgb},0.1)`, color: BIZ.secondary, border: `1px solid rgba(${BIZ.secondaryRgb},0.15)` }}>
                     {tag}
@@ -895,7 +900,7 @@ export default function BusinessLanding() {
                   data-testid="button-crosslink-to-personal"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    Conhecer AXIS Pessoal
+                    {t("axisBizLanding.discoverPersonal")}
                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </button>
@@ -913,9 +918,9 @@ export default function BusinessLanding() {
                 <div className="absolute left-[27px] top-[52px] h-[calc(100%-104px)] w-px pointer-events-none"
                   style={{ background: `linear-gradient(to bottom, rgba(${BIZ.primaryRgb},0.25), rgba(${BIZ.secondaryRgb},0.2), rgba(${BIZ.tertiaryRgb},0.15))` }} />
                 {[
-                  { step: "01", icon: <Mic className="w-4 h-4" />, title: "Diga o que gastou", desc: "\"Gastei 45 no almoço\" — o AXIS entende, categoriza e registra. Por voz ou texto.", result: "R$ 45,00 · Alimentação", color: BIZ.primary, colorRgb: BIZ.primaryRgb },
-                  { step: "02", icon: <Calendar className="w-4 h-4" />, title: "Organize sua agenda", desc: "\"Reunião amanhã às 14h\" — evento criado, com sugestão de horário da IA.", result: "evento criado automaticamente", color: BIZ.secondary, colorRgb: BIZ.secondaryRgb },
-                  { step: "03", icon: <Flame className="w-4 h-4" />, title: "Construa hábitos reais", desc: "Streaks, score de disciplina e lembretes — tudo no WhatsApp que você já usa.", result: "streak mantido 🔥", color: BIZ.tertiary, colorRgb: BIZ.tertiaryRgb },
+                  { step: "01", icon: <Mic className="w-4 h-4" />, title: t("axisBizLanding.perStep0Title"), desc: t("axisBizLanding.perStep0Desc"), result: t("axisBizLanding.perStep0Result"), color: BIZ.primary, colorRgb: BIZ.primaryRgb },
+                  { step: "02", icon: <Calendar className="w-4 h-4" />, title: t("axisBizLanding.perStep1Title"), desc: t("axisBizLanding.perStep1Desc"), result: t("axisBizLanding.perStep1Result"), color: BIZ.secondary, colorRgb: BIZ.secondaryRgb },
+                  { step: "03", icon: <Flame className="w-4 h-4" />, title: t("axisBizLanding.perStep2Title"), desc: t("axisBizLanding.perStep2Desc"), result: t("axisBizLanding.perStep2Result"), color: BIZ.tertiary, colorRgb: BIZ.tertiaryRgb },
                 ].map((item, i) => (
                   <motion.div
                     key={i}
@@ -956,11 +961,11 @@ export default function BusinessLanding() {
             <span className="text-sm font-semibold">AXIS Business</span>
           </div>
           <p className="text-xs text-white/25">
-            Uma extensão do{" "}
+            {t("axisBizLanding.footerText1")}{" "}
             <Link href="/">
               <span className="underline cursor-pointer text-white/40 hover:text-white/60 transition-colors">AXIS</span>
             </Link>
-            {" "}— seu assistente de vida inteligente.
+            {" "}{t("axisBizLanding.footerText2")}
           </p>
         </div>
       </footer>

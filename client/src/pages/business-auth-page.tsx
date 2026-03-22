@@ -3,79 +3,42 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 const PRIMARY   = "#3B82F6";
 const SECONDARY = "#6366F1";
 const TERTIARY  = "#8B5CF6";
 const ACCENT    = "#0EA5E9";
 
-const SEGMENTS = [
-  "Tecnologia e Software",
-  "Consultoria e Serviços",
-  "Varejo e Comércio",
-  "Logística e Transporte",
-  "Construção e Engenharia",
-  "Saúde e Bem-estar",
-  "Educação",
-  "Indústria e Manufatura",
-  "Agronegócio",
-  "Marketing e Publicidade",
-  "Alimentação e Hospitalidade",
-  "Outro",
+const SEGMENT_KEYS = [
+  "seg0", "seg1", "seg2", "seg3", "seg4", "seg5", "seg6", "seg7", "seg8", "seg9", "seg10", "seg11",
 ];
 
-const JOB_TITLES = [
-  "Proprietário / CEO",
-  "Diretor Financeiro (CFO)",
-  "Gestor / Gerente",
-  "Analista Financeiro",
-  "Outro",
+const JOB_TITLE_KEYS = [
+  "job0", "job1", "job2", "job3", "job4",
 ];
 
-const features = [
-  { text: "Colaboradores enviam recibos pelo WhatsApp", color: PRIMARY },
-  { text: "IA classifica e registra automaticamente", color: SECONDARY },
-  { text: "Gestores aprovam com um clique", color: ACCENT },
-  { text: "Relatórios Excel prontos para auditoria", color: TERTIARY },
-  { text: "Conformidade com políticas de reembolso", color: PRIMARY },
+const FEATURE_KEYS = [
+  { key: "feature0", color: PRIMARY },
+  { key: "feature1", color: SECONDARY },
+  { key: "feature2", color: ACCENT },
+  { key: "feature3", color: TERTIARY },
+  { key: "feature4", color: PRIMARY },
 ];
 
-const demoCards = [
-  {
-    icon: Camera,
-    color: PRIMARY,
-    bg: "rgba(59,130,246,0.08)",
-    border: "rgba(59,130,246,0.15)",
-    label: "Ana Costa enviou um recibo",
-    result: "R$ 847,00 · Viagem corporativa",
-    tag: "Despesa registrada",
-  },
-  {
-    icon: Zap,
-    color: SECONDARY,
-    bg: "rgba(99,102,241,0.08)",
-    border: "rgba(99,102,241,0.15)",
-    label: "IA processou automaticamente",
-    result: "Ibis Styles SP · Hospedagem · 2 diárias",
-    tag: "Classificado pela IA",
-  },
-  {
-    icon: FileSpreadsheet,
-    color: TERTIARY,
-    bg: "rgba(139,92,246,0.08)",
-    border: "rgba(139,92,246,0.15)",
-    label: "Gestor aprovou o lote",
-    result: "12 despesas · Total: R$ 4.320,00",
-    tag: "Relatório gerado",
-  },
+const DEMO_CARD_DEFS = [
+  { icon: Camera, color: PRIMARY, bg: "rgba(59,130,246,0.08)", border: "rgba(59,130,246,0.15)", labelKey: "card0Label", resultKey: "card0Result", tagKey: "card0Tag" },
+  { icon: Zap, color: SECONDARY, bg: "rgba(99,102,241,0.08)", border: "rgba(99,102,241,0.15)", labelKey: "card1Label", resultKey: "card1Result", tagKey: "card1Tag" },
+  { icon: FileSpreadsheet, color: TERTIARY, bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.15)", labelKey: "card2Label", resultKey: "card2Result", tagKey: "card2Tag" },
 ];
 
 function FeatureRotator() {
+  const { t } = useTranslation();
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIdx((prev) => (prev + 1) % features.length);
+      setIdx((prev) => (prev + 1) % FEATURE_KEYS.length);
     }, 3500);
     return () => clearInterval(interval);
   }, []);
@@ -92,9 +55,9 @@ function FeatureRotator() {
           className="absolute inset-0 flex items-center"
         >
           <div className="flex items-center gap-3">
-            <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: features[idx].color }} />
+            <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ background: FEATURE_KEYS[idx].color }} />
             <p className="text-base text-white/60 font-medium leading-snug" data-testid="text-feature-highlight">
-              {features[idx].text}
+              {t(`axisBizAuth.${FEATURE_KEYS[idx].key}`)}
             </p>
           </div>
         </motion.div>
@@ -103,27 +66,28 @@ function FeatureRotator() {
   );
 }
 
-function DemoCard({ card, delay }: { card: typeof demoCards[0]; delay: number }) {
-  const Icon = card.icon;
+function DemoCard({ def, delay }: { def: typeof DEMO_CARD_DEFS[0]; delay: number }) {
+  const { t } = useTranslation();
+  const Icon = def.icon;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay }}
       className="rounded-xl p-4 border"
-      style={{ background: card.bg, borderColor: card.border }}
+      style={{ background: def.bg, borderColor: def.border }}
     >
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: card.bg, border: `1px solid ${card.border}` }}>
-          <Icon className="w-4 h-4" style={{ color: card.color }} />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: def.bg, border: `1px solid ${def.border}` }}>
+          <Icon className="w-4 h-4" style={{ color: def.color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-white/35 mb-1 italic leading-relaxed">{card.label}</p>
+          <p className="text-xs text-white/35 mb-1 italic leading-relaxed">{t(`axisBizAuth.${def.labelKey}`)}</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color: card.color }} />
-            <p className="text-xs font-semibold text-white/80">{card.result}</p>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ color: card.color, background: card.bg, border: `1px solid ${card.border}` }}>
-              {card.tag}
+            <CheckCircle2 className="w-3 h-3 flex-shrink-0" style={{ color: def.color }} />
+            <p className="text-xs font-semibold text-white/80">{t(`axisBizAuth.${def.resultKey}`)}</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ color: def.color, background: def.bg, border: `1px solid ${def.border}` }}>
+              {t(`axisBizAuth.${def.tagKey}`)}
             </span>
           </div>
         </div>
@@ -133,6 +97,7 @@ function DemoCard({ card, delay }: { card: typeof demoCards[0]; delay: number })
 }
 
 function BrandPanel() {
+  const { t } = useTranslation();
   return (
     <div className="relative flex flex-col justify-between h-full p-10 xl:p-14 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "#060608" }} />
@@ -161,18 +126,18 @@ function BrandPanel() {
       <div className="relative z-10 flex-1 flex flex-col justify-start pt-0 pb-10 gap-8">
         <div>
           <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
-            <span className="text-white">Controle total</span>{" "}
+            <span className="text-white">{t("axisBizAuth.heroTitle1")}</span>{" "}
             <span style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 50%, ${TERTIARY} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              das despesas.
+              {t("axisBizAuth.heroTitle2")}
             </span>
             <br />
-            <span className="text-white/30 text-3xl xl:text-4xl">Zero planilha manual.</span>
+            <span className="text-white/30 text-3xl xl:text-4xl">{t("axisBizAuth.heroSub")}</span>
           </h2>
           <FeatureRotator />
         </div>
         <div className="flex flex-col gap-3">
-          {demoCards.map((card, i) => (
-            <DemoCard key={i} card={card} delay={i * 0.12} />
+          {DEMO_CARD_DEFS.map((def, i) => (
+            <DemoCard key={i} def={def} delay={i * 0.12} />
           ))}
         </div>
       </div>
@@ -181,10 +146,10 @@ function BrandPanel() {
         <div className="h-px w-full mb-5" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
         <div className="flex items-center gap-6">
           {[
-            { label: "Recibos", color: PRIMARY },
-            { label: "Aprovações", color: SECONDARY },
-            { label: "Auditoria", color: TERTIARY },
-            { label: "Relatórios", color: ACCENT },
+            { label: t("axisBizAuth.modReceipts"), color: PRIMARY },
+            { label: t("axisBizAuth.modApprovals"), color: SECONDARY },
+            { label: t("axisBizAuth.modAudit"), color: TERTIARY },
+            { label: t("axisBizAuth.modReports"), color: ACCENT },
           ].map((mod) => (
             <div key={mod.label} className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
@@ -206,14 +171,15 @@ function formatCnpj(value: string) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
 }
 
-const STEP_LABELS = ["Responsável", "Empresa", "Configuração"];
+const STEP_LABEL_KEYS = ["stepLabel0", "stepLabel1", "stepLabel2"];
 
 function StepIndicator({ step }: { step: number }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-white/35 font-medium">Passo {step} de 3</span>
-        <span className="text-xs font-semibold" style={{ color: PRIMARY }}>{STEP_LABELS[step - 1]}</span>
+        <span className="text-xs text-white/35 font-medium">{t("axisBizAuth.stepOf", { step, total: 3 })}</span>
+        <span className="text-xs font-semibold" style={{ color: PRIMARY }}>{t(`axisBizAuth.${STEP_LABEL_KEYS[step - 1]}`)}</span>
       </div>
       <div className="flex gap-1.5">
         {[1, 2, 3].map((s) => (
@@ -247,6 +213,7 @@ const selectStyle = {
 };
 
 export default function BusinessAuthPage() {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [isCollaboratorLogin, setIsCollaboratorLogin] = useState(false);
   const [step, setStep] = useState(1);
@@ -275,8 +242,8 @@ export default function BusinessAuthPage() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    document.title = `AXIS Business — ${isLogin ? "Entrar" : "Criar conta"}`;
-  }, [isLogin]);
+    document.title = `AXIS Business — ${isLogin ? t("axisBizAuth.titleLogin") : t("axisBizAuth.titleRegister")}`;
+  }, [isLogin, t]);
 
   useEffect(() => {
     if (isLogin) setStep(1);
@@ -296,7 +263,7 @@ export default function BusinessAuthPage() {
         setLocation("/business/app");
       }
     } catch (err: any) {
-      setLoginError(err?.message ?? "Email ou senha incorretos");
+      setLoginError(err?.message ?? t("axisBizAuth.loginError"));
     } finally {
       setIsLoading(false);
     }
@@ -312,7 +279,7 @@ export default function BusinessAuthPage() {
       queryClient.setQueryData(["/api/auth/user"], userData);
       setLocation("/business/app");
     } catch (err: any) {
-      setCollabLoginError(err?.message ?? "Email ou senha incorretos");
+      setCollabLoginError(err?.message ?? t("axisBizAuth.loginError"));
     } finally {
       setCollabIsLoading(false);
     }
@@ -347,7 +314,7 @@ export default function BusinessAuthPage() {
       });
       setLocation("/business/welcome");
     } catch (err: any) {
-      setSubmitError(err?.message ?? "Erro ao criar conta. Tente novamente.");
+      setSubmitError(err?.message ?? t("axisBizAuth.registerError"));
     } finally {
       setIsLoading(false);
     }
@@ -363,7 +330,7 @@ export default function BusinessAuthPage() {
         data-testid="button-back-to-landing"
       >
         <ArrowLeft className="w-4 h-4" />
-        Voltar
+        {t("axisBizAuth.back")}
       </button>
       <div className="hidden lg:block lg:w-[52%] xl:w-[55%]">
         <div className="h-screen sticky top-0">
@@ -382,7 +349,7 @@ export default function BusinessAuthPage() {
               <span className="text-xl font-bold tracking-tight block">
                 AXIS <span style={{ color: PRIMARY }}>Business</span>
               </span>
-              <p className="text-white/35 text-xs">Gestão corporativa de despesas</p>
+              <p className="text-white/35 text-xs">{t("axisBizAuth.corpExpenseManagement")}</p>
             </div>
           </div>
         </div>
@@ -410,22 +377,22 @@ export default function BusinessAuthPage() {
                     data-testid="button-back-to-manager-login"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
-                    Voltar para login de gestor
+                    {t("axisBizAuth.backToManagerLogin")}
                   </button>
                   <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
-                    Acesso de colaborador
+                    {t("axisBizAuth.collabAccess")}
                   </h1>
-                  <p className="text-sm text-white/35">Use as credenciais fornecidas pelo seu gestor</p>
+                  <p className="text-sm text-white/35">{t("axisBizAuth.collabSubtitle")}</p>
                 </div>
 
                 <form onSubmit={handleCollaboratorLogin} className="space-y-4" data-testid="form-collab-login">
                   <div>
-                    <label className={labelClass}>E-mail</label>
-                    <input type="email" value={collabEmail} onChange={(e) => setCollabEmail(e.target.value)} placeholder="voce@empresa.com.br" required className={inputClass} data-testid="input-collab-email" />
+                    <label className={labelClass}>{t("axisBizAuth.email")}</label>
+                    <input type="email" value={collabEmail} onChange={(e) => setCollabEmail(e.target.value)} placeholder={t("axisBizAuth.emailPlaceholder")} required className={inputClass} data-testid="input-collab-email" />
                   </div>
                   <div>
-                    <label className={labelClass}>Senha</label>
-                    <input type="password" value={collabPassword} onChange={(e) => setCollabPassword(e.target.value)} placeholder="Senha fornecida pelo gestor" required className={inputClass} data-testid="input-collab-password" />
+                    <label className={labelClass}>{t("axisBizAuth.password")}</label>
+                    <input type="password" value={collabPassword} onChange={(e) => setCollabPassword(e.target.value)} placeholder={t("axisBizAuth.collabPasswordPlaceholder")} required className={inputClass} data-testid="input-collab-password" />
                   </div>
                   {collabLoginError && (
                     <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }} data-testid="text-collab-auth-error">
@@ -435,7 +402,7 @@ export default function BusinessAuthPage() {
                   )}
                   <div className="pt-1">
                     <button type="submit" disabled={collabIsLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-collab-submit">
-                      {collabIsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Entrar como colaborador</span><ArrowRight className="h-4 w-4" /></>}
+                      {collabIsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>{t("axisBizAuth.loginAsCollab")}</span><ArrowRight className="h-4 w-4" /></>}
                     </button>
                   </div>
                 </form>
@@ -444,19 +411,19 @@ export default function BusinessAuthPage() {
             <>
               <div className="mb-9">
                 <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
-                  Acesse sua conta
+                  {t("axisBizAuth.loginHeading")}
                 </h1>
-                <p className="text-sm text-white/35">Entre com suas credenciais para continuar</p>
+                <p className="text-sm text-white/35">{t("axisBizAuth.loginSubtitle")}</p>
               </div>
 
               <form onSubmit={handleLoginSubmit} className="space-y-4" data-testid="form-auth-login">
                 <div>
-                  <label className={labelClass}>E-mail corporativo</label>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@empresa.com.br" required className={inputClass} data-testid="input-email" />
+                  <label className={labelClass}>{t("axisBizAuth.corpEmail")}</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("axisBizAuth.emailPlaceholder")} required className={inputClass} data-testid="input-email" />
                 </div>
                 <div>
-                  <label className={labelClass}>Senha</label>
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} className={inputClass} data-testid="input-password" />
+                  <label className={labelClass}>{t("axisBizAuth.password")}</label>
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("axisBizAuth.passwordPlaceholder")} required minLength={6} className={inputClass} data-testid="input-password" />
                 </div>
                 {error && (
                   <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }} data-testid="text-auth-error">
@@ -466,7 +433,7 @@ export default function BusinessAuthPage() {
                 )}
                 <div className="pt-1">
                   <button type="submit" disabled={isLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-auth-submit">
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Entrar na conta</span><ArrowRight className="h-4 w-4" /></>}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>{t("axisBizAuth.loginBtn")}</span><ArrowRight className="h-4 w-4" /></>}
                   </button>
                 </div>
               </form>
@@ -476,9 +443,9 @@ export default function BusinessAuthPage() {
             <>
               <div className="mb-7">
                 <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
-                  Criar conta corporativa
+                  {t("axisBizAuth.registerHeading")}
                 </h1>
-                <p className="text-sm text-white/35">Configure sua empresa e comece agora</p>
+                <p className="text-sm text-white/35">{t("axisBizAuth.registerSubtitle")}</p>
               </div>
 
               <StepIndicator step={step} />
@@ -497,34 +464,34 @@ export default function BusinessAuthPage() {
                   >
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>Nome</label>
-                        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="João" required className={inputClass} data-testid="input-first-name" />
+                        <label className={labelClass}>{t("axisBizAuth.firstName")}</label>
+                        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={t("axisBizAuth.firstNamePh")} required className={inputClass} data-testid="input-first-name" />
                       </div>
                       <div>
-                        <label className={labelClass}>Sobrenome</label>
-                        <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Silva" required className={inputClass} data-testid="input-last-name" />
+                        <label className={labelClass}>{t("axisBizAuth.lastName")}</label>
+                        <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={t("axisBizAuth.lastNamePh")} required className={inputClass} data-testid="input-last-name" />
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Cargo / Função</label>
+                      <label className={labelClass}>{t("axisBizAuth.jobTitle")}</label>
                       <select value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} required style={selectStyle} data-testid="select-job-title">
-                        <option value="" disabled style={{ background: "#1a1a1f" }}>Selecione seu cargo</option>
-                        {JOB_TITLES.map((t) => (
-                          <option key={t} value={t} style={{ background: "#1a1a1f" }}>{t}</option>
+                        <option value="" disabled style={{ background: "#1a1a1f" }}>{t("axisBizAuth.selectJobTitle")}</option>
+                        {JOB_TITLE_KEYS.map((key) => (
+                          <option key={key} value={t(`axisBizAuth.${key}`)} style={{ background: "#1a1a1f" }}>{t(`axisBizAuth.${key}`)}</option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className={labelClass}>E-mail corporativo</label>
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="voce@empresa.com.br" required className={inputClass} data-testid="input-email" />
+                      <label className={labelClass}>{t("axisBizAuth.corpEmail")}</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("axisBizAuth.emailPlaceholder")} required className={inputClass} data-testid="input-email" />
                     </div>
                     <div>
-                      <label className={labelClass}>Senha</label>
-                      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} className={inputClass} data-testid="input-password" />
+                      <label className={labelClass}>{t("axisBizAuth.password")}</label>
+                      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("axisBizAuth.passwordPlaceholder")} required minLength={6} className={inputClass} data-testid="input-password" />
                     </div>
                     <div className="pt-1">
                       <button type="submit" className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-step1-next">
-                        Próximo: Dados da empresa <ArrowRight className="h-4 w-4" />
+                        {t("axisBizAuth.step1Next")} <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </motion.form>
@@ -542,15 +509,15 @@ export default function BusinessAuthPage() {
                     data-testid="form-step2"
                   >
                     <div>
-                      <label className={labelClass}>Razão Social <span style={{ color: PRIMARY }}>*</span></label>
-                      <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Empresa Ltda." required className={inputClass} data-testid="input-company-name" />
+                      <label className={labelClass}>{t("axisBizAuth.companyName")} <span style={{ color: PRIMARY }}>*</span></label>
+                      <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t("axisBizAuth.companyNamePh")} required className={inputClass} data-testid="input-company-name" />
                     </div>
                     <div>
-                      <label className={labelClass}>Nome Fantasia <span className="text-white/20 normal-case font-normal">(opcional)</span></label>
-                      <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder="Como a empresa é conhecida" className={inputClass} data-testid="input-trade-name" />
+                      <label className={labelClass}>{t("axisBizAuth.tradeName")} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
+                      <input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder={t("axisBizAuth.tradeNamePh")} className={inputClass} data-testid="input-trade-name" />
                     </div>
                     <div>
-                      <label className={labelClass}>CNPJ <span className="text-white/20 normal-case font-normal">(opcional)</span></label>
+                      <label className={labelClass}>{t("axisBizAuth.cnpj")} <span className="text-white/20 normal-case font-normal">({t("axisBizAuth.optional")})</span></label>
                       <input
                         value={cnpj}
                         onChange={(e) => setCnpj(formatCnpj(e.target.value))}
@@ -561,20 +528,20 @@ export default function BusinessAuthPage() {
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Segmento / Ramo de Atividade</label>
+                      <label className={labelClass}>{t("axisBizAuth.segment")}</label>
                       <select value={segment} onChange={(e) => setSegment(e.target.value)} required style={selectStyle} data-testid="select-segment">
-                        <option value="" disabled style={{ background: "#1a1a1f" }}>Selecione o segmento</option>
-                        {SEGMENTS.map((s) => (
-                          <option key={s} value={s} style={{ background: "#1a1a1f" }}>{s}</option>
+                        <option value="" disabled style={{ background: "#1a1a1f" }}>{t("axisBizAuth.selectSegment")}</option>
+                        {SEGMENT_KEYS.map((key) => (
+                          <option key={key} value={t(`axisBizAuth.${key}`)} style={{ background: "#1a1a1f" }}>{t(`axisBizAuth.${key}`)}</option>
                         ))}
                       </select>
                     </div>
                     <div className="flex gap-3 pt-1">
                       <button type="button" onClick={() => setStep(1)} className="flex-1 py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white/50 hover:text-white/70" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="button-step2-back">
-                        <ArrowLeft className="h-4 w-4" /> Voltar
+                        <ArrowLeft className="h-4 w-4" /> {t("axisBizAuth.back")}
                       </button>
                       <button type="submit" className="flex-[2] py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-step2-next">
-                        Próximo: Configuração <ArrowRight className="h-4 w-4" />
+                        {t("axisBizAuth.step2Next")} <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </motion.form>
@@ -604,14 +571,14 @@ export default function BusinessAuthPage() {
                     </div>
 
                     <div>
-                      <label className={labelClass}>Dia de Fechamento</label>
+                      <label className={labelClass}>{t("axisBizAuth.closingDay")}</label>
                       <select value={closingDay} onChange={(e) => setClosingDay(e.target.value)} style={selectStyle} data-testid="select-closing-day">
                         {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                          <option key={d} value={d} style={{ background: "#1a1a1f" }}>Dia {d}</option>
+                          <option key={d} value={d} style={{ background: "#1a1a1f" }}>{t("axisBizAuth.dayNum", { d })}</option>
                         ))}
                       </select>
                       <p className="text-xs text-white/30 mt-2 leading-relaxed">
-                        O AXIS enviará relatórios automáticos de despesas nesse dia todo mês.
+                        {t("axisBizAuth.closingDayDesc")}
                       </p>
                     </div>
 
@@ -624,10 +591,10 @@ export default function BusinessAuthPage() {
 
                     <div className="flex gap-3 pt-1">
                       <button type="button" onClick={() => setStep(2)} className="flex-1 py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white/50 hover:text-white/70" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} data-testid="button-step3-back">
-                        <ArrowLeft className="h-4 w-4" /> Voltar
+                        <ArrowLeft className="h-4 w-4" /> {t("axisBizAuth.back")}
                       </button>
                       <button type="submit" disabled={isLoading} className="flex-[2] py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-auth-submit">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Criar conta corporativa</span><ArrowRight className="h-4 w-4" /></>}
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>{t("axisBizAuth.createCorpAccount")}</span><ArrowRight className="h-4 w-4" /></>}
                       </button>
                     </div>
                   </motion.form>
@@ -644,9 +611,9 @@ export default function BusinessAuthPage() {
               data-testid="button-toggle-auth-mode"
             >
               {isLogin ? (
-                <>Não tem conta?{" "}<span className="font-semibold" style={{ color: PRIMARY }}>Criar agora</span></>
+                <>{t("axisBizAuth.noAccount")}{" "}<span className="font-semibold" style={{ color: PRIMARY }}>{t("axisBizAuth.createNow")}</span></>
               ) : (
-                <>Já tem conta?{" "}<span className="font-semibold" style={{ color: PRIMARY }}>Entrar</span></>
+                <>{t("axisBizAuth.hasAccount")}{" "}<span className="font-semibold" style={{ color: PRIMARY }}>{t("axisBizAuth.signIn")}</span></>
               )}
             </button>
             {isLogin && !isCollaboratorLogin && (
@@ -656,7 +623,7 @@ export default function BusinessAuthPage() {
                 className="flex items-center gap-1.5 text-xs text-white/20 hover:text-white/40 transition-colors"
                 data-testid="button-collab-login-toggle"
               >
-                Logar como colaborador
+                {t("axisBizAuth.loginAsCollabBtn")}
                 <ArrowRight className="h-3 w-3" />
               </button>
             )}
@@ -665,13 +632,13 @@ export default function BusinessAuthPage() {
           <div className="mt-8 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <div className="flex items-center justify-center gap-5">
               {[
-                { label: "LGPD", color: PRIMARY },
-                { label: "Dados seguros", color: SECONDARY },
-                { label: "Suporte dedicado", color: TERTIARY },
+                { key: "trustLGPD", color: PRIMARY },
+                { key: "trustSecure", color: SECONDARY },
+                { key: "trustSupport", color: TERTIARY },
               ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5">
+                <div key={item.key} className="flex items-center gap-1.5">
                   <Shield className="w-2.5 h-2.5 flex-shrink-0" style={{ color: item.color, opacity: 0.6 }} />
-                  <span className="text-[11px] text-white/22">{item.label}</span>
+                  <span className="text-[11px] text-white/22">{t(`axisBizAuth.${item.key}`)}</span>
                 </div>
               ))}
             </div>

@@ -756,9 +756,9 @@ export default function Landing() {
   };
 
   useEffect(() => {
-    document.title = "AXIS — Organize sua vida. Por voz, texto ou WhatsApp.";
+    document.title = t("axisLanding.pageTitle");
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "AXIS organiza finanças, agenda, tarefas e hábitos com inteligência artificial. Por voz, texto ou WhatsApp.");
+    if (meta) meta.setAttribute("content", t("axisLanding.metaDesc"));
   }, []);
 
   const cssVars = {
