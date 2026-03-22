@@ -388,7 +388,7 @@ export default function Finance() {
       toast({ title: t("axisFinance.categoryRequired"), description: t("axisFinance.categoryRequiredDesc"), variant: "destructive" });
       return;
     }
-    const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || t("axisFinance.pmOther") : txForm.paymentMethod);
+    const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || "other" : txForm.paymentMethod);
     const installmentsNum = parseInt(txForm.installments) || 1;
     createTxMutation.mutate({
       amount: parseFloat(txForm.amount),
