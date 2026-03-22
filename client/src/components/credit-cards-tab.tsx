@@ -89,6 +89,20 @@ function CardDetailSheet({
   const { t, i18n } = useTranslation();
   const { fmtMoney, symbol } = useCurrency();
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
+  const CATEGORY_LABELS: Record<string, string> = {
+    "Alimentação": t("axisFinance.ccCatFood"),
+    "Mercado": t("axisFinance.ccCatGrocery"),
+    "Combustível": t("axisFinance.ccCatFuel"),
+    "Saúde": t("axisFinance.ccCatHealth"),
+    "Farmácia": t("axisFinance.ccCatPharmacy"),
+    "Lazer": t("axisFinance.ccCatLeisure"),
+    "Roupas": t("axisFinance.ccCatClothing"),
+    "Eletrônicos": t("axisFinance.ccCatElectronics"),
+    "Educação": t("axisFinance.ccCatEducation"),
+    "Transporte": t("axisFinance.ccCatTransport"),
+    "Assinaturas": t("axisFinance.ccCatSubscription"),
+    "Outros": t("axisFinance.ccCatOther"),
+  };
   const MP = getModulePalette(theme as any);
   const NEGATIVE = MP.negative;
   const POSITIVE = MP.positive;
@@ -336,11 +350,11 @@ function CardDetailSheet({
 
             <div>
               <FieldLabel>{t("axisFinance.cardName")}</FieldLabel>
-              <FieldInput value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Nubank Gold" data-testid="input-edit-card-name" />
+              <FieldInput value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder={t("axisFinance.cardNamePlaceholder")} data-testid="input-edit-card-name" />
             </div>
             <div>
               <FieldLabel>{t("axisFinance.cardBank")}</FieldLabel>
-              <FieldInput value={editForm.bank} onChange={e => setEditForm(f => ({ ...f, bank: e.target.value }))} placeholder="Ex: Nubank" data-testid="input-edit-card-bank" />
+              <FieldInput value={editForm.bank} onChange={e => setEditForm(f => ({ ...f, bank: e.target.value }))} placeholder={t("axisFinance.cardBankPlaceholder")} data-testid="input-edit-card-bank" />
             </div>
             <div>
               <FieldLabel>{t("axisFinance.cardLimitLabel")}</FieldLabel>
@@ -531,7 +545,7 @@ function CardDetailSheet({
                   step="0.01"
                   value={purchase.amount}
                   onChange={e => setPurchase(p => ({ ...p, amount: e.target.value }))}
-                  placeholder="0,00"
+                  placeholder={t("axisFinance.amountPlaceholder")}
                   className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20 font-medium"
                   data-testid="input-purchase-amount"
                 />
@@ -610,7 +624,7 @@ function CardDetailSheet({
                       }}
                       data-testid={`category-${cat}`}
                     >
-                      {cat}
+                      {CATEGORY_LABELS[cat] ?? cat}
                     </button>
                   );
                 })}
@@ -936,11 +950,11 @@ export function CreditCardsTab() {
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4" data-testid="form-add-credit-card">
             <div>
               <FieldLabel>{t("axisFinance.cardName")}</FieldLabel>
-              <FieldInput placeholder="Ex: Nubank Gold, Itaú Platinum..." value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} data-testid="input-card-name" />
+              <FieldInput placeholder={t("axisFinance.cardNamePlaceholderLong")} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} data-testid="input-card-name" />
             </div>
             <div>
               <FieldLabel>{t("axisFinance.cardBank")}</FieldLabel>
-              <FieldInput placeholder="Ex: Nubank, Itaú, Bradesco..." value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} data-testid="input-card-bank" />
+              <FieldInput placeholder={t("axisFinance.cardBankPlaceholderLong")} value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} data-testid="input-card-bank" />
             </div>
             <div>
               <FieldLabel>{t("axisFinance.cardLimitLabel")}</FieldLabel>

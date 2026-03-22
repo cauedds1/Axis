@@ -190,7 +190,7 @@ function BillFormModal({
                 type="number"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                placeholder="0,00"
+                placeholder={t("axisFinance.amountPlaceholder")}
                 className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20 font-medium"
                 data-testid="input-manage-bill-amount"
               />

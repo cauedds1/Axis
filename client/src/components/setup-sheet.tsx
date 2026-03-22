@@ -396,7 +396,7 @@ function SectionRenda({
                 type="number"
                 value={riAmount}
                 onChange={e => setRiAmount(e.target.value)}
-                placeholder="0,00"
+                placeholder={t("axisFinance.amountPlaceholder")}
                 className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20 min-w-0"
                 data-testid="input-recurring-amount"
               />
@@ -438,7 +438,7 @@ function SectionRenda({
             type="number"
             value={val || (totalRecurring > 0 ? String(totalRecurring) : "")}
             onChange={e => setVal(e.target.value)}
-            placeholder={totalRecurring > 0 ? String(totalRecurring) : "0,00"}
+            placeholder={totalRecurring > 0 ? String(totalRecurring) : t("axisFinance.amountPlaceholder")}
             className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
             data-testid="input-income"
           />
@@ -587,7 +587,7 @@ function SectionGastos() {
             type="number"
             value={amount}
             onChange={e => setAmount(e.target.value)}
-            placeholder="0,00"
+            placeholder={t("axisFinance.amountPlaceholder")}
             className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20"
             data-testid="input-expense-amount"
           />
@@ -663,7 +663,7 @@ function SectionGastos() {
                   max="31"
                   value={dia}
                   onChange={e => setDia(e.target.value)}
-                  placeholder="Ex: 10"
+                  placeholder={t("axisSetup.expenses.dayPlaceholder")}
                   style={{ width: "100px" }}
                   data-testid="input-due-day"
                 />
