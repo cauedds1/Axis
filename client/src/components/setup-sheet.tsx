@@ -210,7 +210,7 @@ function SectionRenda({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!val || isNaN(parseFloat(val))) throw new Error("Valor inválido");
+      if (!val || isNaN(parseFloat(val))) throw new Error(t("axisSetup.errorInvalidValue"));
       await apiRequest("POST", "/api/onboarding/setup", {
         currentIncome: parseFloat(val),
         fixedExpenses: null,
@@ -232,8 +232,8 @@ function SectionRenda({
     mutationFn: async () => {
       const amt = parseFloat(riAmount.replace(",", "."));
       const day = parseInt(riDay);
-      if (!riName.trim() || isNaN(amt) || amt <= 0) throw new Error("Preencha nome e valor");
-      if (day < 1 || day > 31) throw new Error("Dia inválido");
+      if (!riName.trim() || isNaN(amt) || amt <= 0) throw new Error(t("axisSetup.income.errorFillNameAndValue"));
+      if (day < 1 || day > 31) throw new Error(t("axisSetup.errorInvalidDay"));
       const finalCategory = riCategory === "outros" ? (riCustomCategory.trim() || "outros") : riCategory;
       await apiRequest("POST", "/api/recurring-incomes", { name: riName.trim(), amount: amt, dayOfMonth: day, active: true, categoryName: finalCategory });
     },
@@ -492,7 +492,7 @@ function SectionGastos() {
   const addMutation = useMutation({
     mutationFn: async () => {
       const amtNum = parseFloat(amount);
-      if (!desc.trim() || isNaN(amtNum) || amtNum <= 0) throw new Error("Preencha descrição e valor");
+      if (!desc.trim() || isNaN(amtNum) || amtNum <= 0) throw new Error(t("axisSetup.expenses.errorFillDescAndValue"));
 
       const endDate = getEndDate(recurrence);
       const today = new Date();
@@ -777,7 +777,7 @@ function SectionRotina() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (!title.trim() || selectedDays.length === 0) throw new Error("Preencha atividade e dias");
+      if (!title.trim() || selectedDays.length === 0) throw new Error(t("axisSetup.routine.errorFillTitleAndDays"));
       const endDate = getEndDate(recurrence);
       const today = new Date();
       const [h, m] = time.split(":").map(Number);

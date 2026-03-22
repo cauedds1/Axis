@@ -171,7 +171,7 @@ function BillFormModal({
             <FieldInput
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ex: Aluguel, Netflix, Salário..."
+              placeholder={t("axisFinance.billTitlePlaceholder")}
               data-testid="input-manage-bill-title"
             />
           </div>
@@ -219,7 +219,7 @@ function BillFormModal({
               <FieldInput
                 value={form.categoryName}
                 onChange={e => setForm(f => ({ ...f, categoryName: e.target.value }))}
-                placeholder="Ex: Moradia..."
+                placeholder={t("axisFinance.billCategoryPlaceholder")}
                 data-testid="input-manage-bill-category"
               />
             </div>
@@ -424,7 +424,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
               type="button"
               onClick={() => setEditingBill(bill)}
               className="p-2 transition-colors hover:bg-white/6"
-              title="Editar"
+              title={t("common.edit")}
               data-testid={`button-manage-edit-${bill.id}`}
             >
               <Pencil className="h-3.5 w-3.5 text-white/35" />
@@ -435,7 +435,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
               onClick={() => toggleActiveMutation.mutate({ bill, active: !bill.active })}
               disabled={toggleActiveMutation.isPending}
               className="p-2 transition-colors hover:bg-white/6"
-              title={bill.active ? "Desativar conta" : "Reativar conta"}
+              title={bill.active ? t("axisFinance.deactivateBill") : t("axisFinance.reactivateBill")}
               data-testid={`button-manage-toggle-active-${bill.id}`}
             >
               {bill.active
@@ -448,7 +448,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
               onClick={() => deleteMutation.mutate(bill.id)}
               disabled={deleteMutation.isPending}
               className="p-2 transition-colors hover:bg-red-500/10"
-              title="Excluir"
+              title={t("common.delete")}
               data-testid={`button-manage-delete-${bill.id}`}
             >
               <Trash2 className="h-3.5 w-3.5" style={{ color: EXPENSE_COLOR }} />
@@ -562,7 +562,7 @@ export function ManageBillsSheet({ open, onClose }: { open: boolean; onClose: ()
             style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
           >
             <p className="text-[11px] text-white/25">
-              {activeCount} ativa{activeCount !== 1 ? "s" : ""} · {inactiveCount} inativa{inactiveCount !== 1 ? "s" : ""}
+              {t("axisFinance.billsActiveSummary", { active: activeCount, inactive: inactiveCount })}
             </p>
             <button
               onClick={() => setAddingNew(true)}

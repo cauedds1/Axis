@@ -856,15 +856,15 @@ export function BillsTab() {
                                 const trimmed = line.trim();
                                 if (!trimmed) continue;
                                 if (trimmed.startsWith("Emissor:")) {
-                                  info.push({ label: "Emissor", value: trimmed.replace("Emissor:", "").trim(), icon: Store });
+                                  info.push({ label: t("axisFinance.issuer"), value: trimmed.replace("Emissor:", "").trim(), icon: Store });
                                 } else if (trimmed.startsWith("Destinatário:") || trimmed.startsWith("Destinatario:")) {
-                                  info.push({ label: "Destinatário", value: trimmed.replace(/Destinat[áa]rio:/, "").trim(), icon: User });
+                                  info.push({ label: t("axisFinance.recipient"), value: trimmed.replace(/Destinat[áa]rio:/, "").trim(), icon: User });
                                 } else if (trimmed.startsWith("Pagamento:")) {
-                                  info.push({ label: "Pagamento", value: trimmed.replace("Pagamento:", "").trim(), icon: CreditCard });
+                                  info.push({ label: t("axisFinance.paymentData"), value: trimmed.replace("Pagamento:", "").trim(), icon: CreditCard });
                                 } else if (trimmed.startsWith("Descrição:") || trimmed.startsWith("Descricao:")) {
-                                  info.push({ label: "Serviço/Produto", value: trimmed.replace(/Descri[çc][ãa]o:/, "").trim(), icon: FileText });
+                                  info.push({ label: t("axisFinance.serviceProduct"), value: trimmed.replace(/Descri[çc][ãa]o:/, "").trim(), icon: FileText });
                                 } else {
-                                  info.push({ label: "Observação", value: trimmed, icon: FileText });
+                                  info.push({ label: t("axisFinance.observation"), value: trimmed, icon: FileText });
                                 }
                               }
 

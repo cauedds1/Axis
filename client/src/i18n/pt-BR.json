@@ -2484,7 +2484,16 @@
     "intentVoice": "Registrado por voz",
     "processed": "Processado",
     "error": "Erro",
-    "noMicrophone": "Sem acesso ao microfone"
+    "noMicrophone": "Sem acesso ao microfone",
+    "newBill": "Nova conta",
+    "editBill": "Editar conta",
+    "observation": "Observação",
+    "billTitlePlaceholder": "Ex: Aluguel, Netflix, Salário...",
+    "billCategoryPlaceholder": "Ex: Moradia...",
+    "deactivateBill": "Desativar conta",
+    "reactivateBill": "Reativar conta",
+    "billsActiveSummary": "{{active}} ativa(s) · {{inactive}} inativa(s)",
+    "purchase": "Compra"
   },
   "axisSetup": {
     "title": "Configurar perfil",
@@ -2539,7 +2548,8 @@
       "errorSave": "Erro ao salvar renda",
       "errorAdd": "Erro ao adicionar renda",
       "errorDelete": "Erro ao remover renda",
-      "added": "Renda recorrente adicionada!"
+      "added": "Renda recorrente adicionada!",
+      "errorFillNameAndValue": "Preencha nome e valor"
     },
     "expenses": {
       "descLabel": "Descrição",
@@ -2565,7 +2575,8 @@
       "catSubscription": "Assinatura",
       "catOther": "Outros",
       "errorAdd": "Erro ao adicionar gasto",
-      "errorDelete": "Erro ao remover gasto"
+      "errorDelete": "Erro ao remover gasto",
+      "errorFillDescAndValue": "Preencha descrição e valor"
     },
     "routine": {
       "activityLabel": "Atividade",
@@ -2586,7 +2597,8 @@
         "Sáb"
       ],
       "errorAdd": "Erro ao adicionar rotina",
-      "errorDelete": "Erro ao remover rotina"
+      "errorDelete": "Erro ao remover rotina",
+      "errorFillTitleAndDays": "Preencha atividade e dias"
     },
     "alerts": {
       "sentTo": "Alertas enviados para",
@@ -2639,6 +2651,8 @@
       "errorPhone": "Erro ao salvar número",
       "generatingQrNew": "Gerando novo QR code..."
     },
-    "errorFinish": "Erro ao concluir configuração"
+    "errorFinish": "Erro ao concluir configuração",
+    "errorInvalidValue": "Valor inválido",
+    "errorInvalidDay": "Dia inválido"
   }
 }

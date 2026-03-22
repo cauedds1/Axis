@@ -149,7 +149,7 @@ function CardDetailSheet({
       const installments = parseInt(purchase.installments) || 1;
       const payload: any = {
         amount: parseFloat(purchase.amount),
-        description: purchase.description.trim() || purchase.establishment.trim() || "Compra",
+        description: purchase.description.trim() || purchase.establishment.trim() || t("axisFinance.purchase"),
         type: "expense",
         date: purchase.date,
         categoryName: purchase.categoryName || undefined,
@@ -474,7 +474,7 @@ function CardDetailSheet({
                           onClick={() => setEditingTx(tx)}
                           className="p-1 rounded opacity-30 hover:opacity-80 transition-opacity"
                           data-testid={`button-edit-card-tx-${tx.id}`}
-                          title="Editar transação"
+                          title={t("axisFinance.editTransaction")}
                         >
                           <Pencil className="h-3.5 w-3.5 text-white" />
                         </button>

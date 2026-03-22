@@ -2484,7 +2484,16 @@
     "intentVoice": "Recorded by voice",
     "processed": "Processed",
     "error": "Error",
-    "noMicrophone": "No microphone access"
+    "noMicrophone": "No microphone access",
+    "newBill": "New bill",
+    "editBill": "Edit bill",
+    "observation": "Note",
+    "billTitlePlaceholder": "e.g. Rent, Netflix, Salary...",
+    "billCategoryPlaceholder": "e.g. Housing...",
+    "deactivateBill": "Deactivate",
+    "reactivateBill": "Reactivate",
+    "billsActiveSummary": "{{active}} active · {{inactive}} inactive",
+    "purchase": "Purchase"
   },
   "axisSetup": {
     "title": "Configure profile",
@@ -2539,7 +2548,8 @@
       "errorSave": "Error saving income",
       "errorAdd": "Error adding income",
       "errorDelete": "Error removing income",
-      "added": "Recurring income added!"
+      "added": "Recurring income added!",
+      "errorFillNameAndValue": "Please fill name and value"
     },
     "expenses": {
       "descLabel": "Description",
@@ -2565,7 +2575,8 @@
       "catSubscription": "Subscription",
       "catOther": "Other",
       "errorAdd": "Error adding expense",
-      "errorDelete": "Error removing expense"
+      "errorDelete": "Error removing expense",
+      "errorFillDescAndValue": "Please fill description and value"
     },
     "routine": {
       "activityLabel": "Activity",
@@ -2586,7 +2597,8 @@
         "Sat"
       ],
       "errorAdd": "Error adding routine",
-      "errorDelete": "Error removing routine"
+      "errorDelete": "Error removing routine",
+      "errorFillTitleAndDays": "Please fill activity and days"
     },
     "alerts": {
       "sentTo": "Alerts sent to",
@@ -2639,6 +2651,8 @@
       "errorPhone": "Error saving number",
       "generatingQrNew": "Generating new QR code..."
     },
-    "errorFinish": "Error finishing setup"
+    "errorFinish": "Error finishing setup",
+    "errorInvalidValue": "Invalid value",
+    "errorInvalidDay": "Invalid day"
   }
 }
