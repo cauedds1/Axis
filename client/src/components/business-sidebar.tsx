@@ -154,7 +154,7 @@ export function BusinessSidebar() {
             }
             <span className="text-[10px] font-bold tracking-widest uppercase"
               style={{ color: primaryHex, opacity: isCorporate ? 0.7 : 1 }}>
-              {isCorporate ? "Corporate" : "EXECUTIVE"}
+              {isCorporate ? t("axisBiz.themeSelector.corporate") : t("axisBiz.themeSelector.executive")}
             </span>
           </div>
         </div>

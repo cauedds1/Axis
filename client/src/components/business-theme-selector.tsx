@@ -74,7 +74,7 @@ export function BusinessThemeSelector({
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Corporate</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.themeSelector.corporate")}</span>
           <span className="text-xs text-muted-foreground">— {t("axisBiz.themeSelector.corporateSubtitle")}</span>
         </div>
         <div
@@ -98,7 +98,7 @@ export function BusinessThemeSelector({
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Executive</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("axisBiz.themeSelector.executive")}</span>
           <span className="text-xs text-muted-foreground">— {t("axisBiz.themeSelector.executiveSubtitle")}</span>
         </div>
         <div
@@ -148,7 +148,7 @@ export function BusinessThemeToggleCompact() {
         <Layers className="h-3.5 w-3.5" style={{ color: hex }} />
       )}
       <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: hex }}>
-        {isExecutive ? "EXECUTIVE" : "Corporate"}
+        {isExecutive ? t("axisBiz.themeSelector.executive") : t("axisBiz.themeSelector.corporate")}
       </span>
     </button>
   );

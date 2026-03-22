@@ -14,7 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { CheckCircle2, XCircle, FileSpreadsheet, Printer, Filter, ReceiptText, ChevronDown, ChevronRight, AlertTriangle, MessageSquare, Pencil, Banknote, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
+import i18n from "@/i18n";
 
 const BLUE = "#2563EB";
 const BLUE_LIGHT = "#3B82F6";
@@ -47,7 +49,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
             <div className="rounded-xl overflow-hidden border border-border/40">
               <img
                 src={expense.receiptImageUrl ? expense.receiptImageUrl : `data:image/jpeg;base64,${expense.receiptImageBase64}`}
-                alt="Foto do recibo"
+                alt={t("axisBiz.expenses.receiptPhoto")}
                 className="w-full object-contain max-h-80"
                 data-testid="img-receipt"
               />
@@ -91,7 +93,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
                         </div>
                       ))}
                       <div className="border-t border-border/30 mt-1 pt-1.5 flex items-center justify-between text-sm font-semibold">
-                        <span className="text-muted-foreground">Total</span>
+                        <span className="text-muted-foreground">{t("axisBiz.expenses.itemsTotal")}</span>
                         <span style={{ color: BLUE_LIGHT }}>{formatBRL(expense.amount)}</span>
                       </div>
                     </div>
@@ -106,7 +108,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
               </div>
             )}
             <div className="col-span-2 flex items-center gap-2">
-              <p className="text-xs text-muted-foreground">Status:</p>
+              <p className="text-xs text-muted-foreground">{t("axisBiz.expenses.status")}:</p>
               <StatusBadge status={expense?.status ?? "pending_review"} />
             </div>
           </div>
@@ -316,7 +318,7 @@ export default function BusinessExpenses() {
     queryFn: async () => {
       if (!activeOrg?.id) return [];
       const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses?${expenseParams.toString()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erro ao buscar despesas");
+      if (!res.ok) throw new Error("Failed to fetch expenses");
       return res.json();
     },
     enabled: !!activeOrg?.id,
@@ -355,8 +357,10 @@ export default function BusinessExpenses() {
     onError: () => toast({ title: t("axisBiz.expenses.updateError"), variant: "destructive" }),
   });
 
+  const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
+
   const grouped = (expenses ?? []).reduce((acc: Record<string, any[]>, e) => {
-    const dateKey = e.date ? format(new Date(e.date), "dd/MM/yyyy", { locale: ptBR }) : "Sem data";
+    const dateKey = e.date ? format(new Date(e.date), "dd/MM/yyyy", { locale: dateLocale }) : t("axisBiz.expenses.noDate");
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(e);
     return acc;
@@ -367,12 +371,12 @@ export default function BusinessExpenses() {
   const handleExportExcel = useCallback(async () => {
     if (!activeOrg?.id) return;
     const res = await fetch(`/api/business/organizations/${activeOrg.id}/expenses/export-excel?${expenseParams.toString()}`, { credentials: "include" });
-    if (!res.ok) { toast({ title: "Erro ao exportar", variant: "destructive" }); return; }
+    if (!res.ok) { toast({ title: t("axisBiz.expenses.exportError"), variant: "destructive" }); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `despesas-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.xlsx`;
+    a.download = `expenses-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   }, [activeOrg, expenseParams]);
@@ -563,7 +567,7 @@ export default function BusinessExpenses() {
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{t("axisBiz.expenses.found", { count: expenses?.length ?? 0 })}</p>
           <p className="text-sm font-semibold text-foreground">
-            Total: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalAmount)}</span>
+            {t("axisBiz.expenses.itemsTotal")}: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalAmount)}</span>
           </p>
         </div>
       )}
@@ -620,7 +624,7 @@ export default function BusinessExpenses() {
                             {expense.receiptImageBase64 && (
                               <>
                                 <span className="text-muted-foreground/30 text-xs">·</span>
-                                <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 recibo</span>
+                                <span className="text-xs" style={{ color: BLUE_LIGHT }}>📷 {t("axisBiz.expenses.receipt")}</span>
                               </>
                             )}
                           </div>
@@ -642,7 +646,7 @@ export default function BusinessExpenses() {
                                 onClick={() => approveMutation.mutate({ id: expense.id, status: "approved" })}
                                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
                                 style={{ background: "#10B98115", border: "1px solid #10B98130" }}
-                                title="Aprovar"
+                                title={t("axisBiz.expenses.approve")}
                                 data-testid={`button-approve-${expense.id}`}
                               >
                                 <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -651,7 +655,7 @@ export default function BusinessExpenses() {
                                 onClick={() => { setRejectingExpense(expense); setRejectionComment(""); }}
                                 className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
                                 style={{ background: "#EF444415", border: "1px solid #EF444430" }}
-                                title="Rejeitar"
+                                title={t("axisBiz.expenses.reject")}
                                 data-testid={`button-reject-${expense.id}`}
                               >
                                 <XCircle className="w-4 h-4 text-red-400" />

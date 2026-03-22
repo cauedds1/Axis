@@ -18,7 +18,9 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex, getBusinessModulePalette } from "@/components/theme-provider";
+import i18n from "@/i18n";
 
 const AMBER = "#F59E0B";
 const EMERALD = "#10B981";
@@ -58,6 +60,7 @@ function SkeletonCard() {
 }
 
 function CreateOrgDialog({ onCreated }: { onCreated: () => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -67,33 +70,33 @@ function CreateOrgDialog({ onCreated }: { onCreated: () => void }) {
     mutationFn: (data: { name: string; cnpj?: string }) => apiRequest("POST", "/api/business/organizations", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business/organizations"] });
-      toast({ title: "Empresa criada com sucesso!" });
+      toast({ title: t("axisBiz.home.orgCreated") });
       setOpen(false); setName(""); setCnpj("");
       onCreated();
     },
-    onError: () => toast({ title: "Erro ao criar empresa", variant: "destructive" }),
+    onError: () => toast({ title: t("axisBiz.home.orgCreateError"), variant: "destructive" }),
   });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="border-0 text-sm font-semibold" data-testid="button-create-org">
-          <Plus className="w-4 h-4 mr-1.5" />Criar empresa
+          <Plus className="w-4 h-4 mr-1.5" />{t("axisBiz.home.createOrg")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Nova empresa</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("axisBiz.home.newOrg")}</DialogTitle></DialogHeader>
         <div className="flex flex-col gap-4 pt-2">
           <div>
-            <Label htmlFor="org-name">Nome da empresa *</Label>
-            <Input id="org-name" placeholder="Ex: Acme Corp" value={name} onChange={e => setName(e.target.value)} className="mt-1.5" data-testid="input-org-name" />
+            <Label htmlFor="org-name">{t("axisBiz.home.orgName")}</Label>
+            <Input id="org-name" placeholder={t("axisBiz.home.orgNamePlaceholder")} value={name} onChange={e => setName(e.target.value)} className="mt-1.5" data-testid="input-org-name" />
           </div>
           <div>
-            <Label htmlFor="org-cnpj">CNPJ (opcional)</Label>
+            <Label htmlFor="org-cnpj">{t("axisBiz.home.cnpjOptional")}</Label>
             <Input id="org-cnpj" placeholder="00.000.000/0000-00" value={cnpj} onChange={e => setCnpj(e.target.value)} className="mt-1.5" data-testid="input-org-cnpj" />
           </div>
           <Button onClick={() => createMutation.mutate({ name, cnpj: cnpj || undefined })} disabled={!name.trim() || createMutation.isPending} data-testid="button-submit-create-org">
-            {createMutation.isPending ? "Criando..." : "Criar empresa"}
+            {createMutation.isPending ? t("axisBiz.home.creating") : t("axisBiz.home.createOrg")}
           </Button>
         </div>
       </DialogContent>
@@ -146,9 +149,11 @@ export default function BusinessHome() {
     }, {})
   ).sort((a, b) => b[1].total - a[1].total).slice(0, 3);
 
+  const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
+
   const categoryBreakdown = Object.entries(
     monthExpenses.filter(e => e.status !== "rejected").reduce((acc: Record<string, number>, e) => {
-      const cat = e.categoryName || "Outros";
+      const cat = e.categoryName || t("axisBiz.home.other");
       acc[cat] = (acc[cat] ?? 0) + e.amount;
       return acc;
     }, {})
@@ -198,7 +203,7 @@ export default function BusinessHome() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {t("axisBiz.home.greeting.morning")}, {user?.firstName ?? ""}. {format(now, "MMMM 'de' yyyy", { locale: ptBR })}.
+            {t("axisBiz.home.greeting.morning")}, {user?.firstName ?? ""}. {format(now, i18n.language.startsWith("pt") ? "MMMM 'de' yyyy" : "MMMM yyyy", { locale: dateLocale })}.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -241,7 +246,7 @@ export default function BusinessHome() {
                 <p className="text-xs text-muted-foreground">{members?.length ?? 0} {t("axisBiz.collaborators.title").toLowerCase()}</p>
               </div>
               <Badge className="ml-1 text-[10px]" style={{ background: `${primaryHex}20`, color: primaryHex, border: `1px solid ${primaryHex}35` }}>
-                {activeOrg.isAdmin ? "Administrador" : "Colaborador"}
+                {activeOrg.isAdmin ? t("axisBiz.home.roleAdmin") : t("axisBiz.home.roleCollaborator")}
               </Badge>
             </div>
             <Link href="/business/app/colaboradores">
@@ -296,7 +301,7 @@ export default function BusinessHome() {
                 {card.highlight && (
                   <Link href="/business/app/expenses">
                     <button className="mt-2 flex items-center gap-1 text-[10px] font-semibold transition-opacity hover:opacity-70" style={{ color: AMBER }}>
-                      Ver pendentes <ArrowRight className="w-2.5 h-2.5" />
+                      {t("axisBiz.home.viewPending")} <ArrowRight className="w-2.5 h-2.5" />
                     </button>
                   </Link>
                 )}
@@ -325,7 +330,7 @@ export default function BusinessHome() {
                     <div key={e.id} className="flex items-center gap-3" data-testid={`row-recent-expense-${e.id}`}>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-foreground truncate">{e.establishment || e.description || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground">{e.userName || e.userEmail || "—"} · {e.date ? format(new Date(e.date), "dd/MM", { locale: ptBR }) : "—"}</p>
+                        <p className="text-[10px] text-muted-foreground">{e.userName || e.userEmail || "—"} · {e.date ? format(new Date(e.date), "dd/MM", { locale: dateLocale }) : "—"}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <p className="text-xs font-semibold text-foreground">{formatBRL(e.amount)}</p>

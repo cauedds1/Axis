@@ -63,7 +63,7 @@ export default function BusinessSettingsPage() {
   const handleLangChange = (lang: string) => {
     i18n.changeLanguage(lang);
     setCurrentLang(lang);
-    toast({ title: lang === "pt-BR" ? "Idioma alterado para Português" : "Language changed to English" });
+    toast({ title: t("axisBiz.settings.appearance.languageChanged") });
   };
 
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
@@ -334,7 +334,7 @@ export default function BusinessSettingsPage() {
                   style={{ background: "rgba(255,255,255,0.04)", border: "2px dashed rgba(255,255,255,0.12)" }}
                 >
                   {logoPreview ? (
-                    <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                    <img src={logoPreview} alt={t("axisBiz.settings.company.logoLabel")} className="w-full h-full object-cover" />
                   ) : (
                     <ImageIcon className="w-7 h-7 text-muted-foreground/40" />
                   )}

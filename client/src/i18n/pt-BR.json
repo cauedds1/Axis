@@ -2716,6 +2716,8 @@
       "logout": "Sair"
     },
     "themeSelector": {
+      "corporate": "Corporate",
+      "executive": "Executive",
       "corporateSubtitle": "minimalista, foco profissional",
       "executiveSubtitle": "vibrante, com brilho e glow",
       "palettes": {
@@ -2752,7 +2754,8 @@
           "rejected": "Rejeitadas"
         },
         "language": "Idioma",
-        "languageSubtitle": "Escolha o idioma da interface"
+        "languageSubtitle": "Escolha o idioma da interface",
+        "languageChanged": "Idioma alterado com sucesso"
       },
       "company": {
         "visualIdentity": "Identidade Visual",
@@ -2848,7 +2851,19 @@
       "rejected": "Rejeitado",
       "paid": "Pago",
       "noOrg": "Nenhuma organização encontrada",
-      "noOrgHint": "Entre em contato com o administrador."
+      "noOrgHint": "Entre em contato com o administrador.",
+      "orgCreated": "Empresa criada com sucesso!",
+      "orgCreateError": "Erro ao criar empresa",
+      "createOrg": "Criar empresa",
+      "newOrg": "Nova empresa",
+      "orgName": "Nome da empresa *",
+      "orgNamePlaceholder": "Ex: Acme Corp",
+      "cnpjOptional": "CNPJ (opcional)",
+      "creating": "Criando...",
+      "other": "Outros",
+      "roleAdmin": "Administrador",
+      "roleCollaborator": "Colaborador",
+      "viewPending": "Ver pendentes"
     },
     "expenses": {
       "title": "Despesas",
@@ -2926,7 +2941,14 @@
       "printPdf": "Imprimir PDF",
       "exportExcel": "Exportar Excel",
       "noOrg": "Crie uma empresa para gerenciar despesas.",
-      "receiptItems": "Itens do cupom"
+      "receiptItems": "Itens do cupom",
+      "receiptPhoto": "Foto do recibo",
+      "status": "Status",
+      "noDate": "Sem data",
+      "exportError": "Erro ao exportar dados",
+      "receipt": "recibo",
+      "approve": "Aprovar",
+      "reject": "Rejeitar"
     },
     "collaborators": {
       "title": "Colaboradores",

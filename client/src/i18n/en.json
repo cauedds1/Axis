@@ -2716,6 +2716,8 @@
       "logout": "Log out"
     },
     "themeSelector": {
+      "corporate": "Corporate",
+      "executive": "Executive",
       "corporateSubtitle": "minimalist, professional focus",
       "executiveSubtitle": "vibrant, with glow effects",
       "palettes": {
@@ -2752,7 +2754,8 @@
           "rejected": "Rejected"
         },
         "language": "Language",
-        "languageSubtitle": "Choose the interface language"
+        "languageSubtitle": "Choose the interface language",
+        "languageChanged": "Language changed successfully"
       },
       "company": {
         "visualIdentity": "Visual identity",
@@ -2848,7 +2851,19 @@
       "rejected": "Rejected",
       "paid": "Paid",
       "noOrg": "No organization found",
-      "noOrgHint": "Contact your administrator."
+      "noOrgHint": "Contact your administrator.",
+      "orgCreated": "Company created successfully!",
+      "orgCreateError": "Error creating company",
+      "createOrg": "Create company",
+      "newOrg": "New company",
+      "orgName": "Company name *",
+      "orgNamePlaceholder": "Ex: Acme Corp",
+      "cnpjOptional": "CNPJ (optional)",
+      "creating": "Creating...",
+      "other": "Other",
+      "roleAdmin": "Administrator",
+      "roleCollaborator": "Collaborator",
+      "viewPending": "View pending"
     },
     "expenses": {
       "title": "Expenses",
@@ -2926,7 +2941,14 @@
       "printPdf": "Print PDF",
       "exportExcel": "Export Excel",
       "noOrg": "Create a company to manage expenses.",
-      "receiptItems": "Receipt items"
+      "receiptItems": "Receipt items",
+      "receiptPhoto": "Receipt photo",
+      "status": "Status",
+      "noDate": "No date",
+      "exportError": "Error exporting data",
+      "receipt": "receipt",
+      "approve": "Approve",
+      "reject": "Reject"
     },
     "collaborators": {
       "title": "Collaborators",
