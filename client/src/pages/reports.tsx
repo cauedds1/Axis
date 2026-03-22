@@ -706,7 +706,7 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
           <SectionTitle>{t("axisReports.byCategory")}</SectionTitle>
           <div className="rounded-2xl border bg-card p-5" style={{ borderColor: `${color}12` }}>
             {byCategory.map((cat: any) => (
-              <PriorityBar key={cat.name} label={cat.name} total={cat.count} completed={cat.completed} color={color} />
+              <PriorityBar key={cat.name} label={cat.name === "general" ? t("axisReports.categoryGeneral") : cat.name} total={cat.count} completed={cat.completed} color={color} />
             ))}
           </div>
         </>
@@ -736,6 +736,16 @@ function TasksReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   );
 }
 
+const DAY_KEY_MAP: Record<string, string> = {
+  sun: "axisReports.daySun",
+  mon: "axisReports.dayMon",
+  tue: "axisReports.dayTue",
+  wed: "axisReports.dayWed",
+  thu: "axisReports.dayThu",
+  fri: "axisReports.dayFri",
+  sat: "axisReports.daySat",
+};
+
 // ======================== HABITS TAB ========================
 function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   const { t } = useTranslation();
@@ -747,6 +757,10 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   if (!data) return <EmptyState icon={Flame} message={t("axisReports.noHabitData")} />;
 
   const { summary, habits, weeklyConsistency } = data;
+  const localizedWeekly = weeklyConsistency?.map((d: any) => ({
+    ...d,
+    day: DAY_KEY_MAP[d.day] ? t(DAY_KEY_MAP[d.day]) : d.day,
+  })) ?? [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -760,7 +774,7 @@ function HabitsReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       <SectionTitle>{t("axisReports.weeklyConsistency")}</SectionTitle>
       <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={weeklyConsistency} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <BarChart data={localizedWeekly} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
             <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
@@ -814,6 +828,10 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
   if (!data) return <EmptyState icon={Calendar} message={t("axisReports.noScheduleData")} />;
 
   const { summary, byDayOfWeek, upcoming, overdue } = data;
+  const localizedByDay = byDayOfWeek?.map((d: any) => ({
+    ...d,
+    day: DAY_KEY_MAP[d.day] ? t(DAY_KEY_MAP[d.day]) : d.day,
+  })) ?? [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
@@ -840,7 +858,7 @@ function ScheduleReport({ color, isHigh }: { color: string; isHigh: boolean }) {
       <SectionTitle>{t("axisReports.eventsByDay")}</SectionTitle>
       <div className="rounded-2xl border bg-card p-4" style={{ borderColor: `${color}12` }}>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={byDayOfWeek} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <BarChart data={localizedByDay} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" />
             <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />

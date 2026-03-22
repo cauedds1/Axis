@@ -2644,7 +2644,7 @@ Se algum dado não foi mencionado, use valores razoáveis.`
 
       const catMap: Record<string, { count: number; completed: number }> = {};
       for (const task of tasks) {
-        const cat = task.category || "Geral";
+        const cat = task.category || "general";
         if (!catMap[cat]) catMap[cat] = { count: 0, completed: 0 };
         catMap[cat].count++;
         if (task.status === "completed") catMap[cat].completed++;
@@ -2681,8 +2681,8 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         })
       );
 
-      const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-      const weeklyConsistency = dayNames.map((day, i) => ({ day, completions: globalDayMap[i] || 0 }));
+      const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      const weeklyConsistency = dayKeys.map((day, i) => ({ day, completions: globalDayMap[i] || 0 }));
 
       const sorted = [...habitsWithStats].sort((a, b) => b.streak - a.streak);
       const avgStreak = allHabits.length > 0 ? Math.round(allHabits.reduce((s, h) => s + (h.streak || 0), 0) / allHabits.length) : 0;
@@ -2724,8 +2724,8 @@ Se algum dado não foi mencionado, use valores razoáveis.`
         dayMap[day].count++;
         if (item.status === "completed") dayMap[day].completed++;
       }
-      const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-      const byDayOfWeek = dayNames.map((day, i) => ({ day, count: dayMap[i]?.count || 0, completed: dayMap[i]?.completed || 0, pending: (dayMap[i]?.count || 0) - (dayMap[i]?.completed || 0) }));
+      const dayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+      const byDayOfWeek = dayKeys.map((day, i) => ({ day, count: dayMap[i]?.count || 0, completed: dayMap[i]?.completed || 0, pending: (dayMap[i]?.count || 0) - (dayMap[i]?.completed || 0) }));
 
       const upcoming = allItems.filter(i => new Date(i.startTime) > now && i.status === "pending").sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).slice(0, 5);
       const overdue = allItems.filter(i => new Date(i.startTime) < now && i.status === "pending").sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()).slice(0, 5);

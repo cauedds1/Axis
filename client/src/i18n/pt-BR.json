@@ -2274,6 +2274,14 @@
     "timeMorning": "Manhã",
     "timeAfternoon": "Tarde",
     "timeEvening": "Noite",
-    "priorityByTitle": "Por prioridade"
+    "priorityByTitle": "Por prioridade",
+    "daySun": "Dom",
+    "dayMon": "Seg",
+    "dayTue": "Ter",
+    "dayWed": "Qua",
+    "dayThu": "Qui",
+    "dayFri": "Sex",
+    "daySat": "Sáb",
+    "categoryGeneral": "Geral"
   }
 }
