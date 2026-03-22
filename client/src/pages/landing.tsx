@@ -476,7 +476,7 @@ function DashboardPreview() {
 
               <div className="mt-4 pt-3 border-t border-white/[0.04]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-white/30 uppercase tracking-wider">Hábitos hoje</span>
+                  <span className="text-[10px] text-white/30 uppercase tracking-wider">{t("axisLanding.habitsToday")}</span>
                   <span className="text-[11px] font-mono" style={{ color: LP.success }}>2/3</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
