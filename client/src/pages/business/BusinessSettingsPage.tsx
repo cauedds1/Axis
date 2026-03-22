@@ -5,10 +5,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBusinessTheme, type BusinessTheme, getBusinessPrimaryHex, isCorporateTheme } from "@/components/theme-provider";
 import { BusinessThemeSelector } from "@/components/business-theme-selector";
-import { Palette, Building2, User, Loader2, Check, Tag, Plus, Trash2, Upload, X, ImageIcon } from "lucide-react";
+import { Palette, Building2, User, Loader2, Check, Tag, Plus, Trash2, Upload, X, ImageIcon, Languages } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LogoCropModal } from "@/components/logo-crop-modal";
+import i18n from "@/i18n";
 
 type Tab = "aparencia" | "empresa" | "conta" | "categorias";
 
@@ -47,6 +48,13 @@ export default function BusinessSettingsPage() {
   const { businessTheme, setBusinessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
   const isExecutive = !isCorporateTheme(businessTheme);
+  const [currentLang, setCurrentLang] = useState(i18n.language);
+
+  const handleLangChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    setCurrentLang(lang);
+    toast({ title: lang === "pt-BR" ? "Idioma alterado para Português" : "Language changed to English" });
+  };
 
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const org = orgs?.[0];
@@ -258,6 +266,44 @@ export default function BusinessSettingsPage() {
                   <p className="text-sm font-bold" style={{ color: card.color }}>{card.value}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: primaryHex + "18", border: `1px solid ${primaryHex}25` }}>
+                <Languages className="w-4 h-4" style={{ color: primaryHex }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Idioma</p>
+                <p className="text-xs text-muted-foreground">Escolha o idioma da interface</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {[
+                { code: "pt-BR", flag: "🇧🇷", label: "Português" },
+                { code: "en",    flag: "🇺🇸", label: "English" },
+              ].map(({ code, flag, label }) => {
+                const isActive = currentLang === code || (code === "pt-BR" && currentLang.startsWith("pt"));
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => handleLangChange(code)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200"
+                    style={{
+                      background: isActive ? primaryHex + "18" : "rgba(255,255,255,0.03)",
+                      color: isActive ? primaryHex : "hsl(var(--muted-foreground))",
+                      border: isActive ? `1px solid ${primaryHex}35` : "1px solid rgba(255,255,255,0.07)",
+                    }}
+                    data-testid={`button-lang-${code}`}
+                  >
+                    <span>{flag}</span>
+                    <span>{label}</span>
+                    {isActive && <Check className="w-3.5 h-3.5 ml-auto" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
