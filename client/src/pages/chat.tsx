@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme, getPrimaryHex } from "@/components/theme-provider";
+import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "@shared/models/chat";
 
 type PendingAction = { type: string; data: any };
@@ -29,6 +30,7 @@ function invalidateAfterAction(type: string) {
 }
 
 export default function Chat() {
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -67,7 +69,7 @@ export default function Chat() {
       if (context?.previous) {
         queryClient.setQueryData(["/api/chat/messages"], context.previous);
       }
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: t("axisChat.errorSending"), description: err.message, variant: "destructive" });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
@@ -76,7 +78,7 @@ export default function Chat() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       if (data.scheduledItems) {
         queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
-        toast({ title: "Compromissos criados na agenda" });
+        toast({ title: t("axisChat.scheduledCreated") });
       }
       if (data.pendingAction) {
         setPendingAction(data.pendingAction);
@@ -96,7 +98,7 @@ export default function Chat() {
       invalidateAfterAction(data.actionExecuted || "");
     },
     onError: () => {
-      toast({ title: "Erro ao confirmar", variant: "destructive" });
+      toast({ title: t("axisChat.errorConfirm"), variant: "destructive" });
     },
   });
 
@@ -128,7 +130,7 @@ export default function Chat() {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/chat/upload", { method: "POST", body: formData, credentials: "include" });
-      if (!res.ok) throw new Error("Erro ao processar arquivo");
+      if (!res.ok) throw new Error(t("axisChat.errorFile"));
       return res.json();
     },
     onSuccess: () => {
@@ -137,7 +139,7 @@ export default function Chat() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: () => {
-      toast({ title: "Erro ao processar arquivo", variant: "destructive" });
+      toast({ title: t("axisChat.errorFile"), variant: "destructive" });
     },
   });
 
@@ -168,7 +170,7 @@ export default function Chat() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch {
-      toast({ title: "Erro", description: "Sem acesso ao microfone", variant: "destructive" });
+      toast({ title: t("axisChat.errorSending"), description: t("axisChat.errorFile"), variant: "destructive" });
     }
   };
 
@@ -193,20 +195,28 @@ export default function Chat() {
     },
   });
 
+  const helpItems = [
+    { icon: "💸", label: t("axisChat.helpFinanceLabel"), desc: t("axisChat.helpFinanceDesc") },
+    { icon: "✅", label: t("axisChat.helpTasksLabel"), desc: t("axisChat.helpTasksDesc") },
+    { icon: "📅", label: t("axisChat.helpAgendaLabel"), desc: t("axisChat.helpAgendaDesc") },
+    { icon: "🔁", label: t("axisChat.helpHabitsLabel"), desc: t("axisChat.helpHabitsDesc") },
+    { icon: "💬", label: t("axisChat.helpChatLabel"), desc: t("axisChat.helpChatDesc") },
+  ];
+
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
-      <title>AXIS - AxisBot</title>
+      <title>{t("axisChat.pageTitle")}</title>
 
       <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold" data-testid="text-chat-title">AxisBot</h1>
+            <h1 className="text-lg font-bold" data-testid="text-chat-title">{t("axisChat.title")}</h1>
             <button
               onClick={() => setShowHelp(true)}
               className="flex items-center justify-center w-5 h-5 rounded-full transition-opacity hover:opacity-80"
               style={{ color: accent, opacity: 0.7 }}
               data-testid="button-axisbot-help"
-              aria-label="Como o AxisBot funciona"
+              aria-label={t("axisChat.helpAriaLabel")}
             >
               <HelpCircle className="w-4 h-4" />
             </button>
@@ -216,13 +226,13 @@ export default function Chat() {
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
             style={{ color: "rgba(255,107,107,0.7)", background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)" }}
             data-testid="button-delete-chat"
-            aria-label="Excluir chat"
+            aria-label={t("axisChat.deleteAriaLabel")}
           >
             <Trash2 className="w-3 h-3" />
-            Excluir chat
+            {t("axisChat.deleteChat")}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">Converse sobre suas finanças, tarefas, agenda ou qualquer coisa</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("axisChat.subtitle")}</p>
       </div>
 
       <AnimatePresence>
@@ -249,7 +259,7 @@ export default function Chat() {
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${accent}18` }}>
                     <HelpCircle className="w-4 h-4" style={{ color: accent }} />
                   </div>
-                  <span className="font-bold text-white text-base">O que é o AxisBot?</span>
+                  <span className="font-bold text-white text-base">{t("axisChat.helpTitle")}</span>
                 </div>
                 <button
                   onClick={() => setShowHelp(false)}
@@ -261,17 +271,12 @@ export default function Chat() {
               </div>
 
               <p className="text-sm text-white/60 leading-relaxed mb-4">
-                O <span className="text-white font-semibold">AxisBot</span> é o assistente inteligente do AXIS. Ele entende linguagem natural — você digita ou fala o que precisa, e ele age.
+                <span className="text-white font-semibold">{t("axisChat.title")}</span>{" "}
+                {t("axisChat.helpDescSuffix")}
               </p>
 
               <div className="space-y-3 mb-5">
-                {[
-                  { icon: "💸", label: "Finanças", desc: 'Registre gastos e receitas: "gastei R$50 no mercado"' },
-                  { icon: "✅", label: "Tarefas", desc: 'Crie e organize: "lembrar de pagar o aluguel"' },
-                  { icon: "📅", label: "Agenda", desc: 'Agende compromissos: "reunião toda terça às 10h"' },
-                  { icon: "🔁", label: "Hábitos", desc: 'Monte rotinas: "academia toda segunda e quarta"' },
-                  { icon: "💬", label: "Conversa", desc: "Converse livremente — ele tem contexto do seu perfil" },
-                ].map(item => (
+                {helpItems.map(item => (
                   <div key={item.label} className="flex items-start gap-3">
                     <span className="text-base flex-shrink-0 mt-0.5">{item.icon}</span>
                     <div>
@@ -283,7 +288,7 @@ export default function Chat() {
               </div>
 
               <div className="rounded-xl px-4 py-3 text-xs text-white/35 leading-relaxed" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                Você pode usar texto ou áudio. Quando o AxisBot identifica uma ação (criar tarefa, registrar gasto, etc.), ele pede confirmação antes de executar.
+                {t("axisChat.helpFootnote")}
               </div>
             </motion.div>
           </motion.div>
@@ -312,13 +317,15 @@ export default function Chat() {
                   <Trash2 className="w-4 h-4" style={{ color: "#FF6B6B" }} />
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm">Excluir histórico?</p>
-                  <p className="text-xs text-white/40 mt-0.5">Esta ação não pode ser desfeita</p>
+                  <p className="font-bold text-white text-sm">{t("axisChat.deleteTitle")}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{t("axisChat.deleteSubtitle")}</p>
                 </div>
               </div>
 
               <p className="text-sm text-white/55 leading-relaxed mb-5">
-                As mensagens do chat serão apagadas, mas a <span className="text-white/80 font-medium">memória do AxisBot</span> sobre você — perfil, preferências e contexto — será preservada.
+                {t("axisChat.deleteDescPre")}{" "}
+                <span className="text-white/80 font-medium">{t("axisChat.deleteMemory")}</span>{" "}
+                {t("axisChat.deleteDescPost")}
               </p>
 
               <div className="flex gap-2">
@@ -329,7 +336,7 @@ export default function Chat() {
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
                   data-testid="button-cancel-delete-chat"
                 >
-                  Cancelar
+                  {t("axisChat.deleteCancel")}
                 </button>
                 <button
                   onClick={() => deleteChatMutation.mutate()}
@@ -343,7 +350,7 @@ export default function Chat() {
                   ) : (
                     <>
                       <Trash2 className="w-3.5 h-3.5" />
-                      Excluir
+                      {t("axisChat.deleteConfirm")}
                     </>
                   )}
                 </button>
@@ -407,7 +414,7 @@ export default function Chat() {
           >
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: accent }}>
-                Confirmar ação
+                {t("axisChat.confirmActionLabel")}
               </p>
               <p className="text-xs text-white/70 truncate">
                 {pendingAction.type === "task" && `📋 "${pendingAction.data.title}"`}
@@ -438,7 +445,7 @@ export default function Chat() {
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
-                Confirmar
+                {t("axisChat.confirmBtn")}
               </button>
             </div>
           </motion.div>
@@ -464,7 +471,7 @@ export default function Chat() {
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadFileMutation.isPending || sendMutation.isPending}
-            title="Enviar comprovante ou extrato"
+            title={t("axisChat.attachTitle")}
             data-testid="button-chat-attach"
           >
             {uploadFileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
@@ -472,7 +479,7 @@ export default function Chat() {
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Digite sua mensagem..."
+            placeholder={t("axisChat.placeholder")}
             disabled={sendMutation.isPending || voiceMutation.isPending || isRecording || uploadFileMutation.isPending}
             className="flex-1"
             data-testid="input-chat-message"
@@ -493,7 +500,7 @@ export default function Chat() {
           </Button>
         </form>
         {uploadFileMutation.isPending && (
-          <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">🔍 Analisando arquivo...</p>
+          <p className="text-xs text-muted-foreground text-center mt-2 animate-pulse">🔍 {t("axisChat.analyzingFile")}</p>
         )}
       </div>
     </div>

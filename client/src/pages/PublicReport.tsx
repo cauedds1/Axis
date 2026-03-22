@@ -10,24 +10,26 @@ import {
 } from "lucide-react";
 import axisLogoPath from "@assets/image_1772909978438.png";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 
 function formatBRL(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-function statusConfig(status: string) {
+function statusConfig(status: string, t: (k: string) => string) {
   switch (status) {
-    case "approved": return { label: "Aprovado",  color: "#22C55E", bg: "#22C55E18", icon: CheckCircle2, border: "#22C55E40" };
-    case "paid":     return { label: "Pago",       color: "#818CF8", bg: "#818CF818", icon: Banknote,     border: "#818CF840" };
-    case "rejected": return { label: "Rejeitado",  color: "#F87171", bg: "#F8717118", icon: XCircle,      border: "#F8717140" };
-    default:         return { label: "Pendente",   color: "#F59E0B", bg: "#F59E0B18", icon: Clock,        border: "#F59E0B40" };
+    case "approved": return { label: t("axisPublicReport.statusApproved"), color: "#22C55E", bg: "#22C55E18", icon: CheckCircle2, border: "#22C55E40" };
+    case "paid":     return { label: t("axisPublicReport.statusPaid"),     color: "#818CF8", bg: "#818CF818", icon: Banknote,     border: "#818CF840" };
+    case "rejected": return { label: t("axisPublicReport.statusRejected"), color: "#F87171", bg: "#F8717118", icon: XCircle,      border: "#F8717140" };
+    default:         return { label: t("axisPublicReport.statusPending"),  color: "#F59E0B", bg: "#F59E0B18", icon: Clock,        border: "#F59E0B40" };
   }
 }
 
 function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
@@ -41,7 +43,7 @@ function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void })
       </button>
       <img
         src={src}
-        alt="Comprovante"
+        alt={t("axisPublicReport.receiptAlt")}
         className="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-2xl"
         onClick={e => e.stopPropagation()}
       />
@@ -50,8 +52,11 @@ function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void })
 }
 
 export default function PublicReport() {
+  const { t, i18n } = useTranslation();
   const { token } = useParams<{ token: string }>();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const dateLocale = i18n.language === "pt-BR" ? ptBR : enUS;
 
   const { data, isLoading, isError } = useQuery<{
     org: { name: string; tradeName?: string; logoUrl?: string; logoBase64?: string; primaryColor?: string };
@@ -64,7 +69,7 @@ export default function PublicReport() {
     queryKey: ["/api/public/report", token],
     queryFn: async () => {
       const res = await fetch(`/api/public/report/${token}`);
-      if (!res.ok) throw new Error("Relatório não encontrado ou expirado");
+      if (!res.ok) throw new Error("not found");
       return res.json();
     },
     enabled: !!token,
@@ -83,11 +88,14 @@ export default function PublicReport() {
 
   const periodLabel = (() => {
     try {
-      const s = data?.startDate ? format(new Date(data.startDate), "dd/MM/yyyy", { locale: ptBR }) : "—";
-      const e = data?.endDate   ? format(new Date(data.endDate),   "dd/MM/yyyy", { locale: ptBR }) : "—";
+      const s = data?.startDate ? format(new Date(data.startDate), "dd/MM/yyyy", { locale: dateLocale }) : "—";
+      const e = data?.endDate   ? format(new Date(data.endDate),   "dd/MM/yyyy", { locale: dateLocale }) : "—";
       return `${s} — ${e}`;
     } catch { return "—"; }
   })();
+
+  const expensesCountLabel = (count: number) =>
+    count === 1 ? `1 ${t("axisPublicReport.expenses_one")}` : `${count} ${t("axisPublicReport.expenses_other")}`;
 
   return (
     <div className="min-h-screen" style={{ background: "hsl(222 47% 7%)", color: "hsl(210 40% 98%)" }}>
@@ -96,7 +104,7 @@ export default function PublicReport() {
       <div className="fixed bottom-5 right-5 z-10 pointer-events-none">
         <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", opacity: 0.35 }}>
           <img src={axisLogoPath} alt="AXIS" className="w-3.5 h-3.5 object-contain" />
-          <span className="text-[10px] font-semibold tracking-wide" style={{ color: "hsl(210 40% 98%)" }}>AXIS Business</span>
+          <span className="text-[10px] font-semibold tracking-wide" style={{ color: "hsl(210 40% 98%)" }}>{t("axisPublicReport.brand")}</span>
         </div>
       </div>
 
@@ -121,7 +129,7 @@ export default function PublicReport() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-green-400">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Acesso público verificado
+            {t("axisPublicReport.verifiedAccess")}
           </div>
         </div>
       </header>
@@ -144,9 +152,9 @@ export default function PublicReport() {
               <XCircle className="w-8 h-8 text-red-400" />
             </div>
             <div>
-              <p className="text-lg font-semibold" style={{ color: "hsl(210 40% 98%)" }}>Link inválido ou expirado</p>
+              <p className="text-lg font-semibold" style={{ color: "hsl(210 40% 98%)" }}>{t("axisPublicReport.invalidTitle")}</p>
               <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Este link de relatório não existe ou já expirou.<br />Peça ao colaborador para gerar um novo relatório.
+                {t("axisPublicReport.invalidDesc")}<br />{t("axisPublicReport.invalidHint")}
               </p>
             </div>
           </div>
@@ -164,16 +172,16 @@ export default function PublicReport() {
                     </div>
                   )}
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Relatório de Reembolso</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{t("axisPublicReport.reimbursementReport")}</p>
                     <h1 className="text-2xl font-bold" style={{ color: "hsl(210 40% 98%)" }}>{data.collaboratorName}</h1>
                     <p className="text-sm mt-0.5" style={{ color: PRIMARY }}>{data.org.tradeName || data.org.name}</p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Período</p>
+                  <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{t("axisPublicReport.period")}</p>
                   <p className="text-sm font-semibold" style={{ color: "hsl(210 40% 98%)" }}>{periodLabel}</p>
                   <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    {sorted.length} {sorted.length === 1 ? "despesa" : "despesas"}
+                    {expensesCountLabel(sorted.length)}
                   </p>
                 </div>
               </div>
@@ -181,10 +189,10 @@ export default function PublicReport() {
 
             <div className="flex gap-3 mb-6 flex-wrap">
               {[
-                { label: "Total Geral",  value: totalGeral,    color: PRIMARY },
-                { label: "Aprovado",     value: totalAprovado, color: "#22C55E" },
-                { label: "Pendente",     value: totalPendente, color: "#F59E0B" },
-                { label: "Pago",         value: totalPago,     color: "#818CF8" },
+                { label: t("axisPublicReport.totalGeneral"), value: totalGeral,    color: PRIMARY },
+                { label: t("axisPublicReport.approved"),     value: totalAprovado, color: "#22C55E" },
+                { label: t("axisPublicReport.pending"),      value: totalPendente, color: "#F59E0B" },
+                { label: t("axisPublicReport.paid"),         value: totalPago,     color: "#818CF8" },
               ].map(({ label, value, color }) => (
                 <div key={label} className="rounded-2xl p-4 flex flex-col gap-1 flex-1 min-w-[110px]"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -197,12 +205,12 @@ export default function PublicReport() {
             {sorted.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
                 <FileText className="w-10 h-10" style={{ color: "rgba(255,255,255,0.2)" }} />
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>Nenhuma despesa encontrada para este período.</p>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>{t("axisPublicReport.noExpenses")}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-4">
                 {sorted.map((expense: any) => {
-                  const cfg = statusConfig(expense.status ?? "pending_review");
+                  const cfg = statusConfig(expense.status ?? "pending_review", t);
                   const StatusIcon = cfg.icon;
                   const expDate = expense.date ? new Date(expense.date) : new Date();
                   const receiptSrc = expense.receiptImageUrl
@@ -231,7 +239,7 @@ export default function PublicReport() {
                           <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
                             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                             {receiptSrc
-                              ? <img src={receiptSrc} alt="Comprovante" className="w-full h-full object-cover" />
+                              ? <img src={receiptSrc} alt={t("axisPublicReport.receiptAlt")} className="w-full h-full object-cover" />
                               : <ImageOff className="w-5 h-5" style={{ color: "rgba(255,255,255,0.2)" }} />
                             }
                           </div>
@@ -240,7 +248,7 @@ export default function PublicReport() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold leading-tight truncate" style={{ color: "hsl(210 40% 98%)" }}>
-                                  {expense.establishment || expense.description || "Sem descrição"}
+                                  {expense.establishment || expense.description || t("axisPublicReport.noDescriptionAlt")}
                                 </p>
                                 {expense.establishment && expense.description && expense.description !== expense.establishment && (
                                   <p className="text-xs mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.45)" }}>{expense.description}</p>
@@ -253,7 +261,7 @@ export default function PublicReport() {
 
                             <div className="flex items-center gap-2 flex-wrap mt-2">
                               <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                                {format(expDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                {format(expDate, "dd 'de' MMMM 'de' yyyy", { locale: dateLocale })}
                               </span>
                               {expense.categoryName && (
                                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${PRIMARY}18`, color: PRIMARY }}>
@@ -279,7 +287,7 @@ export default function PublicReport() {
                                 style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                                 <p className="text-[10px] font-semibold uppercase tracking-wider px-3 pt-2 pb-1"
                                   style={{ background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)" }}>
-                                  Itens do cupom
+                                  {t("axisPublicReport.receiptItems")}
                                 </p>
                                 <div className="flex flex-col divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
                                   {receiptItems.map((item, idx) => (
@@ -290,7 +298,7 @@ export default function PublicReport() {
                                   ))}
                                   <div className="flex items-center justify-between gap-3 px-3 py-1.5"
                                     style={{ background: "rgba(255,255,255,0.03)" }}>
-                                    <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Total</span>
+                                    <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>{t("axisPublicReport.receiptTotal")}</span>
                                     <span className="text-xs font-bold" style={{ color: PRIMARY }}>{formatBRL(expense.amount)}</span>
                                   </div>
                                 </div>
@@ -307,7 +315,7 @@ export default function PublicReport() {
                                   onClick={() => setLightboxSrc(receiptSrc)}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
-                                  Mostrar comprovante
+                                  {t("axisPublicReport.showReceipt")}
                                 </Button>
                               </div>
                             )}
@@ -323,10 +331,10 @@ export default function PublicReport() {
             <div className="mt-8 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center gap-1.5 opacity-40">
                 <img src={axisLogoPath} alt="AXIS" className="w-4 h-4 object-contain" />
-                <span className="text-[11px] font-semibold" style={{ color: "hsl(210 40% 98%)" }}>AXIS Business</span>
+                <span className="text-[11px] font-semibold" style={{ color: "hsl(210 40% 98%)" }}>{t("axisPublicReport.brand")}</span>
               </div>
               <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                Válido até {data.expiresAt ? format(new Date(data.expiresAt), "dd/MM/yyyy", { locale: ptBR }) : "—"}
+                {t("axisPublicReport.validUntil")} {data.expiresAt ? format(new Date(data.expiresAt), "dd/MM/yyyy", { locale: dateLocale }) : "—"}
               </p>
             </div>
 
