@@ -1,0 +1,36 @@
+#11 - Currency Selection in Onboarding
+What & Why
+Add a dedicated currency-selection step to the onboarding flow (after modules, before score) so that users explicitly choose their currency the moment they sign up — before any financial data is recorded. The step includes a double-confirmation guard because the currency is permanently locked once set.
+
+Done looks like
+A new step appears in the onboarding wizard between "modules" (step 1) and "score" (step 2 → shifts to step 3)
+The step shows a searchable input and a scrollable list of the 19 supported currencies from SUPPORTED_CURRENCIES
+Typing in the search box filters by currency name or country/code in real time
+Clicking a currency row shows an inline first-confirmation message: "Você selecionou [Name] ([code] [symbol]). Confirmar?" with Yes / Cancel buttons
+Clicking Yes shows a second inline danger warning: "⚠️ ATENÇÃO — ESTA AÇÃO NÃO PODERÁ SER DESFEITA. Sua moeda ficará permanentemente definida." with a Confirm / Go back buttons
+After the final Confirm the currency is stored in component state; the user can now advance to the next step (Next button becomes enabled)
+The selected currency is saved (PATCH /api/user/currency) together with or immediately after the final onboarding POST submission
+TOTAL_STEPS increments from 4 to 5; the step counter and progress bar reflect the new count
+Both EN and PT-BR i18n keys are added for all new UI strings
+Out of scope
+Changing the currency after onboarding (already handled in Settings)
+Any UI changes outside of onboarding.tsx and the two i18n JSON files
+Tasks
+Add currency step state & constants — Add selectedCurrency, currencyPhase ("select" | "confirm1" | "confirm2" | "confirmed"), and currencySearch state variables to the Onboarding component. Increment TOTAL_STEPS to 5 and insert the currency step as step 2 (shifting the existing score step to 3 and personality to 4). Update canProceed() so step 2 requires currencyPhase === "confirmed".
+
+Build the step UI — Render {step === 2 && …} with three phases:
+
+select phase: search input + scrollable filtered list from SUPPORTED_CURRENCIES; clicking a row sets selectedCurrency and moves to confirm1
+confirm1 phase: inline card "Você selecionou X. Confirmar?" with Yes / Cancel buttons
+confirm2 phase: inline danger card "⚠️ ATENÇÃO — ESTA AÇÃO NÃO PODERÁ SER DESFEITA." with Confirm / Go back buttons; Confirm sets phase to "confirmed" and enables Next
+confirmed phase: locked display showing the chosen currency with a lock icon, non-editable
+Persist the currency on finish — In the finish() function, after the existing onboarding POST, call PATCH /api/user/currency with the selectedCurrency code (defaults to "BRL" if skipped). Invalidate the /api/profile query so useCurrency picks up the new value immediately.
+
+i18n keys — Add all new string keys to en.json and pt-BR.json under the axisOnboarding namespace (step title, description, search placeholder, confirm messages, warning text, button labels).
+
+Relevant files
+client/src/pages/onboarding.tsx
+client/src/lib/currencies.ts
+client/src/i18n/en.json
+client/src/i18n/pt-BR.json
+server/routes.ts:1-50
