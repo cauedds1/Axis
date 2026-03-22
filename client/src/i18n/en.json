@@ -1439,7 +1439,8 @@
     "currCancel": "Cancel",
     "currConfirmBtn": "Confirm",
     "currGoBack": "Go back",
-    "currLocked": "Currency set:"
+    "currLocked": "Currency set:",
+    "currNoResults": "No currencies found"
   },
   "axisWelcome": {
     "logout": "Sign out",

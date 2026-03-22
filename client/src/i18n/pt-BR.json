@@ -1439,7 +1439,8 @@
     "currCancel": "Cancelar",
     "currConfirmBtn": "Confirmar",
     "currGoBack": "Voltar",
-    "currLocked": "Moeda definida:"
+    "currLocked": "Moeda definida:",
+    "currNoResults": "Nenhuma moeda encontrada"
   },
   "axisWelcome": {
     "logout": "Sair",

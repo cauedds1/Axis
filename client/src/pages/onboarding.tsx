@@ -207,16 +207,18 @@ export default function Onboarding() {
         aiPersonality,
       });
       const currencyCode = selectedCurrency ?? "BRL";
-      try {
-        await apiRequest("PATCH", "/api/user/currency", { currency: currencyCode });
-      } catch (currErr: any) {
-        const status = currErr?.status ?? currErr?.response?.status;
-        if (status !== 409) {
-          toast({ title: t("axisOnboarding.toastError"), description: currErr?.message ?? String(currErr), variant: "destructive" });
-          return;
-        }
-        // 409 means currency was already set — safe to continue
+      const currencyRes = await fetch("/api/user/currency", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ currency: currencyCode }),
+      });
+      if (!currencyRes.ok && currencyRes.status !== 409) {
+        const errData = await currencyRes.json().catch(() => ({}));
+        toast({ title: t("axisOnboarding.toastError"), description: errData.message ?? currencyRes.statusText, variant: "destructive" });
+        return;
       }
+      // 409 means currency was already set server-side — safe to continue
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
       setPhase("setup");
@@ -606,7 +608,11 @@ export default function Onboarding() {
                           />
                         </div>
                         <div className="overflow-y-auto max-h-64 space-y-1 pr-1" data-testid="list-currencies">
-                          {filteredCurrencies.map(c => (
+                          {filteredCurrencies.length === 0 ? (
+                            <p className="text-sm text-white/30 text-center py-6" data-testid="text-currency-no-results">
+                              {t("axisOnboarding.currNoResults")}
+                            </p>
+                          ) : filteredCurrencies.map(c => (
                             <button
                               key={c.code}
                               onClick={() => {
