@@ -1,30 +1,30 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Loader2, ArrowRight, ArrowLeft, Mic, Calendar, Flame } from "lucide-react";
 import { CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useTheme, type AxisTheme } from "@/components/theme-provider";
+import { getLandingPalette, type LandingPalette } from "@/lib/landing-palette";
 
-const CORAL = "#FF6B6B";
-const GOLD = "#FFB347";
-const LAVANDA = "#A78BFA";
-const MINT = "#4ECDC4";
+const AuthPaletteContext = createContext<LandingPalette>(getLandingPalette("slim"));
 
-const FEATURE_COLORS = [CORAL, GOLD, LAVANDA, MINT, GOLD];
-const DEMO_COLORS = [CORAL, GOLD, LAVANDA];
+function useAuthPalette() {
+  return useContext(AuthPaletteContext);
+}
+
 const DEMO_ICONS = [Mic, Calendar, Flame];
-const DEMO_BG = ["rgba(255,107,107,0.08)", "rgba(255,179,71,0.08)", "rgba(167,139,250,0.08)"];
-const DEMO_BORDER = ["rgba(255,107,107,0.15)", "rgba(255,179,71,0.15)", "rgba(167,139,250,0.15)"];
 
 function FeatureRotator() {
   const { t } = useTranslation();
+  const LP = useAuthPalette();
   const features = [
-    { text: t("axisAuth.feature0"), color: CORAL },
-    { text: t("axisAuth.feature1"), color: GOLD },
-    { text: t("axisAuth.feature2"), color: LAVANDA },
-    { text: t("axisAuth.feature3"), color: MINT },
-    { text: t("axisAuth.feature4"), color: GOLD },
+    { text: t("axisAuth.feature0"), color: LP.primary },
+    { text: t("axisAuth.feature1"), color: LP.secondary },
+    { text: t("axisAuth.feature2"), color: LP.tertiary },
+    { text: t("axisAuth.feature3"), color: LP.success },
+    { text: t("axisAuth.feature4"), color: LP.secondary },
   ];
   const [idx, setIdx] = useState(0);
 
@@ -60,10 +60,14 @@ function FeatureRotator() {
 
 function DemoCard({ cardIndex, delay }: { cardIndex: number; delay: number }) {
   const { t } = useTranslation();
+  const LP = useAuthPalette();
   const Icon = DEMO_ICONS[cardIndex];
-  const color = DEMO_COLORS[cardIndex];
-  const bg = DEMO_BG[cardIndex];
-  const border = DEMO_BORDER[cardIndex];
+  const colors = [LP.primary, LP.secondary, LP.tertiary];
+  const rgbs = [LP.primaryRgb, LP.secondaryRgb, LP.tertiaryRgb];
+  const color = colors[cardIndex];
+  const rgb = rgbs[cardIndex];
+  const bg = `rgba(${rgb},0.08)`;
+  const border = `rgba(${rgb},0.15)`;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -93,28 +97,29 @@ function DemoCard({ cardIndex, delay }: { cardIndex: number; delay: number }) {
 
 function BrandPanel() {
   const { t } = useTranslation();
+  const LP = useAuthPalette();
   const modules = [
-    { key: "module0", color: CORAL },
-    { key: "module1", color: GOLD },
-    { key: "module2", color: LAVANDA },
-    { key: "module3", color: MINT },
+    { key: "module0", color: LP.primary },
+    { key: "module1", color: LP.secondary },
+    { key: "module2", color: LP.tertiary },
+    { key: "module3", color: LP.success },
   ];
   return (
     <div className="relative flex flex-col justify-between h-full p-10 xl:p-14 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "#060608" }} />
 
-      <div className="absolute top-[-15%] right-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.09) 0%, rgba(255,179,71,0.04) 40%, transparent 65%)`, filter: "blur(90px)" }} />
-      <div className="absolute bottom-[-10%] left-[-15%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 55%)`, filter: "blur(70px)" }} />
-      <div className="absolute top-[40%] left-[20%] w-[350px] h-[350px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,179,71,0.04) 0%, transparent 55%)`, filter: "blur(60px)" }} />
-      <div className="absolute bottom-[30%] right-[10%] w-[200px] h-[200px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(78,205,196,0.04) 0%, transparent 55%)`, filter: "blur(50px)" }} />
+      <div className="absolute top-[-15%] right-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.09) 0%, rgba(${LP.secondaryRgb},0.04) 40%, transparent 65%)`, filter: "blur(90px)" }} />
+      <div className="absolute bottom-[-10%] left-[-15%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.tertiaryRgb},0.07) 0%, transparent 55%)`, filter: "blur(70px)" }} />
+      <div className="absolute top-[40%] left-[20%] w-[350px] h-[350px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.secondaryRgb},0.04) 0%, transparent 55%)`, filter: "blur(60px)" }} />
+      <div className="absolute bottom-[30%] right-[10%] w-[200px] h-[200px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.successRgb},0.04) 0%, transparent 55%)`, filter: "blur(50px)" }} />
 
       <div className="landing-grain" />
 
-      <div className="absolute top-[18%] left-[12%] w-1.5 h-1.5 rounded-full landing-float-1" style={{ background: CORAL, opacity: 0.18 }} />
-      <div className="absolute top-[55%] right-[15%] w-1 h-1 rounded-full landing-float-2" style={{ background: GOLD, opacity: 0.15 }} />
-      <div className="absolute bottom-[22%] left-[35%] w-2 h-2 rounded-full landing-float-3" style={{ background: LAVANDA, opacity: 0.12 }} />
-      <div className="absolute top-[30%] right-[30%] w-px h-20 rotate-45 landing-float-2" style={{ background: `linear-gradient(to bottom, transparent, ${CORAL}18, transparent)` }} />
-      <div className="absolute bottom-[45%] left-[22%] w-px h-24 -rotate-12 landing-float-1" style={{ background: `linear-gradient(to bottom, transparent, ${GOLD}14, transparent)` }} />
+      <div className="absolute top-[18%] left-[12%] w-1.5 h-1.5 rounded-full landing-float-1" style={{ background: LP.primary, opacity: 0.18 }} />
+      <div className="absolute top-[55%] right-[15%] w-1 h-1 rounded-full landing-float-2" style={{ background: LP.secondary, opacity: 0.15 }} />
+      <div className="absolute bottom-[22%] left-[35%] w-2 h-2 rounded-full landing-float-3" style={{ background: LP.tertiary, opacity: 0.12 }} />
+      <div className="absolute top-[30%] right-[30%] w-px h-20 rotate-45 landing-float-2" style={{ background: `linear-gradient(to bottom, transparent, ${LP.primary}18, transparent)` }} />
+      <div className="absolute bottom-[45%] left-[22%] w-px h-24 -rotate-12 landing-float-1" style={{ background: `linear-gradient(to bottom, transparent, ${LP.secondary}14, transparent)` }} />
 
       <div className="relative z-10">
         <div className="flex items-center gap-3.5 mb-1">
@@ -130,7 +135,7 @@ function BrandPanel() {
         <div>
           <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
             <span className="text-white">{t("axisAuth.heroTitle1")}</span>{" "}
-            <span style={{ background: `linear-gradient(135deg, ${CORAL} 0%, ${GOLD} 50%, ${LAVANDA} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+            <span style={{ background: `linear-gradient(135deg, ${LP.primary} 0%, ${LP.secondary} 50%, ${LP.tertiary} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
               {t("axisAuth.heroGradient")}
             </span>
             <br />
@@ -170,6 +175,15 @@ export default function AuthPage() {
   const [lastName, setLastName] = useState("");
   const { login, register, isLoggingIn, isRegistering, loginError, registerError } = useAuth();
   const [, setLocation] = useLocation();
+  const { theme } = useTheme();
+  const LP = getLandingPalette(theme as AxisTheme);
+
+  const cssVars = {
+    "--lp-primary-rgb": LP.primaryRgb,
+    "--lp-secondary-rgb": LP.secondaryRgb,
+    "--lp-tertiary-rgb": LP.tertiaryRgb,
+    "--lp-success-rgb": LP.successRgb,
+  } as React.CSSProperties;
 
   useEffect(() => {
     document.title = `AXIS — ${isLogin ? t("axisAuth.loginTitle") : t("axisAuth.registerTitle")}`;
@@ -192,194 +206,196 @@ export default function AuthPage() {
   const isLoading = isLoggingIn || isRegistering;
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white relative">
-      <button
-        onClick={() => setLocation("/")}
-        className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
-        data-testid="button-back-to-landing"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {t("axisAuth.backButton")}
-      </button>
-
-      <div className="hidden lg:block lg:w-[52%] xl:w-[55%]">
-        <div className="h-screen sticky top-0">
-          <BrandPanel />
-        </div>
-      </div>
-
-      <div className="lg:hidden relative">
-        <div className="relative px-6 py-5 overflow-hidden">
-          <div className="absolute inset-0" style={{ background: "#060608" }} />
-          <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.08) 0%, transparent 60%)`, filter: "blur(50px)" }} />
-          <div className="landing-grain" />
-          <div className="relative z-10 flex items-center gap-3">
-            <img src="/logo.png" alt="AXIS" className="w-14 h-14 rounded-xl object-cover" />
-            <div>
-              <span className="text-xl font-bold tracking-tight block">AXIS</span>
-              <p className="text-white/35 text-xs">{t("axisAuth.mobileSubtitle")}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:py-0 relative">
-        <div className="absolute inset-0" style={{ background: "#0d0d10" }} />
-        <div className="absolute top-[15%] right-[8%] w-[280px] h-[280px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(255,107,107,0.04) 0%, transparent 60%)`, filter: "blur(60px)" }} />
-        <div className="absolute bottom-[20%] left-[5%] w-[200px] h-[200px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(167,139,250,0.04) 0%, transparent 60%)`, filter: "blur(50px)" }} />
-
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-[400px] relative z-10"
+    <AuthPaletteContext.Provider value={LP}>
+      <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white relative" style={cssVars}>
+        <button
+          onClick={() => setLocation("/")}
+          className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
+          data-testid="button-back-to-landing"
         >
-          <div className="mb-9">
-            <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
-              {isLogin ? t("axisAuth.loginTitle") : t("axisAuth.registerTitle")}
-            </h1>
-            <p className="text-sm text-white/35">
-              {isLogin ? t("axisAuth.loginSubtitle") : t("axisAuth.registerSubtitle")}
-            </p>
+          <ArrowLeft className="w-4 h-4" />
+          {t("axisAuth.backButton")}
+        </button>
+
+        <div className="hidden lg:block lg:w-[52%] xl:w-[55%]">
+          <div className="h-screen sticky top-0">
+            <BrandPanel />
           </div>
+        </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            data-testid="form-auth"
+        <div className="lg:hidden relative">
+          <div className="relative px-6 py-5 overflow-hidden">
+            <div className="absolute inset-0" style={{ background: "#060608" }} />
+            <div className="absolute top-[-50%] right-[-10%] w-[300px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.08) 0%, transparent 60%)`, filter: "blur(50px)" }} />
+            <div className="landing-grain" />
+            <div className="relative z-10 flex items-center gap-3">
+              <img src="/logo.png" alt="AXIS" className="w-14 h-14 rounded-xl object-cover" />
+              <div>
+                <span className="text-xl font-bold tracking-tight block">AXIS</span>
+                <p className="text-white/35 text-xs">{t("axisAuth.mobileSubtitle")}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center px-6 py-12 lg:py-0 relative">
+          <div className="absolute inset-0" style={{ background: "#0d0d10" }} />
+          <div className="absolute top-[15%] right-[8%] w-[280px] h-[280px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.04) 0%, transparent 60%)`, filter: "blur(60px)" }} />
+          <div className="absolute bottom-[20%] left-[5%] w-[200px] h-[200px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.tertiaryRgb},0.04) 0%, transparent 60%)`, filter: "blur(50px)" }} />
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-full max-w-[400px] relative z-10"
           >
-            <div
-              className="overflow-hidden transition-all duration-300"
-              style={{ maxHeight: isLogin ? "0px" : "120px", opacity: isLogin ? 0 : 1 }}
+            <div className="mb-9">
+              <h1 className="text-3xl font-bold tracking-tight mb-2" data-testid="text-auth-title">
+                {isLogin ? t("axisAuth.loginTitle") : t("axisAuth.registerTitle")}
+              </h1>
+              <p className="text-sm text-white/35">
+                {isLogin ? t("axisAuth.loginSubtitle") : t("axisAuth.registerSubtitle")}
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4"
+              data-testid="form-auth"
             >
-              <div className="grid grid-cols-2 gap-3 pb-1">
-                <div>
-                  <label htmlFor="firstName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                    {t("axisAuth.nameLabel")}
-                  </label>
-                  <input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder={t("axisAuth.firstNamePh")}
-                    required={!isLogin}
-                    tabIndex={isLogin ? -1 : 0}
-                    className="auth-input"
-                    data-testid="input-first-name"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                    {t("axisAuth.surnameLabel")}
-                  </label>
-                  <input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder={t("axisAuth.lastNamePh")}
-                    required={!isLogin}
-                    tabIndex={isLogin ? -1 : 0}
-                    className="auth-input"
-                    data-testid="input-last-name"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                {t("axisAuth.emailLabel")}
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("axisAuth.emailPlaceholder")}
-                required
-                className="auth-input"
-                data-testid="input-email"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                {t("axisAuth.passwordLabel")}
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("axisAuth.passwordPh")}
-                required
-                minLength={6}
-                className="auth-input"
-                data-testid="input-password"
-              />
-            </div>
-
-            {error && (
               <div
-                className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl"
-                style={{ background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.18)", color: CORAL }}
-                data-testid="text-auth-error"
+                className="overflow-hidden transition-all duration-300"
+                style={{ maxHeight: isLogin ? "0px" : "120px", opacity: isLogin ? 0 : 1 }}
               >
-                <span className="mt-0.5 flex-shrink-0">⚠</span>
-                <span>{(error as Error).message}</span>
+                <div className="grid grid-cols-2 gap-3 pb-1">
+                  <div>
+                    <label htmlFor="firstName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                      {t("axisAuth.nameLabel")}
+                    </label>
+                    <input
+                      id="firstName"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder={t("axisAuth.firstNamePh")}
+                      required={!isLogin}
+                      tabIndex={isLogin ? -1 : 0}
+                      className="auth-input"
+                      data-testid="input-first-name"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                      {t("axisAuth.surnameLabel")}
+                    </label>
+                    <input
+                      id="lastName"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder={t("axisAuth.lastNamePh")}
+                      required={!isLogin}
+                      tabIndex={isLogin ? -1 : 0}
+                      className="auth-input"
+                      data-testid="input-last-name"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
 
-            <div className="pt-1">
+              <div>
+                <label htmlFor="email" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                  {t("axisAuth.emailLabel")}
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("axisAuth.emailPlaceholder")}
+                  required
+                  className="auth-input"
+                  data-testid="input-email"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                  {t("axisAuth.passwordLabel")}
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("axisAuth.passwordPh")}
+                  required
+                  minLength={6}
+                  className="auth-input"
+                  data-testid="input-password"
+                />
+              </div>
+
+              {error && (
+                <div
+                  className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl"
+                  style={{ background: `rgba(${LP.primaryRgb},0.08)`, border: `1px solid rgba(${LP.primaryRgb},0.18)`, color: LP.primary }}
+                  data-testid="text-auth-error"
+                >
+                  <span className="mt-0.5 flex-shrink-0">⚠</span>
+                  <span>{(error as Error).message}</span>
+                </div>
+              )}
+
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  data-testid="button-auth-submit"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      {isLogin ? t("axisAuth.loginBtn") : t("axisAuth.registerBtn")}
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-7 text-center">
               <button
-                type="submit"
-                disabled={isLoading}
-                className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                data-testid="button-auth-submit"
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-white/30 transition-colors hover:text-white/50"
+                data-testid="button-toggle-auth-mode"
               >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                {isLogin ? (
+                  <>{t("axisAuth.noAccount")}{" "}<span className="font-semibold" style={{ color: LP.primary }}>{t("axisAuth.createNow")}</span></>
                 ) : (
-                  <>
-                    {isLogin ? t("axisAuth.loginBtn") : t("axisAuth.registerBtn")}
-                    <ArrowRight className="h-4 w-4" />
-                  </>
+                  <>{t("axisAuth.hasAccount")}{" "}<span className="font-semibold" style={{ color: LP.primary }}>{t("axisAuth.signIn")}</span></>
                 )}
               </button>
             </div>
-          </form>
 
-          <div className="mt-7 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-white/30 transition-colors hover:text-white/50"
-              data-testid="button-toggle-auth-mode"
-            >
-              {isLogin ? (
-                <>{t("axisAuth.noAccount")}{" "}<span className="font-semibold" style={{ color: CORAL }}>{t("axisAuth.createNow")}</span></>
-              ) : (
-                <>{t("axisAuth.hasAccount")}{" "}<span className="font-semibold" style={{ color: CORAL }}>{t("axisAuth.signIn")}</span></>
-              )}
-            </button>
-          </div>
-
-          <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-            <div className="flex items-center justify-center gap-7">
-              {[
-                { key: "badgeFree", color: CORAL },
-                { key: "badgeNoCard", color: GOLD },
-                { key: "badgeSeconds", color: LAVANDA },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center gap-1.5">
-                  <div className="w-1 h-1 rounded-full" style={{ background: item.color, boxShadow: `0 0 4px ${item.color}80` }} />
-                  <span className="text-[11px] text-white/22">{t(`axisAuth.${item.key}`)}</span>
-                </div>
-              ))}
+            <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+              <div className="flex items-center justify-center gap-7">
+                {[
+                  { key: "badgeFree", color: LP.primary },
+                  { key: "badgeNoCard", color: LP.secondary },
+                  { key: "badgeSeconds", color: LP.tertiary },
+                ].map((item) => (
+                  <div key={item.key} className="flex items-center gap-1.5">
+                    <div className="w-1 h-1 rounded-full" style={{ background: item.color, boxShadow: `0 0 4px ${item.color}80` }} />
+                    <span className="text-[11px] text-white/22">{t(`axisAuth.${item.key}`)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
-    </div>
+    </AuthPaletteContext.Provider>
   );
 }

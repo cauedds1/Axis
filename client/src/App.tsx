@@ -209,14 +209,16 @@ function AppRouter() {
         <Switch>
           <Route path="/auth">
             {() => (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                <AuthPage />
-              </motion.div>
+              <ThemeProvider>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
+                  <AuthPage />
+                </motion.div>
+              </ThemeProvider>
             )}
           </Route>
           <Route path="/privacy" component={PrivacyPolicy} />
