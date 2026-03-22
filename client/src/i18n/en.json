@@ -2583,6 +2583,7 @@
       "addedSession": "Added this session",
       "month": "month",
       "months": "months",
+      "perMonth": "/month",
       "catHousing": "Housing",
       "catFood": "Food",
       "catTransport": "Transport",

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useCurrency } from "@/hooks/use-currency";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import {
@@ -176,6 +177,7 @@ function SectionRenda({
   onSave: (v: string) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const { symbol, fmtMoney, currency } = useCurrency();
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const [val, setVal] = useState(savedIncome);
   const [saved, setSaved] = useState(false);
@@ -309,7 +311,7 @@ function SectionRenda({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{ri.name}</p>
                   <p className="text-xs text-white/40">
-                    R${ri.amount.toFixed(2).replace(".", ",")} · {t("axisSetup.income.everyDay")} {ri.dayOfMonth}
+                    {fmtMoney(ri.amount, currency)} · {t("axisSetup.income.everyDay")} {ri.dayOfMonth}
                     {ri.lastPostedMonth === currentMonth && (
                       <span
                         className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold"
@@ -332,7 +334,7 @@ function SectionRenda({
               </div>
             ))}
             <p className="text-xs text-white/25 text-right">
-              {t("axisSetup.income.monthlyTotal")}: R${totalRecurring.toFixed(2).replace(".", ",")}
+              {t("axisSetup.income.monthlyTotal")}: {fmtMoney(totalRecurring, currency)}
             </p>
           </div>
         ) : (
@@ -391,7 +393,7 @@ function SectionRenda({
           )}
           <div className="flex gap-2">
             <div className="flex-1 flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-              <span className="text-white/40 text-sm font-medium flex-shrink-0">R$</span>
+              <span className="text-white/40 text-sm font-medium flex-shrink-0">{symbol}</span>
               <input
                 type="number"
                 value={riAmount}
@@ -433,7 +435,7 @@ function SectionRenda({
       <div>
         <FieldLabel>{t("axisSetup.income.refTitle")}</FieldLabel>
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-          <span className="text-white/40 text-sm font-medium">R$</span>
+          <span className="text-white/40 text-sm font-medium">{symbol}</span>
           <input
             type="number"
             value={val || (totalRecurring > 0 ? String(totalRecurring) : "")}
@@ -467,6 +469,7 @@ function SectionRenda({
 
 function SectionGastos() {
   const { t } = useTranslation();
+  const { symbol, fmtMoney, currency } = useCurrency();
   const { toast } = useToast();
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
@@ -582,7 +585,7 @@ function SectionGastos() {
       <div>
         <FieldLabel>{t("axisSetup.expenses.amountLabel")}</FieldLabel>
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-          <span className="text-white/40 text-sm font-medium">R$</span>
+          <span className="text-white/40 text-sm font-medium">{symbol}</span>
           <input
             type="number"
             value={amount}
@@ -704,7 +707,7 @@ function SectionGastos() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white/80 truncate">{item.description}</p>
                   <p className="text-[10px] text-white/30">
-                    R$ {item.amount.toFixed(2)}/mês · {item.months} {item.months === 1 ? t("axisSetup.expenses.month") : t("axisSetup.expenses.months")}
+                    {fmtMoney(item.amount, currency)}{t("axisSetup.expenses.perMonth")} · {item.months} {item.months === 1 ? t("axisSetup.expenses.month") : t("axisSetup.expenses.months")}
                   </p>
                 </div>
                 <button
