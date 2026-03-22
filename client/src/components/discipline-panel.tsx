@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { X, TrendingUp, TrendingDown, Minus, Flame, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme, getModulePalette } from "@/components/theme-provider";
+import { useTranslation } from "react-i18next";
 
 interface DisciplineEntry {
   id: string;
@@ -17,14 +18,6 @@ function scoreColor(score: number, negative: string, primary: string, positive: 
   if (score <= 4) return negative;
   if (score <= 7) return primary;
   return positive;
-}
-
-function scoreLabel(score: number): string {
-  if (score <= 2) return "Crítico";
-  if (score <= 4) return "Baixo";
-  if (score <= 6) return "Regular";
-  if (score <= 8) return "Sólido";
-  return "Elite";
 }
 
 function DeltaBadge({ delta, positive, negative }: { delta: number; positive: string; negative: string }) {
@@ -47,18 +40,9 @@ function DeltaBadge({ delta, positive, negative }: { delta: number; positive: st
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function HowItWorks({ positive, negative, warn }: { positive: string; negative: string; warn: string }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
 
   const Row = ({ label, pts, color }: { label: string; pts: string; color: string }) => (
     <div className="flex items-center justify-between py-0.5">
@@ -69,13 +53,13 @@ function HowItWorks({ positive, negative, warn }: { positive: string; negative: 
 
   return (
     <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-      <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-1.5">Como funciona</div>
+      <div className="text-[10px] text-white/30 font-medium uppercase tracking-wider mb-1.5">{t("axisDiscipline.howItWorks")}</div>
 
       <div className="space-y-0.5">
-        <Row label="Tarefas concluídas" pts="+3 a +6" color={positive} />
-        <Row label="Hábitos feitos" pts="+2" color={positive} />
-        <Row label="Gastos controlados / excesso" pts="+4 a −6" color={warn} />
-        <Row label="Atrasos (justificativa devolve até +3)" pts="−4" color={negative} />
+        <Row label={t("axisDiscipline.tasksCompleted")} pts="+3 a +6" color={positive} />
+        <Row label={t("axisDiscipline.habitsCompleted")} pts="+2" color={positive} />
+        <Row label={t("axisDiscipline.spendingControl")} pts="+4 a −6" color={warn} />
+        <Row label={t("axisDiscipline.delays")} pts="−4" color={negative} />
       </div>
 
       <button
@@ -84,7 +68,7 @@ function HowItWorks({ positive, negative, warn }: { positive: string; negative: 
         data-testid="button-toggle-discipline-details"
       >
         {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
-        {expanded ? "Ocultar detalhes" : "Ver detalhes"}
+        {expanded ? t("axisDiscipline.hideDetails") : t("axisDiscipline.viewDetails")}
       </button>
 
       <AnimatePresence>
@@ -98,27 +82,27 @@ function HowItWorks({ positive, negative, warn }: { positive: string; negative: 
           >
             <div className="pt-2 space-y-2">
               <div>
-                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Tarefas</div>
-                <Row label="Alta prioridade" pts="+6" color={positive} />
-                <Row label="Média prioridade" pts="+4" color={positive} />
-                <Row label="Baixa prioridade" pts="+3" color={positive} />
-                <Row label="Atraso (+48h sem justificativa)" pts="−4" color={negative} />
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">{t("axisDiscipline.tasksSectionTitle")}</div>
+                <Row label={t("axisDiscipline.highPriority")} pts="+6" color={positive} />
+                <Row label={t("axisDiscipline.mediumPriority")} pts="+4" color={positive} />
+                <Row label={t("axisDiscipline.lowPriority")} pts="+3" color={positive} />
+                <Row label={t("axisDiscipline.lateTask")} pts="−4" color={negative} />
               </div>
               <div>
-                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Gastos (a cada 3 dias)</div>
-                <Row label="Controlados (ótimo)" pts="+4" color={positive} />
-                <Row label="Razoáveis (bom)" pts="+2" color={positive} />
-                <Row label="Neutros" pts="0" color="rgba(255,255,255,0.3)" />
-                <Row label="Excesso leve (20-30%)" pts="−2" color={warn} />
-                <Row label="Excesso moderado (30-40%)" pts="−4" color={negative} />
-                <Row label="Excesso grave (>40%)" pts="−6" color={negative} />
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">{t("axisDiscipline.spendingSectionTitle")}</div>
+                <Row label={t("axisDiscipline.spendingGood")} pts="+4" color={positive} />
+                <Row label={t("axisDiscipline.spendingOk")} pts="+2" color={positive} />
+                <Row label={t("axisDiscipline.spendingNeutral")} pts="0" color="rgba(255,255,255,0.3)" />
+                <Row label={t("axisDiscipline.spendingMildExcess")} pts="−2" color={warn} />
+                <Row label={t("axisDiscipline.spendingModerateExcess")} pts="−4" color={negative} />
+                <Row label={t("axisDiscipline.spendingHeavyExcess")} pts="−6" color={negative} />
               </div>
               <div>
-                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">Justificativas (IA)</div>
-                <Row label="Excelente" pts="+3" color={positive} />
-                <Row label="Boa" pts="+2" color={positive} />
-                <Row label="Aceitável" pts="+1" color={positive} />
-                <div className="text-[9px] text-white/20 mt-0.5">A IA avalia sua justificativa e pode devolver pontos</div>
+                <div className="text-[9px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">{t("axisDiscipline.aiJustifications")}</div>
+                <Row label={t("axisDiscipline.justificationExcellent")} pts="+3" color={positive} />
+                <Row label={t("axisDiscipline.justificationGood")} pts="+2" color={positive} />
+                <Row label={t("axisDiscipline.justificationAcceptable")} pts="+1" color={positive} />
+                <div className="text-[9px] text-white/20 mt-0.5">{t("axisDiscipline.aiEvaluatesNote")}</div>
               </div>
             </div>
           </motion.div>
@@ -126,7 +110,7 @@ function HowItWorks({ positive, negative, warn }: { positive: string; negative: 
       </AnimatePresence>
 
       <div className="pt-1.5 mt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-        <span className="text-[9px] text-white/20">A cada 8 pts acumulados a disciplina sobe ou desce 1 nível (máx 10, mín 1)</span>
+        <span className="text-[9px] text-white/20">{t("axisDiscipline.levelNote")}</span>
       </div>
     </div>
   );
@@ -144,11 +128,31 @@ export function DisciplinePanel({
   disciplinePoints?: number;
 }) {
   const { theme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const MP = getModulePalette(theme as any);
   const { data: history = [], isLoading } = useQuery<DisciplineEntry[]>({
     queryKey: ["/api/discipline/history"],
     enabled: open,
   });
+
+  function scoreLabel(s: number): string {
+    if (s <= 2) return t("axisDiscipline.scoreCritical");
+    if (s <= 4) return t("axisDiscipline.scoreLow");
+    if (s <= 6) return t("axisDiscipline.scoreRegular");
+    if (s <= 8) return t("axisDiscipline.scoreSolid");
+    return t("axisDiscipline.scoreElite");
+  }
+
+  function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleString(lang, {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
 
   const color = scoreColor(score, MP.negative, MP.primary, MP.positive);
   const label = scoreLabel(score);
@@ -160,8 +164,13 @@ export function DisciplinePanel({
   const isPositive = pts >= 0;
   const barColor = isPositive ? MP.positive : MP.negative;
   const barPct = Math.min(Math.abs(pts) / 8 * 100, 100);
-  const nextAction = isPositive ? "subir" : "descer";
   const ptsLeft = 8 - Math.abs(pts);
+
+  function ptsToLevelText(): string {
+    if (Math.abs(pts) === 0) return t("axisDiscipline.completeToAccumulate");
+    const countKey = ptsLeft === 1 ? (isPositive ? "ptsToRise" : "ptsToFall") : (isPositive ? "ptsToRisePlural" : "ptsToFallPlural");
+    return t(`axisDiscipline.${countKey}`, { count: ptsLeft });
+  }
 
   return (
     <AnimatePresence>
@@ -192,7 +201,7 @@ export function DisciplinePanel({
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-1.5">
                   <Flame className="h-3.5 w-3.5" style={{ color }} />
-                  <span className="text-xs font-semibold text-foreground">Score de Disciplina</span>
+                  <span className="text-xs font-semibold text-foreground">{t("axisDiscipline.scoreTitle")}</span>
                 </div>
                 <button
                   onClick={onClose}
@@ -214,7 +223,7 @@ export function DisciplinePanel({
                 </div>
                 <div>
                   <div className="text-sm font-bold leading-tight" style={{ color }}>{label}</div>
-                  <div className="text-[10px] text-muted-foreground leading-tight">de 10 pontos</div>
+                  <div className="text-[10px] text-muted-foreground leading-tight">{t("axisDiscipline.outOfPoints")}</div>
                   <div className="mt-0.5"><DeltaBadge delta={delta} positive={MP.positive} negative={MP.negative} /></div>
                 </div>
               </div>
@@ -232,7 +241,7 @@ export function DisciplinePanel({
 
               {/* Points accumulator */}
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-white/30 uppercase tracking-wider">Pontos acumulados</span>
+                <span className="text-[10px] text-white/30 uppercase tracking-wider">{t("axisDiscipline.accumulatedPoints")}</span>
                 <span className="text-[10px] font-bold" style={{ color: barColor }}>
                   {pts >= 0 ? "+" : ""}{pts} / 8
                 </span>
@@ -246,20 +255,16 @@ export function DisciplinePanel({
                   style={{ background: barColor, boxShadow: `0 0 5px ${barColor}60` }}
                 />
               </div>
-              <p className="text-[10px] text-white/25">
-                {Math.abs(pts) === 0
-                  ? "Complete tarefas ou marque hábitos para acumular pontos"
-                  : `Faltam ${ptsLeft} pt${ptsLeft !== 1 ? "s" : ""} para ${nextAction} de nível`}
-              </p>
+              <p className="text-[10px] text-white/25">{ptsToLevelText()}</p>
             </div>
 
-            {/* Como funciona — compact + expandable */}
+            {/* How it works — compact + expandable */}
             <HowItWorks positive={MP.positive} negative={MP.negative} warn={MP.agenda} />
 
-            {/* Estado atual */}
+            {/* Current state */}
             {currentReasons.length > 0 && (
               <div className="px-4 py-2.5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5">Estado atual</div>
+                <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5">{t("axisDiscipline.currentState")}</div>
                 <div className="space-y-1">
                   {currentReasons.map((reason, i) => (
                     <div key={i} className="text-[11px] text-muted-foreground leading-snug flex items-start gap-1.5">
@@ -277,7 +282,7 @@ export function DisciplinePanel({
                 className="px-4 py-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider border-b"
                 style={{ borderColor: "rgba(255,255,255,0.06)" }}
               >
-                Histórico de alterações
+                {t("axisDiscipline.changeHistory")}
               </div>
 
               {isLoading && (
@@ -291,9 +296,9 @@ export function DisciplinePanel({
 
               {!isLoading && history.length === 0 && (
                 <div className="px-4 py-6 text-center">
-                  <div className="text-muted-foreground text-xs mb-1">Nenhum registro ainda.</div>
+                  <div className="text-muted-foreground text-xs mb-1">{t("axisDiscipline.noRecords")}</div>
                   <div className="text-muted-foreground text-[10px] opacity-60">
-                    O score é registrado automaticamente quando muda ou uma vez por dia.
+                    {t("axisDiscipline.autoRecordNote")}
                   </div>
                 </div>
               )}

@@ -15,8 +15,9 @@ import { Home, DollarSign, Calendar, CheckSquare, MessageCircle, LogOut, Setting
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import { DisciplinePanel } from "@/components/discipline-panel";
+import { useTranslation } from "react-i18next";
 
-function ScoreBar({ score, isHigh, palette }: { score: number; isHigh: boolean; palette: { primary: string; positive: string; negative: string } }) {
+function ScoreBar({ score, isHigh, palette, label }: { score: number; isHigh: boolean; palette: { primary: string; positive: string; negative: string }; label: string }) {
   const pct = (score / 10) * 100;
 
   const color = score <= 4 ? palette.negative : score <= 7 ? palette.primary : palette.positive;
@@ -29,7 +30,7 @@ function ScoreBar({ score, isHigh, palette }: { score: number; isHigh: boolean; 
             className={`h-3 w-3 ${isHigh ? "high-flame" : ""}`}
             style={{ color: isHigh ? palette.negative : palette.primary }}
           />
-          <span className="text-[11px] text-muted-foreground font-medium">Disciplina</span>
+          <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
         </div>
         <span
           className={`text-[11px] font-bold ${isHigh ? "high-score-text" : ""}`}
@@ -91,6 +92,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const isHigh = theme.startsWith("high");
   const P = getModulePalette(theme);
   const [showDiscipline, setShowDiscipline] = useState(false);
@@ -102,20 +104,20 @@ export function AppSidebar() {
   const disciplinePoints = dashData?.disciplinePoints ?? 0;
 
   const navItems: Array<{ label: string; icon: any; path: string; active: boolean; color: string }> = [
-    { label: "Início", icon: Home, path: "/", active: location === "/" || location === "/dashboard", color: P.início },
-    { label: "Relatórios", icon: BarChart2, path: "/reports", active: location === "/reports", color: P.primary },
+    { label: t("axisSidebar.home"), icon: Home, path: "/", active: location === "/" || location === "/dashboard", color: P.início },
+    { label: t("axisSidebar.reports"), icon: BarChart2, path: "/reports", active: location === "/reports", color: P.primary },
   ];
 
   if (activeModules.length === 0 || activeModules.includes("finance")) {
-    navItems.push({ label: "Finanças", icon: DollarSign, path: "/finance", active: location === "/finance", color: P.finance });
+    navItems.push({ label: t("axisSidebar.finance"), icon: DollarSign, path: "/finance", active: location === "/finance", color: P.finance });
   }
   if (activeModules.length === 0 || activeModules.includes("schedule")) {
-    navItems.push({ label: "Agenda", icon: Calendar, path: "/agenda", active: location === "/agenda", color: P.agenda });
+    navItems.push({ label: t("axisSidebar.agenda"), icon: Calendar, path: "/agenda", active: location === "/agenda", color: P.agenda });
   }
   if (activeModules.length === 0 || activeModules.includes("tasks") || activeModules.includes("habits")) {
-    navItems.push({ label: "Tarefas", icon: CheckSquare, path: "/tasks", active: location === "/tasks", color: P.tasks });
+    navItems.push({ label: t("axisSidebar.tasks"), icon: CheckSquare, path: "/tasks", active: location === "/tasks", color: P.tasks });
   }
-  navItems.push({ label: "Chat", icon: MessageCircle, path: "/chat", active: location === "/chat", color: P.chat });
+  navItems.push({ label: t("axisSidebar.chat"), icon: MessageCircle, path: "/chat", active: location === "/chat", color: P.chat });
 
   return (
     <>
@@ -161,10 +163,10 @@ export function AppSidebar() {
         <div
           className="cursor-pointer hover:opacity-75 transition-opacity duration-200 rounded-lg"
           onClick={() => setShowDiscipline(true)}
-          title="Ver histórico de disciplina"
+          title={t("axisSidebar.viewDisciplineHistory")}
           data-testid="button-open-discipline"
         >
-          <ScoreBar score={disciplineScore} isHigh={isHigh} palette={P} />
+          <ScoreBar score={disciplineScore} isHigh={isHigh} palette={P} label={t("axisSidebar.discipline")} />
         </div>
       </SidebarHeader>
 
@@ -235,7 +237,7 @@ export function AppSidebar() {
             data-testid="link-settings"
           >
             <Settings className="h-3.5 w-3.5" />
-            Config
+            {t("axisSidebar.settings")}
           </Link>
           <button
             onClick={() => logout()}
