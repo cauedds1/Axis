@@ -236,14 +236,16 @@ function AppRouter() {
           <Route path="/business" component={BusinessLanding} />
           <Route path="/">
             {() => (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Landing />
-              </motion.div>
+              <ThemeProvider>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Landing />
+                </motion.div>
+              </ThemeProvider>
             )}
           </Route>
         </Switch>
