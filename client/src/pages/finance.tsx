@@ -27,12 +27,12 @@ function fmtBRL(value: number): string {
   return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function fmtTxDate(date: Date | string | null | undefined): string {
+function fmtTxDate(date: Date | string | null | undefined, lang = "en-US"): string {
   if (!date) return "";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
   const day = d.getDate();
-  const month = d.toLocaleString("pt-BR", { month: "short" }).replace(".", "");
+  const month = d.toLocaleString(lang, { month: "short" }).replace(".", "");
   const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
   if (hasTime) {
     const h = String(d.getHours()).padStart(2, "0");
@@ -40,15 +40,6 @@ function fmtTxDate(date: Date | string | null | undefined): string {
     return `${day} ${month} · ${h}:${m}`;
   }
   return `${day} ${month}`;
-}
-
-const PAYMENT_METHOD_STATIC_LABELS: Record<string, string> = {
-  debit: "Débito", credit: "Crédito", pix: "Pix", cash: "Dinheiro", other: "Outro"
-};
-
-function paymentLabel(method: string | null | undefined): string {
-  if (!method) return "";
-  return PAYMENT_METHOD_STATIC_LABELS[method] || method;
 }
 
 type TxPeriodFilter = "current" | "last" | "last3" | "last6" | "custom";
@@ -73,17 +64,18 @@ function getTxDateRange(period: TxPeriodFilter, customStart?: string, customEnd?
   return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59) };
 }
 
-function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Date }): string {
+function getTxPeriodLabel(period: TxPeriodFilter, range: { start: Date; end: Date }, lang = "en-US"): string {
   if (period === "current" || period === "last") {
-    return range.start.toLocaleString("pt-BR", { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
+    return range.start.toLocaleString(lang, { month: "long", year: "numeric" }).replace(/^\w/, c => c.toUpperCase());
   }
-  const f = range.start.toLocaleString("pt-BR", { month: "short", year: "numeric" });
-  const l = range.end.toLocaleString("pt-BR", { month: "short", year: "numeric" });
+  const f = range.start.toLocaleString(lang, { month: "short", year: "numeric" });
+  const l = range.end.toLocaleString(lang, { month: "short", year: "numeric" });
   return `${f} — ${l}`;
 }
 
 export default function Finance() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const { theme } = useTheme();
   const accent = getPrimaryHex(theme);
 
@@ -94,6 +86,19 @@ export default function Finance() {
     { value: "cash",    label: t("axisFinance.pmCash"),   icon: Banknote },
     { value: "other",   label: t("axisFinance.pmOther"),  icon: Wallet },
   ] as const;
+
+  const PAYMENT_LABEL_MAP: Record<string, string> = {
+    debit: t("axisFinance.pmDebit"),
+    credit: t("axisFinance.pmCredit"),
+    pix: t("axisFinance.pmPix"),
+    cash: t("axisFinance.pmCash"),
+    other: t("axisFinance.pmOther"),
+  };
+
+  function paymentLabel(method: string | null | undefined): string {
+    if (!method) return "";
+    return PAYMENT_LABEL_MAP[method] || method;
+  }
 
   const TX_PERIOD_OPTS: { id: TxPeriodFilter; label: string }[] = [
     { id: "current", label: t("axisFinance.periodCurrent") },
@@ -299,10 +304,10 @@ export default function Finance() {
       setIdentityChoice(null);
       if (data?.docType === "bill") {
         const notesParts: string[] = [];
-        if (data.description) notesParts.push(`Descrição: ${data.description}`);
-        if (data.issuer) notesParts.push(`Emissor: ${data.issuer}${data.issuerCnpj ? ` (${data.issuerCnpj})` : ""}`);
-        if (data.recipient) notesParts.push(`Destinatário: ${data.recipient}${data.recipientCnpj ? ` (${data.recipientCnpj})` : ""}`);
-        if (data.paymentInfo) notesParts.push(`Pagamento: ${data.paymentInfo}`);
+        if (data.description) notesParts.push(`${t("axisFinance.serviceProduct")}: ${data.description}`);
+        if (data.issuer) notesParts.push(`${t("axisFinance.issuer")}: ${data.issuer}${data.issuerCnpj ? ` (${data.issuerCnpj})` : ""}`);
+        if (data.recipient) notesParts.push(`${t("axisFinance.recipient")}: ${data.recipient}${data.recipientCnpj ? ` (${data.recipientCnpj})` : ""}`);
+        if (data.paymentInfo) notesParts.push(`${t("axisFinance.paymentData")}: ${data.paymentInfo}`);
 
         let resolvedType = data.type || "expense";
         let needsIdentity = false;
@@ -383,7 +388,7 @@ export default function Finance() {
       toast({ title: t("axisFinance.categoryRequired"), description: t("axisFinance.categoryRequiredDesc"), variant: "destructive" });
       return;
     }
-    const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || "Outro" : txForm.paymentMethod);
+    const resolvedPayment = txForm.creditCardId ? "credit_card" : (txForm.paymentMethod === "other" ? txForm.paymentMethodOther || t("axisFinance.pmOther") : txForm.paymentMethod);
     const installmentsNum = parseInt(txForm.installments) || 1;
     createTxMutation.mutate({
       amount: parseFloat(txForm.amount),
@@ -501,7 +506,7 @@ export default function Finance() {
             />
           </div>
         )}
-        <p className="text-xs text-white/35">{getTxPeriodLabel(txPeriod, txDateRange)}</p>
+        <p className="text-xs text-white/35">{getTxPeriodLabel(txPeriod, txDateRange, lang)}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -873,7 +878,7 @@ export default function Finance() {
                                     data-testid={`button-items-${tx.id}`}
                                   >
                                     <Package className="h-2.5 w-2.5" />
-                                    {parsedItems.length} {parsedItems.length === 1 ? "item" : "itens"}
+                                    {parsedItems.length} {parsedItems.length === 1 ? t("axisFinance.item") : t("axisFinance.items")}
                                     {isExpanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
                                   </button>
                                 </>
@@ -883,7 +888,7 @@ export default function Finance() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="flex flex-col items-end">
-                            {tx.date && <span className="text-xs text-muted-foreground leading-tight">{fmtTxDate(tx.date)}</span>}
+                            {tx.date && <span className="text-xs text-muted-foreground leading-tight">{fmtTxDate(tx.date, lang)}</span>}
                             <span className={`text-sm font-medium ${tx.type === "income" ? "text-green-500" : ""}`}>
                               {tx.type === "income" ? "+" : "-"}R$ {fmtBRL(tx.amount)}
                             </span>
