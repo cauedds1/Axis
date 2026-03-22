@@ -776,7 +776,7 @@ export default function Finance() {
                       type: billForm.type,
                       dueDay: parseInt(billForm.dueDay) || 1,
                       recurrenceType: billForm.recurrenceType,
-                      categoryName: billForm.categoryName || pdfPreview.categoryName || "outros",
+                      categoryName: billForm.categoryName || pdfPreview.categoryName || "general",
                       notes: billForm.notes,
                     };
                     if (identityNeeded && identityChoice) {
