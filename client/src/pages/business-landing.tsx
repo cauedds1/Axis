@@ -3,6 +3,7 @@ import { motion, useInView, useMotionValue, useTransform, animate } from "framer
 import { ArrowRight, Camera, FileSpreadsheet, Users, Check, ArrowLeft, Building2, Smartphone, Receipt, BarChart3, Zap, Shield, ChevronRight, Mic, Calendar, Flame, Palette } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 
 type BizPalette = {
   primary: string; secondary: string; tertiary: string; accent: string; success: string;
@@ -447,6 +448,11 @@ export default function BusinessLanding() {
     setBizTheme(BIZ_THEMES[(idx + 1) % BIZ_THEMES.length]);
   };
 
+  const toggleLang = () => {
+    const next = i18n.language === "pt-BR" ? "en" : "pt-BR";
+    i18n.changeLanguage(next);
+  };
+
   const cssVars = {
     "--lp-primary-rgb": BIZ.primaryRgb,
     "--lp-secondary-rgb": BIZ.secondaryRgb,
@@ -486,6 +492,16 @@ export default function BusinessLanding() {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLang}
+              className="hidden sm:flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-white/10 hover:border-white/25 transition-all"
+              style={{ color: "rgba(255,255,255,0.45)" }}
+              data-testid="button-biz-lang-toggle"
+            >
+              <span style={{ color: i18n.language === "pt-BR" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}>{t("axisLanding.langTogglePT")}</span>
+              <span className="text-white/20">|</span>
+              <span style={{ color: i18n.language === "en" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}>{t("axisLanding.langToggleEN")}</span>
+            </button>
             <Link href="/">
               <button
                 className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 hover:border-white/20 transition-all"
