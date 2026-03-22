@@ -859,7 +859,8 @@
     "ctaButton": "Go to Dashboard",
     "ctaHint": "Configure at your own pace · Customize later",
     "awaitingLabel": "What's waiting for you",
-    "pageTitle": "AXIS Business — Welcome"
+    "pageTitle": "AXIS Business — Welcome",
+    "youFallback": "you"
   },
   "businessSettings": {
     "title": "Settings",
@@ -1348,6 +1349,9 @@
     "nameLabel": "First name",
     "surnameLabel": "Last name",
     "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "firstNamePh": "John",
+    "lastNamePh": "Smith",
     "passwordLabel": "Password",
     "passwordPh": "Minimum 6 characters",
     "loginBtn": "Sign in",
@@ -1376,6 +1380,7 @@
     "billTitlePh": "Rent, Netflix, Gym...",
     "habitNamePh": "Exercise, Meditate, Read...",
     "dayPrefix": "day",
+    "dotDay": "· day {{n}}",
     "daily": "Daily",
     "weekly": "Weekly",
     "add": "Add",

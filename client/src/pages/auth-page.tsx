@@ -261,7 +261,7 @@ export default function AuthPage() {
                     id="firstName"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="João"
+                    placeholder={t("axisAuth.firstNamePh")}
                     required={!isLogin}
                     tabIndex={isLogin ? -1 : 0}
                     className="auth-input"
@@ -276,7 +276,7 @@ export default function AuthPage() {
                     id="lastName"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Silva"
+                    placeholder={t("axisAuth.lastNamePh")}
                     required={!isLogin}
                     tabIndex={isLogin ? -1 : 0}
                     className="auth-input"

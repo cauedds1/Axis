@@ -230,7 +230,7 @@ export default function BusinessWelcome() {
     document.title = t("businessWelcome.pageTitle");
   }, [t]);
 
-  const firstName = user?.firstName || "você";
+  const firstName = user?.firstName || t("businessWelcome.youFallback");
 
   const steps = [
     {

@@ -178,7 +178,7 @@ function StepIndicator({ step }: { step: number }) {
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-white/35 font-medium">{t("axisBizAuth.stepOf", { step, total: 3 })}</span>
+        <span className="text-xs text-white/35 font-medium">{t("axisBizAuth.stepOf", { current: step, total: 3 })}</span>
         <span className="text-xs font-semibold" style={{ color: PRIMARY }}>{t(`axisBizAuth.${STEP_LABEL_KEYS[step - 1]}`)}</span>
       </div>
       <div className="flex gap-1.5">

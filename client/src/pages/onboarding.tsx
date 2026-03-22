@@ -308,7 +308,7 @@ export default function Onboarding() {
                   style={{ background: "rgba(78,205,196,0.08)", border: "1px solid rgba(78,205,196,0.15)" }}>
                   <div>
                     <span className="text-sm text-white/80">{inc.name}</span>
-                    <span className="text-xs text-white/40 ml-2">R${inc.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · dia {inc.dayOfMonth}</span>
+                    <span className="text-xs text-white/40 ml-2">R${inc.amount.toFixed(2)} {t("axisOnboarding.dotDay", { n: inc.dayOfMonth })}</span>
                   </div>
                   <button onClick={() => setSetupIncomes(p => p.filter((_, j) => j !== i))} data-testid={`remove-income-${i}`}>
                     <X className="w-3.5 h-3.5 text-white/30 hover:text-white/70" />
@@ -347,7 +347,7 @@ export default function Onboarding() {
                   style={{ background: "rgba(255,107,107,0.08)", border: "1px solid rgba(255,107,107,0.15)" }}>
                   <div>
                     <span className="text-sm text-white/80">{b.title}</span>
-                    <span className="text-xs text-white/40 ml-2">R${b.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} · dia {b.dueDay}</span>
+                    <span className="text-xs text-white/40 ml-2">R${b.amount.toFixed(2)} {t("axisOnboarding.dotDay", { n: b.dueDay })}</span>
                   </div>
                   <button onClick={() => setSetupBills(p => p.filter((_, j) => j !== i))} data-testid={`remove-bill-${i}`}>
                     <X className="w-3.5 h-3.5 text-white/30 hover:text-white/70" />
