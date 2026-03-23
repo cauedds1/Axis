@@ -10,7 +10,21 @@ import { useTheme, getPrimaryHex } from "@/components/theme-provider";
 import { useTranslation } from "react-i18next";
 import type { ChatMessage } from "@shared/models/chat";
 
-type PendingAction = { type: string; data: any };
+type ScheduleBatchActivity = { title: string; days: number[]; time: string; durationMinutes: number; weeks: number };
+
+type BatchScheduleAction = { type: "create_schedule_batch"; data: { activities: ScheduleBatchActivity[] } };
+
+type PendingAction =
+  | { type: "expense" | "income"; data: { amount: number; description: string } }
+  | { type: "task"; data: { title: string } }
+  | { type: "habit"; data: { name: string } }
+  | { type: "schedule" | "create_schedule"; data: { title: string } }
+  | BatchScheduleAction
+  | { type: string; data: Record<string, unknown> };
+
+function isBatchScheduleAction(a: PendingAction): a is BatchScheduleAction {
+  return a.type === "create_schedule_batch";
+}
 
 function invalidateAfterAction(type: string) {
   queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
@@ -24,7 +38,7 @@ function invalidateAfterAction(type: string) {
   if (type === "habit") {
     queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
   }
-  if (type === "schedule" || type === "create_schedule") {
+  if (type === "schedule" || type === "create_schedule" || type === "create_schedule_batch") {
     queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
   }
 }
@@ -419,7 +433,13 @@ export default function Chat() {
                 {pendingAction.type === "habit" && `⚡ "${pendingAction.data.name}"`}
                 {pendingAction.type === "schedule" && `📅 "${pendingAction.data.title}"`}
                 {pendingAction.type === "create_schedule" && `📅 "${pendingAction.data.title}"`}
-                {pendingAction.type === "create_schedule_batch" && `📅 ${(pendingAction.data.activities as any[]).map((a: any) => a.title).filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i).join(", ")}`}
+                {isBatchScheduleAction(pendingAction) && (() => {
+                  const names = pendingAction.data.activities
+                    .map(a => a.title)
+                    .filter((v, i, arr) => arr.indexOf(v) === i)
+                    .join(", ");
+                  return `📅 ${names}`;
+                })()}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
