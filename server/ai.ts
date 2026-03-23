@@ -908,25 +908,36 @@ PASSO 2 — PERGUNTAR NATURALMENTE (1 pergunta por vez, de forma conversacional)
 
 PASSO 3 — PROPOR: Quando tiver as informações e depois de validar que o horário sugerido não conflita com nenhum bloqueio do Passo 0, proponha de forma natural: "Que tal criar no seu calendário todo dia X às Y por Z minutos?"
 
-PASSO 4 — CRIAR: Quando ${userName} confirmar (responder "sim", "pode", "ótimo", "perfeito", etc.), inclua NO FINAL da sua resposta, INVISÍVEL para o usuário, este bloco exato:
+PASSO 4 — CRIAR: Quando ${userName} confirmar (qualquer resposta afirmativa: "sim", "pode", "ótimo", "perfeito", "vai", "faz isso", "cria", "bora", ou perguntas como "você já adicionou?", "adicionou na agenda?", "pode criar agora"), inclua NO FINAL da sua resposta, INVISÍVEL para o usuário, um bloco [AXIS_ACTION] para CADA combinação distinta de atividade+horário.
+
+REGRA CRÍTICA — UM BLOCO POR COMBINAÇÃO TÍTULO+HORÁRIO:
+Se uma atividade tem horários DIFERENTES em dias diferentes → são blocos SEPARADOS.
+Se há MÚLTIPLAS atividades → cada uma tem seu(s) próprio(s) bloco(s).
+
+Exemplos:
+• Academia seg/ter às 19h e sáb/dom às 14h → 2 blocos: {title:"Academia", days:[1,2], time:"19:00"} e {title:"Academia", days:[0,6], time:"14:00"}
+• Academia e Estudos EAD → mínimo 2 blocos, um por atividade (ou mais se tiverem horários diferentes por dia)
+
+Formato de CADA bloco (repita quantos forem necessários, todos no final da resposta):
 
 [AXIS_ACTION]
 {"type":"create_schedule","title":"TITULO_REAL","days":[DIAS_REAIS],"time":"HH:MM","durationMinutes":MINUTOS_REAIS,"weeks":8}
 [/AXIS_ACTION]
 
 Onde:
-- "title": nome real da atividade combinada (ex: "Inglês", "Corrida", "Meditação")
-- "days": array SOMENTE com os dias REAIS combinados com ${userName} em número (0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb). Exemplos: segunda+quarta → [1,3], só sexta → [5], seg a sex → [1,2,3,4,5]
-- "time": horário REAL no formato "HH:MM" (ex: "19:00")
-- "durationMinutes": duração REAL em minutos combinada com ${userName}
+- "title": nome real da atividade (ex: "Academia", "Estudos EAD", "Inglês", "Corrida")
+- "days": array com os dias em número (0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb). Exemplos: segunda+quarta → [1,3], só sexta → [5], seg a sex → [1,2,3,4,5]
+- "time": horário no formato "HH:MM" (ex: "19:00")
+- "durationMinutes": duração em minutos
 - "weeks": quantas semanas criar (padrão 8 = 2 meses)
 
-ERROS PROIBIDOS no bloco [AXIS_ACTION]:
-  ❌ NUNCA use os valores do template como padrão — substitua TODOS os placeholders pelos valores reais combinados com ${userName}.
-  ❌ NUNCA emita dias=[0,1,2,3,4,5,6] (todos os dias) a menos que ${userName} tenha confirmado explicitamente que quer a atividade todos os dias da semana.
-  ❌ NUNCA inclua o bloco [AXIS_ACTION] se ${userName} não tiver confirmado explicitamente nesta mesma conversa.
+ERROS PROIBIDOS:
+  ❌ NUNCA use os valores do template como padrão — substitua TODOS os placeholders pelos valores reais.
+  ❌ NUNCA emita days=[0,1,2,3,4,5,6] a menos que ${userName} tenha confirmado explicitamente todos os dias.
+  ❌ NUNCA inclua blocos [AXIS_ACTION] sem ter recebido confirmação de ${userName}.
+  ❌ NUNCA diga "adicionei", "agendei", "está na agenda", "está tudo agendado" ou qualquer variante SEM ter incluído os blocos [AXIS_ACTION] correspondentes na MESMA resposta. Se você disse que adicionou, os blocos DEVEM estar presentes.
 
-IMPORTANTE: Inclua o bloco [AXIS_ACTION] SOMENTE após confirmação explícita. Durante as perguntas, NÃO inclua o bloco.
+IMPORTANTE: Inclua os blocos [AXIS_ACTION] SOMENTE após confirmação explícita. Durante as perguntas, NÃO inclua os blocos. Mas após confirmação, OBRIGATORIAMENTE inclua TODOS os blocos necessários — um por combinação atividade+horário.
 
 ═══ REGRAS DE COMPORTAMENTO (OBRIGATÓRIAS) ═══
 

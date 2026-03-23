@@ -1819,41 +1819,62 @@ export async function registerRoutes(
 
       const rawResponse = await chatWithContext(message, userId);
 
-      // Parse [AXIS_ACTION] blocks — schedule creation triggered by AI
-      const actionMatch = rawResponse.match(/\[AXIS_ACTION\]([\s\S]*?)\[\/AXIS_ACTION\]/);
+      // Parse ALL [AXIS_ACTION] blocks — schedule creation triggered by AI
+      const actionMatches = [...rawResponse.matchAll(/\[AXIS_ACTION\]([\s\S]*?)\[\/AXIS_ACTION\]/g)];
       const cleanResponse = rawResponse.replace(/\[AXIS_ACTION\][\s\S]*?\[\/AXIS_ACTION\]/g, "").trim();
 
-      if (actionMatch) {
-        try {
-          const actionRaw = actionMatch[1].trim();
-          console.log("[chat] AXIS_ACTION raw:", actionRaw);
-          const action = JSON.parse(actionRaw);
-          if (action.type === "create_schedule" && action.title && action.time) {
-            const days: number[] = Array.isArray(action.days) && action.days.length > 0
-              ? action.days
-              : (typeof action.day === "number" ? [action.day] : []);
-            if (days.length === 0) {
-              console.warn("[chat] AXIS_ACTION missing days/day field, skipping");
+      if (actionMatches.length > 0) {
+        const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+        const validActivities: { title: string; days: number[]; time: string; durationMinutes: number; weeks: number }[] = [];
+
+        for (const match of actionMatches) {
+          try {
+            const actionRaw = match[1].trim();
+            console.log("[chat] AXIS_ACTION raw:", actionRaw);
+            const action = JSON.parse(actionRaw);
+            if (action.type === "create_schedule" && action.title && action.time) {
+              const days: number[] = Array.isArray(action.days) && action.days.length > 0
+                ? action.days
+                : (typeof action.day === "number" ? [action.day] : []);
+              if (days.length === 0) {
+                console.warn("[chat] AXIS_ACTION missing days/day field, skipping");
+              } else {
+                validActivities.push({
+                  title: action.title,
+                  days,
+                  time: action.time,
+                  durationMinutes: action.durationMinutes || 60,
+                  weeks: Math.min(action.weeks || 8, 52),
+                });
+              }
             } else {
-              const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-              const daysLabel = days.map((d: number) => DAY_NAMES[d] ?? d).join(", ");
-              const durationMin = action.durationMinutes || 60;
-              const weeks = Math.min(action.weeks || 8, 52);
-              const confirmMsg = `${cleanResponse}\n\nQuero criar **${action.title}** toda(s) **${daysLabel} às ${action.time}** por **${durationMin} min**, nas próximas **${weeks} semanas** — confirma?`.trim();
-              await storage.createChatMessage({ userId, role: "assistant", content: confirmMsg });
-              return res.json({
-                response: confirmMsg,
-                pendingAction: {
-                  type: "create_schedule",
-                  data: { title: action.title, days, time: action.time, durationMinutes: durationMin, weeks },
-                },
-              });
+              console.warn("[chat] AXIS_ACTION parsed but missing required fields:", JSON.stringify(action));
             }
-          } else {
-            console.warn("[chat] AXIS_ACTION parsed but missing required fields:", JSON.stringify(action));
+          } catch (actionErr: any) {
+            console.error("[chat] Failed to parse AXIS_ACTION:", actionErr.message, "raw:", match[1]?.trim());
           }
-        } catch (actionErr: any) {
-          console.error("[chat] Failed to parse/execute AXIS_ACTION:", actionErr.message, "raw:", actionMatch[1]?.trim());
+        }
+
+        if (validActivities.length === 1) {
+          const act = validActivities[0];
+          const daysLabel = act.days.map((d: number) => DAY_NAMES[d] ?? d).join(", ");
+          const confirmMsg = `${cleanResponse}\n\nQuero criar **${act.title}** toda(s) **${daysLabel} às ${act.time}** por **${act.durationMinutes} min**, nas próximas **${act.weeks} semanas** — confirma?`.trim();
+          await storage.createChatMessage({ userId, role: "assistant", content: confirmMsg });
+          return res.json({
+            response: confirmMsg,
+            pendingAction: { type: "create_schedule", data: act },
+          });
+        } else if (validActivities.length > 1) {
+          const lines = validActivities.map(act => {
+            const daysLabel = act.days.map((d: number) => DAY_NAMES[d] ?? d).join("/");
+            return `• **${act.title}** — ${daysLabel} às ${act.time} (${act.durationMinutes} min)`;
+          });
+          const confirmMsg = `${cleanResponse}\n\nQuero criar na sua agenda:\n${lines.join("\n")}\n\nnas próximas **${validActivities[0].weeks} semanas** — confirma?`.trim();
+          await storage.createChatMessage({ userId, role: "assistant", content: confirmMsg });
+          return res.json({
+            response: confirmMsg,
+            pendingAction: { type: "create_schedule_batch", data: { activities: validActivities } },
+          });
         }
       }
 
@@ -2003,6 +2024,46 @@ export async function registerRoutes(
           console.log(`[chat] Confirmed: created ${createdItems.length} schedule items for "${data.title}"`);
           summary = `Feito! Criei ${createdItems.length} evento(s) de "${data.title}" na sua agenda.`;
           saveEventToMemory(userId, `Chat confirmado: AXIS criou ${createdItems.length} compromisso(s) "${data.title}" no calendário.`).catch(() => {});
+          break;
+        }
+        case "create_schedule_batch": {
+          const activities: { title: string; days: number[]; time: string; durationMinutes: number; weeks: number }[] =
+            Array.isArray(data.activities) ? data.activities : [];
+          if (activities.length === 0) {
+            return res.status(400).json({ message: "Nenhuma atividade encontrada para criar" });
+          }
+          let totalCreated = 0;
+          const activityNames: string[] = [];
+          for (const act of activities) {
+            const days: number[] = Array.isArray(act.days) ? act.days : [];
+            if (!act.title || !act.time || days.length === 0) continue;
+            const [h, m] = (act.time as string).split(":").map(Number);
+            const durationMs = (act.durationMinutes || 60) * 60 * 1000;
+            const weeks = Math.min(act.weeks || 8, 52);
+            const now = new Date();
+            for (let w = 0; w < weeks; w++) {
+              for (const dow of days) {
+                const dt = new Date(now);
+                const dayDiff = ((dow - dt.getDay()) + 7) % 7 || 7;
+                dt.setDate(dt.getDate() + dayDiff + w * 7);
+                dt.setHours(h, m, 0, 0);
+                const end = new Date(dt.getTime() + durationMs);
+                await storage.createScheduleItem({
+                  userId,
+                  title: act.title,
+                  description: null,
+                  startTime: dt,
+                  endTime: end,
+                  suggestedByAi: true,
+                });
+                totalCreated++;
+              }
+            }
+            if (!activityNames.includes(act.title)) activityNames.push(act.title);
+          }
+          console.log(`[chat] Confirmed batch: created ${totalCreated} schedule items for ${activityNames.join(", ")}`);
+          summary = `Feito! Criei ${totalCreated} evento(s) na sua agenda: ${activityNames.join(", ")}.`;
+          saveEventToMemory(userId, `Chat confirmado: AXIS criou ${totalCreated} compromisso(s) de "${activityNames.join(", ")}" no calendário.`).catch(() => {});
           break;
         }
         default:

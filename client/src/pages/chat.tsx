@@ -419,6 +419,7 @@ export default function Chat() {
                 {pendingAction.type === "habit" && `⚡ "${pendingAction.data.name}"`}
                 {pendingAction.type === "schedule" && `📅 "${pendingAction.data.title}"`}
                 {pendingAction.type === "create_schedule" && `📅 "${pendingAction.data.title}"`}
+                {pendingAction.type === "create_schedule_batch" && `📅 ${(pendingAction.data.activities as any[]).map((a: any) => a.title).filter((v: string, i: number, arr: string[]) => arr.indexOf(v) === i).join(", ")}`}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
