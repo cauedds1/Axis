@@ -24,7 +24,7 @@ function invalidateAfterAction(type: string) {
   if (type === "habit") {
     queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
   }
-  if (type === "schedule") {
+  if (type === "schedule" || type === "create_schedule") {
     queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
   }
 }
@@ -76,10 +76,6 @@ export default function Chat() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      if (data.scheduledItems) {
-        queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
-        toast({ title: t("axisChat.scheduledCreated") });
-      }
       if (data.pendingAction) {
         setPendingAction(data.pendingAction);
       } else {
@@ -422,6 +418,7 @@ export default function Chat() {
                 {pendingAction.type === "income" && `💰 R$${Number(pendingAction.data.amount).toFixed(2)} — "${pendingAction.data.description}"`}
                 {pendingAction.type === "habit" && `⚡ "${pendingAction.data.name}"`}
                 {pendingAction.type === "schedule" && `📅 "${pendingAction.data.title}"`}
+                {pendingAction.type === "create_schedule" && `📅 "${pendingAction.data.title}"`}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
