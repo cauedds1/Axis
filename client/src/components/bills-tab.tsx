@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil } from "lucide-react";
+import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil, FastForward } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -609,6 +609,25 @@ export function BillsTab() {
     onError: () => toast({ title: t("axisFinance.billDeleteError"), variant: "destructive" }),
   });
 
+  const anticipateMutation = useMutation({
+    mutationFn: async ({ txId, card }: { txId: string; card?: CreditCardType }) => {
+      const now = new Date();
+      const pastClosing = card ? now.getDate() >= card.closingDay : false;
+      const targetMonth = pastClosing
+        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const res = await apiRequest("PATCH", `/api/transactions/${txId}`, { date: targetMonth.toISOString() });
+      return { res, targetMonth };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      const label = data.targetMonth.toLocaleString(lang, { month: "long", year: "numeric" });
+      toast({ title: t("axisFinance.anticipateSuccess", { month: label }) });
+    },
+    onError: () => toast({ title: t("axisFinance.anticipateError"), variant: "destructive" }),
+  });
+
   const activeBills = allBills.filter(b => isBillActiveInRange(b, periodMonths));
 
   const unpaidExpenses = activeBills.filter(b => b.type === "expense" && !isBillPaidInAllMonths(b, periodMonths));
@@ -1020,9 +1039,28 @@ export function BillsTab() {
                           </span>
                         </div>
                       </div>
-                      <span className="text-base font-bold shrink-0" style={{ color: isPast ? "rgba(255,255,255,0.3)" : EXPENSE_COLOR }}>
-                        -{fmtMoney(tx.amount)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isPast && (
+                          <button
+                            data-testid={`btn-anticipate-${tx.id}`}
+                            onClick={() => anticipateMutation.mutate({ txId: tx.id, card: card ?? undefined })}
+                            disabled={anticipateMutation.isPending}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-80 disabled:opacity-40"
+                            style={{ background: `${EXPENSE_COLOR}18`, color: EXPENSE_COLOR, border: `1px solid ${EXPENSE_COLOR}30` }}
+                            title={t("axisFinance.anticipateInstallment")}
+                          >
+                            {anticipateMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <FastForward className="h-3 w-3" />
+                            )}
+                            {t("axisFinance.anticipateBtn")}
+                          </button>
+                        )}
+                        <span className="text-base font-bold" style={{ color: isPast ? "rgba(255,255,255,0.3)" : EXPENSE_COLOR }}>
+                          -{fmtMoney(tx.amount)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
