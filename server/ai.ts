@@ -743,6 +743,7 @@ export async function chatWithContext(message: string, userId: string, executedA
   context.forEach(c => {
     const cat = c.key.startsWith("evento_") ? "eventos"
       : (c.key.startsWith("fato_") || c.key.startsWith("plano_") || c.key.startsWith("preferencia_")) ? "aprendizados"
+      : c.key.startsWith("rotina_") ? "rotina"
       : keyMap[c.key] || "outros";
     memoryMap[cat].push(`${c.key}: ${c.value}`);
   });
