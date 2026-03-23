@@ -838,15 +838,34 @@ ${memoryMap.diagnóstico.length ? `[Diagnóstico]\n${memoryMap.diagnóstico.map(
 
 Quando ${userName} mencionar que quer COMEÇAR uma nova atividade, praticar algo ou criar uma rotina (ex: "preciso praticar inglês", "quero me exercitar", "vou aprender violão", "quero meditar todo dia"), siga este protocolo OBRIGATÓRIO:
 
-PASSO 1 — VERIFICAR A AGENDA: Você já tem os horários ocupados (seção "AGENDA — PRÓXIMOS 7 DIAS" acima). Use-os para sugerir horários livres.
+PASSO 0 — MAPEAR TODOS OS HORÁRIOS BLOQUEADOS (OBRIGATÓRIO, FAÇA MENTALMENTE ANTES DE QUALQUER SUGESTÃO):
+Antes de sugerir qualquer horário, você DEVE identificar e bloquear todos os períodos ocupados com base em:
+  1. A seção "AGENDA — PRÓXIMOS 7 DIAS" acima (compromissos já cadastrados)
+  2. A seção "MEMÓRIA E CONTEXTO" acima (rotina salva de conversas anteriores)
+  3. O que ${userName} acabou de dizer na mensagem ATUAL — leia com atenção cada intervalo e atividade mencionados
+
+REGRAS DE INTERPRETAÇÃO DE HORÁRIOS (CRÍTICAS — violação é erro grave):
+  ▸ "trabalho das X às Y" → cada minuto entre X e Y está BLOQUEADO em todos os dias de trabalho mencionados. "das 8:00 às 18:00" = tarde OCUPADA, não livre.
+  ▸ "trabalho seg a sex das 8:00 às 18:00" → segunda a sexta, das 8h às 18h, tudo bloqueado. Horário livre: apenas após 18h nesses dias.
+  ▸ "tenho futebol na quarta e sexta" → quarta e sexta têm futebol. NUNCA sugerir outra atividade nesses dias/horários. NUNCA propor mover o futebol para outro dia.
+  ▸ Qualquer atividade que ${userName} mencionar como já existente em dias/horários específicos é um COMPROMISSO FIXO E IMÓVEL. Organize a rotina EM TORNO desses compromissos — jamais tente alterá-los.
+  ▸ "horário livre" significa SOMENTE os blocos que NÃO estão cobertos por nenhum dos itens acima.
+
+EXEMPLOS DE ERROS PROIBIDOS:
+  ❌ Dizer "você tem as tardes livres" quando o trabalho vai até 18h — as tardes estão OCUPADAS.
+  ❌ Sugerir academia na quarta ou sexta à noite quando o usuário já tem futebol nesses dias.
+  ❌ Propor mover o futebol para sábado quando o usuário disse que joga às quartas e sextas.
+  ❌ Chamar de "livre" qualquer período dentro do horário de trabalho.
+
+PASSO 1 — VERIFICAR A AGENDA: Combine os horários da seção "AGENDA — PRÓXIMOS 7 DIAS" com o mapa de bloqueios que você construiu no Passo 0. Somente o que sobrar é efetivamente livre.
 
 PASSO 2 — PERGUNTAR NATURALMENTE (1 pergunta por vez, de forma conversacional):
   a) Se não souber a frequência: "Quantas vezes por semana você pensou em fazer isso?"
-  b) Se não souber o dia: "Quais dias funcionariam melhor pra você?" (sugira dias baseado na agenda)
-  c) Se não souber o horário: "Que horas pensou? De manhã, à tarde ou à noite?"
+  b) Se não souber o dia: "Quais dias funcionariam melhor pra você?" (sugira apenas dias onde há espaço real, sem conflitos)
+  c) Se não souber o horário: "Que horas pensou?" (sugira horários dentro das janelas realmente livres — nunca dentro do horário de trabalho ou de outras atividades fixas)
   d) Se não souber a duração: "Quanto tempo por sessão? 30min, 1 hora?"
 
-PASSO 3 — PROPOR: Quando tiver as informações, proponha de forma natural: "Que tal criar no seu calendário todo dia X às Y por Z minutos?"
+PASSO 3 — PROPOR: Quando tiver as informações e depois de validar que o horário sugerido não conflita com nenhum bloqueio do Passo 0, proponha de forma natural: "Que tal criar no seu calendário todo dia X às Y por Z minutos?"
 
 PASSO 4 — CRIAR: Quando ${userName} confirmar (responder "sim", "pode", "ótimo", "perfeito", etc.), inclua NO FINAL da sua resposta, INVISÍVEL para o usuário, este bloco exato:
 
@@ -934,19 +953,26 @@ EXTRAIA APENAS informações que valem ser lembradas em conversas futuras:
 - Problemas ou conquistas relatadas
 - Informações pessoais relevantes (rotina, hábitos, família, trabalho)
 
+PRIORIDADE MÁXIMA — extraia sempre que aparecer:
+- Horário de trabalho: ex. "trabalho seg a sex das 8:00 às 18:00, sáb das 8:00 às 12:00" → grave como rotina com dias e horários exatos
+- Atividades fixas com dias específicos: ex. "tenho futebol às quartas e sextas", "faço academia toda terça e quinta" → grave como compromisso fixo, incluindo os dias da semana
+- Qualquer combinação de dia + horário + atividade recorrente mencionada como já existente
+
 NÃO extraia: saudações, perguntas genéricas, conteúdo que já está nos dados de perfil, informações óbvias.
 
 RETORNE JSON:
 {
   "facts": [
+    { "key": "rotina_trabalho", "value": "trabalha seg-sex 8h-18h, sáb 8h-12h" },
+    { "key": "rotina_futebol", "value": "futebol fixo toda quarta e sexta à noite" },
     { "key": "plano_${monthKey}", "value": "descrição concisa do fato" },
     { "key": "fato_${dateKey}_01", "value": "outro fato relevante" }
   ]
 }
 
 Retorne { "facts": [] } se não há nada novo para memorizar.
-Use chaves descritivas: fato_YYYY-MM-DD_NN, plano_YYYY-MM, preferencia_topico.
-Máximo de 3 fatos por conversa.`
+Use chaves descritivas: rotina_trabalho, rotina_ATIVIDADE, fato_YYYY-MM-DD_NN, plano_YYYY-MM, preferencia_topico.
+Máximo de 5 fatos por conversa (aumente para 5 quando houver informações de rotina/horário importantes).`
         },
         {
           role: "user",
