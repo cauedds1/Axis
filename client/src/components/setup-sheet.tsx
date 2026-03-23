@@ -212,15 +212,17 @@ function SectionRenda({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!val || isNaN(parseFloat(val))) throw new Error(t("axisSetup.errorInvalidValue"));
+      const incomeToSave = val ? parseFloat(val) : totalRecurring;
+      if (!incomeToSave || isNaN(incomeToSave) || incomeToSave <= 0) throw new Error(t("axisSetup.errorInvalidValue"));
       await apiRequest("POST", "/api/onboarding/setup", {
-        currentIncome: parseFloat(val),
+        currentIncome: incomeToSave,
         fixedExpenses: null,
         routine: null,
       });
+      return incomeToSave;
     },
-    onSuccess: () => {
-      onSave(val);
+    onSuccess: (incomeToSave) => {
+      onSave(String(incomeToSave));
       setSaved(true);
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/setup/status"] });
       setTimeout(() => setSaved(false), 2500);
