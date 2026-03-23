@@ -864,7 +864,7 @@ export async function registerRoutes(
       autoCloseInvoices(userId).catch(() => {});
       const filters: any = {};
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
-      filters.endDate = req.query.endDate ? new Date(req.query.endDate as string) : new Date();
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
       if (req.query.type) filters.type = req.query.type as string;
       if (req.query.categoryId) filters.categoryId = req.query.categoryId as string;
       if (req.query.creditCardId) filters.creditCardId = req.query.creditCardId as string;
@@ -1040,7 +1040,13 @@ export async function registerRoutes(
       if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
       const invoices = await storage.getInvoices(userId, cardId);
       const now = new Date();
-      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      // If we're past (or on) the closing day the current billing cycle belongs to
+      // the next calendar month — match the same logic used when creating installments.
+      const pastClosing = now.getDate() >= card.closingDay;
+      const openMonth = pastClosing
+        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const currentMonthKey = `${openMonth.getFullYear()}-${String(openMonth.getMonth() + 1).padStart(2, "0")}`;
       const openInvoice = invoices.find(i => i.status === "open" && i.monthKey === currentMonthKey);
       const allTx = await storage.getTransactions(userId, { creditCardId: cardId });
       const result = invoices.map(inv => {
