@@ -1634,7 +1634,7 @@
     "periodLast": "Mês anterior",
     "period3m": "3 meses",
     "period6m": "6 meses",
-    "periodNext3": "Próximos 3 meses",
+    "periodNextMonth": "Próximo mês",
     "periodCustom": "Personalizado",
     "expensesDebit": "Gastos (débito)",
     "onCard": "no cartão {{amount}}",

@@ -112,7 +112,7 @@ function isBillOverdueInRange(bill: Bill, months: Array<{ y: number; m: number }
   });
 }
 
-type PeriodFilter = "current" | "last" | "last3" | "last6" | "next3" | "custom";
+type PeriodFilter = "current" | "last" | "next" | "custom";
 
 function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEnd?: string): Array<{ y: number; m: number }> {
   const now = new Date();
@@ -123,21 +123,9 @@ function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEn
   } else if (period === "last") {
     const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     months.push({ y: d.getFullYear(), m: d.getMonth() });
-  } else if (period === "last3") {
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() });
-    }
-  } else if (period === "last6") {
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() });
-    }
-  } else if (period === "next3") {
-    for (let i = 3; i >= 1; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() });
-    }
+  } else if (period === "next") {
+    const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    months.push({ y: d.getFullYear(), m: d.getMonth() });
   } else if (period === "custom") {
     if (customStart && customEnd) {
       const start = new Date(customStart + "T00:00:00");
@@ -567,11 +555,9 @@ function EditBillModal({ bill, onClose, accent }: { bill: Bill; onClose: () => v
 function getPeriodOpts(t: (k: string) => string): { id: PeriodFilter; label: string }[] {
   return [
     { id: "current", label: t("axisFinance.periodCurrent") },
-    { id: "last", label: t("axisFinance.periodLast") },
-    { id: "last3", label: t("axisFinance.period3m") },
-    { id: "last6", label: t("axisFinance.period6m") },
-    { id: "next3", label: t("axisFinance.periodNext3") },
-    { id: "custom", label: t("axisFinance.periodCustom") },
+    { id: "last",    label: t("axisFinance.periodLast") },
+    { id: "next",    label: t("axisFinance.periodNextMonth") },
+    { id: "custom",  label: t("axisFinance.periodCustom") },
   ];
 }
 
