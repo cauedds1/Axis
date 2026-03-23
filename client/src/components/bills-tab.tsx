@@ -681,6 +681,12 @@ export function BillsTab() {
   const totalPagar2 = totalPagar + projectedInvoiceTotal;
   const saldoPrevisto = totalReceber - totalPagar2;
 
+  const overdueProjectedInvoices = projectedCardInvoices.filter(p => {
+    const dueDate = new Date(p.dueYear, p.dueMonthIdx, p.card.dueDay);
+    return dueDate < now2;
+  });
+  const showProjectedInvoices = filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue";
+
   const PILL = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
       type="button"
@@ -768,7 +774,7 @@ export function BillsTab() {
         <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar2)} sub={`${unpaidExpenses.length + projectedCardInvoices.length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
         <SummaryCard label={t("axisFinance.toBeReceived")} value={fmtMoney(totalReceber)} sub={`${unpaidIncomes.length} ${t("axisFinance.billsCount")}`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label={t("axisFinance.projectedBalance")} value={fmtMoney(saldoPrevisto)} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
-        <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length}`} sub={vencidas.length > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0)) : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
+        <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length + overdueProjectedInvoices.length}`} sub={(vencidas.length + overdueProjectedInvoices.length) > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0) + overdueProjectedInvoices.reduce((s, p) => s + p.openCycleTotal, 0)) : undefined} accent={(vencidas.length + overdueProjectedInvoices.length) > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
         {isSingleCurrentMonth ? (
           <SummaryCard label={t("axisFinance.next7Days")} value={`${proximos7.length}`} sub={proximos7.length > 0 ? fmtMoney(proximos7.reduce((s, b) => s + b.amount, 0)) : undefined} accent={proximos7.length > 0 ? MP.agenda : "rgba(255,255,255,0.3)"} icon={Clock} />
         ) : (
@@ -792,7 +798,7 @@ export function BillsTab() {
       {/* Bills list */}
       {isLoading ? (
         <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-white/30" /></div>
-      ) : filtered.length === 0 && projectedCardInvoices.filter(() => filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue").length === 0 ? (
+      ) : filtered.length === 0 && !(showProjectedInvoices && projectedCardInvoices.length > 0) ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -995,7 +1001,7 @@ export function BillsTab() {
               );
             })}
           </AnimatePresence>
-          {filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue" && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
+          {showProjectedInvoices && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
             const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
             return (
               <motion.div
