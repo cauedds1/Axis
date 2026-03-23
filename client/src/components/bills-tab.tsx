@@ -679,6 +679,47 @@ export function BillsTab() {
     })
     .reduce((s, tx) => s + tx.amount, 0);
 
+  // Compute projected upcoming invoice per credit card (before the invoice closes)
+  const projectedCardInvoices = creditCards
+    .filter(card => card.active)
+    .map(card => {
+      const todayDay = now2.getDate();
+      const thisYear = now2.getFullYear();
+      const thisMonthIdx = now2.getMonth();
+      const pastClosing = todayDay >= card.closingDay;
+
+      // Open cycle date range
+      const cycleStart = pastClosing
+        ? new Date(thisYear, thisMonthIdx, card.closingDay + 1)
+        : new Date(thisYear, thisMonthIdx, 1);
+      const cycleEnd = pastClosing
+        ? new Date(thisYear, thisMonthIdx + 1, card.closingDay, 23, 59, 59)
+        : new Date(thisYear, thisMonthIdx, card.closingDay, 23, 59, 59);
+
+      const openCycleTotal = allTransactions
+        .filter(tx => tx.creditCardId === card.id && tx.type === "expense")
+        .filter(tx => { const d = new Date(tx.date!); return d >= cycleStart && d <= cycleEnd; })
+        .reduce((s, tx) => s + tx.amount, 0);
+
+      // Determine the due month for the upcoming invoice
+      // Invoice closes: not pastClosing → this month's closingDay; pastClosing → next month's closingDay
+      const closingMonthIdx = pastClosing ? thisMonthIdx + 1 : thisMonthIdx;
+      const closingYear2 = thisYear + (closingMonthIdx > 11 ? 1 : 0);
+      const closingMonthNorm = closingMonthIdx % 12;
+      // Due is same month as closing if dueDay > closingDay, otherwise next month
+      let dueYear: number, dueMonthIdx: number;
+      if (card.dueDay > card.closingDay) {
+        dueYear = closingYear2; dueMonthIdx = closingMonthNorm;
+      } else {
+        dueYear = closingMonthNorm === 11 ? closingYear2 + 1 : closingYear2;
+        dueMonthIdx = (closingMonthNorm + 1) % 12;
+      }
+
+      const showInPeriod = periodMonths.some(({ y, m }) => y === dueYear && m === dueMonthIdx);
+      return { card, openCycleTotal, dueYear, dueMonthIdx, showInPeriod };
+    })
+    .filter(p => p.showInPeriod && p.openCycleTotal > 0);
+
   const PILL = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
       type="button"
@@ -987,6 +1028,53 @@ export function BillsTab() {
                           </motion.div>
                         )}
                       </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {projectedCardInvoices.length > 0 && filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue" && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider flex items-center gap-1.5">
+            <CreditCard className="h-3 w-3" />
+            {t("axisFinance.upcomingInvoicesLabel")}
+          </p>
+          <AnimatePresence initial={false}>
+            {projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
+              const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
+              return (
+                <motion.div
+                  key={`projected-${card.id}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="rounded-2xl overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${EXPENSE_COLOR}20` }}
+                  data-testid={`card-projected-invoice-${card.id}`}
+                >
+                  <div className="flex">
+                    <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: EXPENSE_COLOR }} />
+                    <div className="flex-1 px-4 py-3 flex items-center gap-3">
+                      <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${EXPENSE_COLOR}12` }}>
+                        <CreditCard className="h-4 w-4" style={{ color: EXPENSE_COLOR }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate text-white">{t("axisFinance.invoiceOf", { name: card.name })}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-white/30">{card.bank || card.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: `${EXPENSE_COLOR}15`, color: EXPENSE_COLOR }}>
+                            {t("axisFinance.estimatedLabel")}
+                          </span>
+                          <span className="text-[10px] font-medium" style={{ color: MP.agenda }}>{dueLabel}</span>
+                        </div>
+                      </div>
+                      <span className="text-base font-bold shrink-0" style={{ color: EXPENSE_COLOR }}>
+                        -{fmtMoney(openCycleTotal)}
+                      </span>
                     </div>
                   </div>
                 </motion.div>

@@ -303,6 +303,18 @@ async function autoCloseInvoices(userId: string): Promise<void> {
   const now = new Date();
   const today = now.getDate();
   const cards = await storage.getCreditCards(userId);
+  const allUserBills = await storage.getBills(userId);
+
+  // Clean up zero-value auto-generated card bills from previous logic
+  for (const b of allUserBills) {
+    if (
+      b.notes?.startsWith("Fatura automática do cartão") &&
+      Number(b.amount) === 0
+    ) {
+      await storage.deleteBill(b.id, userId);
+    }
+  }
+
   for (const card of cards) {
     if (!card.active) continue;
     if (today < card.closingDay) continue;
@@ -313,22 +325,44 @@ async function autoCloseInvoices(userId: string): Promise<void> {
     const closingDate = new Date(now.getFullYear(), now.getMonth(), card.closingDay, 23, 59, 59);
     const allCardTx = await storage.getTransactions(userId, { creditCardId: card.id, startDate: startOfMonth, endDate: closingDate });
     const total = allCardTx.reduce((s, t) => s + Number(t.amount), 0);
-    const bill = await storage.createBill({
-      userId,
-      title: `Fatura ${card.name}`,
-      amount: total,
-      type: "expense",
-      dueDay: card.dueDay,
-      categoryName: "Cartão de Crédito",
-      recurrenceType: "this_month",
-      active: true,
-      paidMonths: "[]",
-      notes: `Fatura automática do cartão ${card.name} — ${monthKey}`,
-    });
-    if (existing) {
-      await storage.updateInvoice(existing.id, { status: "closed", total, billId: bill.id, closedAt: now });
+
+    // Don't create a zero-value invoice — nothing to bill yet
+    if (total === 0) continue;
+
+    // Find or reuse the permanent bill for this card.
+    // Check new marker-based notes OR old "Fatura automática" format for this card.
+    const cardMarker = `axiscard:${card.id}`;
+    const existingBill = allUserBills.find(b =>
+      b.notes?.includes(cardMarker) ||
+      (Number(b.amount) > 0 && b.notes?.startsWith(`Fatura automática do cartão ${card.name}`))
+    );
+    let bill;
+    if (existingBill) {
+      bill = await storage.updateBill(existingBill.id, userId, {
+        amount: total,
+        dueDay: card.dueDay,
+        recurrenceType: "permanent" as any,
+        notes: `Fatura automática do cartão ${card.name} — ${monthKey}\n${cardMarker}`,
+        paidMonths: "[]",
+      });
     } else {
-      await storage.createInvoice({ userId, creditCardId: card.id, monthKey, total, status: "closed", billId: bill.id, closedAt: now });
+      bill = await storage.createBill({
+        userId,
+        title: `Fatura ${card.name}`,
+        amount: total,
+        type: "expense",
+        dueDay: card.dueDay,
+        categoryName: "Cartão de Crédito",
+        recurrenceType: "permanent",
+        active: true,
+        paidMonths: "[]",
+        notes: `Fatura automática do cartão ${card.name} — ${monthKey}\n${cardMarker}`,
+      });
+    }
+    if (existing) {
+      await storage.updateInvoice(existing.id, { status: "closed", total, billId: bill!.id, closedAt: now });
+    } else {
+      await storage.createInvoice({ userId, creditCardId: card.id, monthKey, total, status: "closed", billId: bill!.id, closedAt: now });
     }
   }
 }
