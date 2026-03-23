@@ -112,7 +112,7 @@ function isBillOverdueInRange(bill: Bill, months: Array<{ y: number; m: number }
   });
 }
 
-type PeriodFilter = "current" | "last" | "last3" | "last6" | "custom";
+type PeriodFilter = "current" | "last" | "last3" | "last6" | "next3" | "custom";
 
 function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEnd?: string): Array<{ y: number; m: number }> {
   const now = new Date();
@@ -131,6 +131,11 @@ function getMonthsForPeriod(period: PeriodFilter, customStart?: string, customEn
   } else if (period === "last6") {
     for (let i = 0; i < 6; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ y: d.getFullYear(), m: d.getMonth() });
+    }
+  } else if (period === "next3") {
+    for (let i = 3; i >= 1; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       months.push({ y: d.getFullYear(), m: d.getMonth() });
     }
   } else if (period === "custom") {
@@ -565,6 +570,7 @@ function getPeriodOpts(t: (k: string) => string): { id: PeriodFilter; label: str
     { id: "last", label: t("axisFinance.periodLast") },
     { id: "last3", label: t("axisFinance.period3m") },
     { id: "last6", label: t("axisFinance.period6m") },
+    { id: "next3", label: t("axisFinance.periodNext3") },
     { id: "custom", label: t("axisFinance.periodCustom") },
   ];
 }
