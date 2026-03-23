@@ -743,7 +743,7 @@ interface AddedRoutine {
   title: string;
   days: number[];
   time: string;
-  durationLabel: string;
+  endTime: string;
   recurrenceLabel: string;
 }
 
@@ -752,21 +752,13 @@ function SectionRotina() {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [time, setTime] = useState("09:00");
-  const [duration, setDuration] = useState(60);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("");
   const [recurrence, setRecurrence] = useState<Recurrence>({ type: "permanent" });
   const [addedItems, setAddedItems] = useState<AddedRoutine[]>([]);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
   const DAYS = t("axisSetup.routine.dayNames", { returnObjects: true }) as string[];
-  const DURATIONS = [
-    { label: "30min", minutes: 30 },
-    { label: "1h", minutes: 60 },
-    { label: "1h30", minutes: 90 },
-    { label: "2h", minutes: 120 },
-    { label: "3h", minutes: 180 },
-    { label: "4h+", minutes: 240 },
-  ];
 
   const recurrenceLabel = (rec: Recurrence): string => {
     if (rec.type === "permanent") return t("axisSetup.recurrence.permanent");
@@ -785,7 +777,9 @@ function SectionRotina() {
       if (!title.trim() || selectedDays.length === 0) throw new Error(t("axisSetup.routine.errorFillTitleAndDays"));
       const endDate = getEndDate(recurrence);
       const today = new Date();
-      const [h, m] = time.split(":").map(Number);
+      const [sh, sm] = startTime.split(":").map(Number);
+      const hasEnd = Boolean(endTime);
+      const [eh, em] = hasEnd ? endTime.split(":").map(Number) : [sh + 1, sm];
 
       const occurrences: { start: Date; end: Date }[] = [];
       const cursor = new Date(today);
@@ -794,8 +788,10 @@ function SectionRotina() {
       while (cursor <= endDate && occurrences.length < 52) {
         if (selectedDays.includes(cursor.getDay())) {
           const start = new Date(cursor);
-          start.setHours(h, m, 0, 0);
-          const end = new Date(start.getTime() + duration * 60000);
+          start.setHours(sh, sm, 0, 0);
+          const end = new Date(cursor);
+          end.setHours(eh, em, 0, 0);
+          if (end <= start) end.setDate(end.getDate() + 1);
           occurrences.push({ start, end });
         }
         cursor.setDate(cursor.getDate() + 1);
@@ -816,14 +812,13 @@ function SectionRotina() {
       return results;
     },
     onSuccess: (results) => {
-      const dur = DURATIONS.find(d => d.minutes === duration);
       setAddedItems(prev => [
         {
           ids: results.map((r: any) => r.id),
           title: title.trim(),
           days: [...selectedDays].sort(),
-          time,
-          durationLabel: dur?.label || `${duration}min`,
+          time: startTime,
+          endTime: endTime || "",
           recurrenceLabel: recurrenceLabel(recurrence),
         },
         ...prev,
@@ -893,36 +888,26 @@ function SectionRotina() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <FieldLabel>{t("axisSetup.routine.timeLabel")}</FieldLabel>
+          <FieldLabel>{t("axisSetup.routine.startTimeLabel")}</FieldLabel>
           <input
             type="time"
-            value={time}
-            onChange={e => setTime(e.target.value)}
+            value={startTime}
+            onChange={e => setStartTime(e.target.value)}
             className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", colorScheme: "dark" }}
-            data-testid="input-routine-time"
+            data-testid="input-routine-start-time"
           />
         </div>
         <div>
-          <FieldLabel>{t("axisSetup.routine.durationLabel")}</FieldLabel>
-          <div className="grid grid-cols-3 gap-1">
-            {DURATIONS.map((d) => (
-              <button
-                key={d.minutes}
-                type="button"
-                onClick={() => setDuration(d.minutes)}
-                className="py-2 rounded-lg text-[11px] font-semibold transition-all duration-150"
-                style={{
-                  background: duration === d.minutes ? `${LAVANDA}15` : "rgba(255,255,255,0.04)",
-                  border: `1px solid ${duration === d.minutes ? `${LAVANDA}35` : "rgba(255,255,255,0.07)"}`,
-                  color: duration === d.minutes ? LAVANDA : "rgba(255,255,255,0.3)",
-                }}
-                data-testid={`button-duration-${d.label}`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
+          <FieldLabel>{t("axisSetup.routine.endTimeLabel")}</FieldLabel>
+          <input
+            type="time"
+            value={endTime}
+            onChange={e => setEndTime(e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-sm text-white outline-none"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", colorScheme: "dark" }}
+            data-testid="input-routine-end-time"
+          />
         </div>
       </div>
 
@@ -958,7 +943,7 @@ function SectionRotina() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white/80 truncate">{item.title}</p>
                   <p className="text-[10px] text-white/30">
-                    {item.days.map(d => DAYS[d]).join(", ")} · {item.time} · {item.durationLabel} · {item.recurrenceLabel}
+                    {item.days.map(d => DAYS[d]).join(", ")} · {item.time}{item.endTime ? `–${item.endTime}` : ""} · {item.recurrenceLabel}
                   </p>
                 </div>
                 <button
