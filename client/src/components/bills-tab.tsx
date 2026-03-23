@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil, FastForward } from "lucide-react";
+import { Plus, Trash2, Check, X, TrendingDown, TrendingUp, DollarSign, AlertCircle, Clock, CheckCircle, Infinity, Calendar, CalendarRange, CalendarDays, Loader2, ChevronDown, ChevronUp, Store, User, CreditCard, FileText, Tag, RotateCcw, Pencil } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -609,32 +609,12 @@ export function BillsTab() {
     onError: () => toast({ title: t("axisFinance.billDeleteError"), variant: "destructive" }),
   });
 
-  const anticipateMutation = useMutation({
-    mutationFn: async ({ txId, card }: { txId: string; card?: CreditCardType }) => {
-      const now = new Date();
-      const pastClosing = card ? now.getDate() >= card.closingDay : false;
-      const targetMonth = pastClosing
-        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
-      const res = await apiRequest("PATCH", `/api/transactions/${txId}`, { date: targetMonth.toISOString() });
-      return { res, targetMonth };
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
-      const label = data.targetMonth.toLocaleString(lang, { month: "long", year: "numeric" });
-      toast({ title: t("axisFinance.anticipateSuccess", { month: label }) });
-    },
-    onError: () => toast({ title: t("axisFinance.anticipateError"), variant: "destructive" }),
-  });
-
   const activeBills = allBills.filter(b => isBillActiveInRange(b, periodMonths));
 
   const unpaidExpenses = activeBills.filter(b => b.type === "expense" && !isBillPaidInAllMonths(b, periodMonths));
   const unpaidIncomes = activeBills.filter(b => b.type === "income" && !isBillPaidInAllMonths(b, periodMonths));
   const totalPagar = unpaidExpenses.reduce((s, b) => s + b.amount * Math.max(1, periodMonths.filter(({ y, m }) => isBillActiveInMonth(b, y, m) && !isBillPaidInMonth(b, y, m)).length), 0);
   const totalReceber = unpaidIncomes.reduce((s, b) => s + b.amount * Math.max(1, periodMonths.filter(({ y, m }) => isBillActiveInMonth(b, y, m) && !isBillPaidInMonth(b, y, m)).length), 0);
-  const saldoPrevisto = totalReceber - totalPagar;
   const vencidas = activeBills.filter(b => b.type === "expense" && isBillOverdueInRange(b, periodMonths));
   const hoje = new Date().getDate();
   const proximos7 = isSingleCurrentMonth
@@ -655,29 +635,6 @@ export function BillsTab() {
   });
 
   const now2 = new Date();
-  const cardMap = new Map(creditCards.map(c => [c.id, c]));
-  const cardInstallments = allTransactions.filter(tx => {
-    if (!tx.creditCardId || !tx.installmentInfo || tx.type !== "expense") return false;
-    const txDate = new Date(tx.date!);
-    const txY = txDate.getFullYear();
-    const txM = txDate.getMonth();
-    return periodMonths.some(({ y, m }) => y === txY && m === txM);
-  });
-  const filteredInstallments = cardInstallments.filter(tx => {
-    if (filterType === "income") return false;
-    if (filterStatus === "overdue") return false;
-    const txDate = new Date(tx.date!);
-    const isPast = txDate < new Date(now2.getFullYear(), now2.getMonth(), 1);
-    if (filterStatus === "paid") return isPast;
-    if (filterStatus === "pending") return !isPast;
-    return true;
-  });
-  const totalPagar2 = totalPagar + cardInstallments
-    .filter(tx => {
-      const txDate = new Date(tx.date!);
-      return txDate >= new Date(now2.getFullYear(), now2.getMonth(), 1);
-    })
-    .reduce((s, tx) => s + tx.amount, 0);
 
   // Compute projected upcoming invoice per credit card (before the invoice closes)
   const projectedCardInvoices = creditCards
@@ -719,6 +676,10 @@ export function BillsTab() {
       return { card, openCycleTotal, dueYear, dueMonthIdx, showInPeriod };
     })
     .filter(p => p.showInPeriod && p.openCycleTotal > 0);
+
+  const projectedInvoiceTotal = projectedCardInvoices.reduce((s, p) => s + p.openCycleTotal, 0);
+  const totalPagar2 = totalPagar + projectedInvoiceTotal;
+  const saldoPrevisto = totalReceber - totalPagar2;
 
   const PILL = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
@@ -804,7 +765,7 @@ export function BillsTab() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar2)} sub={`${unpaidExpenses.length + cardInstallments.filter(tx => new Date(tx.date!) >= new Date(now2.getFullYear(), now2.getMonth(), 1)).length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
+        <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar2)} sub={`${unpaidExpenses.length + projectedCardInvoices.length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
         <SummaryCard label={t("axisFinance.toBeReceived")} value={fmtMoney(totalReceber)} sub={`${unpaidIncomes.length} ${t("axisFinance.billsCount")}`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label={t("axisFinance.projectedBalance")} value={fmtMoney(saldoPrevisto)} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
         <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length}`} sub={vencidas.length > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0)) : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
@@ -831,7 +792,7 @@ export function BillsTab() {
       {/* Bills list */}
       {isLoading ? (
         <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-white/30" /></div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && projectedCardInvoices.filter(() => filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue").length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1034,127 +995,42 @@ export function BillsTab() {
               );
             })}
           </AnimatePresence>
-        </div>
-      )}
-
-      {projectedCardInvoices.length > 0 && filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue" && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider flex items-center gap-1.5">
-            <CreditCard className="h-3 w-3" />
-            {t("axisFinance.upcomingInvoicesLabel")}
-          </p>
-          <AnimatePresence initial={false}>
-            {projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
-              const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
-              return (
-                <motion.div
-                  key={`projected-${card.id}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="rounded-2xl overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${EXPENSE_COLOR}20` }}
-                  data-testid={`card-projected-invoice-${card.id}`}
-                >
-                  <div className="flex">
-                    <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: EXPENSE_COLOR }} />
-                    <div className="flex-1 px-4 py-3 flex items-center gap-3">
-                      <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${EXPENSE_COLOR}12` }}>
-                        <CreditCard className="h-4 w-4" style={{ color: EXPENSE_COLOR }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-white">{t("axisFinance.invoiceOf", { name: card.name })}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] text-white/30">{card.bank || card.name}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: `${EXPENSE_COLOR}15`, color: EXPENSE_COLOR }}>
-                            {t("axisFinance.estimatedLabel")}
-                          </span>
-                          <span className="text-[10px] font-medium" style={{ color: MP.agenda }}>{dueLabel}</span>
-                        </div>
-                      </div>
-                      <span className="text-base font-bold shrink-0" style={{ color: EXPENSE_COLOR }}>
-                        -{fmtMoney(openCycleTotal)}
-                      </span>
+          {filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue" && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
+            const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
+            return (
+              <motion.div
+                key={`projected-${card.id}`}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0 }}
+                className="rounded-2xl overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${EXPENSE_COLOR}20` }}
+                data-testid={`card-projected-invoice-${card.id}`}
+              >
+                <div className="flex">
+                  <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: EXPENSE_COLOR }} />
+                  <div className="flex-1 px-4 py-3 flex items-center gap-3">
+                    <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${EXPENSE_COLOR}12` }}>
+                      <CreditCard className="h-4 w-4" style={{ color: EXPENSE_COLOR }} />
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {filteredInstallments.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider flex items-center gap-1.5">
-            <CreditCard className="h-3 w-3" />
-            {t("axisFinance.cardInstallmentsLabel")}
-          </p>
-          <AnimatePresence initial={false}>
-            {filteredInstallments.map(tx => {
-              const txDate = new Date(tx.date!);
-              const isPast = txDate < new Date(now2.getFullYear(), now2.getMonth(), 1);
-              const info = (() => { try { return JSON.parse(tx.installmentInfo!); } catch { return null; } })();
-              const card = tx.creditCardId ? cardMap.get(tx.creditCardId) : null;
-              const monthLabel = txDate.toLocaleString(lang, { month: "short", year: "numeric" });
-              return (
-                <motion.div
-                  key={tx.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: `1px solid ${isPast ? "rgba(255,255,255,0.06)" : `${EXPENSE_COLOR}20`}`,
-                    opacity: isPast ? 0.6 : 1,
-                  }}
-                  data-testid={`card-installment-${tx.id}`}
-                >
-                  <div className="flex">
-                    <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: isPast ? "rgba(255,255,255,0.1)" : EXPENSE_COLOR }} />
-                    <div className="flex-1 px-4 py-3 flex items-center gap-3">
-                      <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${EXPENSE_COLOR}12` }}>
-                        <CreditCard className="h-4 w-4" style={{ color: EXPENSE_COLOR }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isPast ? "line-through text-white/40" : "text-white"}`}>{tx.description}</p>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {card && <span className="text-[10px] text-white/30">{card.name}</span>}
-                          {info && <span className="text-[10px] text-white/25">{t("axisFinance.installmentBadge", { current: info.current, total: info.total })}</span>}
-                          <span className="text-[10px] font-medium" style={{ color: isPast ? "rgba(255,255,255,0.25)" : MP.agenda }}>
-                            {isPast ? t("axisFinance.installmentProcessed") : monthLabel}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {!isPast && (
-                          <button
-                            data-testid={`btn-anticipate-${tx.id}`}
-                            onClick={() => anticipateMutation.mutate({ txId: tx.id, card: card ?? undefined })}
-                            disabled={anticipateMutation.isPending}
-                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-80 disabled:opacity-40"
-                            style={{ background: `${EXPENSE_COLOR}18`, color: EXPENSE_COLOR, border: `1px solid ${EXPENSE_COLOR}30` }}
-                            title={t("axisFinance.anticipateInstallment")}
-                          >
-                            {anticipateMutation.isPending ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <FastForward className="h-3 w-3" />
-                            )}
-                            {t("axisFinance.anticipateBtn")}
-                          </button>
-                        )}
-                        <span className="text-base font-bold" style={{ color: isPast ? "rgba(255,255,255,0.3)" : EXPENSE_COLOR }}>
-                          -{fmtMoney(tx.amount)}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate text-white">{t("axisFinance.invoiceOf", { name: card.name })}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-white/30">{card.bank || card.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium" style={{ background: `${EXPENSE_COLOR}15`, color: EXPENSE_COLOR }}>
+                          {t("axisFinance.estimatedLabel")}
                         </span>
+                        <span className="text-[10px] font-medium" style={{ color: MP.agenda }}>{dueLabel}</span>
                       </div>
                     </div>
+                    <span className="text-base font-bold shrink-0" style={{ color: EXPENSE_COLOR }}>
+                      -{fmtMoney(openCycleTotal)}
+                    </span>
                   </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
