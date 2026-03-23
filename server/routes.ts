@@ -1869,7 +1869,11 @@ export async function registerRoutes(
             const daysLabel = act.days.map((d: number) => DAY_NAMES[d] ?? d).join("/");
             return `• **${act.title}** — ${daysLabel} às ${act.time} (${act.durationMinutes} min)`;
           });
-          const confirmMsg = `${cleanResponse}\n\nQuero criar na sua agenda:\n${lines.join("\n")}\n\nnas próximas **${validActivities[0].weeks} semanas** — confirma?`.trim();
+          const allWeeksEqual = validActivities.every(a => a.weeks === validActivities[0].weeks);
+          const weeksLabel = allWeeksEqual
+            ? `nas próximas **${validActivities[0].weeks} semanas**`
+            : `por **${validActivities[0].weeks} semanas** cada`;
+          const confirmMsg = `${cleanResponse}\n\nQuero criar na sua agenda:\n${lines.join("\n")}\n\n${weeksLabel} — confirma?`.trim();
           await storage.createChatMessage({ userId, role: "assistant", content: confirmMsg });
           return res.json({
             response: confirmMsg,
@@ -2060,6 +2064,9 @@ export async function registerRoutes(
               }
             }
             if (!activityNames.includes(act.title)) activityNames.push(act.title);
+          }
+          if (totalCreated === 0) {
+            return res.status(400).json({ message: "Nenhum evento válido pôde ser criado — verifique os dias e horários" });
           }
           console.log(`[chat] Confirmed batch: created ${totalCreated} schedule items for ${activityNames.join(", ")}`);
           summary = `Feito! Criei ${totalCreated} evento(s) na sua agenda: ${activityNames.join(", ")}.`;
