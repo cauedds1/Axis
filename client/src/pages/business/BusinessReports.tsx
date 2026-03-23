@@ -141,7 +141,7 @@ export default function BusinessReports() {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
-    a.download = `relatorio-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.xlsx`;
+    a.download = `${t("axisBiz.reports.exportFilePrefix")}-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.xlsx`;
     a.click(); URL.revokeObjectURL(url);
   }, [activeOrg, expenseParams, toast]);
 
@@ -167,7 +167,7 @@ export default function BusinessReports() {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
-    a.download = `relatorio-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.csv`;
+    a.download = `${t("axisBiz.reports.exportFilePrefix")}-${activeOrg.name}-${format(new Date(), "yyyy-MM")}.csv`;
     a.click(); URL.revokeObjectURL(url);
   }, [expenses, activeOrg]);
 

@@ -3070,7 +3070,8 @@
       "cardBrandLabel": "Bandeira",
       "cardSpent": "Gasto",
       "cardLimitLabel": "Limite",
-      "cardAvailable": "Disponível"
+      "cardAvailable": "Disponível",
+      "receiptAlt": "Recibo"
     },
     "cashflow": {
       "title": "Fluxo de Caixa",
@@ -3134,7 +3135,8 @@
       "noDataForPeriod": "Sem dados no período",
       "detailedExpenses": "Despesas detalhadas",
       "statusHeader": "Status",
-      "noCategory": "Sem categoria"
+      "noCategory": "Sem categoria",
+      "exportFilePrefix": "relatorio"
     },
     "bills": {
       "title": "Contas a Pagar",

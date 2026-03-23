@@ -209,7 +209,7 @@ function LancamentosTab({ orgId }: { orgId: string }) {
                     {(exp.receiptImageUrl || exp.receiptImageBase64) && (
                       <img
                         src={exp.receiptImageUrl ?? `data:image/jpeg;base64,${exp.receiptImageBase64}`}
-                        alt="Recibo"
+                        alt={t("axisBiz.finance.receiptAlt")}
                         className="w-full max-h-52 object-contain rounded-lg mb-3"
                       />
                     )}

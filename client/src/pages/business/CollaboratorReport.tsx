@@ -149,7 +149,7 @@ export default function CollaboratorReport() {
 
   const shareMutation = useMutation({
     mutationFn: async () => {
-      if (!activeOrg?.id || !user?.id) throw new Error("Dados incompletos");
+      if (!activeOrg?.id || !user?.id) throw new Error("Incomplete data");
       const res = await apiRequest("POST", "/api/reports/share", {
         orgId:     activeOrg.id,
         userId:    user.id,

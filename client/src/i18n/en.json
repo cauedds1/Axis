@@ -3070,7 +3070,8 @@
       "cardBrandLabel": "Brand",
       "cardSpent": "Spent",
       "cardLimitLabel": "Limit",
-      "cardAvailable": "Available"
+      "cardAvailable": "Available",
+      "receiptAlt": "Receipt"
     },
     "cashflow": {
       "title": "Cash Flow",
@@ -3134,7 +3135,8 @@
       "noDataForPeriod": "No data for this period",
       "detailedExpenses": "Detailed expenses",
       "statusHeader": "Status",
-      "noCategory": "No category"
+      "noCategory": "No category",
+      "exportFilePrefix": "report"
     },
     "bills": {
       "title": "Bills",
