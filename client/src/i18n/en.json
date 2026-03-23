@@ -22,7 +22,8 @@
     "notNow": "Not now",
     "remove": "Remove",
     "add": "Add",
-    "optional": "Optional..."
+    "optional": "Optional...",
+    "confirm": "Confirm"
   },
   "nav": {
     "recordMeeting": "Record Meeting",

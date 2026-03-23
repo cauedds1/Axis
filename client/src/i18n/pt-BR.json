@@ -22,7 +22,8 @@
     "notNow": "Agora não",
     "remove": "Remover",
     "add": "Adicionar",
-    "optional": "Opcional..."
+    "optional": "Opcional...",
+    "confirm": "Confirmar"
   },
   "nav": {
     "recordMeeting": "Gravar Reunião",
