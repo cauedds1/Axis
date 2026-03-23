@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
-import type { Bill } from "@shared/schema";
+import type { Bill, Transaction, CreditCard as CreditCardType } from "@shared/schema";
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 
@@ -581,6 +581,8 @@ export function BillsTab() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: allBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
+  const { data: allTransactions = [] } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
+  const { data: creditCards = [] } = useQuery<CreditCardType[]>({ queryKey: ["/api/credit-cards"] });
 
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const periodMonths = getMonthsForPeriod(filterPeriod, customStart, customEnd);
@@ -632,6 +634,31 @@ export function BillsTab() {
     if (filterStatus === "overdue" && !isBillOverdueInRange(b, periodMonths)) return false;
     return true;
   });
+
+  const now2 = new Date();
+  const cardMap = new Map(creditCards.map(c => [c.id, c]));
+  const cardInstallments = allTransactions.filter(tx => {
+    if (!tx.creditCardId || !tx.installmentInfo || tx.type !== "expense") return false;
+    const txDate = new Date(tx.date!);
+    const txY = txDate.getFullYear();
+    const txM = txDate.getMonth();
+    return periodMonths.some(({ y, m }) => y === txY && m === txM);
+  });
+  const filteredInstallments = cardInstallments.filter(tx => {
+    if (filterType === "income") return false;
+    if (filterStatus === "overdue") return false;
+    const txDate = new Date(tx.date!);
+    const isPast = txDate < new Date(now2.getFullYear(), now2.getMonth(), 1);
+    if (filterStatus === "paid") return isPast;
+    if (filterStatus === "pending") return !isPast;
+    return true;
+  });
+  const totalPagar2 = totalPagar + cardInstallments
+    .filter(tx => {
+      const txDate = new Date(tx.date!);
+      return txDate >= new Date(now2.getFullYear(), now2.getMonth(), 1);
+    })
+    .reduce((s, tx) => s + tx.amount, 0);
 
   const PILL = (label: string, active: boolean, onClick: () => void, color?: string) => (
     <button
@@ -717,7 +744,7 @@ export function BillsTab() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar)} sub={`${unpaidExpenses.length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
+        <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar2)} sub={`${unpaidExpenses.length + cardInstallments.filter(tx => new Date(tx.date!) >= new Date(now2.getFullYear(), now2.getMonth(), 1)).length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
         <SummaryCard label={t("axisFinance.toBeReceived")} value={fmtMoney(totalReceber)} sub={`${unpaidIncomes.length} ${t("axisFinance.billsCount")}`} accent={INCOME_COLOR} icon={TrendingUp} />
         <SummaryCard label={t("axisFinance.projectedBalance")} value={fmtMoney(saldoPrevisto)} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
         <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length}`} sub={vencidas.length > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0)) : undefined} accent={vencidas.length > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
@@ -941,6 +968,61 @@ export function BillsTab() {
                           </motion.div>
                         )}
                       </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {filteredInstallments.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-white/30 uppercase tracking-wider flex items-center gap-1.5">
+            <CreditCard className="h-3 w-3" />
+            {t("axisFinance.cardInstallmentsLabel")}
+          </p>
+          <AnimatePresence initial={false}>
+            {filteredInstallments.map(tx => {
+              const txDate = new Date(tx.date!);
+              const isPast = txDate < new Date(now2.getFullYear(), now2.getMonth(), 1);
+              const info = (() => { try { return JSON.parse(tx.installmentInfo!); } catch { return null; } })();
+              const card = tx.creditCardId ? cardMap.get(tx.creditCardId) : null;
+              const monthLabel = txDate.toLocaleString(lang, { month: "short", year: "numeric" });
+              return (
+                <motion.div
+                  key={tx.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: `1px solid ${isPast ? "rgba(255,255,255,0.06)" : `${EXPENSE_COLOR}20`}`,
+                    opacity: isPast ? 0.6 : 1,
+                  }}
+                  data-testid={`card-installment-${tx.id}`}
+                >
+                  <div className="flex">
+                    <div className="w-1 shrink-0 rounded-l-2xl" style={{ background: isPast ? "rgba(255,255,255,0.1)" : EXPENSE_COLOR }} />
+                    <div className="flex-1 px-4 py-3 flex items-center gap-3">
+                      <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${EXPENSE_COLOR}12` }}>
+                        <CreditCard className="h-4 w-4" style={{ color: EXPENSE_COLOR }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold truncate ${isPast ? "line-through text-white/40" : "text-white"}`}>{tx.description}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {card && <span className="text-[10px] text-white/30">{card.name}</span>}
+                          {info && <span className="text-[10px] text-white/25">{t("axisFinance.installmentBadge", { current: info.current, total: info.total })}</span>}
+                          <span className="text-[10px] font-medium" style={{ color: isPast ? "rgba(255,255,255,0.25)" : MP.agenda }}>
+                            {isPast ? t("axisFinance.installmentProcessed") : monthLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-base font-bold shrink-0" style={{ color: isPast ? "rgba(255,255,255,0.3)" : EXPENSE_COLOR }}>
+                        -{fmtMoney(tx.amount)}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
