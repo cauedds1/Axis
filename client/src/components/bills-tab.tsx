@@ -681,9 +681,10 @@ export function BillsTab() {
   const totalPagar2 = totalPagar + projectedInvoiceTotal;
   const saldoPrevisto = totalReceber - totalPagar2;
 
+  const todayMidnight = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
   const overdueProjectedInvoices = projectedCardInvoices.filter(p => {
     const dueDate = new Date(p.dueYear, p.dueMonthIdx, p.card.dueDay);
-    return dueDate < now2;
+    return dueDate < todayMidnight;
   });
   const showProjectedInvoices = filterType !== "income" && filterStatus !== "paid" && filterStatus !== "overdue";
 
