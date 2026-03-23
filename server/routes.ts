@@ -522,19 +522,28 @@ export async function registerRoutes(
               break;
             }
           }
-          created = await storage.createTransaction({
-            userId,
-            amount: result.data.amount,
-            description: result.data.description,
-            categoryName: result.data.categoryName || null,
-            type: result.intent,
-            date: result.data.date ? new Date(result.data.date) : new Date(),
-            source: req.file ? "voice" : "text",
-            establishment: result.data.establishment || null,
-            location: null,
-            creditCardId: result.data.creditCardId || null,
-            installmentInfo: null,
-          });
+          {
+            let chatTxDate = result.data.date ? new Date(result.data.date) : new Date();
+            if (result.data.creditCardId && result.intent === "expense") {
+              const cardForChat = await storage.getCreditCard(result.data.creditCardId, userId);
+              if (cardForChat && chatTxDate.getDate() >= cardForChat.closingDay) {
+                chatTxDate = new Date(chatTxDate.getFullYear(), chatTxDate.getMonth() + 1, 1);
+              }
+            }
+            created = await storage.createTransaction({
+              userId,
+              amount: result.data.amount,
+              description: result.data.description,
+              categoryName: result.data.categoryName || null,
+              type: result.intent,
+              date: chatTxDate,
+              source: req.file ? "voice" : "text",
+              establishment: result.data.establishment || null,
+              location: null,
+              creditCardId: result.data.creditCardId || null,
+              installmentInfo: null,
+            });
+          }
           break;
         case "task":
           created = await storage.createPersonalTask({
@@ -960,6 +969,16 @@ export async function registerRoutes(
         return res.status(201).json(created);
       }
 
+      // For single credit card expenses, apply the same closing-day shift as installments:
+      // if purchased on or after the closing day, it belongs to the next invoice.
+      let singleTxDate = data.date ? new Date(data.date) : new Date();
+      if (data.creditCardId && data.type === "expense") {
+        const cardForSingle = await storage.getCreditCard(data.creditCardId, userId);
+        if (cardForSingle && singleTxDate.getDate() >= cardForSingle.closingDay) {
+          singleTxDate = new Date(singleTxDate.getFullYear(), singleTxDate.getMonth() + 1, 1);
+        }
+      }
+
       const tx = await storage.createTransaction({
         userId,
         amount: data.amount,
@@ -967,7 +986,7 @@ export async function registerRoutes(
         categoryName: data.categoryName || null,
         categoryId: data.categoryId || null,
         type: data.type,
-        date: data.date ? new Date(data.date) : new Date(),
+        date: singleTxDate,
         source: "manual",
         establishment: data.establishment || null,
         location: data.location || null,
@@ -1888,19 +1907,28 @@ export async function registerRoutes(
               break;
             }
           }
-          await storage.createTransaction({
-            userId,
-            amount: data.amount,
-            description: data.description,
-            categoryName: data.categoryName || null,
-            type,
-            date: data.date ? new Date(data.date) : new Date(),
-            source: "chat",
-            establishment: data.establishment || null,
-            location: null,
-            creditCardId: data.creditCardId || null,
-            installmentInfo: null,
-          });
+          {
+            let confirmTxDate = data.date ? new Date(data.date) : new Date();
+            if (data.creditCardId && type === "expense") {
+              const cardForConfirm = await storage.getCreditCard(data.creditCardId, userId);
+              if (cardForConfirm && confirmTxDate.getDate() >= cardForConfirm.closingDay) {
+                confirmTxDate = new Date(confirmTxDate.getFullYear(), confirmTxDate.getMonth() + 1, 1);
+              }
+            }
+            await storage.createTransaction({
+              userId,
+              amount: data.amount,
+              description: data.description,
+              categoryName: data.categoryName || null,
+              type,
+              date: confirmTxDate,
+              source: "chat",
+              establishment: data.establishment || null,
+              location: null,
+              creditCardId: data.creditCardId || null,
+              installmentInfo: null,
+            });
+          }
           const label = type === "expense" ? "gasto" : "receita";
           const cardSuffix = data.creditCardId ? ` no cartão` : "";
           summary = `Pronto! ${label} de R$${Number(data.amount).toFixed(2)} registrado${cardSuffix}.`;
