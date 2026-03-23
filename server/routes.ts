@@ -1764,8 +1764,6 @@ export async function registerRoutes(
       const actionMatch = rawResponse.match(/\[AXIS_ACTION\]([\s\S]*?)\[\/AXIS_ACTION\]/);
       const cleanResponse = rawResponse.replace(/\[AXIS_ACTION\][\s\S]*?\[\/AXIS_ACTION\]/g, "").trim();
 
-      let scheduledCreated = false;
-
       if (actionMatch) {
         try {
           const actionRaw = actionMatch[1].trim();
@@ -1776,39 +1774,21 @@ export async function registerRoutes(
               ? action.days
               : (typeof action.day === "number" ? [action.day] : []);
             if (days.length === 0) {
-              console.warn("[chat] AXIS_ACTION missing days/day field, skipping to fallback");
+              console.warn("[chat] AXIS_ACTION missing days/day field, skipping");
             } else {
-              const [h, m] = (action.time as string).split(":").map(Number);
-              const durationMs = (action.durationMinutes || 60) * 60 * 1000;
+              const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+              const daysLabel = days.map((d: number) => DAY_NAMES[d] ?? d).join(", ");
+              const durationMin = action.durationMinutes || 60;
               const weeks = Math.min(action.weeks || 8, 52);
-              const now = new Date();
-              const created: any[] = [];
-
-              for (let w = 0; w < weeks; w++) {
-                for (const dow of days) {
-                  const dt = new Date(now);
-                  const dayDiff = ((dow - dt.getDay()) + 7) % 7 || 7;
-                  dt.setDate(dt.getDate() + dayDiff + w * 7);
-                  dt.setHours(h, m, 0, 0);
-                  const end = new Date(dt.getTime() + durationMs);
-                  created.push(
-                    await storage.createScheduleItem({
-                      userId,
-                      title: action.title,
-                      description: null,
-                      startTime: dt,
-                      endTime: end,
-                      suggestedByAi: true,
-                    })
-                  );
-                }
-              }
-
-              if (created.length > 0) {
-                scheduledCreated = true;
-                console.log(`[chat] Created ${created.length} schedule items for "${action.title}"`);
-                saveEventToMemory(userId, `AXIS criou ${created.length} compromisso(s) "${action.title}" no calendário via chat assistido.`).catch(() => {});
-              }
+              const confirmMsg = `${cleanResponse}\n\nQuero criar **${action.title}** toda(s) **${daysLabel} às ${action.time}** por **${durationMin} min**, nas próximas **${weeks} semanas** — confirma?`.trim();
+              await storage.createChatMessage({ userId, role: "assistant", content: confirmMsg });
+              return res.json({
+                response: confirmMsg,
+                pendingAction: {
+                  type: "create_schedule",
+                  data: { title: action.title, days, time: action.time, durationMinutes: durationMin, weeks },
+                },
+              });
             }
           } else {
             console.warn("[chat] AXIS_ACTION parsed but missing required fields:", JSON.stringify(action));
@@ -1818,81 +1798,10 @@ export async function registerRoutes(
         }
       }
 
-      if (!scheduledCreated && /(?:criei|agendei|marquei|adicionei).*(?:compromisso|evento|agenda)/i.test(cleanResponse)) {
-        try {
-          const recentMsgs = await storage.getChatMessages(userId);
-          const last10 = recentMsgs.slice(-10).map(m => `${m.role}: ${m.content}`).join("\n");
-          const conversationContext = `${last10}\nassistant: ${cleanResponse}`;
-
-          const openai = getOpenAIClient();
-          const extractRes = await openai.chat.completions.create({
-            model: "gpt-5-mini",
-            response_format: { type: "json_object" },
-            messages: [
-              {
-                role: "system",
-                content: `Extraia os dados do compromisso mencionado nesta conversa. Hoje é ${new Date().toISOString().split("T")[0]}.
-
-Responda em JSON:
-{
-  "title": "título do compromisso",
-  "days": [4],
-  "time": "20:30",
-  "durationMinutes": 60,
-  "weeks": 8,
-  "recurring": true
-}
-
-"days" = array de dias da semana (0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb).
-Se não for recorrente, defina "recurring": false e "weeks": 1.
-Se algum dado não foi mencionado, use valores razoáveis.`
-              },
-              { role: "user", content: conversationContext }
-            ],
-          });
-
-          const extracted = JSON.parse(extractRes.choices[0]?.message?.content || "{}");
-          if (extracted.title && extracted.time) {
-            const days: number[] = Array.isArray(extracted.days) ? extracted.days : [4];
-            const [h, m] = (extracted.time as string).split(":").map(Number);
-            const durationMs = (extracted.durationMinutes || 60) * 60 * 1000;
-            const weeks = Math.min(extracted.weeks || 8, 52);
-            const now = new Date();
-            const created: any[] = [];
-
-            for (let w = 0; w < weeks; w++) {
-              for (const dow of days) {
-                const dt = new Date(now);
-                const dayDiff = ((dow - dt.getDay()) + 7) % 7 || 7;
-                dt.setDate(dt.getDate() + dayDiff + w * 7);
-                dt.setHours(h, m, 0, 0);
-                const end = new Date(dt.getTime() + durationMs);
-                created.push(
-                  await storage.createScheduleItem({
-                    userId,
-                    title: extracted.title,
-                    description: null,
-                    startTime: dt,
-                    endTime: end,
-                    suggestedByAi: true,
-                  })
-                );
-              }
-            }
-
-            console.log(`[chat] Fallback: created ${created.length} schedule items for "${extracted.title}"`);
-            saveEventToMemory(userId, `AXIS criou ${created.length} compromisso(s) "${extracted.title}" no calendário via fallback.`).catch(() => {});
-            scheduledCreated = true;
-          }
-        } catch (fallbackErr: any) {
-          console.error("[chat] Fallback schedule creation failed:", fallbackErr.message);
-        }
-      }
-
       await storage.createChatMessage({ userId, role: "assistant", content: cleanResponse });
       extractMemoryFromChat(userId, message, cleanResponse).catch(() => {});
 
-      res.json({ response: cleanResponse, scheduledItems: scheduledCreated ? true : undefined });
+      res.json({ response: cleanResponse });
     } catch (error: any) {
       console.error("Error in chat:", error);
       res.status(500).json({ message: error.message });
@@ -1992,6 +1901,40 @@ Se algum dado não foi mencionado, use valores razoáveis.`
           });
           summary = `Pronto! Compromisso "${habit.name}" criado.`;
           saveEventToMemory(userId, `Chat confirmado: compromisso "${habit.name}"`).catch(() => {});
+          break;
+        }
+        case "create_schedule": {
+          const days: number[] = Array.isArray(data.days) ? data.days : [];
+          if (!data.title || !data.time || days.length === 0) {
+            return res.status(400).json({ message: "Dados insuficientes para criar agenda" });
+          }
+          const [h, m] = (data.time as string).split(":").map(Number);
+          const durationMs = (data.durationMinutes || 60) * 60 * 1000;
+          const weeks = Math.min(data.weeks || 8, 52);
+          const now = new Date();
+          const createdItems: any[] = [];
+          for (let w = 0; w < weeks; w++) {
+            for (const dow of days) {
+              const dt = new Date(now);
+              const dayDiff = ((dow - dt.getDay()) + 7) % 7 || 7;
+              dt.setDate(dt.getDate() + dayDiff + w * 7);
+              dt.setHours(h, m, 0, 0);
+              const end = new Date(dt.getTime() + durationMs);
+              createdItems.push(
+                await storage.createScheduleItem({
+                  userId,
+                  title: data.title,
+                  description: null,
+                  startTime: dt,
+                  endTime: end,
+                  suggestedByAi: true,
+                })
+              );
+            }
+          }
+          console.log(`[chat] Confirmed: created ${createdItems.length} schedule items for "${data.title}"`);
+          summary = `Feito! Criei ${createdItems.length} evento(s) de "${data.title}" na sua agenda.`;
+          saveEventToMemory(userId, `Chat confirmado: AXIS criou ${createdItems.length} compromisso(s) "${data.title}" no calendário.`).catch(() => {});
           break;
         }
         default:

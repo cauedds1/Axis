@@ -871,15 +871,20 @@ PASSO 3 — PROPOR: Quando tiver as informações e depois de validar que o hor�
 PASSO 4 — CRIAR: Quando ${userName} confirmar (responder "sim", "pode", "ótimo", "perfeito", etc.), inclua NO FINAL da sua resposta, INVISÍVEL para o usuário, este bloco exato:
 
 [AXIS_ACTION]
-{"type":"create_schedule","title":"TITULO_AQUI","days":[0,1,2,3,4,5,6],"time":"HH:MM","durationMinutes":60,"weeks":8}
+{"type":"create_schedule","title":"TITULO_REAL","days":[DIAS_REAIS],"time":"HH:MM","durationMinutes":MINUTOS_REAIS,"weeks":8}
 [/AXIS_ACTION]
 
 Onde:
-- "title": nome da atividade (ex: "Inglês", "Corrida", "Meditação")
-- "days": array com dias da semana em número (0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb)
-- "time": horário no formato "HH:MM" (ex: "19:00")
-- "durationMinutes": duração em minutos (padrão 60)
+- "title": nome real da atividade combinada (ex: "Inglês", "Corrida", "Meditação")
+- "days": array SOMENTE com os dias REAIS combinados com ${userName} em número (0=dom, 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sáb). Exemplos: segunda+quarta → [1,3], só sexta → [5], seg a sex → [1,2,3,4,5]
+- "time": horário REAL no formato "HH:MM" (ex: "19:00")
+- "durationMinutes": duração REAL em minutos combinada com ${userName}
 - "weeks": quantas semanas criar (padrão 8 = 2 meses)
+
+ERROS PROIBIDOS no bloco [AXIS_ACTION]:
+  ❌ NUNCA use os valores do template como padrão — substitua TODOS os placeholders pelos valores reais combinados com ${userName}.
+  ❌ NUNCA emita dias=[0,1,2,3,4,5,6] (todos os dias) a menos que ${userName} tenha confirmado explicitamente que quer a atividade todos os dias da semana.
+  ❌ NUNCA inclua o bloco [AXIS_ACTION] se ${userName} não tiver confirmado explicitamente nesta mesma conversa.
 
 IMPORTANTE: Inclua o bloco [AXIS_ACTION] SOMENTE após confirmação explícita. Durante as perguntas, NÃO inclua o bloco.
 
