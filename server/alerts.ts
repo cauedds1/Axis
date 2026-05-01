@@ -15,6 +15,13 @@ import { sendPersonalMonthlyReport, sendBusinessMonthlyReport } from "./monthly-
 
 type Lang = "en" | "pt";
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  const masked = local.length <= 2 ? "***" : local[0] + "***" + local[local.length - 1];
+  return `${masked}@${domain}`;
+}
+
 async function getUserEmailAndName(userId: string): Promise<{ email: string; name: string } | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user || !user.email) return null;
@@ -90,10 +97,10 @@ export async function checkAndSendBillAlerts(userId: string): Promise<void> {
       await sendBillDueSoonEmail(userInfo.email, userInfo.name, bill.title, bill.amount, daysLeft, lang);
     } catch (err: any) {
       billStatus = "failed";
-      console.error(`[alerts] Bill alert failed for ${userInfo.email}: ${err?.message}`);
+      console.error(`[alerts] Bill alert failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
     }
     await storage.createEmailAlertLog({ userId, alertType: "bill_due_soon", referenceId: bill.id, recipient: userInfo.email, status: billStatus });
-    if (billStatus === "sent") console.log(`[alerts] Bill alert sent to ${userInfo.email} for "${bill.title}" (${daysLeft}d left)`);
+    if (billStatus === "sent") console.log(`[alerts] Bill alert sent to ${maskEmail(userInfo.email)} for "${bill.title}" (${daysLeft}d left)`);
   }
 }
 
@@ -130,10 +137,10 @@ export async function checkAndSendOverdueTaskAlerts(userId: string): Promise<voi
     await sendOverdueTaskEmail(userInfo.email, userInfo.name, taskList, lang);
   } catch (err: any) {
     overdueStatus = "failed";
-    console.error(`[alerts] Overdue tasks alert failed for ${userInfo.email}: ${err?.message}`);
+    console.error(`[alerts] Overdue tasks alert failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
   }
   await storage.createEmailAlertLog({ userId, alertType: "overdue_tasks", referenceId: todayKey, recipient: userInfo.email, status: overdueStatus });
-  if (overdueStatus === "sent") console.log(`[alerts] Overdue tasks alert sent to ${userInfo.email} (${overdue.length} tasks)`);
+  if (overdueStatus === "sent") console.log(`[alerts] Overdue tasks alert sent to ${maskEmail(userInfo.email)} (${overdue.length} tasks)`);
 }
 
 export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<void> {
@@ -166,10 +173,10 @@ export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<vo
       await sendGoalDeadlineEmail(userInfo.email, userInfo.name, goal.title, goal.targetAmount, goal.currentAmount, daysLeft, lang);
     } catch (err: any) {
       goalStatus = "failed";
-      console.error(`[alerts] Goal deadline alert failed for ${userInfo.email}: ${err?.message}`);
+      console.error(`[alerts] Goal deadline alert failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
     }
     await storage.createEmailAlertLog({ userId, alertType: "goal_deadline", referenceId: goal.id, recipient: userInfo.email, status: goalStatus });
-    if (goalStatus === "sent") console.log(`[alerts] Goal deadline alert sent to ${userInfo.email} for "${goal.title}" (${daysLeft}d left)`);
+    if (goalStatus === "sent") console.log(`[alerts] Goal deadline alert sent to ${maskEmail(userInfo.email)} for "${goal.title}" (${daysLeft}d left)`);
   }
 }
 
@@ -195,10 +202,10 @@ export async function checkAndSendLowDisciplineAlert(userId: string): Promise<vo
     await sendLowDisciplineEmail(userInfo.email, userInfo.name, score, lang);
   } catch (err: any) {
     disciplineStatus = "failed";
-    console.error(`[alerts] Low discipline alert failed for ${userInfo.email}: ${err?.message}`);
+    console.error(`[alerts] Low discipline alert failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
   }
   await storage.createEmailAlertLog({ userId, alertType: "low_discipline", referenceId: null, recipient: userInfo.email, status: disciplineStatus });
-  if (disciplineStatus === "sent") console.log(`[alerts] Low discipline alert sent to ${userInfo.email} (score: ${score})`);
+  if (disciplineStatus === "sent") console.log(`[alerts] Low discipline alert sent to ${maskEmail(userInfo.email)} (score: ${score})`);
 }
 
 async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
@@ -255,10 +262,10 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
     }, lang);
   } catch (err: any) {
     weeklyStatus = "failed";
-    console.error(`[alerts] Weekly summary failed for ${userInfo.email}: ${err?.message}`);
+    console.error(`[alerts] Weekly summary failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
   }
   await storage.createEmailAlertLog({ userId, alertType: "weekly_summary", referenceId: null, recipient: userInfo.email, status: weeklyStatus });
-  if (weeklyStatus === "sent") console.log(`[alerts] Weekly summary sent to ${userInfo.email}`);
+  if (weeklyStatus === "sent") console.log(`[alerts] Weekly summary sent to ${maskEmail(userInfo.email)}`);
 }
 
 export async function runPeriodicAlertsForAll(): Promise<void> {
@@ -293,10 +300,10 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
               await sendOfflineReminderEmail(userInfo.email, userInfo.name, daysOffline, lang);
             } catch (err: any) {
               offlineStatus = "failed";
-              console.error(`[alerts] Offline reminder failed for ${userInfo.email}: ${err?.message}`);
+              console.error(`[alerts] Offline reminder failed for ${maskEmail(userInfo.email)}: ${err?.message}`);
             }
             await storage.createEmailAlertLog({ userId: profile.userId, alertType: "offline_reminder", referenceId: null, recipient: userInfo.email, status: offlineStatus });
-            if (offlineStatus === "sent") console.log(`[alerts] Offline reminder sent to ${userInfo.email} (${daysOffline}d offline)`);
+            if (offlineStatus === "sent") console.log(`[alerts] Offline reminder sent to ${maskEmail(userInfo.email)} (${daysOffline}d offline)`);
           }
         }
       }
@@ -319,7 +326,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
             recipient: userInfo?.email || "",
             status: result,
           });
-          if (result === "sent") console.log(`[alerts] Personal monthly report sent to ${userInfo?.email}`);
+          if (result === "sent") console.log(`[alerts] Personal monthly report sent to ${maskEmail(userInfo?.email || "")}`);
         }
       }
     }
@@ -357,7 +364,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
             recipient: userInfo?.email || "",
             status: result,
           });
-          if (result === "sent") console.log(`[alerts] Business monthly report sent for org ${org.name} to ${userInfo?.email}`);
+          if (result === "sent") console.log(`[alerts] Business monthly report sent for org ${org.name} to ${maskEmail(userInfo?.email || "")}`);
         }
       }
     }

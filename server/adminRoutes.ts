@@ -81,8 +81,10 @@ function rowNum(row: unknown, field: string): number {
   }
   return 0;
 }
-/** Safely extract an error message from an unknown catch value. */
+/** Safely extract an error message from an unknown catch value.
+ *  In production, never surface internal details to clients. */
 function errMsg(err: unknown): string {
+  if (process.env.NODE_ENV === "production") return "Internal Server Error";
   return err instanceof Error ? err.message : String(err);
 }
 

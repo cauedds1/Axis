@@ -23,6 +23,11 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 
 const pendingChatBills = new Map<string, { extracted: any; expiresAt: number }>();
 
+function serverError(res: any, err: any): void {
+  const msg = process.env.NODE_ENV === "production" ? "Internal Server Error" : (err?.message || "Internal Server Error");
+  res.status(500).json({ message: msg });
+}
+
 function getUserId(req: any): string {
   // When admin is viewing in read-only impersonation mode, route reads to the target user
   return req.session?.viewingUserId ?? req.session?.userId;
@@ -419,7 +424,7 @@ export async function registerRoutes(
       const entities = await getUserIdentityEntities(userId);
       res.json({ entities });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -430,7 +435,7 @@ export async function registerRoutes(
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       res.json({ profile, user: { activeModules: user?.activeModules, theme: user?.theme, onboardingCompleted: user?.onboardingCompleted, aiPersonality: user?.aiPersonality } });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -447,7 +452,7 @@ export async function registerRoutes(
       res.json({ success: true, currency });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -461,7 +466,7 @@ export async function registerRoutes(
       await storage.upsertUserProfile(userId, { initialBalance: amount } as any);
       res.json({ success: true, initialBalance: amount });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -473,7 +478,7 @@ export async function registerRoutes(
       res.json({ success: true, language });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -497,7 +502,7 @@ export async function registerRoutes(
         monthlyBusiness: prefs.monthlyBusiness !== false,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -518,7 +523,7 @@ export async function registerRoutes(
       await storage.upsertUserProfile(userId, { emailAlerts: JSON.stringify(prefs) });
       res.json(prefs);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -528,7 +533,7 @@ export async function registerRoutes(
       await storage.resetUserData(userId);
       res.json({ ok: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -665,7 +670,7 @@ export async function registerRoutes(
       res.json({ intent: result.intent, data: result.data, created, rawText: result.rawText });
     } catch (error: any) {
       console.error("Error processing input:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -683,7 +688,7 @@ export async function registerRoutes(
       res.json(result);
     } catch (error: any) {
       console.error("Error processing photo:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -733,7 +738,7 @@ export async function registerRoutes(
       incrementCounter(userId, 'transaction', created.length).catch(() => {});
       res.json(created);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -746,7 +751,7 @@ export async function registerRoutes(
       res.json(result);
     } catch (error: any) {
       console.error("Error processing PDF:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -814,7 +819,7 @@ export async function registerRoutes(
         res.json([]);
       }
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1033,7 +1038,7 @@ export async function registerRoutes(
       res.json({ message: botMessage, imported, skipped });
     } catch (error: any) {
       console.error("Error processing chat upload:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1050,7 +1055,7 @@ export async function registerRoutes(
       const result = await storage.getTransactions(userId, filters);
       res.json(result);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1145,7 +1150,7 @@ export async function registerRoutes(
       res.status(201).json(tx);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1165,7 +1170,7 @@ export async function registerRoutes(
       });
       res.json(enriched);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1189,7 +1194,7 @@ export async function registerRoutes(
       res.status(201).json(card);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1223,7 +1228,7 @@ export async function registerRoutes(
       res.json(card);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1232,7 +1237,7 @@ export async function registerRoutes(
       await storage.deleteCreditCard(req.params.id, getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1273,7 +1278,7 @@ export async function registerRoutes(
       }
       res.json({ card, invoices: result });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1293,7 +1298,7 @@ export async function registerRoutes(
       const updated = await storage.updateTransaction(paramId(req), userId, fields);
       res.json(updated);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1303,7 +1308,7 @@ export async function registerRoutes(
       await storage.deleteTransaction(paramId(req), userId);
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1312,7 +1317,7 @@ export async function registerRoutes(
       const userId = getUserId(req);
       res.json(await storage.getCategories(userId));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1324,7 +1329,7 @@ export async function registerRoutes(
       res.status(201).json(await storage.createCategory({ userId, ...data }));
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1333,7 +1338,7 @@ export async function registerRoutes(
       await storage.deleteCategory(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1341,7 +1346,7 @@ export async function registerRoutes(
     try {
       res.json(await storage.getFinancialGoals(getUserId(req)));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1374,7 +1379,7 @@ export async function registerRoutes(
       res.status(201).json(goal);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1398,7 +1403,7 @@ export async function registerRoutes(
       res.json(goal);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1435,7 +1440,7 @@ export async function registerRoutes(
       res.json({ goal: updatedGoal, transaction: tx });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1473,7 +1478,7 @@ export async function registerRoutes(
       res.json({ goal: updatedGoal, transaction: tx });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1482,7 +1487,7 @@ export async function registerRoutes(
       await storage.deleteFinancialGoal(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1495,7 +1500,7 @@ export async function registerRoutes(
       if (req.query.status) filters.status = req.query.status as string;
       res.json(await storage.getScheduleItems(userId, filters));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1507,7 +1512,7 @@ export async function registerRoutes(
       res.status(201).json(await storage.createScheduleItem({ userId, title: data.title, description: data.description || null, startTime: new Date(data.startTime), endTime: data.endTime ? new Date(data.endTime) : null, suggestedByAi: data.suggestedByAi || false }));
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1524,7 +1529,7 @@ export async function registerRoutes(
       res.json(item);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1533,7 +1538,7 @@ export async function registerRoutes(
       await storage.deleteScheduleItem(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1544,7 +1549,7 @@ export async function registerRoutes(
       const endDate = (req.query.endDate as string) || "";
       res.json(await storage.getScheduleCancellations(userId, startDate, endDate));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1591,7 +1596,7 @@ export async function registerRoutes(
       res.status(201).json({ cancellation, disciplineMsg });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1600,7 +1605,7 @@ export async function registerRoutes(
       await storage.deleteScheduleCancellation(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1608,7 +1613,7 @@ export async function registerRoutes(
     try {
       res.json(await storage.getPersonalTasks(getUserId(req)));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1620,7 +1625,7 @@ export async function registerRoutes(
       res.status(201).json(await storage.createPersonalTask({ userId, title: data.title, description: data.description || null, priority: data.priority, dueDate: data.dueDate ? new Date(data.dueDate) : null, category: data.category || null }));
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1648,7 +1653,7 @@ export async function registerRoutes(
       res.json(task);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1657,7 +1662,7 @@ export async function registerRoutes(
       await storage.deletePersonalTask(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1701,7 +1706,7 @@ export async function registerRoutes(
       res.json({ judgment, netPenalty });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1709,7 +1714,7 @@ export async function registerRoutes(
     try {
       res.json(await storage.getHabits(getUserId(req)));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1742,7 +1747,7 @@ export async function registerRoutes(
       }));
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1769,7 +1774,7 @@ export async function registerRoutes(
       res.json(habit);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1778,7 +1783,7 @@ export async function registerRoutes(
       await storage.deleteHabit(paramId(req), getUserId(req));
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1801,7 +1806,7 @@ export async function registerRoutes(
       }
       res.json(log);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1849,7 +1854,7 @@ export async function registerRoutes(
       res.status(201).json({ cancellation, disciplineMsg });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1866,7 +1871,7 @@ export async function registerRoutes(
       res.json(item);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1874,7 +1879,7 @@ export async function registerRoutes(
     try {
       res.json(await storage.getHabitLogs(paramId(req), getUserId(req)));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1883,7 +1888,7 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 50;
       res.json(await storage.getChatMessages(getUserId(req), limit));
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -1892,7 +1897,7 @@ export async function registerRoutes(
       await storage.deleteChatMessages(getUserId(req));
       res.json({ ok: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2095,7 +2100,7 @@ export async function registerRoutes(
       res.json({ response: cleanResponse });
     } catch (error: any) {
       console.error("Error in chat:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2302,7 +2307,7 @@ export async function registerRoutes(
       res.json({ response: summary, actionExecuted: type });
     } catch (error: any) {
       console.error("Error confirming action:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2313,7 +2318,7 @@ export async function registerRoutes(
       await storage.createChatMessage({ userId, role: "assistant", content: cancelMsg });
       res.json({ response: cancelMsg });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2492,7 +2497,7 @@ export async function registerRoutes(
 
       res.json(result);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2586,7 +2591,7 @@ export async function registerRoutes(
       res.json({ success: true, diagnosis });
     } catch (error: any) {
       console.error("Error in onboarding:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2683,7 +2688,7 @@ export async function registerRoutes(
       res.json({ success: true, expensesCreated, scheduleCreated });
     } catch (error: any) {
       console.error("Error in onboarding setup:", error);
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2699,7 +2704,7 @@ export async function registerRoutes(
       const completed = hasIncome === true;
       res.json({ completed });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2952,7 +2957,7 @@ export async function registerRoutes(
         goals,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -2986,7 +2991,7 @@ export async function registerRoutes(
 
       res.json({ summary: { total, completed, pending, overdue, completionRate }, byPriority, byCategory, urgentPending });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3027,7 +3032,7 @@ export async function registerRoutes(
         weeklyConsistency,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3064,7 +3069,7 @@ export async function registerRoutes(
 
       res.json({ summary: { total, completed, pending, completionRate, aiSuggested, manuallyAdded, avgDurationMinutes }, byDayOfWeek, upcoming, overdue });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3074,7 +3079,7 @@ export async function registerRoutes(
       const result = await storage.getBills(userId);
       res.json(result);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3096,7 +3101,7 @@ export async function registerRoutes(
       res.json(bill);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3180,7 +3185,7 @@ export async function registerRoutes(
       res.json(bill);
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3190,7 +3195,7 @@ export async function registerRoutes(
       await storage.deleteBill(req.params.id, userId);
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3203,7 +3208,7 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error: any) {
       if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3293,7 +3298,7 @@ export async function registerRoutes(
       await mgr.disconnect();
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3311,7 +3316,7 @@ export async function registerRoutes(
       }, 800);
       res.json({ status: "initializing" });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      serverError(res, error);
     }
   });
 
@@ -3382,7 +3387,7 @@ export async function registerRoutes(
       await storage.addOrganizationMember({ organizationId: org.id, userId, role: "admin", jobTitle });
       res.json(org);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3393,7 +3398,7 @@ export async function registerRoutes(
       const result = orgs.map(org => ({ ...org, isAdmin: org.adminUserId === userId }));
       res.json(result);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3423,7 +3428,7 @@ export async function registerRoutes(
       const org = await storage.updateOrganization(orgId, updateData);
       res.json(org);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3443,7 +3448,7 @@ export async function registerRoutes(
       const member = await storage.addOrganizationMember({ organizationId: orgId, userId: invitedUser.id, role: "member" });
       res.json(member);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3456,7 +3461,7 @@ export async function registerRoutes(
       const members = await storage.getOrganizationMembers(orgId);
       res.json(members);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3474,7 +3479,7 @@ export async function registerRoutes(
       await storage.deleteOrganizationMember(orgId, memberId);
       res.json({ message: "Membro removido" });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3490,7 +3495,7 @@ export async function registerRoutes(
       const updated = await storage.updateMemberRole(orgId, memberId, role);
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3542,7 +3547,7 @@ export async function registerRoutes(
       res.setHeader("Content-Disposition", `attachment; filename="${_fileName}"`);
       res.send(buffer);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3560,7 +3565,7 @@ export async function registerRoutes(
       const expenses = await storage.getBusinessExpenses(orgId, filters);
       res.json(expenses);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3615,7 +3620,7 @@ export async function registerRoutes(
 
       res.json(expense);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3690,7 +3695,7 @@ export async function registerRoutes(
 
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3713,7 +3718,7 @@ export async function registerRoutes(
       if (!updated) return res.status(404).json({ message: "Despesa não encontrada ou sem permissão" });
       res.json(updated);
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      serverError(res, err);
     }
   });
 
@@ -3727,7 +3732,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const bills = await storage.getBusinessBills(orgId);
       res.json(bills);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/business/organizations/:orgId/bills", isAuthenticated, async (req, res) => {
@@ -3750,7 +3755,7 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
       const bill = await storage.createBusinessBill({ ...parsed.data, organizationId: orgId });
       res.status(201).json(bill);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.patch("/api/business/organizations/:orgId/bills/:billId", isAuthenticated, async (req, res) => {
@@ -3776,7 +3781,7 @@ export async function registerRoutes(
       const updated = await storage.updateBusinessBill(billId, orgId, parsed.data);
       if (!updated) return res.status(404).json({ message: "Conta não encontrada" });
       res.json(updated);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.delete("/api/business/organizations/:orgId/bills/:billId", isAuthenticated, async (req, res) => {
@@ -3787,7 +3792,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       await storage.deleteBusinessBill(billId, orgId);
       res.status(204).send();
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/business/organizations/:orgId/bills/batch-pay", isAuthenticated, async (req, res) => {
@@ -3799,7 +3804,7 @@ export async function registerRoutes(
       const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
       await storage.batchPayBusinessBills(ids, orgId);
       res.json({ success: true });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   // ── RECEIVABLES (Contas a Receber) ─────────────────────────────────────
@@ -3812,7 +3817,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const receivables = await storage.getBusinessReceivables(orgId);
       res.json(receivables);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/business/organizations/:orgId/receivables", isAuthenticated, async (req, res) => {
@@ -3834,7 +3839,7 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ message: "Dados inválidos", errors: parsed.error.flatten() });
       const rec = await storage.createBusinessReceivable({ ...parsed.data, organizationId: orgId });
       res.status(201).json(rec);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.patch("/api/business/organizations/:orgId/receivables/:receivableId", isAuthenticated, async (req, res) => {
@@ -3859,7 +3864,7 @@ export async function registerRoutes(
       const updated = await storage.updateBusinessReceivable(receivableId, orgId, parsed.data);
       if (!updated) return res.status(404).json({ message: "Recebível não encontrado" });
       res.json(updated);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.delete("/api/business/organizations/:orgId/receivables/:receivableId", isAuthenticated, async (req, res) => {
@@ -3870,7 +3875,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       await storage.deleteBusinessReceivable(receivableId, orgId);
       res.status(204).send();
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.get("/api/business/organizations/:orgId/cards", isAuthenticated, async (req, res) => {
@@ -3881,7 +3886,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const cards = await storage.getBusinessCorporateCards(orgId);
       res.json(cards);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/business/organizations/:orgId/cards", isAuthenticated, async (req, res) => {
@@ -3892,7 +3897,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const card = await storage.createBusinessCorporateCard({ ...req.body, organizationId: orgId });
       res.status(201).json(card);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.patch("/api/business/organizations/:orgId/cards/:cardId", isAuthenticated, async (req, res) => {
@@ -3904,7 +3909,7 @@ export async function registerRoutes(
       const card = await storage.updateBusinessCorporateCard(cardId, orgId, req.body);
       if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
       res.json(card);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.delete("/api/business/organizations/:orgId/cards/:cardId", isAuthenticated, async (req, res) => {
@@ -3915,7 +3920,7 @@ export async function registerRoutes(
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       await storage.deleteBusinessCorporateCard(cardId, orgId);
       res.status(204).send();
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/reports/share", isAuthenticated, async (req, res) => {
@@ -3936,7 +3941,7 @@ export async function registerRoutes(
       });
       const baseUrl = process.env.APP_URL || "https://myaxis.com.br";
       res.json({ token: share.id, url: `${baseUrl}/r/${share.id}` });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.get("/api/public/report/:token", async (req, res) => {
@@ -3962,7 +3967,7 @@ export async function registerRoutes(
         expiresAt: share.expiresAt,
         expenses,
       });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   // ─── BILLING ─────────────────────────────────────────────────────────────────
@@ -3973,7 +3978,7 @@ export async function registerRoutes(
       const { getUserUsage } = await import("./planLimits");
       const usage = await getUserUsage(userId);
       res.json(usage);
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: any) { serverError(res, err); }
   });
 
   app.post("/api/billing/checkout", isAuthenticated, async (req, res) => {

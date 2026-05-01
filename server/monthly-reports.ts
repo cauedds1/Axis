@@ -17,6 +17,13 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  const masked = local.length <= 2 ? "***" : local[0] + "***" + local[local.length - 1];
+  return `${masked}@${domain}`;
+}
+
 const AI_SUMMARY_TIMEOUT_MS = 10_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -623,7 +630,7 @@ export async function sendPersonalMonthlyReport(userId: string, month: number, y
   try {
     data = await buildPersonalReportData(userId, month, year);
   } catch (err: any) {
-    console.error(`[monthly-reports] Failed to build personal data for ${userId}: ${err?.message}`);
+    console.error(`[monthly-reports] Failed to build personal data for userId=${userId}: ${err?.message}`);
     return "failed";
   }
   if (!data) return "skipped";
@@ -638,7 +645,7 @@ export async function sendPersonalMonthlyReport(userId: string, month: number, y
     await sendEmail({ to: user.email, subject, html });
     return "sent";
   } catch (err: any) {
-    console.error(`[monthly-reports] Personal email failed for ${user.email}: ${err?.message}`);
+    console.error(`[monthly-reports] Personal email failed for ${maskEmail(user.email)}: ${err?.message}`);
     return "failed";
   }
 }
@@ -964,7 +971,7 @@ export async function sendBusinessMonthlyReport(
   try {
     data = await buildBusinessReportData(orgId, adminUserId, month, year);
   } catch (err: any) {
-    console.error(`[monthly-reports] Failed to build business data for org ${orgId}: ${err?.message}`);
+    console.error(`[monthly-reports] Failed to build business data for orgId=${orgId}: ${err?.message}`);
     return "failed";
   }
   if (!data) return "skipped";
@@ -979,7 +986,7 @@ export async function sendBusinessMonthlyReport(
     await sendEmail({ to: adminUser.email, subject, html });
     return "sent";
   } catch (err: any) {
-    console.error(`[monthly-reports] Business email failed for ${adminUser.email}: ${err?.message}`);
+    console.error(`[monthly-reports] Business email failed for ${maskEmail(adminUser.email)}: ${err?.message}`);
     return "failed";
   }
 }
