@@ -5,8 +5,8 @@
  *
  * This script creates (or finds existing) Stripe Products and Prices for:
  *   - Starter: free (product only, no recurring price)
- *   - Personal AI: R$9/month with 7-day free trial
- *   - Team: R$29/month
+ *   - Personal AI: $9/month with 7-day free trial
+ *   - Team: $29/month
  *
  * Products and prices are tagged with `plan` metadata so the webhook handler
  * can reliably map subscriptions to AXIS plan keys.
@@ -36,19 +36,19 @@ const PLANS: Array<{
     name: 'AXIS Personal AI',
     description: 'Full AI-powered personal finance and life OS — unlimited captures, voice, chat. Includes 7-day free trial.',
     unitAmount: 900,
-    currency: 'brl',
+    currency: 'usd',
   },
   {
     planKey: 'team',
     name: 'AXIS Team',
     description: 'Everything in Personal AI plus full Business version for teams and companies.',
     unitAmount: 2900,
-    currency: 'brl',
+    currency: 'usd',
   },
 ];
 
 async function seed() {
-  const stripe = await getUncachableStripeClient();
+  const stripe = getUncachableStripeClient();
 
   for (const plan of PLANS) {
     console.log(`\n── ${plan.name} (${plan.planKey}) ──`);

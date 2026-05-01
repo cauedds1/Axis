@@ -91,6 +91,8 @@ app.use((req, res, next) => {
   const optional: Record<string, string> = {
     OPENAI_API_KEY: "IA/chat/transcrição desativados",
     SENDGRID_API_KEY: "alertas por email desativados",
+    STRIPE_SECRET_KEY: "pagamentos desativados",
+    STRIPE_WEBHOOK_SECRET: "webhooks Stripe desativados",
     APP_URL: `usando fallback: ${process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : "http://localhost:5000"}`,
   };
   for (const [key, hint] of Object.entries(optional)) {
@@ -98,32 +100,6 @@ app.use((req, res, next) => {
       log(`⚠ ${key} não definida — ${hint}`, "config");
     }
   }
-
-  // ─── Stripe initialization (non-blocking on failure) ─────────────────────
-  try {
-    const { runMigrations } = await import('stripe-replit-sync');
-    const { getStripeSync } = await import('./stripeClient');
-    const databaseUrl = process.env.DATABASE_URL!;
-
-    log('Initializing Stripe schema...', 'stripe');
-    await runMigrations({ databaseUrl, schema: 'stripe' });
-    log('Stripe schema ready', 'stripe');
-
-    const stripeSync = await getStripeSync();
-    const webhookBaseUrl = process.env.REPLIT_DOMAINS
-      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-      : `http://localhost:${process.env.PORT || 5000}`;
-
-    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
-    log('Stripe webhook configured', 'stripe');
-
-    stripeSync.syncBackfill()
-      .then(() => log('Stripe data synced', 'stripe'))
-      .catch((err: any) => log(`Stripe syncBackfill error: ${err?.message}`, 'stripe'));
-  } catch (err: any) {
-    log(`⚠ Stripe não configurado: ${err?.message} — pagamentos desativados`, 'stripe');
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   const { seedDatabase } = await import("./seed");
   await seedDatabase().catch(err => console.error("Seed error:", err));

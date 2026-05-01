@@ -3869,27 +3869,53 @@ export async function registerRoutes(
 
   app.get("/api/billing/products", async (_req, res) => {
     try {
-      const { db: drizzleDb } = await import("./db");
-      const { sql: sqlHelper } = await import("drizzle-orm");
-      const result = await drizzleDb.execute(sqlHelper`
-        SELECT
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency,
-          pr.recurring,
-          pr.metadata as price_metadata
-        FROM stripe.products p
-        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        WHERE p.active = true
-        ORDER BY pr.unit_amount ASC NULLS FIRST
-      `);
-      res.json({ data: result.rows });
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = getUncachableStripeClient();
+
+      const products = await stripe.products.list({ active: true, limit: 20 });
+      const rows: any[] = [];
+
+      for (const product of products.data) {
+        const prices = await stripe.prices.list({
+          product: product.id,
+          active: true,
+          type: "recurring",
+          limit: 5,
+        });
+
+        if (prices.data.length === 0) {
+          rows.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_description: product.description,
+            product_metadata: product.metadata,
+            price_id: null,
+            unit_amount: null,
+            currency: null,
+            recurring: null,
+            price_metadata: null,
+          });
+        } else {
+          for (const price of prices.data) {
+            rows.push({
+              product_id: product.id,
+              product_name: product.name,
+              product_description: product.description,
+              product_metadata: product.metadata,
+              price_id: price.id,
+              unit_amount: price.unit_amount,
+              currency: price.currency,
+              recurring: price.recurring,
+              price_metadata: price.metadata,
+            });
+          }
+        }
+      }
+
+      rows.sort((a, b) => (a.unit_amount ?? 0) - (b.unit_amount ?? 0));
+      res.json({ data: rows });
     } catch (err: any) {
-      res.status(500).json({ message: err?.message || "Failed to fetch products" });
+      res.json({ data: [] });
     }
   });
 

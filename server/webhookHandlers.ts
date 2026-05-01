@@ -1,4 +1,3 @@
-import { StripeSync } from 'stripe-replit-sync';
 import { db } from './db';
 import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -22,48 +21,25 @@ export class WebhookHandlers {
       throw new Error(msg);
     }
 
-    // Step 1: let StripeSync validate + sync the event into its DB tables
-    const { getStripeSync } = await import('./stripeClient');
-    const sync = await getStripeSync();
-    try {
-      await sync.processWebhook(payload, signature);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('No signatures found matching')) {
-        log('STRIPE WEBHOOK ERROR: Signature validation failed. Possible replay or wrong secret.', 'stripe');
-      }
-      throw err;
-    }
-
-    // Step 2: parse the event ourselves to sync plan fields in our users table
     await WebhookHandlers.syncPlanFromStripe(payload, signature);
   }
 
   private static async syncPlanFromStripe(payload: Buffer, signature: string): Promise<void> {
-    const { getUncachableStripeClient, getStripeCredentials } = await import('./stripeClient');
-
-    let webhookSecret: string;
-    try {
-      const creds = await getStripeCredentials();
-      if (!creds.webhookSecret) {
-        log('Stripe webhook plan sync skipped — no webhookSecret available', 'stripe');
-        return;
-      }
-      webhookSecret = creds.webhookSecret;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log(`Stripe webhook plan sync skipped — cannot get credentials: ${message}`, 'stripe');
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      log('Stripe webhook plan sync skipped — STRIPE_WEBHOOK_SECRET not set', 'stripe');
       return;
     }
 
-    const stripe = await getUncachableStripeClient();
+    const { getUncachableStripeClient } = await import('./stripeClient');
+    const stripe = getUncachableStripeClient();
 
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-    } catch {
-      // Signature already validated by StripeSync above — this shouldn't happen
-      return;
+    } catch (err: any) {
+      log(`STRIPE WEBHOOK ERROR: Signature validation failed — ${err.message}`, 'stripe');
+      throw err;
     }
 
     const relevantEvents: Stripe.Event.Type[] = [
@@ -94,18 +70,14 @@ export class WebhookHandlers {
 
       const items = subscription.items?.data ?? [];
       for (const item of items) {
-        // Try price metadata first
         const priceMeta = item.price?.metadata ?? {};
         let planMeta: string | undefined = priceMeta?.plan;
 
         if (!planMeta) {
-          // Product may be an ID string in the event — expand it
           const productRef = item.price?.product;
           let productObj: Stripe.Product | null = null;
           if (typeof productRef === 'string') {
-            try {
-              productObj = await stripe.products.retrieve(productRef);
-            } catch { /* ignore */ }
+            try { productObj = await stripe.products.retrieve(productRef); } catch { /* ignore */ }
           } else if (productRef && typeof productRef === 'object' && 'id' in productRef) {
             productObj = productRef as Stripe.Product;
           }
@@ -123,9 +95,8 @@ export class WebhookHandlers {
 
     await db.update(users).set({
       plan,
-      // Explicitly null-clear on cancellation so stale subscription data is removed
-      stripeSubscriptionId: stripeSubscriptionId,
-      trialEndsAt: trialEndsAt,
+      stripeSubscriptionId,
+      trialEndsAt,
     }).where(eq(users.id, user.id));
 
     log(`Stripe webhook: updated user ${user.id} plan → ${plan}`, 'stripe');
