@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { registerAdminRoutes, maintenanceMiddleware, viewingModeMiddleware, isAdminRequest } from "./adminRoutes";
+import { registerAdminRoutes, registerRateLimiters, maintenanceMiddleware, viewingModeMiddleware, isAdminRequest } from "./adminRoutes";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { log } from "./log";
@@ -360,6 +360,8 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Rate limiters must be first so they protect ALL routes below
+  registerRateLimiters(app);
   await setupAuth(app);
   registerAuthRoutes(app);
 

@@ -10,7 +10,7 @@ import {
 import {
   transactions, habits, habitLogs, personalTasks, userProfile, organizations,
   organizationMembers, businessExpenses, emailAlertLog, auditLogs, aiUsageLogs,
-  whatsappLogs, systemConfig, categories,
+  whatsappLogs, systemConfig, categories, type InsertTransaction,
 } from "@shared/schema";
 import {
   eq, desc, asc, sql, and, gte, lte, like, or, count, sum, inArray, isNotNull,
@@ -34,8 +34,8 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     }
     req.adminUser = user;
     next();
-  } catch (err: any) {
-    log(`requireAdmin error: ${err?.message}`, "admin");
+  } catch (err) {
+    log(`requireAdmin error: ${errMsg(err)}`, "admin");
     res.status(500).json({ message: "Erro interno" });
   }
 }
@@ -45,7 +45,7 @@ export async function isAdminRequest(req: Request): Promise<boolean> {
   try {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return false;
-    const userId = (req as any).session?.userId;
+    const userId = req.session?.userId;
     if (!userId) return false;
     const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
     return user?.email?.toLowerCase() === adminEmail.toLowerCase();
@@ -73,6 +73,18 @@ function mustAdmin(req: Request) {
   if (!req.adminUser) throw new Error("Admin user not set by middleware");
   return req.adminUser;
 }
+/** Extract a numeric field from a raw SQL result row without `as any`. */
+function rowNum(row: unknown, field: string): number {
+  if (row !== null && typeof row === "object") {
+    const val = (row as Record<string, unknown>)[field];
+    return typeof val === "number" ? val : Number(val) || 0;
+  }
+  return 0;
+}
+/** Safely extract an error message from an unknown catch value. */
+function errMsg(err: unknown): string {
+  return err instanceof Error ? errMsg(err) : String(err);
+}
 
 // ─── Sort helper ─────────────────────────────────────────────────────────────
 function getSortClause(req: Request, allowed: string[], defaultCol: string, defaultDir: "ASC" | "DESC" = "DESC") {
@@ -91,14 +103,16 @@ function getPeriodBounds(monthsBack = 1): { current: { start: Date; end: Date };
   return { current: { start: currentStart, end: currentEnd }, previous: { start: prevStart, end: prevEnd } };
 }
 
-export function registerAdminRoutes(app: Express) {
-
-  // ─── Rate limiting setup ──────────────────────────────────────────────────
+/** Must be called BEFORE any routes are registered so Express processes these first. */
+export function registerRateLimiters(app: Express) {
   const globalLimiter = rateLimit({ windowMs: 60_000, max: 300, standardHeaders: true, legacyHeaders: false, skip: () => false });
   const authLimiter = rateLimit({ windowMs: 15 * 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
   app.use("/api", globalLimiter);
+}
+
+export function registerAdminRoutes(app: Express) {
 
   // ─── GET /api/admin/stats ─────────────────────────────────────────────────
   app.get("/api/admin/stats", requireAdmin, async (req, res) => {
@@ -191,9 +205,9 @@ export function registerAdminRoutes(app: Express) {
           newToday: newUsersToday.count,
         },
         activeUsers: {
-          last7d: (active7dResult.rows[0] as any)?.c ?? 0,
-          last30d: (active30dResult.rows[0] as any)?.c ?? 0,
-          prevLast30d: (prevActive30dResult.rows[0] as any)?.c ?? 0,
+          last7d: rowNum(active7dResult.rows[0], "c") ?? 0,
+          last30d: rowNum(active30dResult.rows[0], "c") ?? 0,
+          prevLast30d: rowNum(prevActive30dResult.rows[0], "c") ?? 0,
         },
         transactions: {
           total: totalTransactions.count,
@@ -211,9 +225,9 @@ export function registerAdminRoutes(app: Express) {
         dailySignups: dailySignups.rows,
         topUsers: topUsers.rows,
       });
-    } catch (err: any) {
-      log(`admin stats error: ${err?.message}`, "admin");
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      log(`admin stats error: ${errMsg(err)}`, "admin");
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -256,8 +270,8 @@ export function registerAdminRoutes(app: Express) {
             LIMIT 10
           `);
       res.json({ topUsers: rows.rows });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -316,10 +330,10 @@ export function registerAdminRoutes(app: Express) {
           AND (${typeFilter || ''} = '' OR account_type = ${typeFilter || ''})
       `);
 
-      res.json({ users: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      log(`admin users error: ${err?.message}`, "admin");
-      res.status(500).json({ message: err?.message });
+      res.json({ users: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      log(`admin users error: ${errMsg(err)}`, "admin");
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -338,8 +352,8 @@ export function registerAdminRoutes(app: Express) {
       const auditHistory = await db.select().from(auditLogs).where(eq(auditLogs.targetId, user.id)).orderBy(desc(auditLogs.createdAt)).limit(20);
 
       res.json({ user: { ...user, password: undefined }, profile, stats: { transactions: txCount[0]?.count, habits: habitCount[0]?.count, tasks: taskCount[0]?.count }, recentTransactions: recentTx, auditHistory });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -354,8 +368,8 @@ export function registerAdminRoutes(app: Express) {
       await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${id}`);
       await logAudit(actor.id, actor.email, "user.deactivate", "user", id, { email: targetUser.email });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -369,8 +383,8 @@ export function registerAdminRoutes(app: Express) {
       await db.update(users).set({ deactivatedAt: null, updatedAt: new Date() }).where(eq(users.id, id));
       await logAudit(actor.id, actor.email, "user.reactivate", "user", id, { email: targetUser.email });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -415,8 +429,8 @@ export function registerAdminRoutes(app: Express) {
 
       await logAudit(actor.id, actor.email, "user.reset_password", "user", id, { email: targetUser.email });
       res.json({ success: true, message: `Password reset link sent to ${targetUser.email}` });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -438,8 +452,8 @@ export function registerAdminRoutes(app: Express) {
       await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${id}`);
       await db.delete(users).where(eq(users.id, id));
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -456,8 +470,8 @@ export function registerAdminRoutes(app: Express) {
       await db.update(users).set({ plan }).where(eq(users.id, id));
       await logAudit(actor.id, actor.email, "user.plan_override", "user", id, { oldPlan, newPlan: plan, reason });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -492,9 +506,9 @@ export function registerAdminRoutes(app: Express) {
         WHERE (${search} = '' OR o.name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})
       `);
 
-      res.json({ organizations: orgs.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ organizations: orgs.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -524,8 +538,8 @@ export function registerAdminRoutes(app: Express) {
       const [pendingCount] = await db.select({ count: count() }).from(businessExpenses).where(and(eq(businessExpenses.organizationId, id), eq(businessExpenses.status, "pending_review")));
 
       res.json({ org, members: members.rows, categoryBreakdown: categoryBreakdown.rows, pendingApprovals: pendingCount.count });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -551,8 +565,8 @@ export function registerAdminRoutes(app: Express) {
 
       await logAudit(actor.id, actor.email, "org.impersonate", "organization", id, { orgName: org.name, targetUserId: ownerMember.userId });
       res.json({ success: true, orgName: org.name, viewingUserId: ownerMember.userId });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -565,8 +579,8 @@ export function registerAdminRoutes(app: Express) {
       delete req.session.viewingUserId;
       delete req.session.viewingOrgId;
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -579,8 +593,8 @@ export function registerAdminRoutes(app: Express) {
 
       const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, viewingOrgId));
       res.json({ active: true, orgId: viewingOrgId, orgName: org?.name ?? viewingOrgId, viewingUserId });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -633,13 +647,13 @@ export function registerAdminRoutes(app: Express) {
       res.json({
         monthlyVolume: monthlyVolume.rows,
         topCategories: topCategories.rows,
-        avgSpendPerUser: (avgPersonalResult.rows[0] as any)?.avg ?? 0,
+        avgSpendPerUser: rowNum(avgPersonalResult.rows[0], "avg") ?? 0,
         currencies: currencies.rows,
-        currentMonthVolume: (currentVolResult.rows[0] as any)?.vol ?? 0,
-        prevMonthVolume: (prevVolResult.rows[0] as any)?.vol ?? 0,
+        currentMonthVolume: rowNum(currentVolResult.rows[0], "vol") ?? 0,
+        prevMonthVolume: rowNum(prevVolResult.rows[0], "vol") ?? 0,
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -677,9 +691,9 @@ export function registerAdminRoutes(app: Express) {
           AND (${dateTo || ''} = '' OR t.date <= ${dateTo ? new Date(dateTo) : new Date()})
       `);
 
-      res.json({ transactions: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ transactions: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -719,8 +733,8 @@ export function registerAdminRoutes(app: Express) {
         newSubscribersThisMonth: newSubscribersThisMonth.count,
         newSubscribersPrevMonth: newSubscribersPrevMonth.count,
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -740,11 +754,15 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM users WHERE stripe_subscription_id IS NOT NULL`);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count FROM users
+        WHERE stripe_subscription_id IS NOT NULL
+          AND (${search} = '' OR email ILIKE ${'%' + search + '%'})
+      `);
 
-      res.json({ subscriptions: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ subscriptions: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -763,8 +781,8 @@ export function registerAdminRoutes(app: Express) {
         status,
         isNumberMatch: botNumber?.value ? botNumber.value === connectedPhone : null,
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -782,8 +800,8 @@ export function registerAdminRoutes(app: Express) {
 
       await logAudit(actor.id, actor.email, "admin.whatsapp_config", "system", null, { botNumber, displayName });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -806,9 +824,9 @@ export function registerAdminRoutes(app: Express) {
         LEFT JOIN users u ON u.id = wl.user_id
         WHERE (${search} = '' OR wl.sender_phone ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'} OR wl.result ILIKE ${'%' + search + '%'})
       `);
-      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ logs: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -845,15 +863,15 @@ export function registerAdminRoutes(app: Express) {
 
       res.json({
         logs: rows.rows,
-        total: (totalCountResult.rows[0] as any)?.count ?? 0,
+        total: rowNum(totalCountResult.rows[0], "count") ?? 0,
         page,
         limit,
         currentMonth: currentMonth.count,
         prevMonth: prevMonth.count,
         typeCounts: typeCounts.rows,
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -893,8 +911,8 @@ export function registerAdminRoutes(app: Express) {
         breakdown: breakdown.rows,
         recentCalls: recentCalls.rows,
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -910,8 +928,8 @@ export function registerAdminRoutes(app: Express) {
         } catch { valid = false; }
       }
       res.json({ set: !!apiKey, valid });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -940,9 +958,9 @@ export function registerAdminRoutes(app: Express) {
           AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR al.call_type ILIKE ${'%' + search + '%'})
       `);
 
-      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ logs: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -980,8 +998,8 @@ export function registerAdminRoutes(app: Express) {
         .onConflictDoUpdate({ target: systemConfig.key, set: { value: String(value ?? ""), updatedAt: new Date() } });
       await logAudit(actor.id, actor.email, "admin.config_update", "system", null, { key, value });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -993,8 +1011,8 @@ export function registerAdminRoutes(app: Express) {
       await db.delete(systemConfig).where(eq(systemConfig.key, key));
       await logAudit(actor.id, actor.email, "admin.config_delete", "system", null, { key });
       res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -1014,8 +1032,8 @@ export function registerAdminRoutes(app: Express) {
         nodeVersion: process.version,
         memory: { rss: Math.round(mem.rss / 1024 / 1024), heapUsed: Math.round(mem.heapUsed / 1024 / 1024), heapTotal: Math.round(mem.heapTotal / 1024 / 1024) },
       });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -1027,8 +1045,8 @@ export function registerAdminRoutes(app: Express) {
       await db.insert(systemConfig).values({ key: "maintenance_mode", value: String(!!enabled), updatedAt: new Date() }).onConflictDoUpdate({ target: systemConfig.key, set: { value: String(!!enabled), updatedAt: new Date() } });
       await logAudit(actor.id, actor.email, "admin.maintenance_toggle", "system", null, { enabled });
       res.json({ success: true, maintenanceMode: !!enabled });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -1054,9 +1072,9 @@ export function registerAdminRoutes(app: Express) {
           AND (${actorFilter || ''} = '' OR actor_email ILIKE ${'%' + actorFilter + '%'})
       `);
 
-      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      res.json({ logs: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -1099,7 +1117,7 @@ export function registerAdminRoutes(app: Express) {
         combustível: ["Posto Shell", "Posto Ipiranga"],
       };
 
-      const txValues: any[] = [];
+      const txValues: InsertTransaction[] = [];
       const now = new Date();
       for (let i = 0; i < 90; i++) {
         const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
@@ -1118,8 +1136,8 @@ export function registerAdminRoutes(app: Express) {
 
       await logAudit(actor.id, actor.email, "admin.demo_seed", "system", demoUser.id);
       res.json({ success: true, credentials: { email: demoEmail, password: demoPassword } });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
@@ -1137,8 +1155,8 @@ export function registerAdminRoutes(app: Express) {
       }
       await logAudit(actor.id, actor.email, "admin.demo_reset", "system", null);
       res.json({ success: true, message: "Demo user deleted. Seed again to recreate." });
-    } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
     }
   });
 
