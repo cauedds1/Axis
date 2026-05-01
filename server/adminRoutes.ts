@@ -92,10 +92,28 @@ export function registerAdminRoutes(app: Express) {
       const [currentMonthOrgs] = await db.select({ count: count() }).from(organizations).where(gte(organizations.createdAt, period.current.start));
       const [prevMonthOrgs] = await db.select({ count: count() }).from(organizations).where(and(gte(organizations.createdAt, period.previous.start), lte(organizations.createdAt, period.previous.end)));
 
-      // Active users 7d/30d (any new transaction or profile update)
-      const active7dResult = await db.selectDistinct({ userId: transactions.userId }).from(transactions).where(gte(transactions.createdAt, last7d));
-      const active30dResult = await db.selectDistinct({ userId: transactions.userId }).from(transactions).where(gte(transactions.createdAt, last30d));
-      const prevActive30dResult = await db.selectDistinct({ userId: transactions.userId }).from(transactions).where(and(gte(transactions.createdAt, prev30d), lte(transactions.createdAt, last30d)));
+      // Active users 7d/30d: any activity across transactions, habits, or tasks
+      const active7dResult = await db.execute(sql`
+        SELECT COUNT(DISTINCT user_id)::int as c FROM (
+          SELECT user_id FROM transactions WHERE created_at >= ${last7d}
+          UNION SELECT user_id FROM habits WHERE created_at >= ${last7d}
+          UNION SELECT user_id FROM personal_tasks WHERE created_at >= ${last7d}
+        ) a
+      `);
+      const active30dResult = await db.execute(sql`
+        SELECT COUNT(DISTINCT user_id)::int as c FROM (
+          SELECT user_id FROM transactions WHERE created_at >= ${last30d}
+          UNION SELECT user_id FROM habits WHERE created_at >= ${last30d}
+          UNION SELECT user_id FROM personal_tasks WHERE created_at >= ${last30d}
+        ) a
+      `);
+      const prevActive30dResult = await db.execute(sql`
+        SELECT COUNT(DISTINCT user_id)::int as c FROM (
+          SELECT user_id FROM transactions WHERE created_at >= ${prev30d} AND created_at < ${last30d}
+          UNION SELECT user_id FROM habits WHERE created_at >= ${prev30d} AND created_at < ${last30d}
+          UNION SELECT user_id FROM personal_tasks WHERE created_at >= ${prev30d} AND created_at < ${last30d}
+        ) a
+      `);
 
       // Daily signups last 30 days
       const dailySignups = await db.execute(sql`
@@ -106,14 +124,17 @@ export function registerAdminRoutes(app: Express) {
         ORDER BY day ASC
       `);
 
-      // Top 5 active users by transaction count
+      // Top 5 active users by total activity (transactions + habits + tasks)
       const topUsers = await db.execute(sql`
         SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
-               COUNT(t.id)::int as tx_count
+               (COUNT(DISTINCT t.id) + COUNT(DISTINCT h.id) + COUNT(DISTINCT pt.id))::int as activity_count,
+               COUNT(DISTINCT t.id)::int as tx_count
         FROM users u
         LEFT JOIN transactions t ON t.user_id = u.id
+        LEFT JOIN habits h ON h.user_id = u.id
+        LEFT JOIN personal_tasks pt ON pt.user_id = u.id
         GROUP BY u.id
-        ORDER BY tx_count DESC
+        ORDER BY activity_count DESC
         LIMIT 5
       `);
 
@@ -137,9 +158,9 @@ export function registerAdminRoutes(app: Express) {
           newToday: newUsersToday.count,
         },
         activeUsers: {
-          last7d: active7dResult.length,
-          last30d: active30dResult.length,
-          prevLast30d: prevActive30dResult.length,
+          last7d: (active7dResult.rows[0] as any)?.c ?? 0,
+          last30d: (active30dResult.rows[0] as any)?.c ?? 0,
+          prevLast30d: (prevActive30dResult.rows[0] as any)?.c ?? 0,
         },
         transactions: {
           total: totalTransactions.count,

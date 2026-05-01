@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMultipleReceipts, processPDFExtract, chatWithContext, generateOnboardingDiagnosis, deepAnalyzeOnboarding, parseFixedExpenses, parseRoutineToSchedule, saveEventToMemory, extractMemoryFromChat, analyzeSpendingDiscipline, judgeJustification, matchBillIdentity, saveUserIdentityEntity, getUserIdentityEntities } from "./ai";
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
+import { logAiUsage, logWhatsappMessage } from "./adminLogger";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -21,7 +22,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 const pendingChatBills = new Map<string, { extracted: any; expiresAt: number }>();
 
 function getUserId(req: any): string {
-  return req.session?.userId;
+  // When admin is viewing in read-only impersonation mode, route reads to the target user
+  return req.session?.viewingUserId ?? req.session?.userId;
 }
 
 async function isAdminUser(req: any): Promise<boolean> {
@@ -688,6 +690,7 @@ export async function registerRoutes(
       const userId = getUserId(req);
       if (!req.file) return res.status(400).json({ message: "Nenhum PDF enviado" });
       const result = await processPDFExtract(req.file.buffer, userId);
+      logAiUsage(userId, "pdf_extract").catch(() => {});
       res.json(result);
     } catch (error: any) {
       console.error("Error processing PDF:", error);
@@ -883,6 +886,7 @@ export async function registerRoutes(
         }
       } else {
         const extracted = await processPDFExtract(file.buffer, userId);
+        logAiUsage(userId, "pdf_extract").catch(() => {});
 
         if (extracted?.docType === "bill") {
           const hasBothEntities = extracted.issuerCnpj && extracted.recipientCnpj;
@@ -2431,6 +2435,7 @@ export async function registerRoutes(
           generateOnboardingDiagnosis(profileData),
           deepAnalyzeOnboarding(profileData),
         ]);
+        logAiUsage(userId, "onboarding_diagnosis").catch(() => {});
 
         if (diagnosisResult.status === "fulfilled") {
           diagnosis = diagnosisResult.value;
