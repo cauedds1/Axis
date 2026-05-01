@@ -3614,7 +3614,13 @@
       "joined": "Joined",
       "deactivateHint": "This will block the user from logging in.",
       "reactivateHint": "This will restore the user's access to AXIS.",
-      "resetPasswordHint": "A password reset link will be emailed to the user (expires in 24h)."
+      "resetPasswordHint": "A password reset link will be emailed to the user (expires in 24h).",
+      "accountTypeName": {
+        "personal": "Personal",
+        "personal_ai": "Personal AI",
+        "business": "Business",
+        "collaborator": "Collaborator"
+      }
     },
     "orgs": {
       "title": "Organizations",
@@ -3690,7 +3696,14 @@
       "stripeSubId": "Stripe Sub ID",
       "trialEnds": "Trial Ends",
       "stripe": "Stripe",
-      "email": "Email"
+      "email": "Email",
+      "planName": {
+        "personal_ai": "Personal AI",
+        "team": "Team Plan",
+        "starter": "Starter (Free)",
+        "trial": "Trial",
+        "free": "Free"
+      }
     },
     "whatsapp": {
       "title": "WhatsApp Manager",
@@ -3762,7 +3775,10 @@
       "keyMissing": "OpenAI API key is not configured",
       "keyMissingHint": "Set the OPENAI_API_KEY environment variable to enable AI features (chat, transcription, PDF analysis, onboarding diagnosis).",
       "keyInvalid": "OpenAI API key appears to be invalid",
-      "keyInvalidHint": "The key is set but failed validation. Check it is correct and has sufficient credits."
+      "keyInvalidHint": "The key is set but failed validation. Check it is correct and has sufficient credits.",
+      "keyOk": "✓ OK",
+      "keySetInvalid": "⚠ Key set, invalid",
+      "keyNotSet": "✗ Not set"
     },
     "audit": {
       "title": "Audit Log",
@@ -3808,7 +3824,18 @@
       "max": "Max Requests",
       "description": "Description",
       "enabled": "ENABLED",
-      "disabled": "DISABLED"
+      "disabled": "DISABLED",
+      "yes": "✓ Yes",
+      "no": "✗ No",
+      "envHints": {
+        "OPENAI_API_KEY": "Required for AI features (chat, transcription, PDF analysis). Get yours at platform.openai.com → API Keys.",
+        "SENDGRID_API_KEY": "Required for email alerts. Create a key in SendGrid → Settings → API Keys.",
+        "STRIPE_SECRET_KEY": "Required for payments. Found in Stripe Dashboard → Developers → API Keys.",
+        "STRIPE_WEBHOOK_SECRET": "Required for Stripe webhook events. Generate in Stripe Dashboard → Webhooks → your endpoint.",
+        "ADMIN_EMAIL": "Your admin email address. Set to your own email to unlock this admin panel.",
+        "APP_URL": "Public app URL (e.g. https://axis.replit.app). Used in email templates.",
+        "DATABASE_URL": "PostgreSQL connection string. Auto-configured by Replit Postgres integration."
+      }
     },
     "admin": {
       "backToApp": "Back to App",

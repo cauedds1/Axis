@@ -133,8 +133,8 @@ export function DashboardSection() {
               (topData?.topUsers ?? []).map((u) => (
                 <tr key={u.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                   <Td data-testid={`text-topuser-email-${u.id}`}>{u.email}</Td>
-                  <Td>{formatAccountType(u.account_type)}</Td>
-                  <Td>{formatPlan(u.plan)}</Td>
+                  <Td>{formatAccountType(u.account_type, t)}</Td>
+                  <Td>{formatPlan(u.plan, t)}</Td>
                   <Td className="text-right font-mono">{u.activity_count}</Td>
                   <Td className="text-right font-mono">{u.tx_count}</Td>
                 </tr>

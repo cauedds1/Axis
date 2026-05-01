@@ -3614,7 +3614,13 @@
       "joined": "Entrou em",
       "deactivateHint": "Isso impedirá o usuário de fazer login.",
       "reactivateHint": "Isso restaurará o acesso do usuário ao AXIS.",
-      "resetPasswordHint": "Um link de redefinição de senha será enviado ao usuário por email (expira em 24h)."
+      "resetPasswordHint": "Um link de redefinição de senha será enviado ao usuário por email (expira em 24h).",
+      "accountTypeName": {
+        "personal": "Pessoal",
+        "personal_ai": "Personal AI",
+        "business": "Empresarial",
+        "collaborator": "Colaborador"
+      }
     },
     "orgs": {
       "title": "Organizações",
@@ -3690,7 +3696,14 @@
       "stripeSubId": "ID Assinatura Stripe",
       "trialEnds": "Trial Expira",
       "stripe": "Stripe",
-      "email": "E-mail"
+      "email": "E-mail",
+      "planName": {
+        "personal_ai": "Personal AI",
+        "team": "Plano Team",
+        "starter": "Starter (Gratuito)",
+        "trial": "Teste",
+        "free": "Gratuito"
+      }
     },
     "whatsapp": {
       "title": "WhatsApp Manager",
@@ -3762,7 +3775,10 @@
       "thisMonth": "Este Mês",
       "callLogs": "Logs de Chamadas de IA",
       "allTypes": "Todos os Tipos",
-      "time": "Hora"
+      "time": "Hora",
+      "keyOk": "✓ OK",
+      "keySetInvalid": "⚠ Chave inválida",
+      "keyNotSet": "✗ Não configurada"
     },
     "audit": {
       "title": "Audit Log",
@@ -3808,7 +3824,18 @@
       "envVars": "Variáveis de Ambiente",
       "name": "Nome",
       "enabled": "ATIVADO",
-      "disabled": "DESATIVADO"
+      "disabled": "DESATIVADO",
+      "yes": "✓ Sim",
+      "no": "✗ Não",
+      "envHints": {
+        "OPENAI_API_KEY": "Necessário para funções de IA (chat, transcrição, análise de PDF). Obtenha em platform.openai.com → API Keys.",
+        "SENDGRID_API_KEY": "Necessário para alertas por e-mail. Crie uma chave em SendGrid → Settings → API Keys.",
+        "STRIPE_SECRET_KEY": "Necessário para pagamentos. Encontre no Stripe Dashboard → Developers → API Keys.",
+        "STRIPE_WEBHOOK_SECRET": "Necessário para eventos de webhook do Stripe. Gere no Stripe Dashboard → Webhooks → seu endpoint.",
+        "ADMIN_EMAIL": "Seu endereço de e-mail de administrador. Defina como seu próprio e-mail para acessar este painel.",
+        "APP_URL": "URL pública do app (ex: https://axis.replit.app). Usada nos modelos de e-mail.",
+        "DATABASE_URL": "String de conexão PostgreSQL. Configurada automaticamente pela integração Replit Postgres."
+      }
     },
     "common": {
       "loading": "Carregando...",

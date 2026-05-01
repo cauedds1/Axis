@@ -28,6 +28,8 @@ export function adminFetch(url: string) {
 
 export const PLAN_OPTIONS = ["starter", "personal_ai", "team"] as const;
 
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
+
 const PLAN_LABELS: Record<string, string> = {
   personal_ai: "Personal AI",
   team: "Team Plan",
@@ -43,13 +45,15 @@ const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   collaborator: "Collaborator",
 };
 
-export function formatPlan(plan: string | undefined | null): string {
+export function formatPlan(plan: string | undefined | null, t?: TFn): string {
   if (!plan) return "—";
+  if (t) return t(`billing.planName.${plan}`, { defaultValue: PLAN_LABELS[plan] ?? plan });
   return PLAN_LABELS[plan] ?? plan;
 }
 
-export function formatAccountType(type: string | undefined | null): string {
+export function formatAccountType(type: string | undefined | null, t?: TFn): string {
   if (!type) return "—";
+  if (t) return t(`users.accountTypeName.${type}`, { defaultValue: ACCOUNT_TYPE_LABELS[type] ?? type });
   return ACCOUNT_TYPE_LABELS[type] ?? type;
 }
 export const PIE_COLORS = ["#7a9e8a", "#6b8fa0", "#a07a9e", "#9ea07a", "#7a8ea0", "#a09a7a"];

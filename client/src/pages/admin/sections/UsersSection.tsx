@@ -118,7 +118,7 @@ export function UsersSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("users.allPlans")}</SelectItem>
-            {PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p)}</SelectItem>)}
+            {PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p, t)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -159,8 +159,8 @@ export function UsersSection() {
                     </Td>
                     <Td><span className="font-medium text-foreground">{userName(u as Parameters<typeof userName>[0])}</span></Td>
                     <Td className="text-muted-foreground text-xs">{u.email as string}</Td>
-                    <Td><Badge variant="outline" className="text-xs">{formatPlan((u.plan as string) ?? "starter")}</Badge></Td>
-                    <Td className="text-muted-foreground text-xs">{formatAccountType((u.account_type ?? u.accountType) as string)}</Td>
+                    <Td><Badge variant="outline" className="text-xs">{formatPlan((u.plan as string) ?? "starter", t)}</Badge></Td>
+                    <Td className="text-muted-foreground text-xs">{formatAccountType((u.account_type ?? u.accountType) as string, t)}</Td>
                     <Td>
                       {isDeactivated
                         ? <Badge variant="destructive" className="text-xs">{t("users.statusDeactivated")}</Badge>
@@ -214,7 +214,7 @@ export function UsersSection() {
             <Label>{t("users.plan")}</Label>
             <Select value={newPlan} onValueChange={setNewPlan}>
               <SelectTrigger data-testid="select-new-plan"><SelectValue /></SelectTrigger>
-              <SelectContent>{PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p)}</SelectItem>)}</SelectContent>
+              <SelectContent>{PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p, t)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <DialogFooter>
@@ -282,8 +282,8 @@ export function UsersSection() {
               <div className="grid grid-cols-2 gap-3">
                 {([
                   [t("users.email"), userDetail.user?.email],
-                  [t("users.plan"), formatPlan(userDetail.user?.plan)],
-                  [t("users.accountType"), formatAccountType(userDetail.user?.account_type ?? userDetail.user?.accountType)],
+                  [t("users.plan"), formatPlan(userDetail.user?.plan, t)],
+                  [t("users.accountType"), formatAccountType(userDetail.user?.account_type ?? userDetail.user?.accountType, t)],
                   [t("users.status"), (userDetail.user?.deactivated_at ?? userDetail.user?.deactivatedAt) ? t("users.statusDeactivated") : t("users.statusActive")],
                   [t("users.transactions"), userDetail.stats?.transactions ?? 0],
                   [t("users.habits"), userDetail.stats?.habits ?? 0],

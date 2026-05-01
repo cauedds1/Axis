@@ -78,14 +78,13 @@ export function SystemSection() {
     },
   });
 
-  const ENV_HINTS: Record<string, string> = {
-    OPENAI_API_KEY: "Required for AI features (chat, transcription, PDF analysis). Get yours at platform.openai.com → API Keys.",
-    SENDGRID_API_KEY: "Required for email alerts. Create a key in SendGrid → Settings → API Keys.",
-    STRIPE_SECRET_KEY: "Required for payments. Found in Stripe Dashboard → Developers → API Keys.",
-    STRIPE_WEBHOOK_SECRET: "Required for Stripe webhook events. Generate in Stripe Dashboard → Webhooks → your endpoint.",
-    ADMIN_EMAIL: "Your admin email address. Set to your own email to unlock this admin panel.",
-    APP_URL: "Public app URL (e.g. https://axis.replit.app). Used in email templates.",
-    DATABASE_URL: "PostgreSQL connection string. Auto-configured by Replit Postgres integration.",
+  const ENV_HINT_KEYS = [
+    "OPENAI_API_KEY", "SENDGRID_API_KEY", "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET", "ADMIN_EMAIL", "APP_URL", "DATABASE_URL",
+  ];
+  const getEnvHint = (key: string) => {
+    if (!ENV_HINT_KEYS.includes(key)) return "";
+    return t(`system.envHints.${key}` as Parameters<typeof t>[0]);
   };
 
   const formatUptime = (s: number) => {
@@ -101,7 +100,7 @@ export function SystemSection() {
         <StatCard label={t("system.uptime")} value={formatUptime(health.uptime)} icon={Activity} color="text-green-400" />
         <StatCard label={t("system.memory")} value={health.memory?.heapUsed != null ? `${health.memory.heapUsed} MB` : "—"} icon={Database} />
         <StatCard label={t("system.nodeVersion")} value={health.nodeVersion ?? "—"} icon={Server} />
-        <StatCard label={t("system.dbConnected")} value={health.dbConnected ? "✓ Yes" : "✗ No"} icon={Database}
+        <StatCard label={t("system.dbConnected")} value={health.dbConnected ? t("system.yes") : t("system.no")} icon={Database}
           color={health.dbConnected ? "text-green-400" : "text-red-400"} />
       </div>
 
@@ -151,8 +150,8 @@ export function SystemSection() {
                   <span className="font-mono font-semibold">{ev.key}</span>
                   {ev.set && <span className="font-mono text-muted-foreground ml-2">{ev.value ?? "***"}</span>}
                 </div>
-                {!ev.set && ENV_HINTS[ev.key] && (
-                  <p className="text-muted-foreground pl-5">{ENV_HINTS[ev.key]}</p>
+                {!ev.set && getEnvHint(ev.key) && (
+                  <p className="text-muted-foreground pl-5">{getEnvHint(ev.key)}</p>
                 )}
               </div>
             ))}

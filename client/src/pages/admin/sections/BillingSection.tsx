@@ -105,7 +105,7 @@ export function BillingSection() {
               ) : (subData?.subscriptions ?? []).map((s, i) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-sub-${i}`}>
                   <Td className="text-muted-foreground text-xs">{s.email as string}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{formatPlan(s.plan as string)}</Badge></Td>
+                  <Td><Badge variant="outline" className="text-xs">{formatPlan(s.plan as string, t)}</Badge></Td>
                   <Td className="font-mono text-xs max-w-xs truncate">
                     {s.stripe_subscription_id
                       ? <a href={`https://dashboard.stripe.com/subscriptions/${s.stripe_subscription_id}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{s.stripe_subscription_id as string}</a>

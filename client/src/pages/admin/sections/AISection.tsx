@@ -74,7 +74,7 @@ export function AISection() {
         <StatCard label={t("ai.yesterday")} value={overview?.yesterday ?? 0} icon={Brain} />
         <StatCard label={t("ai.thisMonth")} value={overview?.thisMonth ?? 0} icon={Activity} color="text-blue-400" />
         <StatCard label={t("ai.status")}
-          value={status?.valid ? "✓ OK" : status?.set ? "⚠ Key set, invalid" : "✗ Not set"}
+          value={status?.valid ? t("ai.keyOk") : status?.set ? t("ai.keySetInvalid") : t("ai.keyNotSet")}
           icon={Zap} color={status?.valid ? "text-green-400" : "text-red-400"} />
       </div>
 
