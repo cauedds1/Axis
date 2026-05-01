@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2, Users, Check } from "lucide-react";
+import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2, Users, Check, KeyRound } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 
@@ -352,6 +352,14 @@ export default function BusinessAuthPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "done">("idle");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirm, setForgotConfirm] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
   const [, setLocation] = useLocation();
 
   const { data: productsData } = useQuery<any>({
@@ -374,6 +382,8 @@ export default function BusinessAuthPage() {
 
   useEffect(() => {
     if (isLogin) setStep(1);
+    setForgotStep("idle");
+    setForgotError(null);
   }, [isLogin]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -409,6 +419,36 @@ export default function BusinessAuthPage() {
       setCollabLoginError(err?.message ?? t("axisBizAuth.loginError"));
     } finally {
       setCollabIsLoading(false);
+    }
+  };
+
+  const handleSendForgotCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/forgot-password", { email: forgotEmail });
+      setForgotStep("code");
+    } catch (err: any) {
+      setForgotError(err?.message || t("axisAuth.forgotSendError"));
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetWithCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    if (forgotNewPassword.length < 8) { setForgotError(t("axisAuth.forgotPwTooShort")); return; }
+    if (forgotNewPassword !== forgotConfirm) { setForgotError(t("axisAuth.forgotPwMismatch")); return; }
+    setForgotLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/reset-with-code", { email: forgotEmail, code: forgotCode, newPassword: forgotNewPassword });
+      setForgotStep("done");
+    } catch (err: any) {
+      setForgotError(err?.message || t("axisAuth.forgotResetError"));
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -546,6 +586,96 @@ export default function BusinessAuthPage() {
                   </div>
                 </form>
               </>
+            ) : forgotStep !== "idle" ? (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key="forgot-biz"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setForgotStep("idle"); setForgotError(null); }}
+                    className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors mb-6"
+                    data-testid="button-back-to-login"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> {t("axisAuth.forgotBackToLogin")}
+                  </button>
+
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                      <KeyRound className="w-4 h-4" style={{ color: PRIMARY }} />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold tracking-tight">{t("axisAuth.forgotTitle")}</h1>
+                      <p className="text-xs text-white/35">
+                        {forgotStep === "email" && t("axisAuth.forgotSubEmail")}
+                        {forgotStep === "code" && t("axisAuth.forgotSubCode", { email: forgotEmail })}
+                        {forgotStep === "done" && t("axisAuth.forgotSubDone")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {forgotStep === "email" && (
+                    <form onSubmit={handleSendForgotCode} className="space-y-4" data-testid="form-forgot-email">
+                      <div>
+                        <label className={labelClass}>{t("axisAuth.forgotEmailLabel")}</label>
+                        <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="seu@email.com" required className={inputClass} data-testid="input-forgot-email" />
+                      </div>
+                      {forgotError && (
+                        <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }}>
+                          <span className="mt-0.5">⚠</span><span>{forgotError}</span>
+                        </div>
+                      )}
+                      <button type="submit" disabled={forgotLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-send-code">
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> {t("axisAuth.forgotSendCode")}</>}
+                      </button>
+                    </form>
+                  )}
+
+                  {forgotStep === "code" && (
+                    <form onSubmit={handleResetWithCode} className="space-y-4" data-testid="form-forgot-code">
+                      <div>
+                        <label className={labelClass}>{t("axisAuth.forgotCodeLabel")}</label>
+                        <input type="text" value={forgotCode} onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" required maxLength={6} className={`${inputClass} text-center text-2xl tracking-[0.4em] font-bold`} data-testid="input-forgot-code" />
+                        <p className="text-xs text-white/25 mt-1.5 text-center">{t("axisAuth.forgotCodeHint")}</p>
+                      </div>
+                      <div>
+                        <label className={labelClass}>{t("axisAuth.forgotNewPwLabel")}</label>
+                        <input type="password" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} placeholder="••••••••" required minLength={8} className={inputClass} data-testid="input-forgot-new-password" />
+                      </div>
+                      <div>
+                        <label className={labelClass}>{t("axisAuth.forgotConfirmLabel")}</label>
+                        <input type="password" value={forgotConfirm} onChange={(e) => setForgotConfirm(e.target.value)} placeholder="••••••••" required minLength={8} className={inputClass} data-testid="input-forgot-confirm-password" />
+                      </div>
+                      {forgotError && (
+                        <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }}>
+                          <span className="mt-0.5">⚠</span><span>{forgotError}</span>
+                        </div>
+                      )}
+                      <button type="submit" disabled={forgotLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-reset-password">
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> {t("axisAuth.forgotResetBtn")}</>}
+                      </button>
+                    </form>
+                  )}
+
+                  {forgotStep === "done" && (
+                    <div className="space-y-4">
+                      <div className="flex flex-col items-center gap-3 py-6 text-center">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                          <CheckCircle2 className="w-6 h-6" style={{ color: PRIMARY }} />
+                        </div>
+                        <p className="text-sm text-white/60">{t("axisAuth.forgotDoneMsg")}</p>
+                      </div>
+                      <button type="button" onClick={() => { setForgotStep("idle"); setForgotError(null); }} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-back-to-login-done">
+                        {t("axisAuth.forgotBackToLogin")}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             ) : (
             <>
               <div className="mb-9">
@@ -561,7 +691,17 @@ export default function BusinessAuthPage() {
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("axisBizAuth.emailPlaceholder")} required className={inputClass} data-testid="input-email" />
                 </div>
                 <div>
-                  <label className={labelClass}>{t("axisBizAuth.password")}</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={labelClass}>{t("axisBizAuth.password")}</label>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotEmail(email); setForgotStep("email"); setForgotError(null); }}
+                      className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                      data-testid="button-forgot-password"
+                    >
+                      {t("axisAuth.forgotMyPassword")}
+                    </button>
+                  </div>
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("axisBizAuth.passwordPlaceholder")} required minLength={6} className={inputClass} data-testid="input-password" />
                 </div>
                 {error && (
