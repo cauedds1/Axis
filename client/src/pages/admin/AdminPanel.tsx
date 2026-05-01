@@ -8,8 +8,8 @@ import {
   LayoutDashboard, Users, Building2, TrendingUp, CreditCard,
   MessageSquare, Mail, Brain, ClipboardList, Settings,
   ChevronLeft, ChevronRight, Search, Shield, Activity,
-  Database, Zap, AlertTriangle, Check, X, RefreshCw, Trash2,
-  Edit, LogOut, BarChart2, Phone, Server, Lock
+  Database, Zap, Check, X, Trash2, Edit, LogOut, BarChart2,
+  Phone, Server, Lock, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,10 +38,10 @@ const NAV_ITEMS = [
 
 type Section = typeof NAV_ITEMS[number]["key"];
 
-const PLAN_OPTIONS = ["free", "starter", "pro", "team", "business", "enterprise"];
+const PLAN_OPTIONS = ["starter", "personal_ai", "team"];
 const PIE_COLORS = ["#7a9e8a", "#6b8fa0", "#a07a9e", "#9ea07a", "#7a8ea0", "#a09a7a"];
 
-function StatCard({ label, value, sub, icon: Icon, color = "text-primary" }: {
+function StatCard({ label, value, sub, icon: Icon, color = "text-foreground" }: {
   label: string; value: string | number; sub?: string; icon?: any; color?: string;
 }) {
   return (
@@ -50,7 +50,7 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-primary" }: {
         {Icon && <Icon className={`h-3.5 w-3.5 ${color}`} />}
         {label}
       </div>
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      <div className={`text-2xl font-bold ${color}`}>{value ?? "—"}</div>
       {sub && <div className="text-muted-foreground text-xs">{sub}</div>}
     </div>
   );
@@ -76,6 +76,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="text-xl font-bold text-foreground mb-4">{children}</h2>;
 }
 
+function SubTitle({ children }: { children: React.ReactNode }) {
+  return <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{children}</div>;
+}
+
 function TableWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-card">
@@ -92,19 +96,36 @@ function Td({ children, className = "", colSpan }: { children: React.ReactNode; 
   return <td colSpan={colSpan} className={`px-4 py-3 border-b border-border/40 ${className}`}>{children}</td>;
 }
 
+function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
+  return <tr><Td colSpan={colSpan} className="text-center text-muted-foreground py-8">{label}</Td></tr>;
+}
+
 function fmtDate(s: string | null | undefined) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  try { return new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }); } catch { return "—"; }
 }
 
 function fmtDateTime(s: string | null | undefined) {
   if (!s) return "—";
-  return new Date(s).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  try { return new Date(s).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return "—"; }
 }
 
 function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "—";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
+function userName(row: any) {
+  const fn = row.first_name ?? row.firstName ?? "";
+  const ln = row.last_name ?? row.lastName ?? "";
+  return (fn + " " + ln).trim() || row.email?.split("@")[0] || "—";
+}
+
+function adminFetch(url: string) {
+  return fetch(url, { credentials: "include" }).then(async r => {
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  });
 }
 
 // ─── SECTIONS ────────────────────────────────────────────────────────────────
@@ -113,27 +134,36 @@ function DashboardSection() {
   const { t } = useTranslation("axisAdmin");
   const { data, isLoading } = useQuery<any>({ queryKey: ["/api/admin/stats"] });
 
-  const stats = data?.stats ?? {};
-  const health = stats.systemHealth ?? "healthy";
-
-  const healthColor = health === "healthy" ? "text-green-400" : health === "degraded" ? "text-yellow-400" : "text-red-400";
-  const healthLabel = t(`dashboard.${health}` as any, health);
-
   if (isLoading) return <div className="text-muted-foreground">{t("common.loading")}</div>;
+  if (!data) return <div className="text-muted-foreground">{t("common.error")}</div>;
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("dashboard.title")}</SectionTitle>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard label={t("dashboard.totalUsers")} value={stats.totalUsers ?? 0} icon={Users} />
-        <StatCard label={t("dashboard.activeToday")} value={stats.activeToday ?? 0} icon={Activity} color="text-green-400" />
-        <StatCard label={t("dashboard.newUsersToday")} value={stats.newUsersToday ?? 0} icon={Zap} color="text-blue-400" />
-        <StatCard label={t("dashboard.totalRevenue")} value={fmtCurrency(stats.totalRevenue)} icon={TrendingUp} color="text-emerald-400" />
-        <StatCard label={t("dashboard.aiCalls")} value={stats.aiCalls30d ?? 0} icon={Brain} color="text-violet-400" />
-        <StatCard label={t("dashboard.whatsappMessages")} value={stats.whatsappMessages30d ?? 0} icon={MessageSquare} color="text-green-400" />
-        <StatCard label={t("dashboard.emailAlerts")} value={stats.emailAlerts30d ?? 0} icon={Mail} color="text-yellow-400" />
-        <StatCard label={t("dashboard.systemHealth")} value={healthLabel} icon={Server} color={healthColor} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label={t("dashboard.totalUsers")} value={data.users?.total ?? 0} icon={Users} />
+        <StatCard label={t("dashboard.activeToday")} value={data.activeUsers?.last7d ?? 0} icon={Activity} color="text-green-400" sub="last 7d" />
+        <StatCard label={t("dashboard.newUsersToday")} value={data.users?.newToday ?? 0} icon={Zap} color="text-blue-400" />
+        <StatCard label="Organizations" value={data.organizations?.total ?? 0} icon={Building2} color="text-violet-400" />
+        <StatCard label={t("dashboard.aiCalls")} value={data.aiCalls30d ?? 0} icon={Brain} color="text-violet-400" />
+        <StatCard label={t("dashboard.whatsappMessages")} value={data.whatsappMessages30d ?? 0} icon={MessageSquare} color="text-green-400" />
+        <StatCard label={t("dashboard.emailAlerts")} value={data.emailAlerts30d ?? 0} icon={Mail} color="text-yellow-400" />
+        <StatCard label="Transactions" value={data.transactions?.total ?? 0} icon={TrendingUp} color="text-emerald-400" />
       </div>
+
+      {(data.dailySignups ?? []).length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <SubTitle>Daily Signups (30d)</SubTitle>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data.dailySignups}>
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#888" }} tickFormatter={s => s?.slice(5) ?? s} />
+              <YAxis tick={{ fontSize: 10, fill: "#888" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+              <Bar dataKey="count" fill="#7a9e8a" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -152,10 +182,13 @@ function UsersSection() {
   const params = new URLSearchParams({ page: String(page), limit: "20" });
   if (search) params.set("search", search);
   if (plan !== "all") params.set("plan", plan);
-  const usersUrl = `/api/admin/users?${params.toString()}`;
 
-  const { data, isLoading } = useQuery<any>({ queryKey: ["/api/admin/users", page, search, plan], queryFn: () => fetch(usersUrl, { credentials: "include" }).then(r => r.json()) });
-  const users = data?.users ?? [];
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/users", page, search, plan],
+    queryFn: () => adminFetch(`/api/admin/users?${params.toString()}`),
+  });
+
+  const rows: any[] = data?.users ?? [];
   const total = data?.total ?? 0;
 
   const updatePlan = useMutation({
@@ -201,6 +234,7 @@ function UsersSection() {
           </SelectContent>
         </Select>
       </div>
+
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -211,29 +245,27 @@ function UsersSection() {
                 <Th>{t("users.name")}</Th>
                 <Th>{t("users.email")}</Th>
                 <Th>{t("users.plan")}</Th>
+                <Th>Type</Th>
                 <Th>{t("users.createdAt")}</Th>
-                <Th>{t("users.lastLogin")}</Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 ? (
-                <tr><Td colSpan={6} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
-              ) : users.map((u: any) => (
+              {rows.length === 0 ? (
+                <EmptyRow colSpan={6} label={t("common.noData")} />
+              ) : rows.map((u: any) => (
                 <tr key={u.id} className="hover:bg-accent/30 transition-colors" data-testid={`row-user-${u.id}`}>
-                  <Td><span className="font-medium text-foreground">{u.name ?? u.email?.split("@")[0]}</span></Td>
-                  <Td className="text-muted-foreground">{u.email}</Td>
-                  <Td>
-                    <Badge variant="outline" className="text-xs capitalize">{u.plan ?? "free"}</Badge>
-                  </Td>
-                  <Td className="text-muted-foreground">{fmtDate(u.createdAt)}</Td>
-                  <Td className="text-muted-foreground">{u.lastLoginAt ? fmtDate(u.lastLoginAt) : t("users.never")}</Td>
+                  <Td><span className="font-medium text-foreground">{userName(u)}</span></Td>
+                  <Td className="text-muted-foreground text-xs">{u.email}</Td>
+                  <Td><Badge variant="outline" className="text-xs capitalize">{u.plan ?? "free"}</Badge></Td>
+                  <Td className="text-muted-foreground text-xs capitalize">{u.account_type ?? u.accountType ?? "—"}</Td>
+                  <Td className="text-muted-foreground">{fmtDate(u.created_at ?? u.createdAt)}</Td>
                   <Td>
                     <div className="flex gap-2">
                       <Button
                         data-testid={`button-edit-plan-${u.id}`}
                         variant="ghost" size="sm"
-                        onClick={() => { setEditUser(u); setNewPlan(u.plan ?? "free"); }}
+                        onClick={() => { setEditUser(u); setNewPlan(u.plan ?? "starter"); }}
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
@@ -257,16 +289,12 @@ function UsersSection() {
 
       <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>{t("users.editPlan")}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{t("users.editPlan")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">{editUser?.email}</div>
             <Label>{t("users.plan")}</Label>
             <Select value={newPlan} onValueChange={setNewPlan}>
-              <SelectTrigger data-testid="select-new-plan">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger data-testid="select-new-plan"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
@@ -274,34 +302,19 @@ function UsersSection() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditUser(null)}>{t("common.cancel")}</Button>
-            <Button
-              data-testid="button-save-plan"
-              onClick={() => updatePlan.mutate({ id: editUser.id, plan: newPlan })}
-              disabled={updatePlan.isPending}
-            >
-              {t("common.save")}
-            </Button>
+            <Button data-testid="button-save-plan" onClick={() => updatePlan.mutate({ id: editUser.id, plan: newPlan })} disabled={updatePlan.isPending}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>{t("users.deleteUser")}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{t("users.deleteUser")}</DialogTitle></DialogHeader>
           <div className="text-sm text-muted-foreground">{t("users.confirmDelete")}</div>
           <div className="font-medium text-foreground">{confirmDelete?.email}</div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmDelete(null)}>{t("common.cancel")}</Button>
-            <Button
-              data-testid="button-confirm-delete"
-              variant="destructive"
-              onClick={() => deleteUser.mutate(confirmDelete.id)}
-              disabled={deleteUser.isPending}
-            >
-              {t("common.delete")}
-            </Button>
+            <Button data-testid="button-confirm-delete" variant="destructive" onClick={() => deleteUser.mutate(confirmDelete.id)} disabled={deleteUser.isPending}>{t("common.delete")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -312,8 +325,12 @@ function UsersSection() {
 function OrgsSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useQuery<any>({ queryKey: ["/api/admin/organizations", page], queryFn: () => fetch(`/api/admin/organizations?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
-  const orgs = data?.organizations ?? [];
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/organizations", page],
+    queryFn: () => adminFetch(`/api/admin/organizations?page=${page}&limit=20`),
+  });
+
+  const orgs: any[] = data?.organizations ?? [];
   const total = data?.total ?? 0;
 
   return (
@@ -329,20 +346,20 @@ function OrgsSection() {
                 <Th>{t("orgs.name")}</Th>
                 <Th>{t("orgs.owner")}</Th>
                 <Th>{t("orgs.members")}</Th>
-                <Th>{t("orgs.plan")}</Th>
+                <Th>Total Expenses</Th>
                 <Th>{t("orgs.createdAt")}</Th>
               </tr>
             </thead>
             <tbody>
               {orgs.length === 0 ? (
-                <tr><Td colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                <EmptyRow colSpan={5} label={t("common.noData")} />
               ) : orgs.map((o: any) => (
                 <tr key={o.id} className="hover:bg-accent/30 transition-colors" data-testid={`row-org-${o.id}`}>
                   <Td><span className="font-medium text-foreground">{o.name}</span></Td>
-                  <Td className="text-muted-foreground">{o.ownerEmail}</Td>
-                  <Td>{o.memberCount ?? 0}</Td>
-                  <Td><Badge variant="outline" className="text-xs capitalize">{o.plan ?? "—"}</Badge></Td>
-                  <Td className="text-muted-foreground">{fmtDate(o.createdAt)}</Td>
+                  <Td className="text-muted-foreground text-xs">{o.owner_email ?? o.ownerEmail ?? "—"}</Td>
+                  <Td>{o.member_count ?? o.memberCount ?? 0}</Td>
+                  <Td className="text-emerald-400">{fmtCurrency(o.total_expenses ?? o.totalExpenses)}</Td>
+                  <Td className="text-muted-foreground">{fmtDate(o.created_at ?? o.createdAt)}</Td>
                 </tr>
               ))}
             </tbody>
@@ -357,43 +374,62 @@ function OrgsSection() {
 function FinanceSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
-  const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/finance/overview"] });
-  const { data: txData, isLoading } = useQuery<any>({ queryKey: ["/api/admin/finance/transactions", page], queryFn: () => fetch(`/api/admin/finance/transactions?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
 
-  const ov = overview ?? {};
-  const chartData = (ov.byMonth ?? []).map((m: any) => ({
+  const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/finance/overview"] });
+  const { data: txData, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/finance/transactions", page],
+    queryFn: () => adminFetch(`/api/admin/finance/transactions?page=${page}&limit=20`),
+  });
+
+  // Backend returns monthlyVolume array with {month, total_volume, count}
+  const chartData = (overview?.monthlyVolume ?? []).map((m: any) => ({
     month: m.month,
-    [t("finance.revenue")]: m.revenue ?? 0,
-    [t("finance.expenses")]: m.expenses ?? 0,
+    Volume: m.total_volume ?? 0,
   }));
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("finance.title")}</SectionTitle>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label={t("finance.mrr")} value={fmtCurrency(ov.mrr)} icon={TrendingUp} color="text-emerald-400" />
-        <StatCard label={t("finance.arr")} value={fmtCurrency(ov.arr)} icon={TrendingUp} color="text-blue-400" />
-        <StatCard label={t("finance.totalRevenue")} value={fmtCurrency(ov.totalRevenue)} icon={BarChart2} color="text-violet-400" />
-        <StatCard label={t("finance.avgTicket")} value={fmtCurrency(ov.avgTicket)} icon={CreditCard} />
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <StatCard label="Current Month Volume" value={fmtCurrency(overview?.currentMonthVolume)} icon={TrendingUp} color="text-emerald-400" />
+        <StatCard label="Prev Month Volume" value={fmtCurrency(overview?.prevMonthVolume)} icon={BarChart2} color="text-blue-400" />
+        <StatCard label="Avg Spend / User" value={fmtCurrency(overview?.avgSpendPerUser)} icon={CreditCard} />
       </div>
 
       {chartData.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4">
-          <div className="text-sm font-medium text-muted-foreground mb-3">{t("finance.revenueByMonth")}</div>
+          <SubTitle>{t("finance.revenueByMonth")}</SubTitle>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#888" }} />
               <YAxis tick={{ fontSize: 11, fill: "#888" }} />
               <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
-              <Bar dataKey={t("finance.revenue")} fill="#7a9e8a" radius={[3, 3, 0, 0]} />
-              <Bar dataKey={t("finance.expenses")} fill="#9e7a7a" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Volume" fill="#7a9e8a" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
+      {(overview?.topCategories ?? []).length > 0 && (
+        <div>
+          <SubTitle>Top Expense Categories</SubTitle>
+          <TableWrapper>
+            <thead><tr><Th>Category</Th><Th>Total</Th><Th>Count</Th></tr></thead>
+            <tbody>
+              {overview.topCategories.map((c: any, i: number) => (
+                <tr key={i} className="hover:bg-accent/30">
+                  <Td className="capitalize">{c.category_name}</Td>
+                  <Td className="text-red-400">{fmtCurrency(c.total)}</Td>
+                  <Td>{c.count}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrapper>
+        </div>
+      )}
+
       <div>
-        <div className="text-sm font-medium text-muted-foreground mb-2">{t("finance.recentTransactions")}</div>
+        <SubTitle>{t("finance.recentTransactions")}</SubTitle>
         {isLoading ? (
           <div className="text-muted-foreground">{t("common.loading")}</div>
         ) : (
@@ -410,17 +446,13 @@ function FinanceSection() {
               </thead>
               <tbody>
                 {(txData?.transactions ?? []).length === 0 ? (
-                  <tr><Td colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                  <EmptyRow colSpan={5} label={t("common.noData")} />
                 ) : (txData?.transactions ?? []).map((tx: any) => (
                   <tr key={tx.id} className="hover:bg-accent/30" data-testid={`row-tx-${tx.id}`}>
-                    <Td className="text-muted-foreground text-xs">{tx.userEmail ?? "—"}</Td>
-                    <Td className="font-medium">{tx.description}</Td>
-                    <Td className={tx.type === "income" ? "text-emerald-400" : "text-red-400"}>
-                      {fmtCurrency(tx.amount)}
-                    </Td>
-                    <Td>
-                      <Badge variant="outline" className="text-xs capitalize">{tx.type}</Badge>
-                    </Td>
+                    <Td className="text-muted-foreground text-xs">{tx.user_email ?? tx.userEmail ?? "—"}</Td>
+                    <Td className="font-medium max-w-xs truncate">{tx.description}</Td>
+                    <Td className={tx.type === "income" ? "text-emerald-400" : "text-red-400"}>{fmtCurrency(tx.amount)}</Td>
+                    <Td><Badge variant="outline" className="text-xs capitalize">{tx.type}</Badge></Td>
                     <Td className="text-muted-foreground">{fmtDate(tx.date)}</Td>
                   </tr>
                 ))}
@@ -437,20 +469,31 @@ function FinanceSection() {
 function BillingSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
-  const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/billing/overview"] });
-  const { data: subData, isLoading } = useQuery<any>({ queryKey: ["/api/admin/billing/subscriptions", page], queryFn: () => fetch(`/api/admin/billing/subscriptions?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
 
+  const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/billing/overview"] });
+  const { data: subData, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/billing/subscriptions", page],
+    queryFn: () => adminFetch(`/api/admin/billing/subscriptions?page=${page}&limit=20`),
+  });
+
+  // Backend: {planCounts, mrr, payingUsers, personalAICount, teamCount, starterCount, trialUsers}
   const ov = overview ?? {};
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("billing.title")}</SectionTitle>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label={t("billing.totalSubscriptions")} value={ov.totalSubscriptions ?? 0} icon={CreditCard} />
-        <StatCard label={t("billing.activeSubscriptions")} value={ov.activeSubscriptions ?? 0} icon={Check} color="text-green-400" />
+        <StatCard label="Paying Users" value={ov.payingUsers ?? 0} icon={CreditCard} color="text-green-400" />
+        <StatCard label="Personal AI" value={ov.personalAICount ?? 0} icon={Brain} color="text-violet-400" />
+        <StatCard label="Team Plan" value={ov.teamCount ?? 0} icon={Users} color="text-blue-400" />
         <StatCard label={t("billing.mrrStripe")} value={fmtCurrency(ov.mrr)} icon={TrendingUp} color="text-emerald-400" />
-        <StatCard label={t("billing.canceled")} value={ov.canceledSubscriptions ?? 0} icon={X} color="text-red-400" />
+        <StatCard label="Starter (Free)" value={ov.starterCount ?? 0} icon={Users} />
+        <StatCard label="Trial Users" value={ov.trialUsers ?? 0} icon={AlertTriangle} color="text-yellow-400" />
+        <StatCard label="New This Month" value={ov.newSubscribersThisMonth ?? 0} icon={Zap} color="text-blue-400" />
+        <StatCard label="Prev Month" value={ov.newSubscribersPrevMonth ?? 0} icon={BarChart2} />
       </div>
+
+      <SubTitle>Subscribed Users</SubTitle>
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -458,27 +501,23 @@ function BillingSection() {
           <TableWrapper>
             <thead>
               <tr>
-                <Th>{t("billing.customer")}</Th>
+                <Th>Email</Th>
                 <Th>{t("billing.plan")}</Th>
-                <Th>{t("billing.status")}</Th>
+                <Th>Stripe Sub ID</Th>
+                <Th>Trial Ends</Th>
                 <Th>{t("billing.currentPeriodEnd")}</Th>
-                <Th>{t("billing.amount")}</Th>
               </tr>
             </thead>
             <tbody>
               {(subData?.subscriptions ?? []).length === 0 ? (
-                <tr><Td colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                <EmptyRow colSpan={5} label={t("common.noData")} />
               ) : (subData?.subscriptions ?? []).map((s: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-sub-${i}`}>
-                  <Td className="text-muted-foreground">{s.customerEmail ?? s.customerId}</Td>
-                  <Td className="capitalize">{s.planName ?? "—"}</Td>
-                  <Td>
-                    <Badge variant="outline" className={`text-xs capitalize ${s.status === "active" ? "border-green-500/40 text-green-400" : ""}`}>
-                      {s.status}
-                    </Badge>
-                  </Td>
-                  <Td className="text-muted-foreground">{fmtDate(s.currentPeriodEnd)}</Td>
-                  <Td>{s.amount != null ? fmtCurrency(s.amount / 100) : "—"}</Td>
+                  <Td className="text-muted-foreground text-xs">{s.email}</Td>
+                  <Td><Badge variant="outline" className="text-xs capitalize">{s.plan}</Badge></Td>
+                  <Td className="font-mono text-xs text-muted-foreground max-w-xs truncate">{s.stripe_subscription_id ?? "—"}</Td>
+                  <Td className="text-muted-foreground">{fmtDate(s.trial_ends_at)}</Td>
+                  <Td className="text-muted-foreground">{fmtDate(s.created_at)}</Td>
                 </tr>
               ))}
             </tbody>
@@ -495,25 +534,28 @@ function WhatsAppSection() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
-
-  const { data: configData, isLoading: configLoading } = useQuery<any>({ queryKey: ["/api/admin/whatsapp/config"] });
-  const { data: logsData, isLoading: logsLoading } = useQuery<any>({ queryKey: ["/api/admin/whatsapp/logs", page], queryFn: () => fetch(`/api/admin/whatsapp/logs?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
-
   const [botNumber, setBotNumber] = useState("");
   const [displayName, setDisplayName] = useState("");
 
-  const cfg = configData?.config ?? {};
-  const status = configData?.status ?? {};
+  // Backend: {configuredNumber, displayName, connectedPhone, status, isNumberMatch}
+  const { data: configData, isLoading: configLoading } = useQuery<any>({ queryKey: ["/api/admin/whatsapp/config"] });
+  const { data: logsData, isLoading: logsLoading } = useQuery<any>({
+    queryKey: ["/api/admin/whatsapp/logs", page],
+    queryFn: () => adminFetch(`/api/admin/whatsapp/logs?page=${page}&limit=20`),
+  });
+
+  const isConnected = configData?.status === "connected" || configData?.connectedPhone != null;
 
   const saveConfig = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/whatsapp/config", { botNumber, displayName }),
+    mutationFn: () => apiRequest("POST", "/api/admin/whatsapp/config", {
+      botNumber: botNumber || configData?.configuredNumber,
+      displayName: displayName || configData?.displayName,
+    }),
     onSuccess: () => {
       toast({ title: t("whatsapp.saved") });
       qc.invalidateQueries({ queryKey: ["/api/admin/whatsapp/config"] });
     },
   });
-
-  const isConnected = status.isConnected;
 
   return (
     <div className="space-y-6">
@@ -521,23 +563,28 @@ function WhatsAppSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("whatsapp.connection")}</div>
+          <SubTitle>{t("whatsapp.connection")}</SubTitle>
           <div className="flex items-center gap-2">
             <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
             <span className={`font-medium ${isConnected ? "text-green-400" : "text-red-400"}`}>
               {isConnected ? t("whatsapp.connected") : t("whatsapp.disconnected")}
             </span>
           </div>
-          {status.connectedPhone && (
+          {configData?.connectedPhone && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
-              {status.connectedPhone}
+              {configData.connectedPhone}
+            </div>
+          )}
+          {configData?.isNumberMatch === false && (
+            <div className="text-xs text-yellow-400 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> Number mismatch with configured bot number
             </div>
           )}
         </div>
 
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("whatsapp.config")}</div>
+          <SubTitle>{t("whatsapp.config")}</SubTitle>
           {configLoading ? (
             <div className="text-muted-foreground text-sm">{t("common.loading")}</div>
           ) : (
@@ -546,7 +593,7 @@ function WhatsAppSection() {
                 <Label className="text-xs">{t("whatsapp.botNumber")}</Label>
                 <Input
                   data-testid="input-bot-number"
-                  defaultValue={cfg.botNumber ?? ""}
+                  defaultValue={configData?.configuredNumber ?? ""}
                   onChange={e => setBotNumber(e.target.value)}
                   placeholder="+5511999999999"
                 />
@@ -555,17 +602,12 @@ function WhatsAppSection() {
                 <Label className="text-xs">{t("whatsapp.displayName")}</Label>
                 <Input
                   data-testid="input-display-name"
-                  defaultValue={cfg.displayName ?? ""}
+                  defaultValue={configData?.displayName ?? ""}
                   onChange={e => setDisplayName(e.target.value)}
                   placeholder="AXIS Bot"
                 />
               </div>
-              <Button
-                data-testid="button-save-whatsapp-config"
-                size="sm"
-                onClick={() => saveConfig.mutate()}
-                disabled={saveConfig.isPending}
-              >
+              <Button data-testid="button-save-whatsapp-config" size="sm" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>
                 {t("whatsapp.save")}
               </Button>
             </>
@@ -573,7 +615,7 @@ function WhatsAppSection() {
         </div>
       </div>
 
-      <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("whatsapp.logs")}</div>
+      <SubTitle>{t("whatsapp.logs")}</SubTitle>
       {logsLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -589,13 +631,13 @@ function WhatsAppSection() {
             </thead>
             <tbody>
               {(logsData?.logs ?? []).length === 0 ? (
-                <tr><Td colSpan={4} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                <EmptyRow colSpan={4} label={t("common.noData")} />
               ) : (logsData?.logs ?? []).map((l: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-wlog-${i}`}>
-                  <Td className="text-muted-foreground font-mono text-xs">{l.senderPhone ?? "—"}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{l.messageType}</Badge></Td>
+                  <Td className="font-mono text-xs">{l.senderPhone ?? l.sender_phone ?? "—"}</Td>
+                  <Td><Badge variant="outline" className="text-xs">{l.messageType ?? l.message_type}</Badge></Td>
                   <Td className="text-sm max-w-xs truncate">{l.result ?? "—"}</Td>
-                  <Td className="text-muted-foreground">{fmtDateTime(l.receivedAt)}</Td>
+                  <Td className="text-muted-foreground">{fmtDateTime(l.createdAt ?? l.created_at)}</Td>
                 </tr>
               ))}
             </tbody>
@@ -610,13 +652,25 @@ function WhatsAppSection() {
 function EmailLogsSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useQuery<any>({ queryKey: ["/api/admin/email-logs", page], queryFn: () => fetch(`/api/admin/email-logs?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
-  const logs = data?.logs ?? [];
-  const total = data?.total ?? 0;
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/email-logs", page],
+    queryFn: () => adminFetch(`/api/admin/email-logs?page=${page}&limit=20`),
+  });
+
+  const logs: any[] = data?.logs ?? [];
 
   return (
     <div className="space-y-4">
       <SectionTitle>{t("email.title")}</SectionTitle>
+      {(data?.typeCounts ?? []).length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
+          <StatCard label="This Month" value={data.currentMonth ?? 0} icon={Mail} color="text-yellow-400" />
+          <StatCard label="Prev Month" value={data.prevMonth ?? 0} icon={Mail} />
+          {data.typeCounts.slice(0, 2).map((tc: any, i: number) => (
+            <StatCard key={i} label={tc.alert_type} value={tc.count} />
+          ))}
+        </div>
+      )}
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -625,31 +679,23 @@ function EmailLogsSection() {
             <thead>
               <tr>
                 <Th>{t("email.to")}</Th>
-                <Th>{t("email.subject")}</Th>
                 <Th>{t("email.alertType")}</Th>
-                <Th>{t("email.status")}</Th>
                 <Th>{t("email.sentAt")}</Th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 ? (
-                <tr><Td colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                <EmptyRow colSpan={3} label={t("common.noData")} />
               ) : logs.map((l: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-email-${i}`}>
-                  <Td className="text-muted-foreground text-xs">{l.toEmail}</Td>
-                  <Td className="max-w-xs truncate">{l.subject}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{l.alertType}</Badge></Td>
-                  <Td>
-                    <Badge variant="outline" className={`text-xs ${l.status === "sent" ? "border-green-500/40 text-green-400" : "border-red-500/40 text-red-400"}`}>
-                      {l.status === "sent" ? t("email.sent") : t("email.failed")}
-                    </Badge>
-                  </Td>
-                  <Td className="text-muted-foreground">{fmtDateTime(l.sentAt)}</Td>
+                  <Td className="text-muted-foreground text-xs">{l.user_email ?? l.toEmail ?? l.to_email ?? l.userId ?? "—"}</Td>
+                  <Td><Badge variant="outline" className="text-xs">{l.alert_type ?? l.alertType}</Badge></Td>
+                  <Td className="text-muted-foreground">{fmtDateTime(l.sent_at ?? l.sentAt)}</Td>
                 </tr>
               ))}
             </tbody>
           </TableWrapper>
-          <Pagination page={page} total={total} limit={20} onPage={setPage} />
+          <Pagination page={page} total={data?.total ?? 0} limit={20} onPage={setPage} />
         </>
       )}
     </div>
@@ -658,81 +704,82 @@ function EmailLogsSection() {
 
 function AISection() {
   const { t } = useTranslation("axisAdmin");
+
+  // Backend: {today, yesterday, thisMonth, prevMonth, breakdown: [{call_type, count, total_tokens}], recentCalls}
   const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/ai/overview"] });
+  // Backend: {set, valid}
   const { data: status } = useQuery<any>({ queryKey: ["/api/admin/ai/status"] });
 
-  const ov = overview ?? {};
-  const byType: any[] = ov.byType ?? [];
-  const topUsers: any[] = ov.topUsers ?? [];
+  const breakdown: any[] = overview?.breakdown ?? [];
+
+  const pieData = breakdown.map((b: any) => ({
+    callType: b.call_type ?? b.callType,
+    count: b.count,
+    totalTokens: b.total_tokens ?? b.totalTokens,
+  }));
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("ai.title")}</SectionTitle>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard label={t("ai.totalCalls")} value={ov.totalCalls ?? 0} icon={Brain} color="text-violet-400" />
-        <StatCard label={t("ai.status")} value={status?.available ? t("ai.yes") : t("ai.no")} icon={Zap} color={status?.available ? "text-green-400" : "text-red-400"} sub={status?.latencyMs ? `${status.latencyMs}ms` : undefined} />
-        <StatCard label={t("ai.modelAvailable")} value={status?.model ?? "gpt-4o"} icon={Activity} />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Today" value={overview?.today ?? 0} icon={Brain} color="text-violet-400" />
+        <StatCard label="Yesterday" value={overview?.yesterday ?? 0} icon={Brain} />
+        <StatCard label="This Month" value={overview?.thisMonth ?? 0} icon={Activity} color="text-blue-400" />
+        <StatCard label={t("ai.status")} value={status?.valid ? "✓ OK" : status?.set ? "⚠ Key set, invalid" : "✗ Not set"} icon={Zap} color={status?.valid ? "text-green-400" : "text-red-400"} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {byType.length > 0 && (
+      {pieData.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-sm font-medium text-muted-foreground mb-3">{t("ai.byType")}</div>
+            <SubTitle>{t("ai.byType")}</SubTitle>
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
-                <Pie data={byType} dataKey="count" nameKey="callType" cx="50%" cy="50%" outerRadius={70} label={(e) => e.callType}>
-                  {byType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                <Pie data={pieData} dataKey="count" nameKey="callType" cx="50%" cy="50%" outerRadius={70}>
+                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+                <Tooltip
+                  contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }}
+                  formatter={(val: any, name: any, props: any) => [val, props.payload?.callType]}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
-        )}
 
-        {topUsers.length > 0 && (
           <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-sm font-medium text-muted-foreground mb-3">{t("ai.topUsers")}</div>
+            <SubTitle>{t("ai.byType")} — Table</SubTitle>
             <TableWrapper>
-              <thead>
-                <tr>
-                  <Th>{t("ai.user")}</Th>
-                  <Th>{t("ai.calls")}</Th>
-                  <Th>{t("ai.tokens")}</Th>
-                </tr>
-              </thead>
+              <thead><tr><Th>{t("ai.callType")}</Th><Th>{t("ai.count")}</Th><Th>{t("ai.tokens")}</Th></tr></thead>
               <tbody>
-                {topUsers.map((u: any, i: number) => (
+                {pieData.map((b: any, i: number) => (
                   <tr key={i} className="hover:bg-accent/30">
-                    <Td className="text-muted-foreground text-xs">{u.email ?? u.userId}</Td>
-                    <Td className="font-mono">{u.callCount}</Td>
-                    <Td className="font-mono text-xs">{u.totalTokens ?? "—"}</Td>
+                    <Td><Badge variant="outline" className="text-xs">{b.callType}</Badge></Td>
+                    <Td className="font-mono">{b.count}</Td>
+                    <Td className="font-mono text-xs">{b.totalTokens ?? "—"}</Td>
                   </tr>
                 ))}
               </tbody>
             </TableWrapper>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {byType.length > 0 && (
-        <TableWrapper>
-          <thead>
-            <tr>
-              <Th>{t("ai.callType")}</Th>
-              <Th>{t("ai.count")}</Th>
-              <Th>{t("ai.tokens")}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {byType.map((b: any, i: number) => (
-              <tr key={i} className="hover:bg-accent/30">
-                <Td><Badge variant="outline" className="text-xs">{b.callType}</Badge></Td>
-                <Td className="font-mono">{b.count}</Td>
-                <Td className="font-mono text-xs">{b.totalTokens ?? "—"}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </TableWrapper>
+      {(overview?.recentCalls ?? []).length > 0 && (
+        <div>
+          <SubTitle>Recent AI Calls</SubTitle>
+          <TableWrapper>
+            <thead><tr><Th>User</Th><Th>Type</Th><Th>Tokens</Th><Th>Time</Th></tr></thead>
+            <tbody>
+              {(overview.recentCalls ?? []).slice(0, 20).map((c: any, i: number) => (
+                <tr key={i} className="hover:bg-accent/30">
+                  <Td className="text-muted-foreground text-xs">{c.user_email ?? "anon"}</Td>
+                  <Td><Badge variant="outline" className="text-xs">{c.call_type}</Badge></Td>
+                  <Td className="font-mono text-xs">{c.tokens_used ?? "—"}</Td>
+                  <Td className="text-muted-foreground">{fmtDateTime(c.created_at)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableWrapper>
+        </div>
       )}
     </div>
   );
@@ -741,9 +788,12 @@ function AISection() {
 function AuditSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useQuery<any>({ queryKey: ["/api/admin/audit-logs", page], queryFn: () => fetch(`/api/admin/audit-logs?page=${page}&limit=20`, { credentials: "include" }).then(r => r.json()) });
-  const logs = data?.logs ?? [];
-  const total = data?.total ?? 0;
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/admin/audit-logs", page],
+    queryFn: () => adminFetch(`/api/admin/audit-logs?page=${page}&limit=20`),
+  });
+
+  const logs: any[] = data?.logs ?? [];
 
   return (
     <div className="space-y-4">
@@ -764,19 +814,19 @@ function AuditSection() {
             </thead>
             <tbody>
               {logs.length === 0 ? (
-                <tr><Td colSpan={5} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
+                <EmptyRow colSpan={5} label={t("common.noData")} />
               ) : logs.map((l: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-audit-${i}`}>
-                  <Td className="text-muted-foreground text-xs">{l.actorEmail ?? l.actorId ?? "—"}</Td>
+                  <Td className="text-muted-foreground text-xs">{l.actor_email ?? l.actorEmail ?? l.actor_id ?? "—"}</Td>
                   <Td><Badge variant="outline" className="text-xs">{l.action}</Badge></Td>
-                  <Td className="text-xs">{l.targetType ?? "—"}</Td>
-                  <Td className="font-mono text-xs text-muted-foreground">{l.targetId ?? "—"}</Td>
-                  <Td className="text-muted-foreground">{fmtDateTime(l.createdAt)}</Td>
+                  <Td className="text-xs">{l.target_type ?? l.targetType ?? "—"}</Td>
+                  <Td className="font-mono text-xs text-muted-foreground max-w-xs truncate">{l.target_id ?? l.targetId ?? "—"}</Td>
+                  <Td className="text-muted-foreground">{fmtDateTime(l.created_at ?? l.createdAt)}</Td>
                 </tr>
               ))}
             </tbody>
           </TableWrapper>
-          <Pagination page={page} total={total} limit={20} onPage={setPage} />
+          <Pagination page={page} total={data?.total ?? 0} limit={20} onPage={setPage} />
         </>
       )}
     </div>
@@ -788,21 +838,26 @@ function SystemSection() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  // Backend: {dbConnected, uptime, nodeVersion, memory: {rss, heapUsed, heapTotal}}
   const { data: healthData } = useQuery<any>({ queryKey: ["/api/admin/system/health"] });
+  // Backend: {envVars: [{key, set, value?}], configs: [...], maintenanceMode: bool}
   const { data: configData, isLoading: configLoading } = useQuery<any>({ queryKey: ["/api/admin/system/config"] });
+  // Backend: {global, auth, whatsapp, ai} — flat object
   const { data: rateLimitData } = useQuery<any>({ queryKey: ["/api/admin/rate-limits/status"] });
 
   const [editConfig, setEditConfig] = useState<any>(null);
   const [editValue, setEditValue] = useState("");
 
-  const health = healthData?.health ?? {};
-  const configs = configData?.configs ?? [];
-  const rateLimits = rateLimitData?.rateLimits ?? {};
+  const health = healthData ?? {};
+  const envVars: any[] = configData?.envVars ?? [];
+  const configs: any[] = configData?.configs ?? [];
+  const maintenanceMode: boolean = configData?.maintenanceMode ?? false;
+  const rateLimits: any = rateLimitData ?? {};
 
   const maintenance = useMutation({
-    mutationFn: (enable: boolean) => apiRequest("POST", "/api/admin/system/maintenance", { enable }),
-    onSuccess: (_, enable) => {
-      toast({ title: enable ? t("system.maintenanceEnabled") : t("system.maintenanceDisabled") });
+    mutationFn: (enabled: boolean) => apiRequest("POST", "/api/admin/system/maintenance", { enabled }),
+    onSuccess: (_data, enabled) => {
+      toast({ title: enabled ? t("system.maintenanceEnabled") : t("system.maintenanceDisabled") });
       qc.invalidateQueries({ queryKey: ["/api/admin/system/config"] });
     },
   });
@@ -819,7 +874,7 @@ function SystemSection() {
 
   const seedDemo = useMutation({
     mutationFn: () => apiRequest("POST", "/api/admin/demo/seed", {}),
-    onSuccess: () => toast({ title: t("system.seeded") }),
+    onSuccess: (data: any) => toast({ title: data?.credentials ? `Seeded: ${data.credentials.email} / ${data.credentials.password}` : t("system.seeded") }),
   });
 
   const resetDemo = useMutation({
@@ -827,9 +882,8 @@ function SystemSection() {
     onSuccess: () => toast({ title: t("system.reset") }),
   });
 
-  const maintenanceEnabled = configs.find((c: any) => c.key === "maintenance_mode")?.value === "true";
-
   const formatUptime = (s: number) => {
+    if (!s) return "—";
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     return `${h}h ${m}m`;
@@ -840,115 +894,103 @@ function SystemSection() {
       <SectionTitle>{t("system.title")}</SectionTitle>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label={t("system.uptime")} value={health.uptime != null ? formatUptime(health.uptime) : "—"} icon={Activity} color="text-green-400" />
-        <StatCard label={t("system.memoryUsed")} value={health.memoryUsedMB != null ? `${health.memoryUsedMB} MB` : "—"} icon={Database} />
+        <StatCard label={t("system.uptime")} value={formatUptime(health.uptime)} icon={Activity} color="text-green-400" />
+        <StatCard label="Memory (heap used)" value={health.memory?.heapUsed != null ? `${health.memory.heapUsed} MB` : "—"} icon={Database} />
         <StatCard label={t("system.nodeVersion")} value={health.nodeVersion ?? "—"} icon={Server} />
-        <StatCard label={t("system.dbConnected")} value={health.dbConnected ? t("ai.yes") : t("ai.no")} icon={Database} color={health.dbConnected ? "text-green-400" : "text-red-400"} />
+        <StatCard label={t("system.dbConnected")} value={health.dbConnected ? "✓ Yes" : "✗ No"} icon={Database} color={health.dbConnected ? "text-green-400" : "text-red-400"} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("system.maintenance")}</div>
+          <SubTitle>{t("system.maintenance")}</SubTitle>
           <div className="flex items-center gap-3">
-            <div className={`h-2 w-2 rounded-full ${maintenanceEnabled ? "bg-yellow-400" : "bg-green-400"}`} />
-            <span className="text-sm">{maintenanceEnabled ? "ON" : "OFF"}</span>
+            <div className={`h-2 w-2 rounded-full ${maintenanceMode ? "bg-yellow-400" : "bg-green-400"}`} />
+            <span className="text-sm font-medium">{maintenanceMode ? "ENABLED" : "DISABLED"}</span>
           </div>
           <div className="flex gap-2">
-            <Button
-              data-testid="button-enable-maintenance"
-              size="sm" variant="outline"
-              onClick={() => maintenance.mutate(true)}
-              disabled={maintenanceEnabled || maintenance.isPending}
-            >
+            <Button data-testid="button-enable-maintenance" size="sm" variant="outline"
+              onClick={() => maintenance.mutate(true)} disabled={maintenanceMode || maintenance.isPending}>
               {t("system.enable")}
             </Button>
-            <Button
-              data-testid="button-disable-maintenance"
-              size="sm" variant="outline"
-              onClick={() => maintenance.mutate(false)}
-              disabled={!maintenanceEnabled || maintenance.isPending}
-            >
+            <Button data-testid="button-disable-maintenance" size="sm" variant="outline"
+              onClick={() => maintenance.mutate(false)} disabled={!maintenanceMode || maintenance.isPending}>
               {t("system.disable")}
             </Button>
           </div>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("system.demo")}</div>
+          <SubTitle>{t("system.demo")}</SubTitle>
           <div className="flex gap-2">
-            <Button
-              data-testid="button-seed-demo"
-              size="sm" variant="outline"
-              onClick={() => seedDemo.mutate()}
-              disabled={seedDemo.isPending}
-            >
-              <Database className="h-3.5 w-3.5 mr-1" />
-              {t("system.seedDemo")}
+            <Button data-testid="button-seed-demo" size="sm" variant="outline" onClick={() => seedDemo.mutate()} disabled={seedDemo.isPending}>
+              <Database className="h-3.5 w-3.5 mr-1" />{t("system.seedDemo")}
             </Button>
-            <Button
-              data-testid="button-reset-demo"
-              size="sm" variant="outline"
-              onClick={() => resetDemo.mutate()}
-              disabled={resetDemo.isPending}
-              className="text-destructive border-destructive/30 hover:bg-destructive/10"
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              {t("system.resetDemo")}
+            <Button data-testid="button-reset-demo" size="sm" variant="outline" onClick={() => resetDemo.mutate()} disabled={resetDemo.isPending}
+              className="text-destructive border-destructive/30 hover:bg-destructive/10">
+              <Trash2 className="h-3.5 w-3.5 mr-1" />{t("system.resetDemo")}
             </Button>
           </div>
         </div>
       </div>
 
-      <div>
-        <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("system.config")}</div>
-        {configLoading ? (
-          <div className="text-muted-foreground">{t("common.loading")}</div>
-        ) : (
+      {envVars.length > 0 && (
+        <div>
+          <SubTitle>Environment Variables</SubTitle>
           <TableWrapper>
-            <thead>
-              <tr>
-                <Th>{t("system.key")}</Th>
-                <Th>{t("system.value")}</Th>
-                <Th>{t("system.updatedAt")}</Th>
-                <Th>{t("users.actions")}</Th>
-              </tr>
-            </thead>
+            <thead><tr><Th>Key</Th><Th>Set</Th><Th>Value</Th></tr></thead>
             <tbody>
-              {configs.length === 0 ? (
-                <tr><Td colSpan={4} className="text-center text-muted-foreground py-8">{t("common.noData")}</Td></tr>
-              ) : configs.map((c: any, i: number) => (
-                <tr key={i} className="hover:bg-accent/30" data-testid={`row-config-${i}`}>
-                  <Td className="font-mono text-xs">{c.key}</Td>
-                  <Td className="font-mono text-xs max-w-xs truncate">{c.value ?? "—"}</Td>
-                  <Td className="text-muted-foreground">{fmtDateTime(c.updatedAt)}</Td>
-                  <Td>
-                    <Button
-                      data-testid={`button-edit-config-${i}`}
-                      variant="ghost" size="sm"
-                      onClick={() => { setEditConfig(c); setEditValue(c.value ?? ""); }}
-                    >
-                      <Edit className="h-3.5 w-3.5" />
-                    </Button>
-                  </Td>
+              {envVars.map((ev: any, i: number) => (
+                <tr key={i} className="hover:bg-accent/30">
+                  <Td className="font-mono text-xs">{ev.key}</Td>
+                  <Td>{ev.set ? <Check className="h-4 w-4 text-green-400" /> : <X className="h-4 w-4 text-red-400" />}</Td>
+                  <Td className="font-mono text-xs text-muted-foreground">{ev.value ?? (ev.set ? "***" : "—")}</Td>
                 </tr>
               ))}
             </tbody>
           </TableWrapper>
-        )}
-      </div>
+        </div>
+      )}
+
+      {configs.length > 0 && (
+        <div>
+          <SubTitle>{t("system.config")}</SubTitle>
+          {configLoading ? (
+            <div className="text-muted-foreground">{t("common.loading")}</div>
+          ) : (
+            <TableWrapper>
+              <thead>
+                <tr>
+                  <Th>{t("system.key")}</Th>
+                  <Th>{t("system.value")}</Th>
+                  <Th>{t("system.updatedAt")}</Th>
+                  <Th>{t("users.actions")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {configs.map((c: any, i: number) => (
+                  <tr key={i} className="hover:bg-accent/30" data-testid={`row-config-${i}`}>
+                    <Td className="font-mono text-xs">{c.key}</Td>
+                    <Td className="font-mono text-xs max-w-xs truncate">{c.value ?? "—"}</Td>
+                    <Td className="text-muted-foreground">{fmtDateTime(c.updatedAt ?? c.updated_at)}</Td>
+                    <Td>
+                      <Button data-testid={`button-edit-config-${i}`} variant="ghost" size="sm"
+                        onClick={() => { setEditConfig(c); setEditValue(c.value ?? ""); }}>
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableWrapper>
+          )}
+        </div>
+      )}
 
       {Object.keys(rateLimits).length > 0 && (
         <div>
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("system.rateLimits")}</div>
+          <SubTitle>{t("system.rateLimits")}</SubTitle>
           <TableWrapper>
-            <thead>
-              <tr>
-                <Th>{t("system.key")}</Th>
-                <Th>{t("system.window")}</Th>
-                <Th>{t("system.max")}</Th>
-                <Th>{t("system.description")}</Th>
-              </tr>
-            </thead>
+            <thead><tr><Th>Name</Th><Th>{t("system.window")}</Th><Th>{t("system.max")}</Th><Th>{t("system.description")}</Th></tr></thead>
             <tbody>
               {Object.entries(rateLimits).map(([key, val]: [string, any]) => (
                 <tr key={key} className="hover:bg-accent/30">
@@ -965,27 +1007,14 @@ function SystemSection() {
 
       <Dialog open={!!editConfig} onOpenChange={() => setEditConfig(null)}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>{t("system.editConfig")}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{t("system.editConfig")}</DialogTitle></DialogHeader>
           <div className="space-y-2">
             <Label className="font-mono text-xs">{editConfig?.key}</Label>
-            <Textarea
-              data-testid="textarea-config-value"
-              value={editValue}
-              onChange={e => setEditValue(e.target.value)}
-              rows={3}
-            />
+            <Textarea data-testid="textarea-config-value" value={editValue} onChange={e => setEditValue(e.target.value)} rows={3} />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditConfig(null)}>{t("common.cancel")}</Button>
-            <Button
-              data-testid="button-save-config"
-              onClick={() => updateConfig.mutate({ key: editConfig.key, value: editValue })}
-              disabled={updateConfig.isPending}
-            >
-              {t("common.save")}
-            </Button>
+            <Button data-testid="button-save-config" onClick={() => updateConfig.mutate({ key: editConfig.key, value: editValue })} disabled={updateConfig.isPending}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1001,7 +1030,7 @@ export default function AdminPanel() {
   const [section, setSection] = useState<Section>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const { data: statsCheck, isLoading: checkLoading, isError } = useQuery<any>({
+  const { data: accessCheck, isLoading: checkLoading, isError } = useQuery<any>({
     queryKey: ["/api/admin/stats"],
     retry: false,
   });
@@ -1021,14 +1050,14 @@ export default function AdminPanel() {
     );
   }
 
-  if (isError || !statsCheck) {
+  if (isError || !accessCheck) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
           <Lock className="h-10 w-10 text-destructive mx-auto" />
           <div className="text-foreground font-semibold">Access Denied</div>
-          <div className="text-muted-foreground text-sm">Admin access required.</div>
-          <Button variant="outline" size="sm" onClick={() => setLocation("/")}>← Back</Button>
+          <div className="text-muted-foreground text-sm">Admin access required. Set ADMIN_EMAIL and log in as that user.</div>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/")}>← Back to App</Button>
         </div>
       </div>
     );
@@ -1084,18 +1113,10 @@ export default function AdminPanel() {
               ))}
             </nav>
             <div className="p-3 border-t border-border space-y-1">
-              <Button
-                data-testid="button-toggle-lang"
-                variant="ghost" size="sm" className="w-full justify-start text-xs"
-                onClick={toggleLang}
-              >
+              <Button data-testid="button-toggle-lang" variant="ghost" size="sm" className="w-full justify-start text-xs" onClick={toggleLang}>
                 {i18n.language === "pt-BR" ? "🇧🇷 PT-BR" : "🇺🇸 EN"}
               </Button>
-              <Button
-                data-testid="button-go-app"
-                variant="ghost" size="sm" className="w-full justify-start text-xs text-muted-foreground"
-                onClick={() => setLocation("/")}
-              >
+              <Button data-testid="button-go-app" variant="ghost" size="sm" className="w-full justify-start text-xs text-muted-foreground" onClick={() => setLocation("/")}>
                 <LogOut className="h-3.5 w-3.5 mr-2" />
                 Back to App
               </Button>
@@ -1106,11 +1127,7 @@ export default function AdminPanel() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="border-b border-border bg-card/50 px-4 py-3 flex items-center gap-3 shrink-0">
-          <Button
-            data-testid="button-toggle-sidebar"
-            variant="ghost" size="sm"
-            onClick={() => setSidebarOpen(v => !v)}
-          >
+          <Button data-testid="button-toggle-sidebar" variant="ghost" size="sm" onClick={() => setSidebarOpen(v => !v)}>
             {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

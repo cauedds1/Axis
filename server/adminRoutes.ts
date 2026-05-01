@@ -116,6 +116,15 @@ export function registerAdminRoutes(app: Express) {
         LIMIT 5
       `);
 
+      // AI / WhatsApp / Email counts (30d)
+      const [aiCalls30d] = await db.select({ count: count() }).from(aiUsageLogs).where(gte(aiUsageLogs.createdAt, last30d));
+      const [whatsappMessages30d] = await db.select({ count: count() }).from(whatsappLogs).where(gte(whatsappLogs.createdAt, last30d));
+      const [emailAlerts30d] = await db.select({ count: count() }).from(emailAlertLog).where(gte(emailAlertLog.sentAt, last30d));
+
+      // Today's signups
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const [newUsersToday] = await db.select({ count: count() }).from(users).where(gte(users.createdAt, todayStart));
+
       res.json({
         users: {
           total: totalUsers.count,
@@ -124,6 +133,7 @@ export function registerAdminRoutes(app: Express) {
           collaborators: collaborators.count,
           currentMonth: currentMonthUsers.count,
           prevMonth: prevMonthUsers.count,
+          newToday: newUsersToday.count,
         },
         activeUsers: {
           last7d: active7dResult.length,
@@ -140,6 +150,9 @@ export function registerAdminRoutes(app: Express) {
           currentMonth: currentMonthOrgs.count,
           prevMonth: prevMonthOrgs.count,
         },
+        aiCalls30d: aiCalls30d.count,
+        whatsappMessages30d: whatsappMessages30d.count,
+        emailAlerts30d: emailAlerts30d.count,
         dailySignups: dailySignups.rows,
         topUsers: topUsers.rows,
       });
@@ -655,16 +668,20 @@ export function registerAdminRoutes(app: Express) {
     const maskEmail = (email: string | undefined) => email ? email.replace(/(.{2}).+(@.+)/, '$1***$2') : null;
 
     const [maintenanceRow] = await db.select().from(systemConfig).where(eq(systemConfig.key, "maintenance_mode"));
+    const allConfigs = await db.select().from(systemConfig).orderBy(asc(systemConfig.key));
 
     res.json({
-      APP_URL: { set: envStatus("APP_URL"), value: process.env.APP_URL || null },
-      ADMIN_EMAIL: { set: envStatus("ADMIN_EMAIL"), value: maskEmail(process.env.ADMIN_EMAIL) },
-      OPENAI_API_KEY: { set: envStatus("AI_INTEGRATIONS_OPENAI_API_KEY") || envStatus("OPENAI_API_KEY") },
-      STRIPE_SECRET_KEY: { set: envStatus("STRIPE_SECRET_KEY") },
-      STRIPE_WEBHOOK_SECRET: { set: envStatus("STRIPE_WEBHOOK_SECRET") },
-      SENDGRID_API_KEY: { set: envStatus("SENDGRID_API_KEY") || envStatus("SENDGRID_INTEGRATIONS_SENDGRID_API_KEY") },
-      DATABASE_URL: { set: envStatus("DATABASE_URL") },
-      SESSION_SECRET: { set: envStatus("SESSION_SECRET") },
+      envVars: [
+        { key: "APP_URL", set: envStatus("APP_URL"), value: process.env.APP_URL || null },
+        { key: "ADMIN_EMAIL", set: envStatus("ADMIN_EMAIL"), value: maskEmail(process.env.ADMIN_EMAIL) },
+        { key: "OPENAI_API_KEY", set: envStatus("AI_INTEGRATIONS_OPENAI_API_KEY") || envStatus("OPENAI_API_KEY") },
+        { key: "STRIPE_SECRET_KEY", set: envStatus("STRIPE_SECRET_KEY") },
+        { key: "STRIPE_WEBHOOK_SECRET", set: envStatus("STRIPE_WEBHOOK_SECRET") },
+        { key: "SENDGRID_API_KEY", set: envStatus("SENDGRID_API_KEY") || envStatus("SENDGRID_INTEGRATIONS_SENDGRID_API_KEY") },
+        { key: "DATABASE_URL", set: envStatus("DATABASE_URL") },
+        { key: "SESSION_SECRET", set: envStatus("SESSION_SECRET") },
+      ],
+      configs: allConfigs,
       maintenanceMode: maintenanceRow?.value === "true",
     });
   });
