@@ -1325,7 +1325,14 @@
     "orbitalAgenda": "Agenda",
     "orbitalHabits": "Hábitos",
     "langTogglePT": "PT",
-    "langToggleEN": "EN"
+    "langToggleEN": "EN",
+    "pricingLabel": "Preços",
+    "pricingTitle1": "Planos simples,",
+    "pricingTitle2": "preço justo",
+    "pricingSub": "Comece grátis e faça upgrade quando estiver pronto. Sem surpresas, cancele quando quiser.",
+    "pricingViewAll": "Ver comparação completa de recursos",
+    "pricingFree": "Grátis",
+    "pricingForeverFree": "grátis para sempre"
   },
   "axisAuth": {
     "backButton": "Voltar",

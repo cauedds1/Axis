@@ -1325,7 +1325,14 @@
     "orbitalAgenda": "Schedule",
     "orbitalHabits": "Habits",
     "langTogglePT": "PT",
-    "langToggleEN": "EN"
+    "langToggleEN": "EN",
+    "pricingLabel": "Pricing",
+    "pricingTitle1": "Simple plans,",
+    "pricingTitle2": "honest price",
+    "pricingSub": "Start free and upgrade when you're ready. No surprises, cancel anytime.",
+    "pricingViewAll": "See full feature comparison",
+    "pricingFree": "Free",
+    "pricingForeverFree": "forever free"
   },
   "axisAuth": {
     "backButton": "Back",

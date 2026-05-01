@@ -1232,6 +1232,170 @@ export default function Landing() {
         </div>
       </section>
 
+      <div className="landing-section-divider max-w-4xl mx-auto" />
+
+      {/* Pricing section */}
+      <section className="py-24 md:py-32 px-6 relative" id="pricing" data-testid="section-pricing">
+        <div className="landing-blob absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(ellipse, rgba(${LP.primaryRgb},0.06) 0%, transparent 65%)`, filter: "blur(80px)" }} />
+        <div className="max-w-6xl mx-auto relative z-10">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-14"
+          >
+            <p className="text-xs uppercase tracking-[0.3em] mb-3" style={{ color: LP.primary }}>
+              {t("axisLanding.pricingLabel")}
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4" data-testid="text-pricing-title">
+              {t("axisLanding.pricingTitle1")}{" "}
+              <span className="landing-gradient-text">{t("axisLanding.pricingTitle2")}</span>
+            </h2>
+            <p className="text-white/40 text-base max-w-md mx-auto">
+              {t("axisLanding.pricingSub")}
+            </p>
+          </motion.div>
+
+          {/* Plan cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+            {/* Starter */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0 }}
+              className="relative rounded-2xl p-6 flex flex-col"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+              data-testid="pricing-card-starter"
+            >
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-white/80 mb-1">Starter</p>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-3xl font-bold text-white">{t("axisLanding.pricingFree")}</span>
+                  <span className="text-xs text-white/35 ml-1">{t("axisLanding.pricingForeverFree")}</span>
+                </div>
+                <p className="text-xs text-white/40 leading-relaxed">{t("pricing.starterDesc")}</p>
+              </div>
+              <ul className="space-y-2 mb-6 flex-1">
+                {[t("pricing.starterFeatures.f1"), t("pricing.starterFeatures.f2"), t("pricing.starterFeatures.f3"), t("pricing.starterFeatures.f4")].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-xs text-white/55">
+                    <Check className="w-3 h-3 flex-shrink-0" style={{ color: LP.success }} />{f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth">
+                <button
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white/60 transition-all hover:text-white/80"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  data-testid="button-pricing-starter"
+                >
+                  {t("pricing.plansCta.starter")}
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Personal AI — highlighted */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="relative rounded-2xl p-6 flex flex-col md:-mt-3 md:mb-[-12px]"
+              style={{ background: `linear-gradient(160deg, rgba(${LP.primaryRgb},0.13) 0%, rgba(${LP.secondaryRgb},0.07) 100%)`, border: `1px solid rgba(${LP.primaryRgb},0.3)`, boxShadow: `0 0 40px rgba(${LP.primaryRgb},0.1)` }}
+              data-testid="pricing-card-personal"
+            >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: `linear-gradient(90deg, rgb(${LP.primaryRgb}), rgb(${LP.secondaryRgb}))` }}>
+                  {t("pricing.mostPopular")}
+                </span>
+              </div>
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-white/90 mb-1">Personal AI</p>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-4xl font-bold text-white">$9</span>
+                  <span className="text-sm text-white/50">{t("pricing.perMonth")}</span>
+                </div>
+                <p className="text-[11px] mb-2" style={{ color: LP.primary }}>+ {t("pricing.trial7")}</p>
+                <p className="text-xs text-white/40 leading-relaxed">{t("pricing.personalDesc")}</p>
+              </div>
+              <ul className="space-y-2 mb-6 flex-1">
+                {[t("pricing.personalFeatures.f1"), t("pricing.personalFeatures.f2"), t("pricing.personalFeatures.f3"), t("pricing.personalFeatures.f4"), t("pricing.personalFeatures.f5")].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-xs text-white/70">
+                    <Check className="w-3 h-3 flex-shrink-0" style={{ color: LP.primary }} />{f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth">
+                <button
+                  className="landing-cta-button group relative w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  data-testid="button-pricing-personal"
+                >
+                  <span className="relative z-10">{t("pricing.plansCta.personal")}</span>
+                </button>
+              </Link>
+            </motion.div>
+
+            {/* Team */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="relative rounded-2xl p-6 flex flex-col"
+              style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.18)" }}
+              data-testid="pricing-card-team"
+            >
+              <div className="absolute top-4 right-4">
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider" style={{ background: "rgba(139,92,246,0.2)", color: "rgb(192,132,252)" }}>
+                  {t("pricing.businessBadge")}
+                </span>
+              </div>
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-white/80 mb-1">Team</p>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-4xl font-bold text-white">$29</span>
+                  <span className="text-sm text-white/50">{t("pricing.perMonth")}</span>
+                </div>
+                <p className="text-xs text-white/40 leading-relaxed">{t("pricing.teamDesc")}</p>
+              </div>
+              <ul className="space-y-2 mb-6 flex-1">
+                {[t("pricing.teamFeatures.f1"), t("pricing.teamFeatures.f2"), t("pricing.teamFeatures.f3"), t("pricing.teamFeatures.f4")].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-xs text-white/55">
+                    <Check className="w-3 h-3 flex-shrink-0" style={{ color: "rgb(167,139,250)" }} />{f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/business/auth">
+                <button
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
+                  style={{ background: "rgba(139,92,246,0.18)", border: "1px solid rgba(139,92,246,0.3)", color: "rgb(216,180,254)" }}
+                  data-testid="button-pricing-team"
+                >
+                  {t("pricing.plansCta.team")}
+                </button>
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* View all features link */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="text-center"
+          >
+            <Link href="/pricing">
+              <span className="inline-flex items-center gap-1.5 text-sm text-white/35 hover:text-white/60 transition-colors cursor-pointer" data-testid="link-pricing-view-all">
+                {t("axisLanding.pricingViewAll")}
+                <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
       <section className="py-28 md:py-36 px-6 relative overflow-hidden">
         <div className="absolute inset-0 landing-cta-bg" />
         <div className="landing-blob absolute top-[20%] left-[30%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.1) 0%, transparent 60%)`, filter: "blur(80px)" }} />
