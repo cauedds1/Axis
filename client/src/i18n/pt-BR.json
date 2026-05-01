@@ -3737,7 +3737,17 @@
         "audio": "Mensagem de Áudio",
         "image_receipt": "Recibo por Imagem",
         "document_pdf": "Documento PDF"
-      }
+      },
+      "mode": "Modo de Operação",
+      "modeSingle": "Modo Único",
+      "modeDual": "Modo Dual",
+      "modeSingleDesc": "Um número para tudo — bot pergunta se é pessoal ou corporativo quando necessário",
+      "modeDualDesc": "Dois números separados — AXIS Pessoal e AXIS Business — cada mensagem chega com contexto definido",
+      "modeWarning": "Atenção: trocar o modo desconectará as conexões WhatsApp ativas.",
+      "modeChanged": "Modo alterado com sucesso",
+      "personalInstance": "AXIS Pessoal",
+      "businessInstance": "AXIS Business",
+      "defaultInstance": "Bot Principal"
     },
     "email": {
       "title": "Log de Alertas de E-mail",

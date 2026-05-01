@@ -3737,7 +3737,17 @@
         "audio": "Audio Message",
         "image_receipt": "Image Receipt",
         "document_pdf": "PDF Document"
-      }
+      },
+      "mode": "Operation Mode",
+      "modeSingle": "Single Mode",
+      "modeDual": "Dual Mode",
+      "modeSingleDesc": "One number for everything — bot asks personal or business when needed",
+      "modeDualDesc": "Two separate numbers — AXIS Personal and AXIS Business — each message arrives with context pre-defined",
+      "modeWarning": "Warning: switching mode will disconnect active WhatsApp connections.",
+      "modeChanged": "Mode changed successfully",
+      "personalInstance": "AXIS Personal",
+      "businessInstance": "AXIS Business",
+      "defaultInstance": "Main Bot"
     },
     "email": {
       "title": "Email Alerts Log",

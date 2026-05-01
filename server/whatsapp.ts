@@ -22,8 +22,8 @@ import { logWhatsappMessage, logAiUsage } from "./adminLogger";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
-import { users, whatsappAuth, transactions } from "@shared/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { users, whatsappAuth, transactions, systemConfig } from "@shared/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
 import { checkLimit, incrementCounter } from "./planLimits";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
@@ -51,23 +51,26 @@ function downloadWithTimeout(
 
 const SESSION_DIR = path.join(process.cwd(), ".whatsapp-session");
 
-async function usePostgresAuthState() {
+async function usePostgresAuthState(keyPrefix: string = "") {
+  const pk = (k: string) => keyPrefix ? `${keyPrefix}:${k}` : k;
+
   const readData = async (key: string): Promise<any> => {
-    const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, key));
+    const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, pk(key)));
     if (!row) return null;
     return JSON.parse(row.data, BufferJSON.reviver);
   };
 
   const writeData = async (key: string, data: any): Promise<void> => {
+    const fullKey = pk(key);
     const serialized = JSON.stringify(data, BufferJSON.replacer);
     await db
       .insert(whatsappAuth)
-      .values({ key, data: serialized })
+      .values({ key: fullKey, data: serialized })
       .onConflictDoUpdate({ target: whatsappAuth.key, set: { data: serialized } });
   };
 
   const removeData = async (key: string): Promise<void> => {
-    await db.delete(whatsappAuth).where(eq(whatsappAuth.key, key));
+    await db.delete(whatsappAuth).where(eq(whatsappAuth.key, pk(key)));
   };
 
   const creds: AuthenticationCreds = (await readData("creds")) || initAuthCreds();
@@ -105,7 +108,11 @@ async function usePostgresAuthState() {
     },
     saveCreds: () => writeData("creds", creds),
     clearAll: async () => {
-      await db.delete(whatsappAuth);
+      if (keyPrefix) {
+        await db.execute(sql`DELETE FROM whatsapp_auth WHERE key LIKE ${keyPrefix + ":%"}`);
+      } else {
+        await db.execute(sql`DELETE FROM whatsapp_auth WHERE key NOT LIKE '%:%'`);
+      }
     },
   };
 }
@@ -133,12 +140,17 @@ interface PendingSavingsDeposit {
 }
 
 class WhatsAppManager {
+  private instanceName: string;
   private sock: any = null;
   private status: WhatsAppStatus = "disconnected";
   private qrCode: string | null = null;
   private connectedPhone: string | null = null;
   private retryCount = 0;
   private lidCache: Map<string, string> = new Map();
+
+  constructor(instanceName: string = "default") {
+    this.instanceName = instanceName;
+  }
   private pendingDuplicates: Map<string, PendingDuplicate> = new Map();
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
   private pendingSavingsDeposit: Map<string, PendingSavingsDeposit> = new Map();
@@ -158,6 +170,7 @@ class WhatsAppManager {
   getQrCode(): string | null { return this.qrCode; }
   resetRetryCount(): void { this.retryCount = 0; }
   getConnectedPhone(): string | null { return this.connectedPhone; }
+  getInstanceName(): string { return this.instanceName; }
 
   unlinkPhone(phone: string): void {
     const normalized = phone.startsWith("55") ? phone : "55" + phone;
@@ -233,8 +246,9 @@ class WhatsAppManager {
     const usePostgres = !!process.env.DATABASE_URL;
 
     if (usePostgres) {
-      log("WhatsApp: usando PostgreSQL para persistir sessão", "whatsapp");
-      const pgAuth = await usePostgresAuthState();
+      log(`WhatsApp [${this.instanceName}]: usando PostgreSQL para persistir sessão`, "whatsapp");
+      const keyPrefix = this.instanceName === "default" ? "" : this.instanceName;
+      const pgAuth = await usePostgresAuthState(keyPrefix);
       state = pgAuth.state;
       saveCreds = pgAuth.saveCreds;
       this.pgAuthClearAll = pgAuth.clearAll;
@@ -450,8 +464,13 @@ class WhatsAppManager {
         return;
       }
 
+      // In dual mode, pendingBusinessChoice is never used (context is pre-determined)
+      if (this.instanceName !== "default") {
+        this.pendingBusinessChoice.delete(jid);
+      }
+
       // Check for pending business expense choice (pessoal vs corporativo)
-      const pendingBusiness = this.pendingBusinessChoice.get(jid);
+      const pendingBusiness = this.instanceName === "default" ? this.pendingBusinessChoice.get(jid) : undefined;
       if (pendingBusiness && !imageMsg) {
         if (Date.now() > pendingBusiness.expiresAt) {
           this.pendingBusinessChoice.delete(jid);
@@ -1022,10 +1041,34 @@ class WhatsAppManager {
       return { transactionData, amount, transactionType, description, establishment, date, replyLine };
     };
 
-    // Check if user belongs to any organization — if so, ask personal vs corporate
+    // Check if user belongs to any organization — if so, route based on instance context
     const userOrgs = await storage.getUserOrganizations(userId);
-    if (userOrgs.length > 0 && validReceipts.length === 1) {
-      const { transactionData, amount, transactionType, description, establishment, date, replyLine } = buildTxData(validReceipts[0]);
+
+    // In BUSINESS instance: always route receipt directly to business (first org)
+    if (this.instanceName === "business" && userOrgs.length > 0 && validReceipts.length === 1) {
+      const { transactionData, replyLine } = buildTxData(validReceipts[0]);
+      const org = userOrgs[0];
+      let receiptImageUrl: string | undefined;
+      let receiptImageBase64: string | undefined = dataUrl;
+      if (isStorageConfigured) {
+        const uploaded = await uploadBase64Image(dataUrl, "receipts");
+        if (uploaded) { receiptImageUrl = uploaded; receiptImageBase64 = undefined; }
+      }
+      await storage.createBusinessExpense({
+        organizationId: org.id, userId, amount: transactionData.amount,
+        description: transactionData.description, categoryName: transactionData.categoryName,
+        establishment: transactionData.establishment, paymentMethod: transactionData.paymentMethod,
+        receiptItems: transactionData.receiptItems ?? null, receiptImageBase64, receiptImageUrl,
+        date: transactionData.date, source: "whatsapp", status: "pending_review",
+      } as any);
+      await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`);
+      return;
+    }
+
+    // In PERSONAL instance: skip org check entirely (route as personal regardless)
+    // In DEFAULT mode: ask user if they have an org
+    if (this.instanceName === "default" && userOrgs.length > 0 && validReceipts.length === 1) {
+      const { transactionData, replyLine } = buildTxData(validReceipts[0]);
       const orgNames = userOrgs.map(o => `*${o.name}*`).join(", ");
       this.pendingBusinessChoice.set(jid, {
         transactionData,
@@ -1677,12 +1720,13 @@ class WhatsAppManager {
   }
 
   async hasSessionAsync(): Promise<boolean> {
-    if (fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0) {
+    if (this.instanceName === "default" && fs.existsSync(SESSION_DIR) && fs.readdirSync(SESSION_DIR).length > 0) {
       return true;
     }
     if (process.env.DATABASE_URL) {
       try {
-        const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, "creds"));
+        const credsKey = this.instanceName === "default" ? "creds" : `${this.instanceName}:creds`;
+        const [row] = await db.select().from(whatsappAuth).where(eq(whatsappAuth.key, credsKey));
         return !!row;
       } catch {
         return false;
@@ -1692,4 +1736,28 @@ class WhatsAppManager {
   }
 }
 
-export const whatsappManager = new WhatsAppManager();
+export const whatsappManager = new WhatsAppManager("default");
+
+export const whatsappPersonalManager = new WhatsAppManager("personal");
+export const whatsappBusinessManager = new WhatsAppManager("business");
+
+export const whatsappManagers: Record<string, WhatsAppManager> = {
+  default: whatsappManager,
+  personal: whatsappPersonalManager,
+  business: whatsappBusinessManager,
+};
+
+export async function getWhatsAppMode(): Promise<"single" | "dual"> {
+  try {
+    const [row] = await db.select().from(systemConfig).where(eq(systemConfig.key, "whatsapp_mode"));
+    return (row?.value === "dual") ? "dual" : "single";
+  } catch {
+    return "single";
+  }
+}
+
+export function getWhatsAppManager(instance?: string): WhatsAppManager {
+  if (instance === "personal") return whatsappPersonalManager;
+  if (instance === "business") return whatsappBusinessManager;
+  return whatsappManager;
+}

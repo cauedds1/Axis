@@ -13,7 +13,7 @@ import { logAiUsage, logWhatsappMessage } from "./adminLogger";
 import { db } from "./db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { whatsappManager } from "./whatsapp";
+import { whatsappManager, whatsappManagers, getWhatsAppMode, getWhatsAppManager } from "./whatsapp";
 import { generateExpenseExcel } from "./business-reports";
 import { uploadBase64Image, isStorageConfigured } from "./lib/file-storage";
 
@@ -3146,10 +3146,12 @@ export async function registerRoutes(
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
+    const instance = (req.query.instance as string) || "default";
+    const mgr = getWhatsAppManager(instance);
     res.json({
-      status: whatsappManager.getStatus(),
-      qrCode: admin ? whatsappManager.getQrCode() : undefined,
-      phone: whatsappManager.getConnectedPhone(),
+      status: mgr.getStatus(),
+      qrCode: admin ? mgr.getQrCode() : undefined,
+      phone: mgr.getConnectedPhone(),
     });
   });
 
@@ -3157,19 +3159,21 @@ export async function registerRoutes(
     try {
       const admin = await isAdminRequest(req);
       if (!admin) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
-      const currentStatus = whatsappManager.getStatus();
+      const instance = (req.body?.instance as string) || "default";
+      const mgr = getWhatsAppManager(instance);
+      const currentStatus = mgr.getStatus();
       if (currentStatus === "connected") {
-        return res.json({ status: "connected", phone: whatsappManager.getConnectedPhone() });
+        return res.json({ status: "connected", phone: mgr.getConnectedPhone() });
       }
-      console.log(`[whatsapp] connect requested — current status: ${currentStatus}`);
-      try { whatsappManager.resetRetryCount(); } catch (_e) { /* ignore if method missing */ }
-      whatsappManager.initialize().catch(err => {
-        console.log(`[whatsapp] init error: ${err?.message || err}`);
+      console.log(`[whatsapp:${instance}] connect requested — current status: ${currentStatus}`);
+      try { mgr.resetRetryCount(); } catch (_e) { /* ignore if method missing */ }
+      mgr.initialize().catch(err => {
+        console.log(`[whatsapp:${instance}] init error: ${err?.message || err}`);
       });
       await new Promise(r => setTimeout(r, 2500));
-      const newStatus = whatsappManager.getStatus();
-      const qr = whatsappManager.getQrCode();
-      console.log(`[whatsapp] connect result — status: ${newStatus}, hasQR: ${!!qr}`);
+      const newStatus = mgr.getStatus();
+      const qr = mgr.getQrCode();
+      console.log(`[whatsapp:${instance}] connect result — status: ${newStatus}, hasQR: ${!!qr}`);
       res.json({ status: newStatus, qrCode: qr });
     } catch (error: any) {
       console.error(`[whatsapp] connect handler error:`, error);
@@ -3180,7 +3184,9 @@ export async function registerRoutes(
   app.post("/api/whatsapp/disconnect", isAuthenticated, async (req, res) => {
     try {
       if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode desconectar o WhatsApp" });
-      await whatsappManager.disconnect();
+      const instance = (req.body?.instance as string) || "default";
+      const mgr = getWhatsAppManager(instance);
+      await mgr.disconnect();
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3190,9 +3196,11 @@ export async function registerRoutes(
   app.post("/api/whatsapp/reset", isAuthenticated, async (req, res) => {
     try {
       if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode resetar o WhatsApp" });
-      await whatsappManager.disconnect();
+      const instance = (req.body?.instance as string) || "default";
+      const mgr = getWhatsAppManager(instance);
+      await mgr.disconnect();
       setTimeout(() => {
-        whatsappManager.initialize().catch(err => console.error("WhatsApp reset error:", err));
+        mgr.initialize().catch(err => console.error(`WhatsApp [${instance}] reset error:`, err));
       }, 800);
       res.json({ status: "initializing" });
     } catch (error: any) {

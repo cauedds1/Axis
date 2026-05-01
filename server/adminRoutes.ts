@@ -16,7 +16,7 @@ import {
   eq, desc, asc, sql, and, gte, lte, like, or, count, sum, inArray, isNotNull,
 } from "drizzle-orm";
 import rateLimit from "express-rate-limit";
-import { whatsappManager } from "./whatsapp";
+import { whatsappManager, whatsappManagers, getWhatsAppMode, getWhatsAppManager } from "./whatsapp";
 
 // ─── Re-export for convenience ────────────────────────────────────────────────
 export { logAiUsage, logWhatsappMessage } from "./adminLogger";
@@ -889,6 +889,54 @@ export function registerAdminRoutes(app: Express) {
 
       await logAudit(actor.id, actor.email, "admin.whatsapp_config", "system", null, { botNumber, displayName });
       res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
+    }
+  });
+
+  // ─── GET /api/admin/whatsapp/mode ─────────────────────────────────────────
+  app.get("/api/admin/whatsapp/mode", requireAdmin, async (_req, res) => {
+    try {
+      const mode = await getWhatsAppMode();
+      const status: Record<string, any> = {};
+      for (const [name, mgr] of Object.entries(whatsappManagers)) {
+        status[name] = {
+          status: mgr.getStatus(),
+          phone: mgr.getConnectedPhone(),
+          qrCode: mgr.getQrCode(),
+        };
+      }
+      res.json({ mode, instances: status });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
+    }
+  });
+
+  // ─── POST /api/admin/whatsapp/mode ────────────────────────────────────────
+  app.post("/api/admin/whatsapp/mode", requireAdmin, async (req, res) => {
+    try {
+      const actor = mustAdmin(req);
+      const { mode } = req.body;
+      if (mode !== "single" && mode !== "dual") {
+        return res.status(400).json({ message: "mode must be 'single' or 'dual'" });
+      }
+
+      await db.insert(systemConfig)
+        .values({ key: "whatsapp_mode", value: mode, updatedAt: new Date() })
+        .onConflictDoUpdate({ target: systemConfig.key, set: { value: mode, updatedAt: new Date() } });
+
+      // When switching to single: disconnect personal and business instances
+      if (mode === "single") {
+        await whatsappManagers.personal.disconnect().catch(() => {});
+        await whatsappManagers.business.disconnect().catch(() => {});
+      }
+      // When switching to dual: disconnect the default instance
+      if (mode === "dual") {
+        await whatsappManagers.default.disconnect().catch(() => {});
+      }
+
+      await logAudit(actor.id, actor.email, "admin.whatsapp_mode", "system", null, { mode });
+      res.json({ success: true, mode });
     } catch (err) {
       res.status(500).json({ message: errMsg(err) });
     }
