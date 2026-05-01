@@ -4,10 +4,31 @@ import type { BusinessExpense } from "@shared/schema";
 type EnrichedExpense = BusinessExpense & { userEmail?: string; userName?: string };
 type Lang = "en" | "pt";
 
-function formatCurrency(amount: number, lang: Lang): string {
-  return lang === "en"
-    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "BRL" }).format(amount)
-    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
+const CURRENCY_LOCALE: Record<string, string> = {
+  BRL: "pt-BR", USD: "en-US", EUR: "de-DE", GBP: "en-GB", JPY: "ja-JP",
+  CAD: "en-CA", AUD: "en-AU", CHF: "de-CH", MXN: "es-MX", ARS: "es-AR",
+  COP: "es-CO", CLP: "es-CL", PEN: "es-PE", UYU: "es-UY", SGD: "en-SG",
+  INR: "en-IN", CNY: "zh-CN", ZAR: "en-ZA", AED: "ar-AE",
+};
+
+const CURRENCY_SYMBOL: Record<string, string> = {
+  BRL: "R$", USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "C$", AUD: "A$",
+  CHF: "Fr", MXN: "MX$", ARS: "$", COP: "$", CLP: "$", PEN: "S/", UYU: "$",
+  SGD: "S$", INR: "₹", CNY: "¥", ZAR: "R", AED: "AED",
+};
+
+function formatCurrency(amount: number, lang: Lang, currency: string): string {
+  const locale = CURRENCY_LOCALE[currency] ?? (lang === "en" ? "en-US" : "pt-BR");
+  try {
+    return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+  } catch {
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
+  }
+}
+
+function getCurrencyNumFmt(currency: string): string {
+  const sym = CURRENCY_SYMBOL[currency] ?? currency;
+  return `"${sym}"#,##0.00`;
 }
 
 function formatDate(date: Date | string | null | undefined, lang: Lang): string {
@@ -40,7 +61,9 @@ export async function generateExpenseExcel(
   orgName: string,
   period?: { start?: string; end?: string },
   lang: Lang = "pt",
+  currency: string = "BRL",
 ): Promise<Buffer> {
+  const numFmt = getCurrencyNumFmt(currency);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AXIS Business";
   workbook.created = new Date();
@@ -159,7 +182,7 @@ export async function generateExpenseExcel(
       cell.border = cellBorder;
       cell.alignment = { vertical: "middle", wrapText: colNumber === 8 };
       if (colNumber === 6) {
-        cell.numFmt = lang === "en" ? '"BRL "#,##0.00' : '"R$"#,##0.00';
+        cell.numFmt = numFmt;
         cell.font = { bold: true };
       }
       if (colNumber === 7) {
@@ -186,7 +209,7 @@ export async function generateExpenseExcel(
   totalRow.getCell(5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   totalRow.getCell(5).alignment = { horizontal: "right", vertical: "middle" };
   totalRow.getCell(5).border = cellBorder;
-  totalRow.getCell(6).numFmt = lang === "en" ? '"BRL "#,##0.00' : '"R$"#,##0.00';
+  totalRow.getCell(6).numFmt = numFmt;
   totalRow.getCell(6).font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
   totalRow.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   totalRow.getCell(6).border = cellBorder;

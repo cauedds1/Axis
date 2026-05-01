@@ -18,10 +18,7 @@ import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-prov
 import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 type Preset = "7d" | "30d" | "90d" | "current_month" | "prev_month" | "custom";
 
@@ -80,6 +77,7 @@ function ReceiptImage({ url, base64, receipt }: { url?: string; base64?: string;
 
 export default function CollaboratorReport() {
   const { t, i18n } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
@@ -298,7 +296,7 @@ export default function CollaboratorReport() {
               style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
               <p className="s-label text-xs text-muted-foreground mb-1">{label}</p>
-              <p className="s-value text-base font-bold" style={{ color }}>{formatBRL(value)}</p>
+              <p className="s-value text-base font-bold" style={{ color }}>{fmtMoney(value)}</p>
             </div>
           ))}
         </div>
@@ -346,7 +344,7 @@ export default function CollaboratorReport() {
                           )}
                         </div>
                         <p className="expense-amount text-sm font-bold flex-shrink-0" style={{ color: primaryHex }} data-testid={`text-expense-amount-${expense.id}`}>
-                          {formatBRL(expense.amount)}
+                          {fmtMoney(expense.amount)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap mt-2">
@@ -385,12 +383,12 @@ export default function CollaboratorReport() {
                                 {items.map((item, idx) => (
                                   <div key={idx} className="flex items-center justify-between gap-3 px-3 py-1.5">
                                     <span className="text-xs text-foreground/75 flex-1">{item.description}</span>
-                                    <span className="text-xs font-medium text-foreground shrink-0">{formatBRL(item.amount)}</span>
+                                    <span className="text-xs font-medium text-foreground shrink-0">{fmtMoney(item.amount)}</span>
                                   </div>
                                 ))}
                                 <div className="flex items-center justify-between gap-3 px-3 py-1.5" style={{ background: "rgba(255,255,255,0.03)" }}>
                                   <span className="text-xs font-semibold text-muted-foreground">{t("axisBiz.collabReport.total")}</span>
-                                  <span className="text-xs font-bold" style={{ color: primaryHex }}>{formatBRL(expense.amount)}</span>
+                                  <span className="text-xs font-bold" style={{ color: primaryHex }}>{fmtMoney(expense.amount)}</span>
                                 </div>
                               </div>
                             </div>

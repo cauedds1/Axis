@@ -9,13 +9,11 @@ import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 export default function CollaboratorReimbursements() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -72,7 +70,7 @@ export default function CollaboratorReimbursements() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{t("axisBiz.collabReimbursements.toReceive")}</p>
-              <p className="text-xl font-bold text-foreground" data-testid="text-total-a-receber">{formatBRL(totalAReceber)}</p>
+              <p className="text-xl font-bold text-foreground" data-testid="text-total-a-receber">{fmtMoney(totalAReceber)}</p>
               <p className="text-[11px] text-muted-foreground">
                 {t("axisBiz.collabReimbursements.expense", { count: approved.length })} {t("axisBiz.collabReimbursements.approved", { count: approved.length })}
               </p>
@@ -88,7 +86,7 @@ export default function CollaboratorReimbursements() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">{t("axisBiz.collabReimbursements.totalReceived")}</p>
-              <p className="text-xl font-bold text-foreground" data-testid="text-total-recebido">{formatBRL(totalRecebido)}</p>
+              <p className="text-xl font-bold text-foreground" data-testid="text-total-recebido">{fmtMoney(totalRecebido)}</p>
               <p className="text-[11px] text-muted-foreground">
                 {t("axisBiz.collabReimbursements.reimbursement", { count: paid.length })} {t("axisBiz.collabReimbursements.paid", { count: paid.length })}
               </p>
@@ -144,7 +142,7 @@ export default function CollaboratorReimbursements() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                    <p className="text-sm font-bold text-foreground">{fmtMoney(expense.amount)}</p>
                     <Badge className="text-[10px] font-semibold" style={{ background: "#818CF815", color: "#818CF8", border: "1px solid #818CF830" }}>
                       {t("axisBiz.collabReimbursements.waiting")}
                     </Badge>
@@ -204,7 +202,7 @@ export default function CollaboratorReimbursements() {
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
-                      <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                      <p className="text-sm font-bold text-foreground">{fmtMoney(expense.amount)}</p>
                       {expense.paidAt && (
                         <p className="text-[10px] text-emerald-400">
                           {t("axisBiz.collabReimbursements.paidOn", { date: format(new Date(expense.paidAt), "dd/MM/yyyy", { locale: ptBR }) })}

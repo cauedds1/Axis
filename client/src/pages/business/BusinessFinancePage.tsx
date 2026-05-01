@@ -16,16 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { BusinessExpense, BusinessBill, BusinessReceivable, BusinessCorporateCard } from "@shared/schema";
+import { useCurrency } from "@/hooks/use-currency";
 
 const PRIMARY = "#3B82F6";
 const INDIGO = "#6366F1";
 const EMERALD = "#10B981";
 const AMBER = "#F59E0B";
 const RED = "#EF4444";
-
-function fmtBRL(v: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-}
 
 function fmtDate(d: Date | string | null | undefined) {
   if (!d) return "";
@@ -94,6 +91,7 @@ function SmallSummaryCard({ label, value, sub, color, icon: Icon }: { label: str
 
 function LancamentosTab({ orgId }: { orgId: string }) {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const [period, setPeriod] = useState<Period>("current");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -162,9 +160,9 @@ function LancamentosTab({ orgId }: { orgId: string }) {
       <p className="text-xs text-muted-foreground -mt-3">{getPeriodLabel(period, range)}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <SummaryCard label={t("axisBiz.finance.expenses")} value={fmtBRL(totalSubmitted)} sub={t("axisBiz.finance.entries", { count: filtered.length })} color={RED} icon={TrendingDown} />
-        <SummaryCard label={t("axisBiz.finance.approved")} value={fmtBRL(totalApproved)} sub={t("axisBiz.finance.approvedCount", { count: filtered.filter(e => e.status === "approved").length })} color={EMERALD} icon={TrendingUp} />
-        <SummaryCard label={t("axisBiz.finance.pending")} value={fmtBRL(totalPending)} sub={t("axisBiz.finance.pendingCount", { count: filtered.filter(e => e.status === "pending_review").length })} color={AMBER} icon={Clock} />
+        <SummaryCard label={t("axisBiz.finance.expenses")} value={fmtMoney(totalSubmitted)} sub={t("axisBiz.finance.entries", { count: filtered.length })} color={RED} icon={TrendingDown} />
+        <SummaryCard label={t("axisBiz.finance.approved")} value={fmtMoney(totalApproved)} sub={t("axisBiz.finance.approvedCount", { count: filtered.filter(e => e.status === "approved").length })} color={EMERALD} icon={TrendingUp} />
+        <SummaryCard label={t("axisBiz.finance.pending")} value={fmtMoney(totalPending)} sub={t("axisBiz.finance.pendingCount", { count: filtered.filter(e => e.status === "pending_review").length })} color={AMBER} icon={Clock} />
       </div>
 
       <div>
@@ -196,7 +194,7 @@ function LancamentosTab({ orgId }: { orgId: string }) {
                     </p>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
-                    <span className="text-sm font-semibold" style={{ color: RED }}>-{fmtBRL(exp.amount)}</span>
+                    <span className="text-sm font-semibold" style={{ color: RED }}>-{fmtMoney(exp.amount)}</span>
                     <span className="text-[10px] text-muted-foreground">{fmtDate(exp.date ?? exp.createdAt)}</span>
                   </div>
                   <Badge className="text-[9px] font-semibold ml-1 flex-shrink-0" style={{ background: `${statusColor(exp.status)}15`, color: statusColor(exp.status), border: `1px solid ${statusColor(exp.status)}30` }}>
@@ -236,6 +234,7 @@ type StatusFilter = "all" | "pending" | "paid" | "overdue";
 
 function ContasTab({ orgId }: { orgId: string }) {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const [period, setPeriod] = useState<Period>("current");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -348,12 +347,12 @@ function ContasTab({ orgId }: { orgId: string }) {
       <p className="text-xs text-muted-foreground -mt-3">{getPeriodLabel(period, range)}</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <SmallSummaryCard label={t("axisBiz.cashflow.totalDue")} value={fmtBRL(totalAPagar)} sub={t("axisBiz.finance.billsCount", { count: pendingBills.length })} color={RED} icon={TrendingDown} />
-        <SmallSummaryCard label={t("axisBiz.cashflow.totalReceivable")} value={fmtBRL(totalAReceber)} sub={t("axisBiz.finance.billsCount", { count: pendingReceivables.length })} color={EMERALD} icon={TrendingUp} />
-        <SmallSummaryCard label={t("axisBiz.finance.projectedBalance")} value={fmtBRL(saldoPrevisto)} sub="" color={saldoPrevisto >= 0 ? EMERALD : RED} icon={Wallet} />
-        <SmallSummaryCard label={t("axisBiz.finance.overdue")} value={String(overdueBills.length + overdueReceivables.length)} sub={fmtBRL(overdueBills.reduce((s, b) => s + b.amount, 0) + overdueReceivables.reduce((s, r) => s + r.amount, 0))} color={RED} icon={AlertCircle} />
-        <SmallSummaryCard label={t("axisBiz.finance.next7Days")} value={String(near7Bills.length + near7Receivables.length)} sub={fmtBRL(near7Bills.reduce((s, b) => s + b.amount, 0) + near7Receivables.reduce((s, r) => s + r.amount, 0))} color={AMBER} icon={Clock} />
-        <SmallSummaryCard label={t("axisBiz.finance.paidThisMonth")} value={fmtBRL(paidThisMonth + receivedThisMonth)} sub={t("axisBiz.finance.paidReceived")} color={EMERALD} icon={CheckCircle2} />
+        <SmallSummaryCard label={t("axisBiz.cashflow.totalDue")} value={fmtMoney(totalAPagar)} sub={t("axisBiz.finance.billsCount", { count: pendingBills.length })} color={RED} icon={TrendingDown} />
+        <SmallSummaryCard label={t("axisBiz.cashflow.totalReceivable")} value={fmtMoney(totalAReceber)} sub={t("axisBiz.finance.billsCount", { count: pendingReceivables.length })} color={EMERALD} icon={TrendingUp} />
+        <SmallSummaryCard label={t("axisBiz.finance.projectedBalance")} value={fmtMoney(saldoPrevisto)} sub="" color={saldoPrevisto >= 0 ? EMERALD : RED} icon={Wallet} />
+        <SmallSummaryCard label={t("axisBiz.finance.overdue")} value={String(overdueBills.length + overdueReceivables.length)} sub={fmtMoney(overdueBills.reduce((s, b) => s + b.amount, 0) + overdueReceivables.reduce((s, r) => s + r.amount, 0))} color={RED} icon={AlertCircle} />
+        <SmallSummaryCard label={t("axisBiz.finance.next7Days")} value={String(near7Bills.length + near7Receivables.length)} sub={fmtMoney(near7Bills.reduce((s, b) => s + b.amount, 0) + near7Receivables.reduce((s, r) => s + r.amount, 0))} color={AMBER} icon={Clock} />
+        <SmallSummaryCard label={t("axisBiz.finance.paidThisMonth")} value={fmtMoney(paidThisMonth + receivedThisMonth)} sub={t("axisBiz.finance.paidReceived")} color={EMERALD} icon={CheckCircle2} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -402,7 +401,7 @@ function ContasTab({ orgId }: { orgId: string }) {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-sm font-bold" style={{ color: item.type === "bill" ? RED : EMERALD }}>
-                    {item.type === "bill" ? "-" : "+"}{fmtBRL(item.amount)}
+                    {item.type === "bill" ? "-" : "+"}{fmtMoney(item.amount)}
                   </span>
                   <Badge className="text-[9px]" style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
                     {itemStatusLabel(item)}
@@ -459,6 +458,7 @@ const CARD_GRADIENTS = [
 
 function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCorporateCard; orgId: string; onEdit: (c: BusinessCorporateCard) => void; onDelete: (id: string) => void }) {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const available = card.limitAmount - card.currentBalance;
   const usedPct = card.limitAmount > 0 ? Math.min((card.currentBalance / card.limitAmount) * 100, 100) : 0;
   const gradient = CARD_GRADIENTS[parseInt(card.id?.slice(-1) ?? "0", 16) % CARD_GRADIENTS.length] ?? CARD_GRADIENTS[0];
@@ -499,9 +499,9 @@ function CorporateCardItem({ card, orgId, onEdit, onDelete }: { card: BusinessCo
       </div>
       <div className="p-3 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.028)" }}>
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">{t("axisBiz.finance.cardSpent")}: <span className="font-semibold text-foreground">{fmtBRL(card.currentBalance)}</span></span>
-          <span className="text-muted-foreground">{t("axisBiz.finance.cardLimitLabel")}: <span className="font-semibold text-foreground">{fmtBRL(card.limitAmount)}</span></span>
-          <span className="text-muted-foreground">{t("axisBiz.finance.cardAvailable")}: <span className="font-semibold" style={{ color: EMERALD }}>{fmtBRL(available)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardSpent")}: <span className="font-semibold text-foreground">{fmtMoney(card.currentBalance)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardLimitLabel")}: <span className="font-semibold text-foreground">{fmtMoney(card.limitAmount)}</span></span>
+          <span className="text-muted-foreground">{t("axisBiz.finance.cardAvailable")}: <span className="font-semibold" style={{ color: EMERALD }}>{fmtMoney(available)}</span></span>
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${usedPct}%`, background: usedPct > 80 ? RED : usedPct > 60 ? AMBER : PRIMARY }} />

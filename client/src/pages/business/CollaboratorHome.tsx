@@ -9,10 +9,7 @@ import { ptBR } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 function StatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
   if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.expenses.statusApproved")}</Badge>;
@@ -23,6 +20,7 @@ function StatusBadge({ status, t }: { status: string; t: (k: string) => string }
 
 export default function CollaboratorHome() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -108,10 +106,10 @@ export default function CollaboratorHome() {
   };
 
   const statCards = [
-    { label: t("axisBiz.collabHome.statMonthTotal"), value: formatBRL(stats.totalMonth), icon: ReceiptText, color: primaryHex },
+    { label: t("axisBiz.collabHome.statMonthTotal"), value: fmtMoney(stats.totalMonth), icon: ReceiptText, color: primaryHex },
     { label: t("axisBiz.collabHome.statPendingApproval"), value: stats.pending.toString(), icon: Clock, color: "#F59E0B" },
     { label: t("axisBiz.collabHome.statApprovedMonth"), value: stats.approvedMonth.toString(), icon: CheckCircle2, color: "#10B981" },
-    { label: t("axisBiz.collabHome.statToReceive"), value: formatBRL(stats.aReceber), icon: Wallet, color: "#818CF8" },
+    { label: t("axisBiz.collabHome.statToReceive"), value: fmtMoney(stats.aReceber), icon: Wallet, color: "#818CF8" },
   ];
 
   return (
@@ -160,7 +158,7 @@ export default function CollaboratorHome() {
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-semibold text-foreground">{t("axisBiz.collabHome.spendingLimit")}</p>
               <span className="text-xs text-muted-foreground">
-                {formatBRL(stats.totalMonth)} / {formatBRL(myLimit)}
+                {fmtMoney(stats.totalMonth)} / {fmtMoney(myLimit)}
               </span>
             </div>
             <div className="h-2 rounded-full bg-white/5 overflow-hidden">
@@ -175,7 +173,7 @@ export default function CollaboratorHome() {
             {stats.totalMonth > myLimit && (
               <div className="flex items-center gap-1.5 mt-2">
                 <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                <p className="text-xs text-red-400">{t("axisBiz.collabHome.limitExceeded", { amount: formatBRL(stats.totalMonth - myLimit) })}</p>
+                <p className="text-xs text-red-400">{t("axisBiz.collabHome.limitExceeded", { amount: fmtMoney(stats.totalMonth - myLimit) })}</p>
               </div>
             )}
           </motion.div>
@@ -195,7 +193,7 @@ export default function CollaboratorHome() {
                 <div key={cat} className="mb-3" data-testid={`collab-cat-${cat}`}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-foreground truncate">{cat}</span>
-                    <span className="text-xs font-semibold text-foreground ml-2">{formatBRL(total)}</span>
+                    <span className="text-xs font-semibold text-foreground ml-2">{fmtMoney(total)}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div
@@ -240,7 +238,7 @@ export default function CollaboratorHome() {
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <p className="text-xs font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                    <p className="text-xs font-bold text-foreground">{fmtMoney(expense.amount)}</p>
                     <StatusBadge status={expense.status} t={t} />
                   </div>
                 </div>

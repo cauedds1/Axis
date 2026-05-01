@@ -14,10 +14,7 @@ import { ptBR, enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 function ReceiptLightbox({ src, onClose, receipt }: { src: string; onClose: () => void; receipt: string }) {
   return (
@@ -43,17 +40,19 @@ function ReceiptLightbox({ src, onClose, receipt }: { src: string; onClose: () =
 }
 
 function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
+  const { fmtMoney } = useCurrency();
   return (
     <div className="rounded-2xl p-4 flex flex-col gap-1 flex-1 min-w-[120px]"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-base font-bold" style={{ color }}>{formatBRL(value)}</p>
+      <p className="text-base font-bold" style={{ color }}>{fmtMoney(value)}</p>
     </div>
   );
 }
 
 export default function ReportView() {
   const { t, i18n } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const dateLocale = i18n.language.startsWith("pt") ? ptBR : enUS;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -232,7 +231,7 @@ export default function ReportView() {
                             )}
                           </div>
                           <p className="text-sm font-bold shrink-0" style={{ color: primaryHex }}>
-                            {formatBRL(expense.amount)}
+                            {fmtMoney(expense.amount)}
                           </p>
                         </div>
 
@@ -273,13 +272,13 @@ export default function ReportView() {
                               {receiptItems.map((item, idx) => (
                                 <div key={idx} className="flex items-center justify-between gap-3 px-3 py-1.5">
                                   <span className="text-xs text-foreground/75 flex-1">{item.description}</span>
-                                  <span className="text-xs font-medium text-foreground shrink-0">{formatBRL(item.amount)}</span>
+                                  <span className="text-xs font-medium text-foreground shrink-0">{fmtMoney(item.amount)}</span>
                                 </div>
                               ))}
                               <div className="flex items-center justify-between gap-3 px-3 py-1.5"
                                 style={{ background: "rgba(255,255,255,0.03)" }}>
                                 <span className="text-xs font-semibold text-muted-foreground">{t("axisBiz.collab.reportView.total")}</span>
-                                <span className="text-xs font-bold" style={{ color: primaryHex }}>{formatBRL(expense.amount)}</span>
+                                <span className="text-xs font-bold" style={{ color: primaryHex }}>{fmtMoney(expense.amount)}</span>
                               </div>
                             </div>
                           </div>

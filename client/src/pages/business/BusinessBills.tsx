@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 import {
   Plus, ArrowDownCircle, CheckCircle2, Clock, AlertTriangle,
   Trash2, CheckSquare, Square, X, Paperclip, ExternalLink,
@@ -14,9 +15,6 @@ const AMBER = "#F59E0B";
 const GREEN = "#34D399";
 const BLUE = "#3B82F6";
 
-function fmtCurrency(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -63,6 +61,7 @@ function BillRow({
   onDelete: () => void;
   t: (k: string) => string;
 }) {
+  const { fmtMoney } = useCurrency();
   const s = getDueStatus(bill.dueDate as string, bill.status);
   const leftColor = s === "paid" ? GREEN : s === "overdue" ? ACCENT : s === "urgent" ? AMBER : BLUE;
 
@@ -97,7 +96,7 @@ function BillRow({
         </div>
 
         <div className="flex-shrink-0 text-right">
-          <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtCurrency(bill.amount)}</p>
+          <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtMoney(bill.amount)}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">{t("axisBiz.bills.dueLabel")} {fmtDate(bill.dueDate as string)}</p>
         </div>
 
@@ -197,6 +196,7 @@ type TabFilter = "all" | "pending" | "overdue" | "paid";
 
 export default function BusinessBills() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const [tab, setTab] = useState<TabFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
@@ -265,8 +265,8 @@ export default function BusinessBills() {
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: t("axisBiz.bills.cardDue"), value: fmtCurrency(totalPending), color: ACCENT, icon: ArrowDownCircle },
-            { label: t("axisBiz.bills.cardOverdue"), value: fmtCurrency(totalOverdue), color: AMBER, icon: AlertTriangle },
+            { label: t("axisBiz.bills.cardDue"), value: fmtMoney(totalPending), color: ACCENT, icon: ArrowDownCircle },
+            { label: t("axisBiz.bills.cardOverdue"), value: fmtMoney(totalOverdue), color: AMBER, icon: AlertTriangle },
             { label: t("axisBiz.bills.cardTotal"), value: String(bills.length), color: BLUE, icon: Clock },
           ].map((card, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}

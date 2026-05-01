@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { BusinessReceivable } from "@shared/schema";
+import { useCurrency } from "@/hooks/use-currency";
 
 const GREEN = "#34D399";
 const AMBER = "#F59E0B";
@@ -15,9 +16,6 @@ const ACCENT = "#F87171";
 
 const PAYMENT_METHOD_KEYS = ["pix", "creditCard", "debitCard", "boleto", "cash", "transfer", "other"];
 
-function fmtCurrency(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -60,6 +58,7 @@ function ReceivableRow({
   onDelete: () => void;
   t: (k: string) => string;
 }) {
+  const { fmtMoney } = useCurrency();
   const [showPayModal, setShowPayModal] = useState(false);
   const [payMethodKey, setPayMethodKey] = useState("pix");
   const s = getDueStatus(rec.dueDate as string, rec.status);
@@ -119,7 +118,7 @@ function ReceivableRow({
           </div>
 
           <div className="flex-shrink-0 text-right">
-            <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtCurrency(rec.amount)}</p>
+            <p className="text-sm font-bold" style={{ color: leftColor }}>{fmtMoney(rec.amount)}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               {rec.status === "received"
                 ? `${t("axisBiz.receivables.receivedOn")} ${fmtDate(rec.receivedAt as string ?? rec.dueDate as string)}`
@@ -224,6 +223,7 @@ type TabFilter = "all" | "pending" | "overdue" | "received";
 
 export default function BusinessReceivables() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const [tab, setTab] = useState<TabFilter>("all");
   const [showModal, setShowModal] = useState(false);
 
@@ -290,15 +290,15 @@ export default function BusinessReceivables() {
               <p className="text-sm font-semibold" style={{ color: ACCENT }}>{t("axisBiz.receivables.overdueAlert", { count: overdueItems.length })}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              {t("axisBiz.receivables.overdueTotal")} <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(overdueItems.reduce((acc, r) => acc + r.amount, 0))}</span>
+              {t("axisBiz.receivables.overdueTotal")} <span className="font-bold" style={{ color: ACCENT }}>{fmtMoney(overdueItems.reduce((acc, r) => acc + r.amount, 0))}</span>
             </p>
           </motion.div>
         )}
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: t("axisBiz.receivables.cardPending"), value: fmtCurrency(totalPending), color: BLUE, icon: ArrowUpCircle },
-            { label: t("axisBiz.receivables.cardReceived"), value: fmtCurrency(totalReceived), color: GREEN, icon: CheckCircle2 },
+            { label: t("axisBiz.receivables.cardPending"), value: fmtMoney(totalPending), color: BLUE, icon: ArrowUpCircle },
+            { label: t("axisBiz.receivables.cardReceived"), value: fmtMoney(totalReceived), color: GREEN, icon: CheckCircle2 },
             { label: t("axisBiz.receivables.cardOverdue"), value: String(overdueItems.length), color: ACCENT, icon: AlertTriangle },
           ].map((card, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}

@@ -66,6 +66,15 @@ async function getUserLang(userId: string): Promise<"en" | "pt"> {
   }
 }
 
+async function getUserCurrency(userId: string): Promise<string> {
+  try {
+    const profile = await storage.getUserProfile(userId);
+    return ((profile as any)?.currency) || "BRL";
+  } catch {
+    return "BRL";
+  }
+}
+
 async function adjustDisciplinePoints(userId: string, delta: number, reason: string): Promise<void> {
   try {
     const profile = await storage.getUserProfile(userId);
@@ -3510,7 +3519,7 @@ export async function registerRoutes(
       const userOrgs = await storage.getUserOrganizations(userId);
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const org = await storage.getOrganizationById(orgId);
-      const _excelLang = await getUserLang(userId);
+      const [_excelLang, _excelCurrency] = await Promise.all([getUserLang(userId), getUserCurrency(userId)]);
       const _locale = _excelLang === "en" ? "en-US" : "pt-BR";
       const filters: any = {};
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
@@ -3521,7 +3530,7 @@ export async function registerRoutes(
       const buffer = await generateExpenseExcel(expenses, org?.name ?? "Organization", {
         start: req.query.startDate ? new Date(req.query.startDate as string).toLocaleDateString(_locale) : undefined,
         end: req.query.endDate ? new Date(req.query.endDate as string).toLocaleDateString(_locale) : undefined,
-      }, _excelLang);
+      }, _excelLang, _excelCurrency);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       const _fileName = _excelLang === "en"
         ? `expenses-${org?.name ?? orgId}.xlsx`

@@ -3,15 +3,13 @@ import { motion } from "framer-motion";
 import { TrendingUp, ArrowDownCircle, ArrowUpCircle, AlertTriangle, Calendar } from "lucide-react";
 import type { BusinessBill, BusinessReceivable } from "@shared/schema";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/hooks/use-currency";
 
 const GREEN = "#34D399";
 const ACCENT = "#F87171";
 const BLUE = "#3B82F6";
 const AMBER = "#F59E0B";
 
-function fmtCurrency(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
@@ -45,6 +43,7 @@ type TimelineItem =
 
 export default function BusinessCashflow() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { data: orgs } = useQuery<any[]>({ queryKey: ["/api/business/organizations"] });
   const orgId = orgs?.[0]?.id;
 
@@ -85,12 +84,12 @@ export default function BusinessCashflow() {
   }
 
   const summaryCards = [
-    { label: t("axisBiz.cashflow.totalDue"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtCurrency(totalAPagar), color: ACCENT, icon: ArrowDownCircle },
-    { label: t("axisBiz.cashflow.totalReceivable"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtCurrency(totalAReceber), color: GREEN, icon: ArrowUpCircle },
+    { label: t("axisBiz.cashflow.totalDue"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtMoney(totalAPagar), color: ACCENT, icon: ArrowDownCircle },
+    { label: t("axisBiz.cashflow.totalReceivable"), sublabel: t("axisBiz.cashflow.currentMonthPending"), value: fmtMoney(totalAReceber), color: GREEN, icon: ArrowUpCircle },
     {
       label: t("axisBiz.cashflow.projectedBalance"),
       sublabel: saldoProjetado >= 0 ? t("axisBiz.cashflow.positiveResult") : t("axisBiz.cashflow.deficitWarning"),
-      value: fmtCurrency(saldoProjetado),
+      value: fmtMoney(saldoProjetado),
       color: saldoProjetado >= 0 ? BLUE : ACCENT,
       icon: TrendingUp,
     },
@@ -116,7 +115,7 @@ export default function BusinessCashflow() {
               <p className="text-sm font-bold" style={{ color: ACCENT }}>{t("axisBiz.cashflow.cashGapWarningTitle")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t("axisBiz.cashflow.cashGapWarningDesc")}{" "}
-                <span className="font-bold" style={{ color: ACCENT }}>{fmtCurrency(Math.abs(saldoProjetado))}</span>.{" "}
+                <span className="font-bold" style={{ color: ACCENT }}>{fmtMoney(Math.abs(saldoProjetado))}</span>.{" "}
                 {t("axisBiz.cashflow.cashGapAdvice")}
               </p>
             </div>
@@ -170,9 +169,9 @@ export default function BusinessCashflow() {
                     {grouped[weekKey].reduce((acc, item) => {
                       return item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount;
                     }, 0) >= 0 ? (
-                      <span style={{ color: GREEN }}>+{fmtCurrency(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
+                      <span style={{ color: GREEN }}>+{fmtMoney(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
                     ) : (
-                      <span style={{ color: ACCENT }}>{fmtCurrency(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
+                      <span style={{ color: ACCENT }}>{fmtMoney(grouped[weekKey].reduce((acc, item) => item.kind === "receivable" ? acc + item.data.amount : acc - item.data.amount, 0))}</span>
                     )}
                   </div>
                 </div>
@@ -203,7 +202,7 @@ export default function BusinessCashflow() {
                           </p>
                         </div>
                         <p className="text-sm font-bold flex-shrink-0" style={{ color }}>
-                          {isBill ? "-" : "+"}{fmtCurrency(d.amount)}
+                          {isBill ? "-" : "+"}{fmtMoney(d.amount)}
                         </p>
                       </motion.div>
                     );

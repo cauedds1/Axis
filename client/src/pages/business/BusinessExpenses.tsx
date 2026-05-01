@@ -17,13 +17,10 @@ import { ptBR } from "date-fns/locale";
 import { enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
 import i18n from "@/i18n";
+import { useCurrency } from "@/hooks/use-currency";
 
 const BLUE = "#2563EB";
 const BLUE_LIGHT = "#3B82F6";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
@@ -35,6 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void }) {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   return (
     <Dialog open={!!expense} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -58,7 +56,7 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelAmount")}</p>
-              <p className="font-bold text-foreground" data-testid="text-expense-amount">{formatBRL(expense?.amount ?? 0)}</p>
+              <p className="font-bold text-foreground" data-testid="text-expense-amount">{fmtMoney(expense?.amount ?? 0)}</p>
             </div>
             <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <p className="text-xs text-muted-foreground mb-1">{t("axisBiz.expenses.labelDate")}</p>
@@ -89,12 +87,12 @@ function ReceiptModal({ expense, onClose }: { expense: any; onClose: () => void 
                       {items.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-2 text-sm">
                           <span className="text-foreground/80 flex-1 truncate">{item.description}</span>
-                          <span className="font-medium text-foreground shrink-0">{formatBRL(item.amount)}</span>
+                          <span className="font-medium text-foreground shrink-0">{fmtMoney(item.amount)}</span>
                         </div>
                       ))}
                       <div className="border-t border-border/30 mt-1 pt-1.5 flex items-center justify-between text-sm font-semibold">
                         <span className="text-muted-foreground">{t("axisBiz.expenses.itemsTotal")}</span>
-                        <span style={{ color: BLUE_LIGHT }}>{formatBRL(expense.amount)}</span>
+                        <span style={{ color: BLUE_LIGHT }}>{fmtMoney(expense.amount)}</span>
                       </div>
                     </div>
                   </div>
@@ -267,6 +265,7 @@ type StatusTab = "all" | "pending_review" | "approved" | "rejected";
 
 export default function BusinessExpenses() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -414,7 +413,7 @@ export default function BusinessExpenses() {
           <div className="flex flex-col gap-3 py-1">
             <p className="text-sm text-muted-foreground">
               <strong className="text-foreground">{rejectingExpense?.establishment || rejectingExpense?.description}</strong>
-              {" — "}{formatBRL(rejectingExpense?.amount ?? 0)}
+              {" — "}{fmtMoney(rejectingExpense?.amount ?? 0)}
             </p>
             <div>
               <label className="text-xs text-muted-foreground mb-1.5 block">{t("axisBiz.expenses.rejectionReasonOptional")}</label>
@@ -567,7 +566,7 @@ export default function BusinessExpenses() {
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{t("axisBiz.expenses.found", { count: expenses?.length ?? 0 })}</p>
           <p className="text-sm font-semibold text-foreground">
-            {t("axisBiz.expenses.itemsTotal")}: <span style={{ color: BLUE_LIGHT }}>{formatBRL(totalAmount)}</span>
+            {t("axisBiz.expenses.itemsTotal")}: <span style={{ color: BLUE_LIGHT }}>{fmtMoney(totalAmount)}</span>
           </p>
         </div>
       )}
@@ -631,9 +630,9 @@ export default function BusinessExpenses() {
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
                           <div className="text-right">
-                            <p className="text-sm font-bold text-foreground">{formatBRL(expense.amount)}</p>
+                            <p className="text-sm font-bold text-foreground">{fmtMoney(expense.amount)}</p>
                             {overLimit && (
-                              <div className="flex items-center gap-1 mt-0.5" title={`${t("axisBiz.expenses.limitLabel")}: ${formatBRL(limit!)}`}>
+                              <div className="flex items-center gap-1 mt-0.5" title={`${t("axisBiz.expenses.limitLabel")}: ${fmtMoney(limit!)}`}>
                                 <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />
                                 <span className="text-[9px] text-amber-400 font-semibold">{t("axisBiz.expenses.overLimit")}</span>
                               </div>

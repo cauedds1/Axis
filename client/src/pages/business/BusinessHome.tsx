@@ -21,14 +21,11 @@ import { ptBR } from "date-fns/locale";
 import { enUS } from "date-fns/locale";
 import { useBusinessTheme, getBusinessPrimaryHex, getBusinessModulePalette } from "@/components/theme-provider";
 import i18n from "@/i18n";
+import { useCurrency } from "@/hooks/use-currency";
 
 const AMBER = "#F59E0B";
 const EMERALD = "#10B981";
 const RED = "#EF4444";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
@@ -106,6 +103,7 @@ function CreateOrgDialog({ onCreated }: { onCreated: () => void }) {
 
 export default function BusinessHome() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { businessTheme } = useBusinessTheme();
   const primaryHex = getBusinessPrimaryHex(businessTheme);
@@ -259,18 +257,18 @@ export default function BusinessHome() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               {
-                label: t("axisBiz.home.totalMonth"), value: formatBRL(metrics.total), color: primaryHex,
+                label: t("axisBiz.home.totalMonth"), value: fmtMoney(metrics.total), color: primaryHex,
                 sub: t("axisBiz.home.monthlyExpenses"), Icon: TrendingUp, testId: "card-total-month",
               },
               {
-                label: t("axisBiz.home.approved"), value: formatBRL(metrics.approved), color: EMERALD,
+                label: t("axisBiz.home.approved"), value: fmtMoney(metrics.approved), color: EMERALD,
                 sub: t("axisBiz.home.approvedAmount"), Icon: CheckCircle2, testId: "card-approved",
               },
               {
                 label: t("axisBiz.home.pendingApprovals"),
                 value: String(metrics.pendingCount),
                 color: metrics.pendingCount > 0 ? AMBER : EMERALD,
-                sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : "✓",
+                sub: metrics.pendingCount > 0 ? fmtMoney(metrics.pendingTotal) : "✓",
                 Icon: metrics.pendingCount > 0 ? AlertCircle : CheckCircle2,
                 testId: "card-pending",
                 highlight: metrics.pendingCount > 0,
@@ -333,7 +331,7 @@ export default function BusinessHome() {
                         <p className="text-[10px] text-muted-foreground">{e.userName || e.userEmail || "—"} · {e.date ? format(new Date(e.date), "dd/MM", { locale: dateLocale }) : "—"}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <p className="text-xs font-semibold text-foreground">{formatBRL(e.amount)}</p>
+                        <p className="text-xs font-semibold text-foreground">{fmtMoney(e.amount)}</p>
                         <StatusBadge status={e.status} />
                       </div>
                     </div>
@@ -355,7 +353,7 @@ export default function BusinessHome() {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-foreground truncate">{data.name || data.email}</p>
                         </div>
-                        <p className="text-xs font-bold text-foreground flex-shrink-0">{formatBRL(data.total)}</p>
+                        <p className="text-xs font-bold text-foreground flex-shrink-0">{fmtMoney(data.total)}</p>
                       </div>
                     ))}
                   </div>
@@ -372,7 +370,7 @@ export default function BusinessHome() {
                       <div key={cat} data-testid={`row-dashboard-cat-${cat}`}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-foreground">{cat}</span>
-                          <span className="text-xs font-semibold text-foreground">{formatBRL(total)}</span>
+                          <span className="text-xs font-semibold text-foreground">{fmtMoney(total)}</span>
                         </div>
                         <div className="h-1 rounded-full bg-white/5 overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${(total / maxCat) * 100}%`, background: primaryHex }} />

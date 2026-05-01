@@ -15,10 +15,7 @@ import {
 import { Users, UserPlus, MoreVertical, ShieldCheck, UserMinus, Crown, UserCog, Eye, EyeOff, Copy, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBusinessTheme, getBusinessPrimaryHex } from "@/components/theme-provider";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 function MemberAvatar({ name, email, primaryHex }: { name?: string; email?: string; primaryHex: string }) {
   const initials = name
@@ -37,6 +34,7 @@ function MemberAvatar({ name, email, primaryHex }: { name?: string; email?: stri
 
 export default function BusinessCollaborators() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -352,7 +350,7 @@ export default function BusinessCollaborators() {
 
                 <div className="text-right flex-shrink-0 mr-2">
                   <p className="text-xs font-semibold text-foreground" data-testid={`text-member-total-${member.id}`}>
-                    {formatBRL(stats.total)}
+                    {fmtMoney(stats.total)}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     {t("axisBiz.collaborators.expensesThisMonth", { count: stats.count })}

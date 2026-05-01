@@ -9,10 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart3, FileSpreadsheet, Download, CheckCircle2, Clock, XCircle, TrendingUp } from "lucide-react";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from "date-fns";
 import { useBusinessTheme, getBusinessPrimaryHex, getBusinessModulePalette } from "@/components/theme-provider";
-
-function formatBRL(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-}
+import { useCurrency } from "@/hooks/use-currency";
 
 function StatusBadge({ status, t }: { status: string; t: (key: string) => string }) {
   if (status === "approved") return <Badge className="text-[10px] font-semibold" style={{ background: "#10B98115", color: "#10B981", border: "1px solid #10B98130" }}>{t("axisBiz.expenses.statusApproved")}</Badge>;
@@ -44,6 +41,7 @@ function MemberAvatar({ name, email, hex }: { name?: string; email?: string; hex
 
 export default function BusinessReports() {
   const { t } = useTranslation();
+  const { fmtMoney } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const { businessTheme } = useBusinessTheme();
@@ -243,9 +241,9 @@ export default function BusinessReports() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: t("axisBiz.reports.periodTotal"), value: formatBRL(metrics.total), color: primaryHex, Icon: TrendingUp },
-          { label: t("axisBiz.expenses.statusApproved"), value: formatBRL(metrics.approvedTotal), color: "#10B981", Icon: CheckCircle2 },
-          { label: t("axisBiz.expenses.statusPending"), value: `${metrics.pendingCount} ${t("axisBiz.reports.expenseCount", { count: metrics.pendingCount })}`, color: "#F59E0B", Icon: Clock, sub: metrics.pendingCount > 0 ? formatBRL(metrics.pendingTotal) : undefined },
+          { label: t("axisBiz.reports.periodTotal"), value: fmtMoney(metrics.total), color: primaryHex, Icon: TrendingUp },
+          { label: t("axisBiz.expenses.statusApproved"), value: fmtMoney(metrics.approvedTotal), color: "#10B981", Icon: CheckCircle2 },
+          { label: t("axisBiz.expenses.statusPending"), value: `${metrics.pendingCount} ${t("axisBiz.reports.expenseCount", { count: metrics.pendingCount })}`, color: "#F59E0B", Icon: Clock, sub: metrics.pendingCount > 0 ? fmtMoney(metrics.pendingTotal) : undefined },
           { label: t("axisBiz.expenses.statusRejected"), value: `${metrics.rejectedCount} ${t("axisBiz.reports.expenseCount", { count: metrics.rejectedCount })}`, color: "#EF4444", Icon: XCircle },
         ].map((card, i) => (
           <div key={i} className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }} data-testid={`card-report-metric-${i}`}>
@@ -273,7 +271,7 @@ export default function BusinessReports() {
                   <span className="text-xs text-foreground">{cat}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{metrics.total > 0 ? Math.round((total / metrics.total) * 100) : 0}%</span>
-                    <span className="text-xs font-semibold text-foreground">{formatBRL(total)}</span>
+                    <span className="text-xs font-semibold text-foreground">{fmtMoney(total)}</span>
                   </div>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -295,7 +293,7 @@ export default function BusinessReports() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-foreground truncate">{data.name || data.email}</span>
-                        <span className="text-xs font-semibold text-foreground ml-2">{formatBRL(data.total)}</span>
+                        <span className="text-xs font-semibold text-foreground ml-2">{fmtMoney(data.total)}</span>
                       </div>
                       <span className="text-[10px] text-muted-foreground">{data.count} {t("axisBiz.reports.expenseCount", { count: data.count })}</span>
                     </div>
@@ -338,7 +336,7 @@ export default function BusinessReports() {
                     <td className="px-4 py-3 text-foreground">{e.userName || e.userEmail || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{e.categoryName || "—"}</td>
                     <td className="px-4 py-3 text-foreground max-w-[180px] truncate">{e.establishment || e.description || "—"}</td>
-                    <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{formatBRL(e.amount)}</td>
+                    <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">{fmtMoney(e.amount)}</td>
                     <td className="px-4 py-3"><StatusBadge status={e.status} t={t} /></td>
                   </tr>
                 ))}
