@@ -3538,11 +3538,11 @@
       "users": "Gestão de Usuários",
       "organizations": "Organizações",
       "finance": "Financeiro",
-      "billing": "Billing & Stripe",
-      "whatsapp": "WhatsApp Manager",
+      "billing": "Cobrança & Stripe",
+      "whatsapp": "Gerenciador WhatsApp",
       "email": "Log de E-mails",
       "ai": "Controle de IA",
-      "audit": "Audit Log",
+      "audit": "Log de Auditoria",
       "system": "Configurações do Sistema"
     },
     "dashboard": {
@@ -3571,7 +3571,8 @@
       "txCount": "Transações",
       "allTime": "Todos",
       "period7d": "7 dias",
-      "period30d": "30 dias"
+      "period30d": "30 dias",
+      "last7d": "Últimos 7 dias"
     },
     "users": {
       "title": "Gestão de Usuários",

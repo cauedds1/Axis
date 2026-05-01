@@ -58,7 +58,7 @@ export function DashboardSection() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label={t("dashboard.totalUsers")} value={data.users.total} icon={Users} />
-        <StatCard label={t("dashboard.activeToday")} value={data.activeUsers.last7d} icon={Activity} color="text-green-400" />
+        <StatCard label={t("dashboard.activeToday")} value={data.activeUsers.last7d} sub={t("dashboard.last7d")} icon={Activity} color="text-green-400" />
         <StatCard label={t("dashboard.newUsersToday")} value={data.users.newToday} icon={Zap} color="text-blue-400" />
         <StatCard label={t("dashboard.organizations")} value={data.organizations.total} icon={Building2} color="text-violet-400" />
         <StatCard label={t("dashboard.aiCalls")} value={data.aiCalls30d} icon={Brain} color="text-violet-400" />

@@ -3571,7 +3571,8 @@
       "txCount": "Transactions",
       "allTime": "All",
       "period7d": "7 days",
-      "period30d": "30 days"
+      "period30d": "30 days",
+      "last7d": "Last 7 days"
     },
     "users": {
       "title": "User Management",

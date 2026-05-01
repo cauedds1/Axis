@@ -105,7 +105,7 @@ export function OrgsSection() {
                 <tr key={o.id as string} className="hover:bg-accent/30 transition-colors cursor-pointer"
                   data-testid={`row-org-${o.id}`} onClick={() => setViewOrg(o)}>
                   <Td><span className="font-medium text-foreground">{o.name as string}</span></Td>
-                  <Td className="text-muted-foreground text-xs">{(o.owner_email ?? o.ownerEmail ?? "—") as string}</Td>
+                  <Td className="text-muted-foreground text-xs">{(o.owner_email ?? o.ownerEmail ?? t("orgs.noOwner")) as string}</Td>
                   <Td>{(o.member_count ?? o.memberCount ?? 0) as number}</Td>
                   <Td className="text-emerald-400">{fmtCurrency((o.total_expenses ?? o.totalExpenses) as number)}</Td>
                   <Td className="text-muted-foreground">{fmtDate((o.created_at ?? o.createdAt) as string)}</Td>
@@ -151,7 +151,7 @@ export function OrgsSection() {
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  [t("orgs.owner"), (viewOrg?.owner_email ?? viewOrg?.ownerEmail ?? "—")],
+                  [t("orgs.owner"), (viewOrg?.owner_email ?? viewOrg?.ownerEmail ?? t("orgs.noOwner"))],
                   [t("orgs.members"), orgDetail.members?.length ?? 0],
                   [t("orgs.pendingApprovals"), orgDetail.pendingApprovals ?? 0],
                   [t("orgs.created"), fmtDate((viewOrg?.created_at ?? viewOrg?.createdAt) as string)],
