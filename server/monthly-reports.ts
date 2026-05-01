@@ -540,7 +540,7 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const approvedExpenses = expenses.filter(e => e.status === "approved").reduce((s, e) => s + Number(e.amount), 0);
-  const pendingExpenses = expenses.filter(e => e.status === "pending").reduce((s, e) => s + Number(e.amount), 0);
+  const pendingExpenses = expenses.filter(e => e.status === "pending_review").reduce((s, e) => s + Number(e.amount), 0);
   const rejectedExpenses = expenses.filter(e => e.status === "rejected").reduce((s, e) => s + Number(e.amount), 0);
   const prevApprovedExpenses = prevExpenses.filter(e => e.status === "approved").reduce((s, e) => s + Number(e.amount), 0);
 
