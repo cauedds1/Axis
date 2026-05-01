@@ -118,7 +118,7 @@ export function UsersSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("users.allPlans")}</SelectItem>
-            {PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            {PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -214,7 +214,7 @@ export function UsersSection() {
             <Label>{t("users.plan")}</Label>
             <Select value={newPlan} onValueChange={setNewPlan}>
               <SelectTrigger data-testid="select-new-plan"><SelectValue /></SelectTrigger>
-              <SelectContent>{PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              <SelectContent>{PLAN_OPTIONS.map(p => <SelectItem key={p} value={p}>{formatPlan(p)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <DialogFooter>
