@@ -132,7 +132,7 @@ function baseTemplate(content: string, lang: Lang = "pt"): string {
     .stat-value { font-size: 14px; font-weight: 600; color: #fff; }
     .progress-bar-bg { background: rgba(255,255,255,0.08); border-radius: 6px; height: 8px; width: 100%; margin: 8px 0; }
     .progress-bar-fill { height: 8px; border-radius: 6px; background: #00E6FF; }
-    .score-circle { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; font-size: 22px; font-weight: 800; border: 3px solid #FF6B6B; color: #FF6B6B; }
+    .score-circle { display: inline-block; text-align: center; line-height: 50px; width: 56px; height: 56px; border-radius: 50%; font-size: 22px; font-weight: 800; border: 3px solid #FF6B6B; color: #FF6B6B; }
   </style>
 </head>
 <body>
