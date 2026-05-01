@@ -3778,7 +3778,8 @@
       "keyInvalidHint": "The key is set but failed validation. Check it is correct and has sufficient credits.",
       "keyOk": "✓ OK",
       "keySetInvalid": "⚠ Key set, invalid",
-      "keyNotSet": "✗ Not set"
+      "keyNotSet": "✗ Not set",
+      "anonymous": "anon"
     },
     "audit": {
       "title": "Audit Log",

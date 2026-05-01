@@ -147,7 +147,7 @@ export function AISection() {
                   <EmptyRow colSpan={4} label={t("common.noData")} />
                 ) : (logsData?.logs ?? []).map((c, i) => (
                   <tr key={i} className="hover:bg-accent/30" data-testid={`row-ai-${i}`}>
-                    <Td className="text-muted-foreground text-xs">{(c.user_email as string) ?? "anon"}</Td>
+                    <Td className="text-muted-foreground text-xs">{(c.user_email as string) ?? t("ai.anonymous")}</Td>
                     <Td><Badge variant="outline" className="text-xs">{c.call_type as string}</Badge></Td>
                     <Td className="font-mono text-xs">{(c.tokens_used as string) ?? "—"}</Td>
                     <Td className="text-muted-foreground">{fmtDateTime(c.created_at as string)}</Td>

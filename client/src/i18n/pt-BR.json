@@ -3778,7 +3778,8 @@
       "time": "Hora",
       "keyOk": "✓ OK",
       "keySetInvalid": "⚠ Chave inválida",
-      "keyNotSet": "✗ Não configurada"
+      "keyNotSet": "✗ Não configurada",
+      "anonymous": "anônimo"
     },
     "audit": {
       "title": "Audit Log",
@@ -3820,7 +3821,7 @@
       "max": "Máx. Requisições",
       "description": "Descrição",
       "memory": "Memória (heap usado)",
-      "rateLimitsCard": "Rate Limits",
+      "rateLimitsCard": "Limites de Taxa",
       "envVars": "Variáveis de Ambiente",
       "name": "Nome",
       "enabled": "ATIVADO",
