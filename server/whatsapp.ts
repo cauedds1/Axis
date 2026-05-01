@@ -867,6 +867,19 @@ class WhatsAppManager {
     userId: string,
     mimetype: string
   ): Promise<void> {
+    // ── Plan limit check ──────────────────────────────────────────────────────
+    try {
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+      const photoLimit = await checkLimit(userId, 'whatsapp_photo');
+      if (!photoLimit.allowed) {
+        await this.sendMessage(jid, `⛔ *Limite atingido* — ${photoLimit.reason}.\n\n👉 Faça upgrade em: https://axis.app/pricing`);
+        return;
+      }
+      incrementCounter(userId, 'whatsapp_photo').catch(() => {});
+    } catch (limitErr: any) {
+      log(`WhatsApp: erro ao checar limite de foto — ${limitErr?.message}`, "whatsapp");
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     await this.sendMessage(jid, "🔍 Analisando comprovante...");
 
     let buffer: Buffer;
@@ -1150,6 +1163,20 @@ class WhatsAppManager {
       await this.sendMessage(jid, `📄 Arquivo *${fileName}* não suportado.\n\nEnvie extratos nos formatos: PDF, TXT ou CSV.`);
       return;
     }
+
+    // ── Plan limit check ──────────────────────────────────────────────────────
+    try {
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+      const pdfLimit = await checkLimit(userId, 'whatsapp_pdf');
+      if (!pdfLimit.allowed) {
+        await this.sendMessage(jid, `⛔ *Limite atingido* — ${pdfLimit.reason}.\n\n👉 Faça upgrade em: https://axis.app/pricing`);
+        return;
+      }
+      incrementCounter(userId, 'whatsapp_pdf').catch(() => {});
+    } catch (limitErr: any) {
+      log(`WhatsApp: erro ao checar limite de PDF — ${limitErr?.message}`, "whatsapp");
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     await this.sendMessage(jid, "📄 Analisando extrato... Isso pode levar alguns segundos para arquivos com muitas páginas.");
 

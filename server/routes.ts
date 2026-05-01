@@ -484,11 +484,11 @@ export async function registerRoutes(
 
       if (req.file) {
         const voiceLimit = await checkLimit(userId, 'voice');
-        if (!voiceLimit.allowed) return res.status(402).json({ limitReached: true, plan: voiceLimit.plan, message: voiceLimit.reason });
+        if (!voiceLimit.allowed) return res.status(402).json({ limitReached: true, plan: voiceLimit.plan, reason: voiceLimit.reason, current: voiceLimit.current, limit: voiceLimit.limit, upgradeUrl: voiceLimit.upgradeUrl });
       }
 
       const aiLimit = await checkLimit(userId, 'ai_capture');
-      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, message: aiLimit.reason });
+      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, reason: aiLimit.reason, current: aiLimit.current, limit: aiLimit.limit, upgradeUrl: aiLimit.upgradeUrl });
 
       let text = req.body.text;
 
@@ -604,7 +604,7 @@ export async function registerRoutes(
       if (!req.file) return res.status(400).json({ message: "Nenhuma imagem enviada" });
       const { checkLimit, incrementCounter } = await import("./planLimits");
       const aiLimit = await checkLimit(userId, 'ai_capture');
-      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, message: aiLimit.reason });
+      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, reason: aiLimit.reason, current: aiLimit.current, limit: aiLimit.limit, upgradeUrl: aiLimit.upgradeUrl });
       const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       const result = await processMultipleReceipts(base64, userId);
       incrementCounter(userId, 'ai_capture').catch(() => {});
@@ -938,7 +938,7 @@ export async function registerRoutes(
       const userId = getUserId(req);
       const { checkLimit, incrementCounter } = await import("./planLimits");
       const txLimit = await checkLimit(userId, 'transaction');
-      if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, message: txLimit.reason });
+      if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
       const schema = z.object({
         amount: z.number().positive(),
         description: z.string().min(1),
@@ -1048,7 +1048,7 @@ export async function registerRoutes(
       const { checkCountLimits } = await import("./planLimits");
       const existingCards = await storage.getCreditCards(userId);
       const cardLimit = await checkCountLimits(userId, 'credit_card', existingCards.length);
-      if (!cardLimit.allowed) return res.status(402).json({ limitReached: true, plan: cardLimit.plan, message: cardLimit.reason });
+      if (!cardLimit.allowed) return res.status(402).json({ limitReached: true, plan: cardLimit.plan, reason: cardLimit.reason, current: cardLimit.current, limit: cardLimit.limit, upgradeUrl: cardLimit.upgradeUrl });
       const schema = z.object({
         name: z.string().min(1),
         bank: z.string().min(1),
@@ -1224,7 +1224,7 @@ export async function registerRoutes(
       const { checkCountLimits } = await import("./planLimits");
       const existingGoals = await storage.getFinancialGoals(userId);
       const goalLimit = await checkCountLimits(userId, 'financial_goal', existingGoals.length);
-      if (!goalLimit.allowed) return res.status(402).json({ limitReached: true, plan: goalLimit.plan, message: goalLimit.reason });
+      if (!goalLimit.allowed) return res.status(402).json({ limitReached: true, plan: goalLimit.plan, reason: goalLimit.reason, current: goalLimit.current, limit: goalLimit.limit, upgradeUrl: goalLimit.upgradeUrl });
       const schema = z.object({
         title: z.string().min(1),
         emoji: z.string().optional().nullable(),
@@ -1563,7 +1563,7 @@ export async function registerRoutes(
       const { checkCountLimits } = await import("./planLimits");
       const existingHabits = await storage.getHabits(userId);
       const habitLimit = await checkCountLimits(userId, 'habit', existingHabits.length);
-      if (!habitLimit.allowed) return res.status(402).json({ limitReached: true, plan: habitLimit.plan, message: habitLimit.reason });
+      if (!habitLimit.allowed) return res.status(402).json({ limitReached: true, plan: habitLimit.plan, reason: habitLimit.reason, current: habitLimit.current, limit: habitLimit.limit, upgradeUrl: habitLimit.upgradeUrl });
       const schema = z.object({
         name: z.string().min(1),
         frequency: z.enum(["daily", "weekly"]).default("daily"),
@@ -1754,7 +1754,7 @@ export async function registerRoutes(
 
       const { checkLimit, incrementCounter } = await import("./planLimits");
       const chatLimit = await checkLimit(userId, 'chat_message');
-      if (!chatLimit.allowed) return res.status(402).json({ limitReached: true, plan: chatLimit.plan, message: chatLimit.reason });
+      if (!chatLimit.allowed) return res.status(402).json({ limitReached: true, plan: chatLimit.plan, reason: chatLimit.reason, current: chatLimit.current, limit: chatLimit.limit, upgradeUrl: chatLimit.upgradeUrl });
 
       await storage.createChatMessage({ userId, role: "user", content: message });
 
@@ -1935,6 +1935,13 @@ export async function registerRoutes(
       const { type, data } = req.body;
       if (!type || !data) return res.status(400).json({ message: "Dados inválidos" });
 
+      // Enforce transaction limit for expense/income actions
+      if (type === "expense" || type === "income") {
+        const { checkLimit, incrementCounter } = await import("./planLimits");
+        const txLimit = await checkLimit(userId, 'transaction');
+        if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
+      }
+
       let summary = "";
       switch (type) {
         case "expense":
@@ -1964,6 +1971,8 @@ export async function registerRoutes(
                 };
               });
               await storage.createManyTransactions(txList);
+              const { incrementCounter: incConfirm1 } = await import("./planLimits");
+              incConfirm1(userId, 'transaction').catch(() => {});
               summary = `Pronto! ${data.installments}x de R$${installAmt.toFixed(2)} no ${card.name} registrado.`;
               saveEventToMemory(userId, `Chat confirmado: parcelado ${data.installments}x R$${installAmt} "${data.description}" no ${card.name}`).catch(() => {});
               break;
@@ -1990,6 +1999,8 @@ export async function registerRoutes(
               creditCardId: data.creditCardId || null,
               installmentInfo: null,
             });
+            const { incrementCounter: incConfirm2 } = await import("./planLimits");
+            incConfirm2(userId, 'transaction').catch(() => {});
           }
           const label = type === "expense" ? "gasto" : "receita";
           const cardSuffix = data.creditCardId ? ` no cartão` : "";
@@ -3097,6 +3108,26 @@ export async function registerRoutes(
 
   // ── AXIS BUSINESS ─────────────────────────────────────────────────────
 
+  // Guard: /api/business/* requires Team plan
+  // Collaborators (accountType==='collaborator') are allowed through — they have been invited by a Team org owner.
+  // Note: this guard is registered before individual business routes so it fires first.
+  app.use("/api/business", isAuthenticated, async (req, res, next) => {
+    try {
+      const userId = getUserId(req);
+      const { checkLimit } = await import("./planLimits");
+      const bizLimit = await checkLimit(userId, 'business');
+      if (!bizLimit.allowed) {
+        // Collaborators bypass the plan check — they operate under an org
+        const [u] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, userId));
+        if (u?.accountType === 'collaborator') return next();
+        return res.status(402).json({ limitReached: true, plan: bizLimit.plan, reason: bizLimit.reason, upgradeUrl: bizLimit.upgradeUrl });
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.post("/api/business/organizations", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -3735,7 +3766,6 @@ export async function registerRoutes(
           pr.unit_amount,
           pr.currency,
           pr.recurring,
-          pr.trial_period_days,
           pr.metadata as price_metadata
         FROM stripe.products p
         LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true

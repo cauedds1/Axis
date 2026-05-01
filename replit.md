@@ -33,9 +33,22 @@ Not specified.
 - **Collaborator Accounts**: A specific account type for team members with restricted access and a separate login flow.
 - **Reporting**: Detailed reports with filtering and export capabilities.
 
+**Subscription & Billing System**:
+- Three-tier plan structure: Starter (free), Personal AI (R$9/month, 7-day trial), Team (R$29/month)
+- Plan limits enforced server-side on: transactions, AI captures, WhatsApp photos/PDFs, chat messages, credit cards, goals, habits, voice transcription, Business module access
+- Stripe integration via `stripe-replit-sync` (Replit connector); webhook registered before `express.json()`
+- `server/planLimits.ts`: central limit checking, counter incrementing, usage reporting
+- `server/webhookHandlers.ts`: Stripe webhook → plan sync with product metadata expansion
+- Global 402 interception in `client/src/lib/queryClient.ts` emits `axis:limit-reached` CustomEvent
+- `client/src/components/upgrade-modal.tsx`: global upgrade prompt shown on any 402 limit-reached
+- `/pricing` page: public, accessible without auth; `/settings?tab=billing`: usage meters and plan management
+- `scripts/seed-stripe-products.ts`: idempotent Stripe product/price seeder
+- Business endpoints (`/api/business/*`) guarded by Team-plan middleware; collaborators bypass the guard
+
 ## External Dependencies
 - **PostgreSQL**: Primary database for all application data.
 - **S3-compatible Storage**: For storing user-uploaded files, such as receipt images.
 - **OpenAI**: For various AI functionalities including transcription, intent detection, document analysis, and chatbot services.
 - **SendGrid**: For sending email alerts and notifications.
+- **Stripe**: Payment processing for subscription plans via Replit Stripe connector + stripe-replit-sync.
 - **WhatsApp (Baileys)**: For WhatsApp bot integration, including session persistence.

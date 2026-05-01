@@ -77,8 +77,24 @@ export class WebhookHandlers {
 
         const items = subscription.items?.data ?? [];
         for (const item of items) {
-          const productMeta = item.price?.product?.metadata ?? {};
-          const planMeta = item.price?.metadata?.plan ?? productMeta?.plan;
+          // Try price metadata first, then expand product if needed
+          const priceMeta = item.price?.metadata ?? {};
+          let planMeta: string | undefined = priceMeta?.plan;
+
+          if (!planMeta) {
+            // product may be an ID string — expand it
+            let productObj = item.price?.product;
+            if (typeof productObj === 'string') {
+              try {
+                const { getUncachableStripeClient } = await import('./stripeClient');
+                const stripeClient = await getUncachableStripeClient();
+                productObj = await stripeClient.products.retrieve(productObj);
+              } catch { /* ignore */ }
+            }
+            const productMeta = (productObj as any)?.metadata ?? {};
+            planMeta = productMeta?.plan;
+          }
+
           if (planMeta === 'personal_ai') { plan = 'personal_ai'; break; }
           if (planMeta === 'team') { plan = 'team'; break; }
         }

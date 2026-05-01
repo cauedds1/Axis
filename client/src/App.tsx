@@ -75,6 +75,7 @@ import BusinessAuthPage from "@/pages/business-auth-page";
 import { BusinessLayout } from "@/components/BusinessLayout";
 import BusinessWelcome from "@/pages/business/BusinessWelcome";
 import { BusinessThemeProvider } from "@/components/theme-provider";
+import { UpgradeModal } from "@/components/upgrade-modal";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -324,6 +325,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <UpgradeModal />
         <AppRouter />
       </TooltipProvider>
     </QueryClientProvider>

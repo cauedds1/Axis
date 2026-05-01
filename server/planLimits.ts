@@ -18,8 +18,9 @@ export interface LimitResult {
   allowed: boolean;
   reason?: string;
   current?: number;
-  limit?: number;
+  limit?: number | null;
   plan?: string;
+  upgradeUrl?: string;
 }
 
 export const PLAN_LIMITS = {
@@ -116,7 +117,8 @@ export async function checkLimit(userId: string, limitType: LimitType): Promise<
     return {
       allowed,
       plan,
-      reason: allowed ? undefined : `${LIMIT_LABELS[limitType]} is not available on the ${getPlanDisplayName(plan)} plan`,
+      reason: allowed ? undefined : `${LIMIT_LABELS[limitType]} não está disponível no plano ${getPlanDisplayName(plan)}`,
+      upgradeUrl: allowed ? undefined : '/pricing',
     };
   }
 
@@ -144,7 +146,8 @@ export async function checkLimit(userId: string, limitType: LimitType): Promise<
       current,
       limit: numericLimit,
       plan,
-      reason: `You've reached your limit of ${numericLimit} ${LIMIT_LABELS[limitType]} on the ${getPlanDisplayName(plan)} plan`,
+      reason: `Você atingiu o limite de ${numericLimit} ${LIMIT_LABELS[limitType]} no plano ${getPlanDisplayName(plan)}`,
+      upgradeUrl: '/pricing',
     };
   }
 
@@ -189,7 +192,8 @@ export async function checkCountLimits(userId: string, limitType: 'credit_card' 
       current: currentCount,
       limit: numericLimit,
       plan,
-      reason: `You've reached your limit of ${numericLimit} ${LIMIT_LABELS[limitType]} on the ${getPlanDisplayName(plan)} plan`,
+      reason: `Você atingiu o limite de ${numericLimit} ${LIMIT_LABELS[limitType]} no plano ${getPlanDisplayName(plan)}`,
+      upgradeUrl: '/pricing',
     };
   }
 
