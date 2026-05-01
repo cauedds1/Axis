@@ -79,6 +79,23 @@ import BusinessWelcome from "@/pages/business/BusinessWelcome";
 import { BusinessThemeProvider } from "@/components/theme-provider";
 import { UpgradeModal } from "@/components/upgrade-modal";
 
+function FaviconSwitcher() {
+  const [location] = useLocation();
+  useEffect(() => {
+    const isBusiness = location.startsWith("/business");
+    const href = isBusiness ? "/favicon-business.png" : "/favicon-personal.png";
+    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      link.type = "image/png";
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  }, [location]);
+  return null;
+}
+
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
@@ -195,6 +212,7 @@ function AppRouter() {
   return (
     <>
       <ScrollToTop />
+      <FaviconSwitcher />
       {renderContent()}
     </>
   );
