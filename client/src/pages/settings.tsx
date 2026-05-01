@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock } from "lucide-react";
+import { useLocation } from "wouter";
+import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock, CreditCard, Zap, Users, Star } from "lucide-react";
 import { SUPPORTED_CURRENCIES, getCurrencyName } from "@/lib/currencies";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ function formatBotPhone(raw: string): string {
   return `+${d}`;
 }
 
-type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "conta";
+type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "billing" | "conta";
 
 function getTabs(t: (k: string) => string): { id: SettingsTab; label: string; Icon: any }[] {
   return [
@@ -27,6 +28,7 @@ function getTabs(t: (k: string) => string): { id: SettingsTab; label: string; Ic
     { id: "modulos",   label: t("axisSettings.tabModules"),    Icon: LayoutGrid },
     { id: "cadastro",  label: t("axisSettings.tabProfile"),    Icon: UserCog },
     { id: "whatsapp",  label: "WhatsApp",                      Icon: Smartphone },
+    { id: "billing",   label: "Assinatura",                    Icon: CreditCard },
     { id: "conta",     label: t("axisSettings.tabAccount"),    Icon: TriangleAlert },
   ];
 }
@@ -365,11 +367,43 @@ export default function SettingsPage() {
   const TABS = getTabs(t);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<SettingsTab>("aparencia");
+  const [location] = useLocation();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "billing") return "billing";
+    return "aparencia";
+  });
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") === "success") {
+      toast({ title: "Assinatura ativada com sucesso!", description: "Bem-vindo ao AXIS Premium." });
+      window.history.replaceState({}, "", "/settings?tab=billing");
+      setActiveTab("billing");
+    }
+  }, []);
+
   const { data: userData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
+
+  const { data: billingUsage, isLoading: isLoadingUsage } = useQuery<any>({
+    queryKey: ["/api/billing/usage"],
+    enabled: activeTab === "billing",
+    refetchOnWindowFocus: true,
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/billing/portal");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data?.url) window.location.href = data.url;
+    },
+    onError: (err: any) => toast({ title: "Erro ao abrir portal de cobrança", description: err?.message, variant: "destructive" }),
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -606,6 +640,115 @@ export default function SettingsPage() {
             <div data-testid="tab-content-whatsapp">
               <h2 className="text-base font-semibold mb-4">{t("axisSettings.whatsappBot")}</h2>
               <WhatsAppTab />
+            </div>
+          )}
+
+          {/* ── Billing ── */}
+          {activeTab === "billing" && (
+            <div className="space-y-6" data-testid="tab-content-billing">
+              <div>
+                <h2 className="text-base font-semibold">Assinatura</h2>
+                <p className="text-sm text-muted-foreground mt-1">Gerencie seu plano e uso mensal.</p>
+              </div>
+
+              {isLoadingUsage ? (
+                <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : billingUsage ? (
+                <>
+                  {/* Plan badge */}
+                  <Block>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {billingUsage.plan === "team" ? <Users className="h-5 w-5 text-purple-400" /> : billingUsage.plan === "personal_ai" ? <Zap className="h-5 w-5 text-yellow-400" /> : <Star className="h-5 w-5 text-muted-foreground" />}
+                        <div>
+                          <p className="text-sm font-semibold">{billingUsage.planDisplayName}</p>
+                          {billingUsage.trialEndsAt && new Date(billingUsage.trialEndsAt) > new Date() && (
+                            <p className="text-xs text-yellow-500">Trial termina em {new Date(billingUsage.trialEndsAt).toLocaleDateString("pt-BR")}</p>
+                          )}
+                          {billingUsage.plan === "starter" && (
+                            <p className="text-xs text-muted-foreground">Plano gratuito com limites mensais</p>
+                          )}
+                        </div>
+                      </div>
+                      {billingUsage.plan === "starter" ? (
+                        <Button size="sm" variant="outline" className="text-xs" onClick={() => window.location.href = "/pricing"} data-testid="button-upgrade-plan">
+                          Fazer upgrade
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="text-xs" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending} data-testid="button-manage-billing">
+                          {portalMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Gerenciar
+                        </Button>
+                      )}
+                    </div>
+                  </Block>
+
+                  {/* Usage meters */}
+                  <div>
+                    <SectionLabel>Uso este mês — {billingUsage.month}</SectionLabel>
+                    <div className="space-y-3">
+                      {[
+                        { label: "Transações", value: billingUsage.usage.transactions },
+                        { label: "Capturas AI", value: billingUsage.usage.aiCaptures },
+                        { label: "Fotos WhatsApp", value: billingUsage.usage.whatsappPhotos },
+                        { label: "PDFs WhatsApp", value: billingUsage.usage.whatsappPdfs },
+                        { label: "Msgs do chat", value: billingUsage.usage.chatMessages },
+                      ].map(({ label, value }) => {
+                        const pct = value.limit ? Math.min(100, (value.current / value.limit) * 100) : 0;
+                        const isUnlimited = value.limit === null;
+                        const isAtLimit = !isUnlimited && value.current >= value.limit;
+                        return (
+                          <div key={label} data-testid={`usage-meter-${label.toLowerCase().replace(/\s/g, '-')}`}>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className={isAtLimit ? "text-red-400 font-semibold" : "text-foreground"}>
+                                {isUnlimited ? `${value.current} / ∞` : `${value.current} / ${value.limit}`}
+                              </span>
+                            </div>
+                            {!isUnlimited && (
+                              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${pct}%`,
+                                    background: isAtLimit ? "rgb(239,68,68)" : pct > 70 ? "rgb(234,179,8)" : "hsl(var(--primary))",
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Binary features */}
+                      <div className="flex items-center justify-between py-1" data-testid="usage-meter-voice">
+                        <span className="text-xs text-muted-foreground">Transcrição de voz</span>
+                        <span className={`text-xs font-medium ${billingUsage.usage.voice.allowed ? "text-green-400" : "text-muted-foreground"}`}>
+                          {billingUsage.usage.voice.allowed ? "✓ Disponível" : "× Não incluído"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-1" data-testid="usage-meter-business">
+                        <span className="text-xs text-muted-foreground">Versão Business</span>
+                        <span className={`text-xs font-medium ${billingUsage.usage.business.allowed ? "text-green-400" : "text-muted-foreground"}`}>
+                          {billingUsage.usage.business.allowed ? "✓ Disponível" : "× Não incluído"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {billingUsage.plan === "starter" && (
+                    <Block>
+                      <p className="text-sm font-medium mb-1">Quer mais recursos?</p>
+                      <p className="text-xs text-muted-foreground mb-3">O plano Personal AI desbloqueia uso ilimitado de IA, transcrição de voz e muito mais a partir de R$9/mês.</p>
+                      <Button className="w-full" size="sm" onClick={() => window.location.href = "/pricing"} data-testid="button-see-plans">
+                        Ver planos
+                      </Button>
+                    </Block>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Não foi possível carregar as informações de billing.</p>
+              )}
             </div>
           )}
 

@@ -14,6 +14,31 @@ declare module "http" {
   }
 }
 
+// ─── STRIPE WEBHOOK — must be registered BEFORE express.json() ───────────────
+// Stripe requires the raw Buffer body to validate the signature.
+// Registering after express.json() would parse the body and break validation.
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const signature = req.headers['stripe-signature'];
+    if (!signature) {
+      console.error('STRIPE WEBHOOK: Missing stripe-signature header');
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+    try {
+      const { WebhookHandlers } = await import('./webhookHandlers');
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err: any) {
+      console.error('Stripe webhook error:', err.message);
+      res.status(400).json({ error: 'Webhook processing error' });
+    }
+  }
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.use(
   express.json({
     limit: "5mb",
@@ -73,6 +98,32 @@ app.use((req, res, next) => {
       log(`⚠ ${key} não definida — ${hint}`, "config");
     }
   }
+
+  // ─── Stripe initialization (non-blocking on failure) ─────────────────────
+  try {
+    const { runMigrations } = await import('stripe-replit-sync');
+    const { getStripeSync } = await import('./stripeClient');
+    const databaseUrl = process.env.DATABASE_URL!;
+
+    log('Initializing Stripe schema...', 'stripe');
+    await runMigrations({ databaseUrl, schema: 'stripe' });
+    log('Stripe schema ready', 'stripe');
+
+    const stripeSync = await getStripeSync();
+    const webhookBaseUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : `http://localhost:${process.env.PORT || 5000}`;
+
+    await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
+    log('Stripe webhook configured', 'stripe');
+
+    stripeSync.syncBackfill()
+      .then(() => log('Stripe data synced', 'stripe'))
+      .catch((err: any) => log(`Stripe syncBackfill error: ${err?.message}`, 'stripe'));
+  } catch (err: any) {
+    log(`⚠ Stripe não configurado: ${err?.message} — pagamentos desativados`, 'stripe');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const { seedDatabase } = await import("./seed");
   await seedDatabase().catch(err => console.error("Seed error:", err));

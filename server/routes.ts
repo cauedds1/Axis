@@ -480,6 +480,16 @@ export async function registerRoutes(
   app.post("/api/input/process", isAuthenticated, upload.single("audio"), async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+
+      if (req.file) {
+        const voiceLimit = await checkLimit(userId, 'voice');
+        if (!voiceLimit.allowed) return res.status(402).json({ limitReached: true, plan: voiceLimit.plan, message: voiceLimit.reason });
+      }
+
+      const aiLimit = await checkLimit(userId, 'ai_capture');
+      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, message: aiLimit.reason });
+
       let text = req.body.text;
 
       if (req.file) {
@@ -580,6 +590,7 @@ export async function registerRoutes(
           break;
       }
 
+      incrementCounter(userId, 'ai_capture').catch(() => {});
       res.json({ intent: result.intent, data: result.data, created, rawText: result.rawText });
     } catch (error: any) {
       console.error("Error processing input:", error);
@@ -591,8 +602,12 @@ export async function registerRoutes(
     try {
       const userId = getUserId(req);
       if (!req.file) return res.status(400).json({ message: "Nenhuma imagem enviada" });
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+      const aiLimit = await checkLimit(userId, 'ai_capture');
+      if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, message: aiLimit.reason });
       const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       const result = await processMultipleReceipts(base64, userId);
+      incrementCounter(userId, 'ai_capture').catch(() => {});
       res.json(result);
     } catch (error: any) {
       console.error("Error processing photo:", error);
@@ -921,6 +936,9 @@ export async function registerRoutes(
   app.post("/api/transactions", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+      const txLimit = await checkLimit(userId, 'transaction');
+      if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, message: txLimit.reason });
       const schema = z.object({
         amount: z.number().positive(),
         description: z.string().min(1),
@@ -965,6 +983,7 @@ export async function registerRoutes(
           });
         }
         const created = await storage.createManyTransactions(txList);
+        incrementCounter(userId, 'transaction').catch(() => {});
         saveEventToMemory(userId, `Compra parcelada no cartão ${card.name}: R$${data.amount.toFixed(2)} em ${data.installments}x — "${data.description}"`).catch(() => {});
         return res.status(201).json(created);
       }
@@ -994,6 +1013,7 @@ export async function registerRoutes(
         creditCardId: data.creditCardId || null,
         installmentInfo: null,
       });
+      incrementCounter(userId, 'transaction').catch(() => {});
       saveEventToMemory(userId, `Nova transação registrada: ${data.type === "expense" ? "gasto" : "receita"} de R$${data.amount.toFixed(2)} em ${data.categoryName || "sem categoria"} — "${data.description}"`).catch(() => {});
       res.status(201).json(tx);
     } catch (error: any) {
@@ -1025,6 +1045,10 @@ export async function registerRoutes(
   app.post("/api/credit-cards", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkCountLimits } = await import("./planLimits");
+      const existingCards = await storage.getCreditCards(userId);
+      const cardLimit = await checkCountLimits(userId, 'credit_card', existingCards.length);
+      if (!cardLimit.allowed) return res.status(402).json({ limitReached: true, plan: cardLimit.plan, message: cardLimit.reason });
       const schema = z.object({
         name: z.string().min(1),
         bank: z.string().min(1),
@@ -1197,6 +1221,10 @@ export async function registerRoutes(
   app.post("/api/goals", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkCountLimits } = await import("./planLimits");
+      const existingGoals = await storage.getFinancialGoals(userId);
+      const goalLimit = await checkCountLimits(userId, 'financial_goal', existingGoals.length);
+      if (!goalLimit.allowed) return res.status(402).json({ limitReached: true, plan: goalLimit.plan, message: goalLimit.reason });
       const schema = z.object({
         title: z.string().min(1),
         emoji: z.string().optional().nullable(),
@@ -1532,6 +1560,10 @@ export async function registerRoutes(
   app.post("/api/habits", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkCountLimits } = await import("./planLimits");
+      const existingHabits = await storage.getHabits(userId);
+      const habitLimit = await checkCountLimits(userId, 'habit', existingHabits.length);
+      if (!habitLimit.allowed) return res.status(402).json({ limitReached: true, plan: habitLimit.plan, message: habitLimit.reason });
       const schema = z.object({
         name: z.string().min(1),
         frequency: z.enum(["daily", "weekly"]).default("daily"),
@@ -1720,6 +1752,10 @@ export async function registerRoutes(
       const { message } = req.body;
       if (!message) return res.status(400).json({ message: "Mensagem vazia" });
 
+      const { checkLimit, incrementCounter } = await import("./planLimits");
+      const chatLimit = await checkLimit(userId, 'chat_message');
+      if (!chatLimit.allowed) return res.status(402).json({ limitReached: true, plan: chatLimit.plan, message: chatLimit.reason });
+
       await storage.createChatMessage({ userId, role: "user", content: message });
 
       const pendingBill = pendingChatBills.get(userId);
@@ -1883,6 +1919,7 @@ export async function registerRoutes(
       }
 
       await storage.createChatMessage({ userId, role: "assistant", content: cleanResponse });
+      incrementCounter(userId, 'chat_message').catch(() => {});
       extractMemoryFromChat(userId, message, cleanResponse).catch(() => {});
 
       res.json({ response: cleanResponse });
@@ -3603,6 +3640,115 @@ export async function registerRoutes(
       });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
+
+  // ─── BILLING ─────────────────────────────────────────────────────────────────
+
+  app.get("/api/billing/usage", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { getUserUsage } = await import("./planLimits");
+      const usage = await getUserUsage(userId);
+      res.json(usage);
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  app.post("/api/billing/checkout", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { priceId } = req.body;
+      if (!priceId) return res.status(400).json({ message: "priceId required" });
+
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email ?? undefined,
+          metadata: { userId },
+        });
+        await db.update(users).set({ stripeCustomerId: customer.id }).where(eq(users.id, userId));
+        customerId = customer.id;
+      }
+
+      const baseUrl = process.env.REPLIT_DOMAINS
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : `http://localhost:${process.env.PORT || 5000}`;
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/settings?billing=success`,
+        cancel_url: `${baseUrl}/pricing?canceled=true`,
+      });
+
+      res.json({ url: session.url });
+    } catch (err: any) {
+      log(`Billing checkout error: ${err?.message}`, 'stripe');
+      res.status(500).json({ message: err?.message || "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/billing/portal", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: "No billing account found. Please subscribe first." });
+      }
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = process.env.REPLIT_DOMAINS
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : `http://localhost:${process.env.PORT || 5000}`;
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${baseUrl}/settings?tab=billing`,
+      });
+
+      res.json({ url: portalSession.url });
+    } catch (err: any) {
+      log(`Billing portal error: ${err?.message}`, 'stripe');
+      res.status(500).json({ message: err?.message || "Failed to create portal session" });
+    }
+  });
+
+  app.get("/api/billing/products", async (_req, res) => {
+    try {
+      const { db: drizzleDb } = await import("./db");
+      const { sql: sqlHelper } = await import("drizzle-orm");
+      const result = await drizzleDb.execute(sqlHelper`
+        SELECT
+          p.id as product_id,
+          p.name as product_name,
+          p.description as product_description,
+          p.metadata as product_metadata,
+          pr.id as price_id,
+          pr.unit_amount,
+          pr.currency,
+          pr.recurring,
+          pr.trial_period_days,
+          pr.metadata as price_metadata
+        FROM stripe.products p
+        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
+        WHERE p.active = true
+        ORDER BY pr.unit_amount ASC NULLS FIRST
+      `);
+      res.json({ data: result.rows });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message || "Failed to fetch products" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return httpServer;
 }

@@ -66,6 +66,7 @@ import Agenda from "@/pages/agenda";
 import Tasks from "@/pages/tasks";
 import Chat from "@/pages/chat";
 import SettingsPage from "@/pages/settings";
+import PricingPage from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import Reports from "@/pages/reports";
@@ -152,6 +153,7 @@ function AuthenticatedLayout() {
               <Route path="/tasks" component={Tasks} />
               <Route path="/chat" component={Chat} />
               <Route path="/settings" component={SettingsPage} />
+              <Route path="/pricing" component={PricingPage} />
               <Route path="/privacy" component={PrivacyPolicy} />
               <Route component={NotFound} />
             </Switch>
@@ -171,7 +173,7 @@ function AppRouter() {
       if (location.startsWith("/business/app")) {
         setLocation("/business/auth");
       } else {
-        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business"];
+        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business", "/pricing"];
         if (!publicPaths.includes(location) && !location.startsWith("/r/")) {
           setLocation("/");
         }
@@ -221,6 +223,7 @@ function AppRouter() {
               </ThemeProvider>
             )}
           </Route>
+          <Route path="/pricing" component={PricingPage} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/business/auth">
             {() => (

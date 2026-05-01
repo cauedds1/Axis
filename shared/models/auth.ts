@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar, boolean, text } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, timestamp, varchar, boolean, text, integer } from "drizzle-orm/pg-core";
 
 export const sessions = pgTable(
   "sessions",
@@ -23,9 +23,27 @@ export const users = pgTable("users", {
   theme: text("theme").default("slim"),
   aiPersonality: text("ai_personality").default("calm"),
   accountType: text("account_type").notNull().default("personal"),
+  plan: text("plan").notNull().default("starter"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  trialEndsAt: timestamp("trial_ends_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const usageCounters = pgTable("usage_counters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  month: varchar("month", { length: 7 }).notNull(),
+  transactions: integer("transactions").notNull().default(0),
+  aiCaptures: integer("ai_captures").notNull().default(0),
+  whatsappPhotos: integer("whatsapp_photos").notNull().default(0),
+  whatsappPdfs: integer("whatsapp_pdfs").notNull().default(0),
+  chatMessages: integer("chat_messages").notNull().default(0),
+},
+(table) => [index("idx_usage_user_month").on(table.userId, table.month)]
+);
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type UsageCounter = typeof usageCounters.$inferSelect;
