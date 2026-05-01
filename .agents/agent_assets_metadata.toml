@@ -1,0 +1,26 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "03pmqEJFBW7O4oNoT3mrU"
+uri = "file://client/src/assets/images/logo.png"
+type = "image"
+title = "Logo AXIS (principal)"
+
+[[outputs]]
+id = "21hYYOuX5_1yHa9Qqd0x-"
+uri = "file://client/src/assets/images/logo-small.png"
+type = "image"
+title = "Logo AXIS (pequena)"
+
+[[outputs]]
+id = "nfwx6ACNTw-LctSbkPE88"
+uri = "file://client/src/assets/images/logo-full.png"
+type = "image"
+title = "Logo AXIS (completa)"
+
+[[outputs]]
+id = "lYCcZndwO2szB9cJMHGl2"
+uri = "file://client/public/logo-business.png"
+type = "image"
+title = "Logo AXIS Business"
