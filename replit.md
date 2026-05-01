@@ -50,8 +50,11 @@ Not specified.
 - Backend: `server/adminRoutes.ts` — all endpoints at `/api/admin/*` with `requireAdmin` middleware + rate limiting
 - Shared logging helpers: `server/adminLogger.ts` — `logAiUsage()`, `logWhatsappMessage()`, `logAudit()`
 - New DB tables: `systemConfig`, `auditLogs`, `aiUsageLogs`, `whatsappLogs` (in `shared/schema.ts`)
-- Frontend: `client/src/pages/admin/AdminPanel.tsx` — 10-section sidebar layout
-- Sections: Dashboard, User Management (CRUD + plan override), Organizations, Finance (MRR/ARR + charts), Billing/Stripe, WhatsApp Manager, Email Alerts Log, AI Control, Audit Log, System Settings
+- Frontend: `client/src/pages/admin/AdminPanel.tsx` — lean layout + impersonation banner (imports from sections/)
+- Shared UI: `client/src/pages/admin/AdminComponents.tsx` — StatCard, Pagination, TableWrapper, Th, Td, SortIcon, etc.
+- Shared utils: `client/src/pages/admin/admin-utils.ts` — fmtDate, fmtCurrency, adminFetch, constants
+- Sections (each in `client/src/pages/admin/sections/`): DashboardSection, UsersSection, OrgsSection, FinanceSection, BillingSection, WhatsAppSection, EmailLogsSection, AISection, AuditSection, SystemSection
+- All tables have search + sort + pagination; impersonation banner shown globally when active; stop-impersonation button navigates back to /admin
 - Fully bilingual (EN / PT-BR) via `axisAdmin` namespace in i18n files
 - AI instrumentation: `server/ai.ts` calls `logAiUsage()` after transcription, intent detection, receipt analysis
 

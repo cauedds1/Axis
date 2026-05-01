@@ -477,9 +477,25 @@ export function registerAdminRoutes(app: Express) {
   // Clears the read-only viewing context
   app.post("/api/admin/impersonate/stop", requireAdmin, async (req, res) => {
     try {
+      const actor = req.adminUser;
+      await logAudit(actor.id, actor.email, "impersonate_stop", "session", req.session.viewingOrgId ?? "unknown", {});
       delete req.session.viewingUserId;
       delete req.session.viewingOrgId;
       res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
+  // ─── GET /api/admin/impersonate/status ────────────────────────────────────
+  app.get("/api/admin/impersonate/status", requireAdmin, async (req, res) => {
+    try {
+      const viewingOrgId = req.session.viewingOrgId;
+      const viewingUserId = req.session.viewingUserId;
+      if (!viewingOrgId) return res.json({ active: false });
+
+      const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, viewingOrgId));
+      res.json({ active: true, orgId: viewingOrgId, orgName: org?.name ?? viewingOrgId, viewingUserId });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }

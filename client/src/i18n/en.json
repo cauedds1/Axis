@@ -3597,7 +3597,10 @@
       "createdAt": "Created At",
       "impersonate": "View as Owner",
       "viewAs": "View Org as Owner (Read-Only)",
-      "impersonateNote": "Your admin session will switch to this org owner's context in read-only mode. No mutations will be allowed."
+      "impersonateNote": "Your admin session will switch to this org owner's context in read-only mode. No mutations will be allowed.",
+      "viewingAs": "Viewing as org:",
+      "stopImpersonate": "Stop Impersonation",
+      "impersonateStopped": "Impersonation stopped. Back to admin."
     },
     "finance": {
       "title": "Financial Overview",

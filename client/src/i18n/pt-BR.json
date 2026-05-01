@@ -3597,7 +3597,10 @@
       "createdAt": "Criado em",
       "impersonate": "Ver como Proprietário",
       "viewAs": "Ver Org como Proprietário (Somente Leitura)",
-      "impersonateNote": "Sua sessão de admin mudará para o contexto do proprietário desta organização em modo somente leitura. Nenhuma alteração será permitida."
+      "impersonateNote": "Sua sessão de admin mudará para o contexto do proprietário desta organização em modo somente leitura. Nenhuma alteração será permitida.",
+      "viewingAs": "Visualizando como organização:",
+      "stopImpersonate": "Parar Personificação",
+      "impersonateStopped": "Personificação encerrada. De volta ao admin."
     },
     "finance": {
       "title": "Monitoramento Financeiro",
