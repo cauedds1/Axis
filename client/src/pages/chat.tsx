@@ -128,6 +128,14 @@ export default function Chat() {
       const formData = new FormData();
       formData.append("audio", blob, "audio.webm");
       const res = await fetch("/api/input/process", { method: "POST", body: formData, credentials: "include" });
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.limitReached) {
+          window.dispatchEvent(new CustomEvent("axis:limit-reached", { detail: body }));
+          throw new Error(body.reason || "Limite atingido");
+        }
+      }
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       return res.json();
     },
     onSuccess: () => {

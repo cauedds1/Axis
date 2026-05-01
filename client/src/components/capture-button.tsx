@@ -113,6 +113,14 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
             body: formData,
             credentials: "include",
           });
+          if (res.status === 402) {
+            const body = await res.json().catch(() => ({}));
+            if (body?.limitReached) {
+              window.dispatchEvent(new CustomEvent("axis:limit-reached", { detail: body }));
+              return;
+            }
+          }
+          if (!res.ok) throw new Error(`Erro ${res.status}`);
           const data: CaptureResult = await res.json();
           setResult(data);
           invalidateAll();

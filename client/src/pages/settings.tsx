@@ -738,18 +738,29 @@ export default function SettingsPage() {
 
                   {/* Value insights */}
                   {(() => {
-                    const receipts = (billingUsage.usage.aiCaptures?.current ?? 0) + (billingUsage.usage.whatsappPhotos?.current ?? 0);
+                    const aiCaptures = billingUsage.usage.aiCaptures?.current ?? 0;
+                    const whatsappPhotos = billingUsage.usage.whatsappPhotos?.current ?? 0;
+                    const whatsappPdfs = billingUsage.usage.whatsappPdfs?.current ?? 0;
+                    const receipts = aiCaptures + whatsappPhotos;
                     const txs = billingUsage.usage.transactions?.current ?? 0;
                     const chats = billingUsage.usage.chatMessages?.current ?? 0;
+                    // Estimate: ~3 min saved per receipt/PDF processed manually
+                    const minutesSaved = (receipts + whatsappPdfs) * 3;
                     if (receipts === 0 && txs === 0 && chats === 0) return null;
                     return (
                       <div>
                         <SectionLabel>O que o AXIS fez por você este mês</SectionLabel>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                           {receipts > 0 && (
                             <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-receipts">
                               <p className="text-2xl font-bold text-primary">{receipts}</p>
                               <p className="text-xs text-muted-foreground mt-1">recibos processados</p>
+                            </div>
+                          )}
+                          {minutesSaved > 0 && (
+                            <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-minutes-saved">
+                              <p className="text-2xl font-bold text-primary">~{minutesSaved}</p>
+                              <p className="text-xs text-muted-foreground mt-1">minutos economizados</p>
                             </div>
                           )}
                           {txs > 0 && (

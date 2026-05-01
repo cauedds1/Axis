@@ -1941,10 +1941,13 @@ export async function registerRoutes(
       const { type, data } = req.body;
       if (!type || !data) return res.status(400).json({ message: "Dados inválidos" });
 
-      // Enforce transaction limit for expense/income actions
+      // Enforce transaction limit for expense/income actions (account for installments)
       if (type === "expense" || type === "income") {
-        const { checkLimit, incrementCounter } = await import("./planLimits");
-        const txLimit = await checkLimit(userId, 'transaction');
+        const { checkLimit } = await import("./planLimits");
+        const installmentCount = (data.creditCardId && data.installments && data.installments > 1)
+          ? data.installments as number
+          : 1;
+        const txLimit = await checkLimit(userId, 'transaction', installmentCount);
         if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
       }
 
@@ -1978,7 +1981,7 @@ export async function registerRoutes(
               });
               await storage.createManyTransactions(txList);
               const { incrementCounter: incConfirm1 } = await import("./planLimits");
-              incConfirm1(userId, 'transaction').catch(() => {});
+              incConfirm1(userId, 'transaction', txList.length).catch(() => {});
               summary = `Pronto! ${data.installments}x de R$${installAmt.toFixed(2)} no ${card.name} registrado.`;
               saveEventToMemory(userId, `Chat confirmado: parcelado ${data.installments}x R$${installAmt} "${data.description}" no ${card.name}`).catch(() => {});
               break;
@@ -3700,6 +3703,22 @@ export async function registerRoutes(
 
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
+
+      // Validate priceId belongs to a known AXIS plan before creating session
+      const allowedPlans = new Set(['personal_ai', 'team']);
+      let planMeta: string | undefined;
+      try {
+        const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+        const priceMeta = price.metadata?.plan;
+        const product = price.product as import('stripe').default.Product | null;
+        const productMeta = product?.metadata?.plan;
+        planMeta = priceMeta || productMeta;
+      } catch {
+        return res.status(400).json({ message: "priceId inválido" });
+      }
+      if (!planMeta || !allowedPlans.has(planMeta)) {
+        return res.status(400).json({ message: "Este plano não é permitido" });
+      }
 
       let customerId = user.stripeCustomerId;
       if (!customerId) {
