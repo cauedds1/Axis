@@ -221,10 +221,22 @@ async function buildPersonalReportData(userId: string, month: number, year: numb
     })
   );
 
-  const completedTasks = tasks.filter(t => t.status === "completed").length;
-  const pendingTasks = tasks.filter(t => t.status === "pending").length;
+  // Scope tasks to those with a dueDate in the report month; fallback to createdAt for undated tasks
   const now = new Date();
-  const overdueTasks = tasks.filter(t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now).length;
+  const monthTasks = tasks.filter(t => {
+    if (t.dueDate) {
+      const d = new Date(t.dueDate);
+      return d >= start && d <= end;
+    }
+    if (t.createdAt) {
+      const d = new Date(t.createdAt);
+      return d >= start && d <= end;
+    }
+    return false;
+  });
+  const completedTasks = monthTasks.filter(t => t.status === "completed").length;
+  const pendingTasks = monthTasks.filter(t => t.status === "pending").length;
+  const overdueTasks = monthTasks.filter(t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now).length;
 
   const upcomingBills = bills
     .filter(b => b.active && b.type === "expense")

@@ -329,25 +329,36 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
     const allOrgs = await db.select().from(organizations);
     for (const org of allOrgs) {
       if (!org.adminUserId) continue;
-      const adminProfile = await storage.getUserProfile(org.adminUserId);
-      if (!adminProfile) continue;
-      const prefs = getEmailAlertPrefs(adminProfile);
-      if (!prefs.monthlyBusiness) continue;
 
-      const recentBusiness = await storage.getRecentAlerts(org.adminUserId, "monthly_business", org.id, todayStart);
-      if (recentBusiness.length > 0) continue;
+      // Collect all admin-eligible recipients: org owner + members with role "admin"
+      const members = await storage.getOrganizationMembers(org.id);
+      const adminMemberIds = members
+        .filter(m => m.role === "admin")
+        .map(m => m.userId);
+      const eligibleUserIds = Array.from(new Set([org.adminUserId, ...adminMemberIds]));
 
-      const result = await sendBusinessMonthlyReport(org.id, org.adminUserId, reportMonth, reportYear).catch(() => "failed" as const);
-      if (result !== "skipped") {
-        const userInfo = await getUserEmailAndName(org.adminUserId);
-        await storage.createEmailAlertLog({
-          userId: org.adminUserId,
-          alertType: "monthly_business",
-          referenceId: org.id,
-          recipient: userInfo?.email || "",
-          status: result,
-        });
-        if (result === "sent") console.log(`[alerts] Business monthly report sent for org ${org.name} to ${userInfo?.email}`);
+      for (const managerId of eligibleUserIds) {
+        const managerProfile = await storage.getUserProfile(managerId);
+        if (!managerProfile) continue;
+        const prefs = getEmailAlertPrefs(managerProfile);
+        if (!prefs.monthlyBusiness) continue;
+
+        // Dedup per user+org: don't send twice today for the same org
+        const recentBusiness = await storage.getRecentAlerts(managerId, "monthly_business", org.id, todayStart);
+        if (recentBusiness.length > 0) continue;
+
+        const result = await sendBusinessMonthlyReport(org.id, managerId, reportMonth, reportYear).catch(() => "failed" as const);
+        if (result !== "skipped") {
+          const userInfo = await getUserEmailAndName(managerId);
+          await storage.createEmailAlertLog({
+            userId: managerId,
+            alertType: "monthly_business",
+            referenceId: org.id,
+            recipient: userInfo?.email || "",
+            status: result,
+          });
+          if (result === "sent") console.log(`[alerts] Business monthly report sent for org ${org.name} to ${userInfo?.email}`);
+        }
       }
     }
   }
