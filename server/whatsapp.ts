@@ -1211,7 +1211,7 @@ class WhatsAppManager {
     let extracted: any;
     try {
       extracted = await processPDFExtract(buffer, userId);
-      logAiUsage(userId, "pdf_extract").catch(() => {});
+      logAiUsage(userId, "pdf_analysis").catch(() => {});
       logWhatsappMessage(jid.split("@")[0], "document_pdf", extracted?.docType ?? "unknown", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha ao processar PDF — ${aiErr.message}`, "whatsapp");

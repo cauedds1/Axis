@@ -29,7 +29,7 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ message: "Não autenticado" });
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    if (!user || user.email !== adminEmail) {
+    if (!user || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
       return res.status(403).json({ message: "Acesso negado" });
     }
     req.adminUser = user;
@@ -48,7 +48,7 @@ export async function isAdminRequest(req: Request): Promise<boolean> {
     const userId = (req as any).session?.userId;
     if (!userId) return false;
     const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
-    return user?.email === adminEmail;
+    return user?.email?.toLowerCase() === adminEmail.toLowerCase();
   } catch {
     return false;
   }
@@ -61,6 +61,17 @@ function getPagination(req: Request) {
   const offset = (page - 1) * limit;
   const search = (req.query.search as string) || "";
   return { page, limit, offset, search };
+}
+
+// ─── Param helpers ───────────────────────────────────────────────────────────
+/** Safely coerce req.params.id to string (Express types allow string | string[]) */
+function paramId(req: Request): string {
+  return String(req.params.id);
+}
+/** Assert req.adminUser is set — requireAdmin middleware guarantees this. */
+function mustAdmin(req: Request) {
+  if (!req.adminUser) throw new Error("Admin user not set by middleware");
+  return req.adminUser;
 }
 
 // ─── Sort helper ─────────────────────────────────────────────────────────────
@@ -260,7 +271,8 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/users/:id ─────────────────────────────────────────────
   app.get("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const id = paramId(req);
+      const [user] = await db.select().from(users).where(eq(users.id, id));
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
       const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, user.id));
@@ -279,14 +291,13 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/deactivate ─────────────────────────────────
   app.post("/api/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const actor = mustAdmin(req);
+      const id = paramId(req);
+      const [targetUser] = await db.select().from(users).where(eq(users.id, id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
-      // Set deactivatedAt to mark account as deactivated
-      await db.update(users).set({ deactivatedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, req.params.id));
-      // Invalidate all sessions for this user
-      await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${req.params.id}`);
-      await logAudit(actor.id, actor.email, "user.deactivate", "user", req.params.id, { email: targetUser.email });
+      await db.update(users).set({ deactivatedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, id));
+      await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${id}`);
+      await logAudit(actor.id, actor.email, "user.deactivate", "user", id, { email: targetUser.email });
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -296,11 +307,12 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/reactivate ─────────────────────────────────
   app.post("/api/admin/users/:id/reactivate", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const actor = mustAdmin(req);
+      const id = paramId(req);
+      const [targetUser] = await db.select().from(users).where(eq(users.id, id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
-      await db.update(users).set({ deactivatedAt: null, updatedAt: new Date() }).where(eq(users.id, req.params.id));
-      await logAudit(actor.id, actor.email, "user.reactivate", "user", req.params.id, { email: targetUser.email });
+      await db.update(users).set({ deactivatedAt: null, updatedAt: new Date() }).where(eq(users.id, id));
+      await logAudit(actor.id, actor.email, "user.reactivate", "user", id, { email: targetUser.email });
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -310,8 +322,9 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/reset-password ─────────────────────────────
   app.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const actor = mustAdmin(req);
+      const id = paramId(req);
+      const [targetUser] = await db.select().from(users).where(eq(users.id, id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
 
       // Generate a secure random reset token (hex string)
@@ -325,7 +338,7 @@ export function registerAdminRoutes(app: Express) {
         passwordResetToken: hashedToken,
         passwordResetExpiry: expiry,
         updatedAt: new Date(),
-      }).where(eq(users.id, req.params.id));
+      }).where(eq(users.id, id));
 
       const appUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
       const resetLink = `${appUrl}/reset-password?token=${rawToken}`;
@@ -345,7 +358,7 @@ export function registerAdminRoutes(app: Express) {
         `,
       });
 
-      await logAudit(actor.id, actor.email, "user.reset_password", "user", req.params.id, { email: targetUser.email });
+      await logAudit(actor.id, actor.email, "user.reset_password", "user", id, { email: targetUser.email });
       res.json({ success: true, message: `Password reset link sent to ${targetUser.email}` });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -355,19 +368,20 @@ export function registerAdminRoutes(app: Express) {
   // ─── DELETE /api/admin/users/:id ─────────────────────────────────────────
   app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const actor = mustAdmin(req);
+      const id = paramId(req);
+      const [user] = await db.select().from(users).where(eq(users.id, id));
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
-      await logAudit(actor.id, actor.email, "user.delete", "user", req.params.id, { email: user.email });
+      await logAudit(actor.id, actor.email, "user.delete", "user", id, { email: user.email });
       // Cascade delete - remove all user data
-      await db.delete(transactions).where(eq(transactions.userId, req.params.id));
-      await db.delete(habits).where(eq(habits.userId, req.params.id));
-      await db.delete(habitLogs).where(eq(habitLogs.userId, req.params.id));
-      await db.delete(personalTasks).where(eq(personalTasks.userId, req.params.id));
-      await db.delete(userProfile).where(eq(userProfile.userId, req.params.id));
-      await db.delete(emailAlertLog).where(eq(emailAlertLog.userId, req.params.id));
-      await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${req.params.id}`);
-      await db.delete(users).where(eq(users.id, req.params.id));
+      await db.delete(transactions).where(eq(transactions.userId, id));
+      await db.delete(habits).where(eq(habits.userId, id));
+      await db.delete(habitLogs).where(eq(habitLogs.userId, id));
+      await db.delete(personalTasks).where(eq(personalTasks.userId, id));
+      await db.delete(userProfile).where(eq(userProfile.userId, id));
+      await db.delete(emailAlertLog).where(eq(emailAlertLog.userId, id));
+      await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${id}`);
+      await db.delete(users).where(eq(users.id, id));
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -377,14 +391,15 @@ export function registerAdminRoutes(app: Express) {
   // ─── PATCH /api/admin/users/:id/plan ─────────────────────────────────────
   app.patch("/api/admin/users/:id/plan", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
+      const id = paramId(req);
       const { plan, reason } = req.body;
       if (!["starter", "personal_ai", "team"].includes(plan)) return res.status(400).json({ message: "Plano inválido" });
-      const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
+      const [user] = await db.select().from(users).where(eq(users.id, id));
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
       const oldPlan = user.plan;
-      await db.update(users).set({ plan }).where(eq(users.id, req.params.id));
-      await logAudit(actor.id, actor.email, "user.plan_override", "user", req.params.id, { oldPlan, newPlan: plan, reason });
+      await db.update(users).set({ plan }).where(eq(users.id, id));
+      await logAudit(actor.id, actor.email, "user.plan_override", "user", id, { oldPlan, newPlan: plan, reason });
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -431,26 +446,27 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/organizations/:id ─────────────────────────────────────
   app.get("/api/admin/organizations/:id", requireAdmin, async (req, res) => {
     try {
-      const [org] = await db.select().from(organizations).where(eq(organizations.id, req.params.id));
+      const id = paramId(req);
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
       if (!org) return res.status(404).json({ message: "Organização não encontrada" });
 
       const members = await db.execute(sql`
         SELECT om.*, u.email, u.first_name, u.last_name, u.account_type
         FROM organization_members om
         LEFT JOIN users u ON u.id = om.user_id
-        WHERE om.organization_id = ${req.params.id}
+        WHERE om.organization_id = ${id}
       `);
 
       const categoryBreakdown = await db.execute(sql`
         SELECT category_name, SUM(amount)::real as total, COUNT(*)::int as count
         FROM business_expenses
-        WHERE organization_id = ${req.params.id}
+        WHERE organization_id = ${id}
         GROUP BY category_name
         ORDER BY total DESC
         LIMIT 10
       `);
 
-      const [pendingCount] = await db.select({ count: count() }).from(businessExpenses).where(and(eq(businessExpenses.organizationId, req.params.id), eq(businessExpenses.status, "pending_review")));
+      const [pendingCount] = await db.select({ count: count() }).from(businessExpenses).where(and(eq(businessExpenses.organizationId, id), eq(businessExpenses.status, "pending_review")));
 
       res.json({ org, members: members.rows, categoryBreakdown: categoryBreakdown.rows, pendingApprovals: pendingCount.count });
     } catch (err: any) {
@@ -464,20 +480,21 @@ export function registerAdminRoutes(app: Express) {
   // All POST/PUT/PATCH/DELETE routes (except /api/admin/*) are blocked while viewing.
   app.post("/api/admin/organizations/:id/impersonate", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      const [org] = await db.select().from(organizations).where(eq(organizations.id, req.params.id));
+      const actor = mustAdmin(req);
+      const id = paramId(req);
+      const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
       if (!org) return res.status(404).json({ message: "Organização não encontrada" });
 
       // Find org owner
       const [ownerMember] = await db.select().from(organizationMembers)
-        .where(and(eq(organizationMembers.organizationId, req.params.id), eq(organizationMembers.role, "owner")));
+        .where(and(eq(organizationMembers.organizationId, id), eq(organizationMembers.role, "owner")));
       if (!ownerMember) return res.status(404).json({ message: "Proprietário não encontrado" });
 
       // Set read-only viewing context — admin userId unchanged
       req.session.viewingUserId = ownerMember.userId;
-      req.session.viewingOrgId = req.params.id;
+      req.session.viewingOrgId = id;
 
-      await logAudit(actor.id, actor.email, "org.impersonate", "organization", req.params.id, { orgName: org.name, targetUserId: ownerMember.userId });
+      await logAudit(actor.id, actor.email, "org.impersonate", "organization", id, { orgName: org.name, targetUserId: ownerMember.userId });
       res.json({ success: true, orgName: org.name, viewingUserId: ownerMember.userId });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -488,7 +505,7 @@ export function registerAdminRoutes(app: Express) {
   // Clears the read-only viewing context
   app.post("/api/admin/impersonate/stop", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       await logAudit(actor.id, actor.email, "impersonate_stop", "session", req.session.viewingOrgId ?? "unknown", {});
       delete req.session.viewingUserId;
       delete req.session.viewingOrgId;
@@ -698,7 +715,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.post("/api/admin/whatsapp/config", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       const { botNumber, displayName } = req.body;
 
       if (botNumber !== undefined) {
@@ -888,7 +905,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/system/config ────────────────────────────────────────
   app.post("/api/admin/system/config", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       const { key, value } = req.body;
       if (!key || typeof key !== "string") return res.status(400).json({ message: "key é obrigatório" });
       await db.insert(systemConfig).values({ key, value: String(value ?? ""), updatedAt: new Date() })
@@ -903,9 +920,10 @@ export function registerAdminRoutes(app: Express) {
   // ─── DELETE /api/admin/system/config/:key ─────────────────────────────────
   app.delete("/api/admin/system/config/:key", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
-      await db.delete(systemConfig).where(eq(systemConfig.key, req.params.key));
-      await logAudit(actor.id, actor.email, "admin.config_delete", "system", null, { key: req.params.key });
+      const actor = mustAdmin(req);
+      const key = String(req.params.key);
+      await db.delete(systemConfig).where(eq(systemConfig.key, key));
+      await logAudit(actor.id, actor.email, "admin.config_delete", "system", null, { key });
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -936,7 +954,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/system/maintenance ───────────────────────────────────
   app.post("/api/admin/system/maintenance", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       const { enabled } = req.body;
       await db.insert(systemConfig).values({ key: "maintenance_mode", value: String(!!enabled), updatedAt: new Date() }).onConflictDoUpdate({ target: systemConfig.key, set: { value: String(!!enabled), updatedAt: new Date() } });
       await logAudit(actor.id, actor.email, "admin.maintenance_toggle", "system", null, { enabled });
@@ -977,7 +995,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/demo/seed ────────────────────────────────────────────
   app.post("/api/admin/demo/seed", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       const demoEmail = "demo@axis.app";
       const demoPassword = "demo1234";
 
@@ -1040,7 +1058,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/demo/reset ───────────────────────────────────────────
   app.post("/api/admin/demo/reset", requireAdmin, async (req, res) => {
     try {
-      const actor = req.adminUser;
+      const actor = mustAdmin(req);
       const [demoUser] = await db.select().from(users).where(eq(users.email, "demo@axis.app"));
       if (demoUser) {
         await db.delete(transactions).where(eq(transactions.userId, demoUser.id));

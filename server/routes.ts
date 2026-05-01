@@ -681,7 +681,7 @@ export async function registerRoutes(
       const userId = getUserId(req);
       if (!req.file) return res.status(400).json({ message: "Nenhum PDF enviado" });
       const result = await processPDFExtract(req.file.buffer, userId);
-      logAiUsage(userId, "pdf_extract").catch(() => {});
+      logAiUsage(userId, "pdf_analysis").catch(() => {});
       res.json(result);
     } catch (error: any) {
       console.error("Error processing PDF:", error);
@@ -878,7 +878,7 @@ export async function registerRoutes(
         }
       } else {
         const extracted = await processPDFExtract(file.buffer, userId);
-        logAiUsage(userId, "pdf_extract").catch(() => {});
+        logAiUsage(userId, "pdf_analysis").catch(() => {});
 
         if (extracted?.docType === "bill") {
           const hasBothEntities = extracted.issuerCnpj && extracted.recipientCnpj;
