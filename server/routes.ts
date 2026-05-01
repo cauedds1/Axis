@@ -57,11 +57,21 @@ const DISCIPLINE_POINTS = {
 } as const;
 const DISCIPLINE_THRESHOLD = 8; // pontos para subir/descer 1 nível
 
+async function getUserLang(userId: string): Promise<"en" | "pt"> {
+  try {
+    const profile = await storage.getUserProfile(userId);
+    return ((profile as any)?.language ?? "pt") as "en" | "pt";
+  } catch {
+    return "pt";
+  }
+}
+
 async function adjustDisciplinePoints(userId: string, delta: number, reason: string): Promise<void> {
   try {
     const profile = await storage.getUserProfile(userId);
     const prevScore  = profile?.disciplineScore  ?? 5;
     const prevPoints = profile?.disciplinePoints ?? 0;
+    const lang = ((profile as any)?.language ?? "pt") as "en" | "pt";
 
     let newPoints = prevPoints + delta;
     let newScore  = prevScore;
@@ -78,15 +88,15 @@ async function adjustDisciplinePoints(userId: string, delta: number, reason: str
     await storage.upsertUserProfile(userId, { disciplineScore: newScore, disciplinePoints: newPoints });
 
     if (newScore !== prevScore) {
+      const levelMsg = lang === "en"
+        ? `Discipline ${prevScore} → ${newScore} (${delta > 0 ? "+" : ""}${delta} accumulated pts)`
+        : `Disciplina ${prevScore} → ${newScore} (${delta > 0 ? "+" : ""}${delta} pts acumulados)`;
       await storage.createDisciplineHistory({
         userId,
         score: newScore,
         previousScore: prevScore,
         delta: newScore - prevScore,
-        reasons: JSON.stringify([
-          reason,
-          `Disciplina ${prevScore} → ${newScore} (${delta > 0 ? "+" : ""}${delta} pts acumulados)`,
-        ]),
+        reasons: JSON.stringify([reason, levelMsg]),
       });
     }
   } catch {
@@ -108,7 +118,11 @@ async function penalizeOverdueTasks(userId: string): Promise<void> {
         continue;
       }
       await storage.updatePersonalTask(task.id, userId, { disciplinePenalized: true });
-      await adjustDisciplinePoints(userId, DISCIPLINE_POINTS.TASK_OVERDUE, `❌ Tarefa "${task.title}" em atraso — ${DISCIPLINE_POINTS.TASK_OVERDUE} pts`);
+      const _taskLang = await getUserLang(userId);
+      const _taskMsg = _taskLang === "en"
+        ? `❌ Overdue task: "${task.title}" — ${DISCIPLINE_POINTS.TASK_OVERDUE} pts`
+        : `❌ Tarefa "${task.title}" em atraso — ${DISCIPLINE_POINTS.TASK_OVERDUE} pts`;
+      await adjustDisciplinePoints(userId, DISCIPLINE_POINTS.TASK_OVERDUE, _taskMsg);
     }
   } catch {
     // silently fail
@@ -165,11 +179,11 @@ async function penalizeMissedHabits(userId: string): Promise<void> {
 
       if (missedDays > 0) {
         const totalPenalty = DISCIPLINE_POINTS.HABIT_MISSED * missedDays;
-        await adjustDisciplinePoints(
-          userId,
-          totalPenalty,
-          `❌ Compromisso "${habit.name}" perdido ${missedDays}x — ${totalPenalty} pts`
-        );
+        const _habitLang = await getUserLang(userId);
+        const _habitMsg = _habitLang === "en"
+          ? `❌ Habit "${habit.name}" missed ${missedDays}× — ${totalPenalty} pts`
+          : `❌ Compromisso "${habit.name}" perdido ${missedDays}x — ${totalPenalty} pts`;
+        await adjustDisciplinePoints(userId, totalPenalty, _habitMsg);
 
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -272,15 +286,33 @@ async function analyzeSpendingForDiscipline(userId: string): Promise<void> {
       profileCur
     );
 
+    const _spendLang = await getUserLang(userId);
+    const _verdictEN: Record<string, string> = {
+      "ótimo": "Excellent! Low discretionary spending and strong savings rate.",
+      "bom": "Good spending control — within healthy limits this period.",
+      "neutro": "Spending is neutral — no significant changes detected.",
+      "leve": "Minor overspending detected in some discretionary categories.",
+      "moderado": "Moderate overspending — consider reviewing discretionary expenses.",
+      "grave": "High overspending — significant unnecessary expenses this month.",
+    };
+
     let reason: string;
     if (result.penalty > 0) {
       const emoji = result.verdict === "ótimo" ? "💰" : "✅";
-      reason = `${emoji} Finanças ${result.verdict} — ${result.message || "gastos controlados"} (+${result.penalty} pts)`;
+      if (_spendLang === "en") {
+        reason = `${emoji} Finance — ${_verdictEN[result.verdict] || "Spending under control."} (+${result.penalty} pts)`;
+      } else {
+        reason = `${emoji} Finanças ${result.verdict} — ${result.message || "gastos controlados"} (+${result.penalty} pts)`;
+      }
     } else if (result.penalty < 0) {
       const details = result.badCategories.length > 0
         ? result.badCategories.slice(0, 3).join("; ")
-        : "padrão de gastos supérfluos";
-      reason = `💸 ${result.message || "Gastos imprudentes"} — ${details} (${result.penalty} pts)`;
+        : (_spendLang === "en" ? "pattern of unnecessary spending" : "padrão de gastos supérfluos");
+      if (_spendLang === "en") {
+        reason = `💸 ${_verdictEN[result.verdict] || "Overspending detected."} — ${details} (${result.penalty} pts)`;
+      } else {
+        reason = `💸 ${result.message || "Gastos imprudentes"} — ${details} (${result.penalty} pts)`;
+      }
     } else {
       return;
     }
@@ -1519,17 +1551,24 @@ export async function registerRoutes(
 
       const cancellation = await storage.createScheduleCancellation({ userId, scheduleItemId, date, reason, type });
 
+      const _schedLang = await getUserLang(userId);
       let delta = 0;
       let disciplineMsg = "";
       if (type === "holiday") {
         delta = 0;
-        disciplineMsg = `🏖️ Feriado em "${item.title}" — sem penalidade`;
+        disciplineMsg = _schedLang === "en"
+          ? `🏖️ Holiday: "${item.title}" — no penalty`
+          : `🏖️ Feriado em "${item.title}" — sem penalidade`;
       } else if (type === "medical") {
         delta = -1;
-        disciplineMsg = `🏥 Atestado em "${item.title}" — justificativa aceita (${delta} pt)`;
+        disciplineMsg = _schedLang === "en"
+          ? `🏥 Medical excuse: "${item.title}" — accepted (${delta} pt)`
+          : `🏥 Atestado em "${item.title}" — justificativa aceita (${delta} pt)`;
       } else {
         delta = -3;
-        disciplineMsg = `❌ Falta em "${item.title}" sem justificativa (${delta} pts)`;
+        disciplineMsg = _schedLang === "en"
+          ? `❌ Missed: "${item.title}" without justification (${delta} pts)`
+          : `❌ Falta em "${item.title}" sem justificativa (${delta} pts)`;
       }
 
       if (delta !== 0) {
@@ -1586,7 +1625,12 @@ export async function registerRoutes(
         const pts = task.priority === "high" ? DISCIPLINE_POINTS.TASK_HIGH
                   : task.priority === "low"  ? DISCIPLINE_POINTS.TASK_LOW
                   : DISCIPLINE_POINTS.TASK_MEDIUM;
-        adjustDisciplinePoints(userId, pts, `✅ Tarefa "${task.title}" concluída — +${pts} pts`).catch(() => {});
+        getUserLang(userId).then(_lang => {
+          const _taskDoneMsg = _lang === "en"
+            ? `✅ Task "${task.title}" completed — +${pts} pts`
+            : `✅ Tarefa "${task.title}" concluída — +${pts} pts`;
+          adjustDisciplinePoints(userId, pts, _taskDoneMsg).catch(() => {});
+        }).catch(() => {});
       }
       res.json(task);
     } catch (error: any) {
@@ -1630,9 +1674,14 @@ export async function registerRoutes(
       });
 
       const netPenalty = DISCIPLINE_POINTS.TASK_OVERDUE + judgment.creditPoints;
+      const _justLang = await getUserLang(userId);
       const reason = judgment.creditPoints > 0
-        ? `⚠️ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (+${judgment.creditPoints} de crédito, net ${netPenalty} pts)`
-        : `❌ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (${DISCIPLINE_POINTS.TASK_OVERDUE} pts)`;
+        ? (_justLang === "en"
+            ? `⚠️ Overdue task: "${task.title}" — justification ${judgment.verdict} (+${judgment.creditPoints} credit, net ${netPenalty} pts)`
+            : `⚠️ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (+${judgment.creditPoints} de crédito, net ${netPenalty} pts)`)
+        : (_justLang === "en"
+            ? `❌ Overdue task: "${task.title}" — justification ${judgment.verdict} (${DISCIPLINE_POINTS.TASK_OVERDUE} pts)`
+            : `❌ Tarefa "${task.title}" em atraso — justificativa ${judgment.verdict} (${DISCIPLINE_POINTS.TASK_OVERDUE} pts)`);
 
       await adjustDisciplinePoints(userId, netPenalty, reason);
 
@@ -1729,7 +1778,12 @@ export async function registerRoutes(
         const habit = (await storage.getHabits(userId)).find(h => h.id === paramId(req));
         if (habit) {
           saveEventToMemory(userId, `Compromisso "${habit.name}" registrado — streak atual: ${habit.streak} dias`).catch(() => {});
-          adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, `⚡ Compromisso "${habit.name}" feito — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`).catch(() => {});
+          getUserLang(userId).then(_lang => {
+            const _habitDoneMsg = _lang === "en"
+              ? `⚡ Habit "${habit.name}" done — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`
+              : `⚡ Compromisso "${habit.name}" feito — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`;
+            adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, _habitDoneMsg).catch(() => {});
+          }).catch(() => {});
         }
       }
       res.json(log);
@@ -1755,17 +1809,24 @@ export async function registerRoutes(
 
       const cancellation = await storage.createScheduleCancellation({ userId, habitId, entityType: "habit", date, reason, type });
 
+      const _habCancelLang = await getUserLang(userId);
       let delta = 0;
       let disciplineMsg = "";
       if (type === "holiday") {
         delta = 0;
-        disciplineMsg = `🏖️ Feriado — "${habit.name}" sem penalidade`;
+        disciplineMsg = _habCancelLang === "en"
+          ? `🏖️ Holiday: "${habit.name}" — no penalty`
+          : `🏖️ Feriado — "${habit.name}" sem penalidade`;
       } else if (type === "medical") {
         delta = -1;
-        disciplineMsg = `🏥 Atestado — "${habit.name}" justificativa aceita (${delta} pt)`;
+        disciplineMsg = _habCancelLang === "en"
+          ? `🏥 Medical excuse: "${habit.name}" — accepted (${delta} pt)`
+          : `🏥 Atestado — "${habit.name}" justificativa aceita (${delta} pt)`;
       } else {
         delta = -3;
-        disciplineMsg = `❌ Falta em "${habit.name}" sem justificativa (${delta} pts)`;
+        disciplineMsg = _habCancelLang === "en"
+          ? `❌ Missed habit: "${habit.name}" without justification (${delta} pts)`
+          : `❌ Falta em "${habit.name}" sem justificativa (${delta} pts)`;
       }
 
       if (delta !== 0) {
@@ -3082,10 +3143,17 @@ export async function registerRoutes(
           const newStreak = onTime ? ((bill as any).billStreak ?? 0) + 1 : 0;
           await storage.updateBill(bill.id, userId, { billStreak: newStreak } as any);
           const pts = onTime ? Math.min(newStreak + 1, 5) : DISCIPLINE_POINTS.BILL_PAID_LATE;
-          const streakLabel = newStreak === 1 ? "1 mês" : `${newStreak} meses`;
+          const _billLang = await getUserLang(userId);
+          const streakLabel = _billLang === "en"
+            ? (newStreak === 1 ? "1 month" : `${newStreak} months`)
+            : (newStreak === 1 ? "1 mês" : `${newStreak} meses`);
           const disciplineReason = onTime
-            ? `💳 "${bill.title}" paga em dia — sequência de ${streakLabel} (+${pts} pts)`
-            : `⚠️ "${bill.title}" paga com atraso — sequência zerada (${pts} pts)`;
+            ? (_billLang === "en"
+                ? `💳 "${bill.title}" paid on time — streak: ${streakLabel} (+${pts} pts)`
+                : `💳 "${bill.title}" paga em dia — sequência de ${streakLabel} (+${pts} pts)`)
+            : (_billLang === "en"
+                ? `⚠️ "${bill.title}" paid late — streak reset (${pts} pts)`
+                : `⚠️ "${bill.title}" paga com atraso — sequência zerada (${pts} pts)`);
           await adjustDisciplinePoints(userId, pts, disciplineReason);
 
         } else if (removed.length > 0) {
