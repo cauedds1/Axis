@@ -28,7 +28,7 @@ function getTabs(t: (k: string) => string): { id: SettingsTab; label: string; Ic
     { id: "modulos",       label: t("axisSettings.tabModules"),        Icon: LayoutGrid },
     { id: "cadastro",      label: t("axisSettings.tabProfile"),        Icon: UserCog },
     { id: "whatsapp",      label: "WhatsApp",                          Icon: Smartphone },
-    { id: "billing",       label: "Assinatura",                        Icon: CreditCard },
+    { id: "billing",       label: t("axisSettings.tabBilling"),        Icon: CreditCard },
     { id: "notificacoes",  label: t("axisSettings.tabNotifications"),  Icon: Bell },
     { id: "conta",         label: t("axisSettings.tabAccount"),        Icon: TriangleAlert },
   ];
@@ -684,8 +684,8 @@ export default function SettingsPage() {
           {activeTab === "billing" && (
             <div className="space-y-6" data-testid="tab-content-billing">
               <div>
-                <h2 className="text-base font-semibold">Assinatura</h2>
-                <p className="text-sm text-muted-foreground mt-1">Gerencie seu plano e uso mensal.</p>
+                <h2 className="text-base font-semibold">{t("axisSettings.billingTitle")}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{t("axisSettings.billingDesc")}</p>
               </div>
 
               {isLoadingUsage ? (
@@ -700,21 +700,21 @@ export default function SettingsPage() {
                         <div>
                           <p className="text-sm font-semibold">{billingUsage.planDisplayName}</p>
                           {billingUsage.trialEndsAt && new Date(billingUsage.trialEndsAt) > new Date() && (
-                            <p className="text-xs text-yellow-500">Trial termina em {new Date(billingUsage.trialEndsAt).toLocaleDateString("pt-BR")}</p>
+                            <p className="text-xs text-yellow-500">{t("axisSettings.billingTrialEnds", { date: new Date(billingUsage.trialEndsAt).toLocaleDateString() })}</p>
                           )}
                           {billingUsage.plan === "starter" && (
-                            <p className="text-xs text-muted-foreground">Plano gratuito com limites mensais</p>
+                            <p className="text-xs text-muted-foreground">{t("axisSettings.billingFreePlan")}</p>
                           )}
                         </div>
                       </div>
                       {billingUsage.plan === "starter" ? (
                         <Button size="sm" variant="outline" className="text-xs" onClick={() => window.location.href = "/pricing"} data-testid="button-upgrade-plan">
-                          Fazer upgrade
+                          {t("axisSettings.billingUpgrade")}
                         </Button>
                       ) : (
                         <Button size="sm" variant="outline" className="text-xs" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending} data-testid="button-manage-billing">
                           {portalMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                          Gerenciar
+                          {t("axisSettings.billingManage")}
                         </Button>
                       )}
                     </div>
@@ -722,14 +722,14 @@ export default function SettingsPage() {
 
                   {/* Usage meters */}
                   <div>
-                    <SectionLabel>Uso este mês — {billingUsage.month}</SectionLabel>
+                    <SectionLabel>{t("axisSettings.billingUsageThisMonth", { month: billingUsage.month })}</SectionLabel>
                     <div className="space-y-3">
                       {[
-                        { label: "Transações", value: billingUsage.usage.transactions },
-                        { label: "Capturas AI", value: billingUsage.usage.aiCaptures },
-                        { label: "Fotos WhatsApp", value: billingUsage.usage.whatsappPhotos },
-                        { label: "PDFs WhatsApp", value: billingUsage.usage.whatsappPdfs },
-                        { label: "Msgs do chat", value: billingUsage.usage.chatMessages },
+                        { label: t("axisSettings.billingTransactions"), value: billingUsage.usage.transactions },
+                        { label: t("axisSettings.billingAiCaptures"), value: billingUsage.usage.aiCaptures },
+                        { label: t("axisSettings.billingWhatsappPhotos"), value: billingUsage.usage.whatsappPhotos },
+                        { label: t("axisSettings.billingWhatsappPdfs"), value: billingUsage.usage.whatsappPdfs },
+                        { label: t("axisSettings.billingChatMessages"), value: billingUsage.usage.chatMessages },
                       ].map(({ label, value }) => {
                         const pct = value.limit ? Math.min(100, (value.current / value.limit) * 100) : 0;
                         const isUnlimited = value.limit === null;
@@ -759,15 +759,15 @@ export default function SettingsPage() {
 
                       {/* Binary features */}
                       <div className="flex items-center justify-between py-1" data-testid="usage-meter-voice">
-                        <span className="text-xs text-muted-foreground">Transcrição de voz</span>
+                        <span className="text-xs text-muted-foreground">{t("axisSettings.billingVoice")}</span>
                         <span className={`text-xs font-medium ${billingUsage.usage.voice.allowed ? "text-green-400" : "text-muted-foreground"}`}>
-                          {billingUsage.usage.voice.allowed ? "✓ Disponível" : "× Não incluído"}
+                          {billingUsage.usage.voice.allowed ? t("axisSettings.billingAvailable") : t("axisSettings.billingNotIncluded")}
                         </span>
                       </div>
                       <div className="flex items-center justify-between py-1" data-testid="usage-meter-business">
-                        <span className="text-xs text-muted-foreground">Versão Business</span>
+                        <span className="text-xs text-muted-foreground">{t("axisSettings.billingBusiness")}</span>
                         <span className={`text-xs font-medium ${billingUsage.usage.business.allowed ? "text-green-400" : "text-muted-foreground"}`}>
-                          {billingUsage.usage.business.allowed ? "✓ Disponível" : "× Não incluído"}
+                          {billingUsage.usage.business.allowed ? t("axisSettings.billingAvailable") : t("axisSettings.billingNotIncluded")}
                         </span>
                       </div>
                     </div>
@@ -786,30 +786,30 @@ export default function SettingsPage() {
                     if (receipts === 0 && txs === 0 && chats === 0) return null;
                     return (
                       <div>
-                        <SectionLabel>O que o AXIS fez por você este mês</SectionLabel>
+                        <SectionLabel>{t("axisSettings.billingWhatAxisDid")}</SectionLabel>
                         <div className="grid grid-cols-2 gap-3">
                           {receipts > 0 && (
                             <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-receipts">
                               <p className="text-2xl font-bold text-primary">{receipts}</p>
-                              <p className="text-xs text-muted-foreground mt-1">recibos processados</p>
+                              <p className="text-xs text-muted-foreground mt-1">{t("axisSettings.billingReceiptsProcessed")}</p>
                             </div>
                           )}
                           {minutesSaved > 0 && (
                             <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-minutes-saved">
                               <p className="text-2xl font-bold text-primary">~{minutesSaved}</p>
-                              <p className="text-xs text-muted-foreground mt-1">minutos economizados</p>
+                              <p className="text-xs text-muted-foreground mt-1">{t("axisSettings.billingMinutesSaved")}</p>
                             </div>
                           )}
                           {txs > 0 && (
                             <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-transactions">
                               <p className="text-2xl font-bold text-primary">{txs}</p>
-                              <p className="text-xs text-muted-foreground mt-1">transações registradas</p>
+                              <p className="text-xs text-muted-foreground mt-1">{t("axisSettings.billingTransactionsLogged")}</p>
                             </div>
                           )}
                           {chats > 0 && (
                             <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-chats">
                               <p className="text-2xl font-bold text-primary">{chats}</p>
-                              <p className="text-xs text-muted-foreground mt-1">mensagens respondidas</p>
+                              <p className="text-xs text-muted-foreground mt-1">{t("axisSettings.billingMessagesAnswered")}</p>
                             </div>
                           )}
                         </div>
@@ -825,14 +825,14 @@ export default function SettingsPage() {
                     if (!nearLimit && !atVoiceLimit) return null;
                     return (
                       <Block>
-                        <p className="text-sm font-medium mb-1 text-yellow-400">Você está perto dos seus limites</p>
+                        <p className="text-sm font-medium mb-1 text-yellow-400">{t("axisSettings.billingNearLimits")}</p>
                         <p className="text-xs text-muted-foreground mb-3">
-                          {nearLimit ? `${txs.current} de ${txs.limit} transações usadas. ` : ""}
-                          {atVoiceLimit ? "Transcrição de voz não disponível no Starter. " : ""}
-                          Faça upgrade para uso ilimitado.
+                          {nearLimit ? t("axisSettings.billingTransactionsUsed", { current: txs.current, limit: txs.limit }) : ""}
+                          {atVoiceLimit ? t("axisSettings.billingVoiceUnavailable") : ""}
+                          {t("axisSettings.billingUpgradeUnlimited")}
                         </p>
                         <Button className="w-full" size="sm" onClick={() => window.location.href = "/pricing"} data-testid="button-see-plans-inline">
-                          Ver planos
+                          {t("axisSettings.billingSeePlans")}
                         </Button>
                       </Block>
                     );
@@ -840,16 +840,16 @@ export default function SettingsPage() {
 
                   {billingUsage.plan === "starter" && (
                     <Block>
-                      <p className="text-sm font-medium mb-1">Quer mais recursos?</p>
-                      <p className="text-xs text-muted-foreground mb-3">O plano Personal AI desbloqueia uso ilimitado de IA, transcrição de voz e muito mais a partir de R$9/mês.</p>
+                      <p className="text-sm font-medium mb-1">{t("axisSettings.billingWantMore")}</p>
+                      <p className="text-xs text-muted-foreground mb-3">{t("axisSettings.billingPersonalAiDesc")}</p>
                       <Button className="w-full" size="sm" onClick={() => window.location.href = "/pricing"} data-testid="button-see-plans">
-                        Ver planos
+                        {t("axisSettings.billingSeePlans")}
                       </Button>
                     </Block>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Não foi possível carregar as informações de billing.</p>
+                <p className="text-sm text-muted-foreground">{t("axisSettings.billingLoadError")}</p>
               )}
             </div>
           )}
