@@ -108,8 +108,8 @@ export default function AdminPanel() {
 
   const logout = useMutation({
     mutationFn: () => apiRequest("POST", "/api/auth/logout"),
-    onSuccess: () => setLocation("/login"),
-    onError: () => { toast({ variant: "destructive", title: "Logout failed" }); setLocation("/login"); },
+    onSuccess: () => setLocation("/auth"),
+    onError: () => { toast({ variant: "destructive", title: "Logout failed" }); setLocation("/auth"); },
   });
 
   const toggleLang = () => {

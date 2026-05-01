@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -43,7 +43,7 @@ export function WhatsAppSection() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
-      if (data?.qrCode || data?.status === "connecting") {
+      if (data?.qrCode || data?.status === "qr_pending") {
         setQrPolling(true);
         toast({ title: t("whatsapp.connecting") });
       } else if (data?.status === "connected") {
@@ -76,7 +76,11 @@ export function WhatsAppSection() {
     onError: (err: Error) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
 
-  if (isConnected && qrPolling) setQrPolling(false);
+  useEffect(() => {
+    if (status === "qr_pending" && !qrPolling) setQrPolling(true);
+    if (status === "connected" && qrPolling) setQrPolling(false);
+    if (status === "disconnected" && qrPolling) setQrPolling(false);
+  }, [status, qrPolling]);
 
   return (
     <div className="space-y-6">
@@ -90,9 +94,9 @@ export function WhatsAppSection() {
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : status === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
-                <span className={`font-medium ${isConnected ? "text-green-400" : status === "connecting" ? "text-yellow-400" : "text-red-400"}`}>
-                  {isConnected ? t("whatsapp.connected") : status === "connecting" ? t("whatsapp.connecting") : t("whatsapp.disconnected")}
+                <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : status === "qr_pending" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
+                <span className={`font-medium ${isConnected ? "text-green-400" : status === "qr_pending" ? "text-yellow-400" : "text-red-400"}`}>
+                  {isConnected ? t("whatsapp.connected") : status === "qr_pending" ? t("whatsapp.connecting") : t("whatsapp.disconnected")}
                 </span>
               </div>
               {statusData?.phone && (
@@ -103,7 +107,7 @@ export function WhatsAppSection() {
               <div className="flex gap-2 flex-wrap">
                 {!isConnected && (
                   <Button data-testid="button-whatsapp-connect" size="sm"
-                    onClick={() => connect.mutate()} disabled={connect.isPending || status === "connecting"}>
+                    onClick={() => connect.mutate()} disabled={connect.isPending || status === "qr_pending"}>
                     {connect.isPending ? t("common.loading") : t("whatsapp.connect")}
                   </Button>
                 )}
