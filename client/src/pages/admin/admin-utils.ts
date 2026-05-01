@@ -10,7 +10,7 @@ export function fmtDateTime(s: string | null | undefined) {
 
 export function fmtCurrency(n: number | null | undefined) {
   if (n == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 }
 
 export function userName(row: { first_name?: string; firstName?: string; last_name?: string; lastName?: string; email?: string } | null | undefined) {
