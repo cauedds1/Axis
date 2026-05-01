@@ -1,11 +1,17 @@
-import sgMail from "@sendgrid/mail";
+// Email integration — Resend (migrated from SendGrid)
+// Replit connector: connection:conn_resend_01KQJ0VCRQCYRTW2BM235TNDPX
+import { Resend } from "resend";
 
-async function getSendGridClient(): Promise<{ client: typeof sgMail; fromEmail: string }> {
-  if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM_EMAIL) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    return { client: sgMail, fromEmail: process.env.SENDGRID_FROM_EMAIL };
+async function getResendClient(): Promise<{ client: Resend; fromEmail: string }> {
+  // 1. Direct env var (Railway / production)
+  if (process.env.RESEND_API_KEY) {
+    return {
+      client: new Resend(process.env.RESEND_API_KEY),
+      fromEmail: process.env.RESEND_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || "noreply@myaxis.com.br",
+    };
   }
 
+  // 2. Replit connector (dev environment)
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -13,26 +19,28 @@ async function getSendGridClient(): Promise<{ client: typeof sgMail; fromEmail: 
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!hostname || !xReplitToken) {
-    throw new Error("SendGrid não configurado: defina SENDGRID_API_KEY + SENDGRID_FROM_EMAIL ou use o conector Replit");
-  }
+  if (hostname && xReplitToken) {
+    const data = await fetch(
+      "https://" + hostname + "/api/v2/connection?include_secrets=true&connector_names=resend",
+      {
+        headers: {
+          Accept: "application/json",
+          "X-Replit-Token": xReplitToken,
+        },
+      }
+    ).then((res) => res.json()).then((d) => d.items?.[0]);
 
-  const data = await fetch(
-    "https://" + hostname + "/api/v2/connection?include_secrets=true&connector_names=sendgrid",
-    {
-      headers: {
-        Accept: "application/json",
-        "X-Replit-Token": xReplitToken,
-      },
+    if (data?.settings?.api_key) {
+      return {
+        client: new Resend(data.settings.api_key),
+        fromEmail: data.settings.from_email || "noreply@myaxis.com.br",
+      };
     }
-  ).then((res) => res.json()).then((d) => d.items?.[0]);
-
-  if (!data || !data.settings.api_key || !data.settings.from_email) {
-    throw new Error("SendGrid não conectado via Replit Connectors");
   }
 
-  sgMail.setApiKey(data.settings.api_key);
-  return { client: sgMail, fromEmail: data.settings.from_email };
+  throw new Error(
+    "Resend não configurado: defina RESEND_API_KEY + RESEND_FROM_EMAIL ou use o conector Replit"
+  );
 }
 
 export async function sendEmail(options: {
@@ -41,10 +49,11 @@ export async function sendEmail(options: {
   html: string;
   fromName?: string;
 }) {
-  const { client, fromEmail } = await getSendGridClient();
-  await client.send({
+  const { client, fromEmail } = await getResendClient();
+  const fromName = options.fromName || "AXIS";
+  await client.emails.send({
     to: options.to,
-    from: { email: fromEmail, name: options.fromName || "AXIS" },
+    from: `${fromName} <${fromEmail}>`,
     subject: options.subject,
     html: options.html,
   });
@@ -52,7 +61,7 @@ export async function sendEmail(options: {
 
 const APP_URL = process.env.APP_URL
   || (process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : null)
-  || "https://axis.replit.app";
+  || "https://myaxis.com.br";
 
 function baseTemplate(content: string): string {
   return `<!DOCTYPE html>

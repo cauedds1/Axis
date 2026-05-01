@@ -3894,7 +3894,7 @@
       "no": "✗ Não",
       "envHints": {
         "OPENAI_API_KEY": "Necessário para funções de IA (chat, transcrição, análise de PDF). Obtenha em platform.openai.com → API Keys.",
-        "SENDGRID_API_KEY": "Necessário para alertas por e-mail. Crie uma chave em SendGrid → Settings → API Keys.",
+        "RESEND_API_KEY": "Necessário para alertas por e-mail. Obtenha sua chave em resend.com → API Keys. Defina RESEND_FROM_EMAIL para configurar o remetente.",
         "STRIPE_SECRET_KEY": "Necessário para pagamentos. Encontre no Stripe Dashboard → Developers → API Keys.",
         "STRIPE_WEBHOOK_SECRET": "Necessário para eventos de webhook do Stripe. Gere no Stripe Dashboard → Webhooks → seu endpoint.",
         "ADMIN_EMAIL": "Seu endereço de e-mail de administrador. Defina como seu próprio e-mail para acessar este painel.",

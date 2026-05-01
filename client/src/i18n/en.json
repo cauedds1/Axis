@@ -3894,7 +3894,7 @@
       "no": "✗ No",
       "envHints": {
         "OPENAI_API_KEY": "Required for AI features (chat, transcription, PDF analysis). Get yours at platform.openai.com → API Keys.",
-        "SENDGRID_API_KEY": "Required for email alerts. Create a key in SendGrid → Settings → API Keys.",
+        "RESEND_API_KEY": "Required for email alerts. Get your API key at resend.com → API Keys. Set RESEND_FROM_EMAIL to configure the sender address.",
         "STRIPE_SECRET_KEY": "Required for payments. Found in Stripe Dashboard → Developers → API Keys.",
         "STRIPE_WEBHOOK_SECRET": "Required for Stripe webhook events. Generate in Stripe Dashboard → Webhooks → your endpoint.",
         "ADMIN_EMAIL": "Your admin email address. Set to your own email to unlock this admin panel.",

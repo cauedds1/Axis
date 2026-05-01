@@ -79,7 +79,7 @@ export function SystemSection() {
   });
 
   const ENV_HINT_KEYS = [
-    "OPENAI_API_KEY", "SENDGRID_API_KEY", "STRIPE_SECRET_KEY",
+    "OPENAI_API_KEY", "RESEND_API_KEY", "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET", "ADMIN_EMAIL", "APP_URL", "DATABASE_URL",
   ];
   const getEnvHint = (key: string) => {

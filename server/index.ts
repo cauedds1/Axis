@@ -90,7 +90,7 @@ app.use((req, res, next) => {
   }
   const optional: Record<string, string> = {
     OPENAI_API_KEY: "IA/chat/transcrição desativados",
-    SENDGRID_API_KEY: "alertas por email desativados",
+    RESEND_API_KEY: "alertas por email desativados",
     STRIPE_SECRET_KEY: "pagamentos desativados",
     STRIPE_WEBHOOK_SECRET: "webhooks Stripe desativados",
     APP_URL: `usando fallback: ${process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : "http://localhost:5000"}`,

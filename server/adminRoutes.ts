@@ -1083,7 +1083,7 @@ export function registerAdminRoutes(app: Express) {
         { key: "OPENAI_API_KEY", set: envStatus("AI_INTEGRATIONS_OPENAI_API_KEY") || envStatus("OPENAI_API_KEY") },
         { key: "STRIPE_SECRET_KEY", set: envStatus("STRIPE_SECRET_KEY") },
         { key: "STRIPE_WEBHOOK_SECRET", set: envStatus("STRIPE_WEBHOOK_SECRET") },
-        { key: "SENDGRID_API_KEY", set: envStatus("SENDGRID_API_KEY") || envStatus("SENDGRID_INTEGRATIONS_SENDGRID_API_KEY") },
+        { key: "RESEND_API_KEY", set: envStatus("RESEND_API_KEY") || envStatus("REPLIT_CONNECTORS_HOSTNAME") },
         { key: "DATABASE_URL", set: envStatus("DATABASE_URL") },
         { key: "SESSION_SECRET", set: envStatus("SESSION_SECRET") },
       ],
