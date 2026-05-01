@@ -47,6 +47,17 @@ export const usageCounters = pgTable("usage_counters", {
 (table) => [uniqueIndex("idx_usage_user_month").on(table.userId, table.month)]
 );
 
+export const emailVerifications = pgTable("email_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  code: varchar("code").notNull(),
+  accountType: text("account_type").notNull().default("personal"),
+  passwordHash: varchar("password_hash").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type UsageCounter = typeof usageCounters.$inferSelect;
+export type EmailVerification = typeof emailVerifications.$inferSelect;

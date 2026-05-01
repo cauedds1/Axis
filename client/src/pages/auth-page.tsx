@@ -408,13 +408,16 @@ function PlanSelectionStep({
 export default function AuthPage() {
   const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
-  const [regStep, setRegStep] = useState<"form" | "plan">("form");
+  const [regStep, setRegStep] = useState<"form" | "verify" | "plan">("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
   const { login, isLoggingIn, loginError } = useAuth();
   const [, setLocation] = useLocation();
   const { theme } = useTheme();
@@ -502,7 +505,35 @@ export default function AuthPage() {
         setLocation("/");
       } catch {}
     } else {
-      setRegStep("plan");
+      setVerifyError(null);
+      setVerifyLoading(true);
+      try {
+        await apiRequest("POST", "/api/auth/send-verification", { email, password, firstName, lastName });
+        setVerifyCode("");
+        setRegStep("verify");
+      } catch (err: any) {
+        setVerifyError(err?.message ?? "Erro ao enviar código");
+      } finally {
+        setVerifyLoading(false);
+      }
+    }
+  };
+
+  const handleVerifySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegStep("plan");
+  };
+
+  const handleResendVerification = async () => {
+    setVerifyError(null);
+    setVerifyLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/send-verification", { email, password, firstName, lastName });
+      toast({ title: t("axisAuth.verifySending") });
+    } catch (err: any) {
+      setVerifyError(err?.message ?? "Erro ao reenviar código");
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -510,7 +541,7 @@ export default function AuthPage() {
     setPlanLoading(true);
     setPlanError(null);
     try {
-      const res = await apiRequest("POST", "/api/auth/register", { email, password, firstName, lastName });
+      const res = await apiRequest("POST", "/api/auth/verify-and-register", { email, code: verifyCode, firstName, lastName });
       const userData = await res.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
 
@@ -539,15 +570,16 @@ export default function AuthPage() {
     }
   };
 
-  const isLoading = isLoggingIn;
+  const isLoading = isLoggingIn || (!isLogin && verifyLoading);
   const error = isLogin ? loginError : null;
 
   const showPlanStep = !isLogin && regStep === "plan";
+  const showVerifyStep = !isLogin && regStep === "verify";
 
   return (
     <AuthPaletteContext.Provider value={LP}>
       <div className="min-h-screen flex flex-col lg:flex-row bg-[#0a0a0a] text-white relative" style={cssVars}>
-        {!showPlanStep && (
+        {!showPlanStep && !showVerifyStep && (
           <button
             onClick={() => setLocation("/")}
             className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-white/40 hover:text-white/80 transition-colors text-sm"
@@ -598,8 +630,79 @@ export default function AuthPage() {
                   onSelect={handlePlanSelect}
                   isLoading={planLoading}
                   error={planError}
-                  onBack={() => setRegStep("form")}
+                  onBack={() => setRegStep("verify")}
                 />
+              ) : showVerifyStep ? (
+                <motion.div
+                  key="verify"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setRegStep("form"); setVerifyCode(""); setVerifyError(null); }}
+                    className="flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors text-sm mb-2"
+                    data-testid="button-back-to-register-form"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> {t("axisAuth.verifyBack")}
+                  </button>
+
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `rgba(${LP.primaryRgb},0.12)` }}>
+                      <Shield className="w-4 h-4" style={{ color: LP.primary }} />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold tracking-tight">{t("axisAuth.verifyTitle")}</h1>
+                      <p className="text-xs text-white/35">{t("axisAuth.verifySubtitle", { email })}</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleVerifySubmit} className="space-y-4" data-testid="form-verify-email">
+                    <div>
+                      <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                        {t("axisAuth.verifyCodeLabel")}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={verifyCode}
+                        onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="000000"
+                        required
+                        maxLength={6}
+                        className="auth-input text-center text-2xl tracking-[0.4em] font-bold"
+                        data-testid="input-verify-code"
+                        autoFocus
+                      />
+                      <p className="text-xs text-white/25 mt-1.5 text-center">{t("axisAuth.verifyCodeHint")}</p>
+                    </div>
+                    {verifyError && (
+                      <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: `rgba(${LP.primaryRgb},0.08)`, border: `1px solid rgba(${LP.primaryRgb},0.18)`, color: LP.primary }}>
+                        <span className="mt-0.5">⚠</span><span>{verifyError}</span>
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={verifyCode.length !== 6 || verifyLoading}
+                      className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      data-testid="button-verify-submit"
+                    >
+                      {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> {t("axisAuth.verifySubmitBtn")}</>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={verifyLoading}
+                      className="w-full text-xs text-white/25 hover:text-white/45 transition-colors py-1"
+                      data-testid="button-resend-verify"
+                    >
+                      {t("axisAuth.verifyResend")}
+                    </button>
+                  </form>
+                </motion.div>
               ) : forgotStep !== "idle" ? (
                 <motion.div
                   key="forgot"
@@ -855,14 +958,14 @@ export default function AuthPage() {
                       )}
                     </div>
 
-                    {error && (
+                    {(error || (!isLogin && verifyError)) && (
                       <div
                         className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl"
                         style={{ background: `rgba(${LP.primaryRgb},0.08)`, border: `1px solid rgba(${LP.primaryRgb},0.18)`, color: LP.primary }}
                         data-testid="text-auth-error"
                       >
                         <span className="mt-0.5 flex-shrink-0">⚠</span>
-                        <span>{(error as Error).message}</span>
+                        <span>{error ? (error as Error).message : verifyError}</span>
                       </div>
                     )}
 

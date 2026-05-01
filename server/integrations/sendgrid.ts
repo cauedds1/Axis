@@ -720,6 +720,55 @@ export async function sendPasswordResetCodeEmail(
   await sendEmail({ to: userEmail, subject, html });
 }
 
+export async function sendEmailVerificationCode(
+  userEmail: string,
+  firstName: string,
+  code: string,
+  lang: Lang = "pt",
+): Promise<void> {
+  const safeName = escapeHtml(firstName);
+  let html: string;
+  let subject: string;
+
+  if (lang === "en") {
+    subject = `✉️ ${code} — your AXIS email verification code`;
+    html = baseTemplate(`
+      <div class="badge-info">✉️ Email Verification</div>
+      <h1>Almost there, ${safeName}!</h1>
+      <p>Enter the code below to verify your email and finish creating your AXIS account:</p>
+
+      <div style="text-align:center; margin: 28px 0;">
+        <div style="display:inline-block; background: rgba(0,230,255,0.08); border: 1.5px solid rgba(0,230,255,0.25); border-radius: 16px; padding: 20px 40px;">
+          <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #00E6FF; font-family: monospace;">${code}</span>
+        </div>
+        <p style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.3);">This code expires in <strong style="color:rgba(255,255,255,0.5);">15 minutes</strong></p>
+      </div>
+
+      <hr class="divider"/>
+      <p style="font-size:13px; color:rgba(255,255,255,0.35);">If you didn't request an AXIS account, you can safely ignore this email.</p>
+    `, lang);
+  } else {
+    subject = `✉️ ${code} — seu código de verificação AXIS`;
+    html = baseTemplate(`
+      <div class="badge-info">✉️ Verificação de Email</div>
+      <h1>Quase lá, ${safeName}!</h1>
+      <p>Digite o código abaixo para verificar seu email e concluir a criação da sua conta AXIS:</p>
+
+      <div style="text-align:center; margin: 28px 0;">
+        <div style="display:inline-block; background: rgba(0,230,255,0.08); border: 1.5px solid rgba(0,230,255,0.25); border-radius: 16px; padding: 20px 40px;">
+          <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #00E6FF; font-family: monospace;">${code}</span>
+        </div>
+        <p style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.3);">Este código expira em <strong style="color:rgba(255,255,255,0.5);">15 minutos</strong></p>
+      </div>
+
+      <hr class="divider"/>
+      <p style="font-size:13px; color:rgba(255,255,255,0.35);">Se você não solicitou uma conta AXIS, pode ignorar este email com segurança.</p>
+    `, lang);
+  }
+
+  await sendEmail({ to: userEmail, subject, html });
+}
+
 export async function sendReimbursementCollaboratorEmail(opts: {
   collaboratorEmail: string;
   collaboratorName: string;

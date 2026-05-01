@@ -4,8 +4,11 @@ import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
-import { sendPasswordResetCodeEmail, sendWelcomeEmail } from "../../integrations/sendgrid";
+import { sendPasswordResetCodeEmail, sendWelcomeEmail, sendEmailVerificationCode } from "../../integrations/sendgrid";
 import { storage } from "../../storage";
+import { db } from "../../db";
+import { emailVerifications } from "@shared/models/auth";
+import { eq, and, gt } from "drizzle-orm";
 
 function detectLang(req: any): "en" | "pt" {
   const accept = (req.headers?.["accept-language"] || "").toLowerCase();
@@ -93,6 +96,83 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ─── SEND VERIFICATION CODE (personal) ───────────────────────────────────────
+
+  app.post("/api/auth/send-verification", async (req, res) => {
+    try {
+      const data = registerSchema.parse(req.body);
+      const existing = await authStorage.getUserByEmail(data.email.toLowerCase());
+      if (existing) return res.status(409).json({ message: "Este email já está cadastrado" });
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      await db.delete(emailVerifications).where(eq(emailVerifications.email, data.email.toLowerCase()));
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const hashedCode = await bcrypt.hash(code, 10);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await db.insert(emailVerifications).values({
+        email: data.email.toLowerCase(),
+        code: hashedCode,
+        accountType: "personal",
+        passwordHash: hashedPassword,
+        expiresAt,
+      });
+
+      await sendEmailVerificationCode(data.email, data.firstName, code, detectLang(req));
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
+      console.error("Send verification error:", error);
+      res.status(500).json({ message: "Erro ao enviar código de verificação" });
+    }
+  });
+
+  // ─── VERIFY CODE + CREATE ACCOUNT (personal) ─────────────────────────────────
+
+  app.post("/api/auth/verify-and-register", async (req, res) => {
+    try {
+      const { email, code, firstName, lastName } = req.body;
+      if (!email || !code || !firstName || !lastName) {
+        return res.status(400).json({ message: "Campos obrigatórios ausentes" });
+      }
+
+      const [pending] = await db.select().from(emailVerifications).where(
+        and(eq(emailVerifications.email, email.toLowerCase()), eq(emailVerifications.accountType, "personal"))
+      );
+
+      if (!pending) return res.status(400).json({ message: "Código inválido ou expirado" });
+
+      if (new Date() > new Date(pending.expiresAt)) {
+        await db.delete(emailVerifications).where(eq(emailVerifications.id, pending.id));
+        return res.status(400).json({ message: "Código expirado. Solicite um novo." });
+      }
+
+      const valid = await bcrypt.compare(String(code).trim(), pending.code);
+      if (!valid) return res.status(400).json({ message: "Código incorreto" });
+
+      const existing = await authStorage.getUserByEmail(email.toLowerCase());
+      if (existing) return res.status(409).json({ message: "Este email já está cadastrado" });
+
+      const user = await authStorage.upsertUser({
+        email: email.toLowerCase(),
+        password: pending.passwordHash,
+        firstName,
+        lastName,
+        accountType: "personal",
+      });
+
+      await db.delete(emailVerifications).where(eq(emailVerifications.id, pending.id));
+      (req.session as any).userId = user.id;
+      sendWelcomeEmail(user.email!, firstName, detectLang(req)).catch(() => {});
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      console.error("Verify and register error:", error);
+      res.status(500).json({ message: "Erro ao criar conta" });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const data = loginSchema.parse(req.body);
@@ -159,6 +239,93 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(400).json({ message: error.errors[0].message });
       }
       console.error("Business register error:", error);
+      res.status(500).json({ message: "Erro ao criar conta business" });
+    }
+  });
+
+  // ─── SEND VERIFICATION CODE (business) ───────────────────────────────────────
+
+  app.post("/api/business/auth/send-verification", async (req, res) => {
+    try {
+      const data = registerSchema.parse(req.body);
+      const existing = await authStorage.getUserByEmail(data.email.toLowerCase());
+      if (existing) {
+        if (existing.accountType === "personal") {
+          return res.status(409).json({ message: "Este email já está cadastrado no AXIS Pessoal. Use outro email." });
+        }
+        return res.status(409).json({ message: "Este email já está cadastrado" });
+      }
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      await db.delete(emailVerifications).where(eq(emailVerifications.email, data.email.toLowerCase()));
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const hashedCode = await bcrypt.hash(code, 10);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await db.insert(emailVerifications).values({
+        email: data.email.toLowerCase(),
+        code: hashedCode,
+        accountType: "business",
+        passwordHash: hashedPassword,
+        expiresAt,
+      });
+
+      await sendEmailVerificationCode(data.email, data.firstName, code, detectLang(req));
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors[0].message });
+      console.error("Business send verification error:", error);
+      res.status(500).json({ message: "Erro ao enviar código de verificação" });
+    }
+  });
+
+  // ─── VERIFY CODE + CREATE ACCOUNT (business) ─────────────────────────────────
+
+  app.post("/api/business/auth/verify-and-register", async (req, res) => {
+    try {
+      const { email, code, firstName, lastName } = req.body;
+      if (!email || !code || !firstName || !lastName) {
+        return res.status(400).json({ message: "Campos obrigatórios ausentes" });
+      }
+
+      const [pending] = await db.select().from(emailVerifications).where(
+        and(eq(emailVerifications.email, email.toLowerCase()), eq(emailVerifications.accountType, "business"))
+      );
+
+      if (!pending) return res.status(400).json({ message: "Código inválido ou expirado" });
+
+      if (new Date() > new Date(pending.expiresAt)) {
+        await db.delete(emailVerifications).where(eq(emailVerifications.id, pending.id));
+        return res.status(400).json({ message: "Código expirado. Solicite um novo." });
+      }
+
+      const valid = await bcrypt.compare(String(code).trim(), pending.code);
+      if (!valid) return res.status(400).json({ message: "Código incorreto" });
+
+      const existing = await authStorage.getUserByEmail(email.toLowerCase());
+      if (existing) {
+        if (existing.accountType === "personal") {
+          return res.status(409).json({ message: "Este email já está cadastrado no AXIS Pessoal. Use outro email." });
+        }
+        return res.status(409).json({ message: "Este email já está cadastrado" });
+      }
+
+      const user = await authStorage.upsertUser({
+        email: email.toLowerCase(),
+        password: pending.passwordHash,
+        firstName,
+        lastName,
+        accountType: "business",
+      });
+
+      await db.delete(emailVerifications).where(eq(emailVerifications.id, pending.id));
+      (req.session as any).userId = user.id;
+      sendWelcomeEmail(user.email!, firstName, detectLang(req)).catch(() => {});
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      console.error("Business verify and register error:", error);
       res.status(500).json({ message: "Erro ao criar conta business" });
     }
   });

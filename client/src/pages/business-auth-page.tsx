@@ -352,6 +352,11 @@ export default function BusinessAuthPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const [verifyMode, setVerifyMode] = useState(false);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+
   const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "done">("idle");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotCode, setForgotCode] = useState("");
@@ -381,7 +386,7 @@ export default function BusinessAuthPage() {
   }, [isLogin, t]);
 
   useEffect(() => {
-    if (isLogin) setStep(1);
+    if (isLogin) { setStep(1); setVerifyMode(false); setVerifyCode(""); setVerifyError(null); }
     setForgotStep("idle");
     setForgotError(null);
   }, [isLogin]);
@@ -452,9 +457,38 @@ export default function BusinessAuthPage() {
     }
   };
 
-  const handleStep1Next = (e: React.FormEvent) => {
+  const handleStep1Next = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+    setVerifyError(null);
+    setVerifyLoading(true);
+    try {
+      await apiRequest("POST", "/api/business/auth/send-verification", { email, password, firstName, lastName });
+      setVerifyCode("");
+      setVerifyMode(true);
+    } catch (err: any) {
+      setSubmitError(err?.message ?? t("axisBizAuth.registerError"));
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleVerifySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyMode(false);
     setStep(2);
+  };
+
+  const handleResendVerification = async () => {
+    setVerifyError(null);
+    setVerifyLoading(true);
+    try {
+      await apiRequest("POST", "/api/business/auth/send-verification", { email, password, firstName, lastName });
+    } catch (err: any) {
+      setVerifyError(err?.message ?? "Erro ao reenviar código");
+    } finally {
+      setVerifyLoading(false);
+    }
   };
 
   const handleStep2Next = (e: React.FormEvent) => {
@@ -467,7 +501,7 @@ export default function BusinessAuthPage() {
     setSubmitError(null);
     setIsLoading(true);
     try {
-      const registerRes = await apiRequest("POST", "/api/business/auth/register", { email, password, firstName, lastName });
+      const registerRes = await apiRequest("POST", "/api/business/auth/verify-and-register", { email, code: verifyCode, firstName, lastName });
       const userData = await registerRes.json();
       queryClient.setQueryData(["/api/auth/user"], userData);
       const rawReg = registrationNumber.replace(/[^0-9A-Za-z]/g, "");
@@ -718,6 +752,76 @@ export default function BusinessAuthPage() {
               </form>
             </>
             )
+          ) : verifyMode ? (
+            <motion.div
+              key="biz-verify"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-6"
+            >
+              <button
+                type="button"
+                onClick={() => { setVerifyMode(false); setVerifyCode(""); setVerifyError(null); }}
+                className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors mb-5"
+                data-testid="button-back-to-register-form"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> {t("axisAuth.verifyBack")}
+              </button>
+
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.2)" }}>
+                  <Shield className="w-4 h-4" style={{ color: PRIMARY }} />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight">{t("axisAuth.verifyTitle")}</h1>
+                  <p className="text-xs text-white/35">{t("axisAuth.verifySubtitle", { email })}</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleVerifySubmit} className="space-y-4" data-testid="form-verify-email">
+                <div>
+                  <label className={labelClass}>{t("axisAuth.verifyCodeLabel")}</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={verifyCode}
+                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    required
+                    maxLength={6}
+                    className={`${inputClass} text-center text-2xl tracking-[0.4em] font-bold`}
+                    data-testid="input-verify-code"
+                    autoFocus
+                  />
+                  <p className="text-xs text-white/25 mt-1.5 text-center">{t("axisAuth.verifyCodeHint")}</p>
+                </div>
+                {verifyError && (
+                  <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }}>
+                    <span className="mt-0.5">⚠</span><span>{verifyError}</span>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={verifyCode.length !== 6 || verifyLoading}
+                  className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                  style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }}
+                  data-testid="button-verify-submit"
+                >
+                  {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> {t("axisAuth.verifySubmitBtn")}</>}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={verifyLoading}
+                  className="w-full text-xs text-white/25 hover:text-white/45 transition-colors py-1"
+                  data-testid="button-resend-verify"
+                >
+                  {t("axisAuth.verifyResend")}
+                </button>
+              </form>
+            </motion.div>
           ) : (
             <>
               <div className="mb-7">
@@ -769,8 +873,8 @@ export default function BusinessAuthPage() {
                       <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("axisBizAuth.passwordPlaceholder")} required minLength={6} className={inputClass} data-testid="input-password" />
                     </div>
                     <div className="pt-1">
-                      <button type="submit" className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-step1-next">
-                        {t("axisBizAuth.step1Next")} <ArrowRight className="h-4 w-4" />
+                      <button type="submit" disabled={verifyLoading} className="w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-step1-next">
+                        {verifyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{t("axisBizAuth.step1Next")} <ArrowRight className="h-4 w-4" /></>}
                       </button>
                     </div>
                   </motion.form>
