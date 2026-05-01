@@ -536,8 +536,16 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground mb-3">{t("axisSettings.languageDesc")}</p>
                 <Select
                   value={i18n.language}
-                  onValueChange={(lng) => {
+                  onValueChange={async (lng) => {
                     i18n.changeLanguage(lng);
+                    const backendLang = lng.startsWith("pt") ? "pt" : "en";
+                    try {
+                      await fetch("/api/user/language", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ language: backendLang }),
+                      });
+                    } catch (_) {}
                     toast({ title: t("axisSettings.languageChanged") });
                   }}
                 >

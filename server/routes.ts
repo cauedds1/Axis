@@ -422,6 +422,18 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/user/language", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { language } = z.object({ language: z.enum(["pt", "en"]) }).parse(req.body);
+      await storage.upsertUserProfile(userId, { language } as any);
+      res.json({ success: true, language });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/user/notifications", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

@@ -150,6 +150,7 @@ export const userProfile = pgTable("user_profile", {
   lastSpendingAnalysis: timestamp("last_spending_analysis"),
   currency: varchar("currency").default("BRL"),
   currencySetAt: timestamp("currency_set_at"),
+  language: varchar("language").default("pt"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

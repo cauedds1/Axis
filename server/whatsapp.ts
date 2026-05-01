@@ -19,6 +19,7 @@ import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, trans
 import type { IntentResult } from "./ai";
 import { log } from "./log";
 import { logWhatsappMessage, logAiUsage } from "./adminLogger";
+import { wt, langFromProfile, type Lang } from "./whatsapp-i18n";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
@@ -391,6 +392,8 @@ class WhatsAppManager {
 
     if (!text.trim() && !imageMsg && !audioMsg && !docMsg) return;
 
+    let lang: Lang = "pt";
+
     try {
       const msgType = imageMsg ? " [imagem]" : audioMsg ? " [áudio]" : docMsg ? " [documento]" : ` — "${text.substring(0, 60)}"`;
       log(`WhatsApp: mensagem recebida de ${senderPhone}${msgType}`, "whatsapp");
@@ -457,10 +460,28 @@ class WhatsAppManager {
 
       log(`WhatsApp: usuário encontrado — userId=${profile.userId}`, "whatsapp");
 
+      lang = langFromProfile((profile as any).language);
+
+      // Language switch command: "language en", "idioma pt", etc.
+      if (text.trim()) {
+        const langCmd = text.trim().toLowerCase().replace(/\s+/g, " ");
+        let newLang: Lang | null = null;
+        if (langCmd === "language en" || langCmd === "lang en" || langCmd === "idioma en") newLang = "en";
+        if (langCmd === "language pt" || langCmd === "lang pt" || langCmd === "idioma pt") newLang = "pt";
+        if (newLang) {
+          await storage.upsertUserProfile(profile.userId, { language: newLang } as any);
+          const confirmMsg = newLang === "en"
+            ? "✅ Language set to *English*. All responses will now be in English."
+            : "✅ Idioma definido como *Português*. Todas as respostas serão em português.";
+          await this.sendMessage(jid, confirmMsg);
+          return;
+        }
+      }
+
       // Route collaborator accounts directly to business expense flow
       const [userRow] = await db.select({ accountType: users.accountType }).from(users).where(eq(users.id, profile.userId));
       if (userRow?.accountType === "collaborator") {
-        await this.handleCollaboratorMessage(msg, jid, profile.userId, imageMsg, text);
+        await this.handleCollaboratorMessage(msg, jid, profile.userId, imageMsg, text, lang);
         return;
       }
 
@@ -478,12 +499,12 @@ class WhatsAppManager {
           const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (answer === "pessoal" || answer === "p") {
             this.pendingBusinessChoice.delete(jid);
-            const savedTx = await this.limitedCreateTx(jid, profile.userId, pendingBusiness.transactionData);
+            const savedTx = await this.limitedCreateTx(jid, profile.userId, pendingBusiness.transactionData, lang);
             if (savedTx === null) return;
             if (savedTx?.id) {
               this.lastRegisteredTx.set(jid, { id: savedTx.id, description: pendingBusiness.transactionData.description || "", amount: Number(pendingBusiness.transactionData.amount), categoryName: pendingBusiness.transactionData.categoryName || "outros", establishment: pendingBusiness.transactionData.establishment || null, type: pendingBusiness.transactionData.type, expiresAt: Date.now() + 30 * 60 * 1000 });
             }
-            await this.sendMessage(jid, `✅ *Registrado como gasto pessoal!*\n${pendingBusiness.replyLine}`);
+            await this.sendMessage(jid, wt("receiptSavedPersonal", lang, { replyLine: pendingBusiness.replyLine }));
           } else {
             const matched = pendingBusiness.orgs.find(o => answer.includes(o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")) || o.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(answer));
             if (matched) {
@@ -498,10 +519,10 @@ class WhatsAppManager {
                 }
               }
               await storage.createBusinessExpense({ organizationId: matched.id, userId: profile.userId, amount: pendingBusiness.transactionData.amount, description: pendingBusiness.transactionData.description, categoryName: pendingBusiness.transactionData.categoryName, establishment: pendingBusiness.transactionData.establishment, paymentMethod: pendingBusiness.transactionData.paymentMethod, receiptItems: pendingBusiness.transactionData.receiptItems ?? null, receiptImageBase64, receiptImageUrl, date: pendingBusiness.transactionData.date, source: "whatsapp", status: "pending_review" } as any);
-              await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${pendingBusiness.replyLine}\n\n📋 Salvo em *${matched.name}* — aguardando aprovação do gestor.`);
+              await this.sendMessage(jid, wt("receiptBusinessSaved", lang, { replyLine: pendingBusiness.replyLine, orgName: matched.name }));
             } else {
               const orgNames = pendingBusiness.orgs.map(o => `*${o.name}*`).join(", ");
-              await this.sendMessage(jid, `⚠️ Não entendi. Responda *pessoal* ou o nome da empresa (${orgNames}).`);
+              await this.sendMessage(jid, wt("receiptAskBusinessInvalid", lang, { orgNames }));
             }
           }
           return;
@@ -517,7 +538,7 @@ class WhatsAppManager {
           const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (answer === "sim" || answer === "s" || answer === "yes" || answer.startsWith("sim ") || answer === "cadastrar") {
             this.pendingDuplicates.delete(jid);
-            const confirmedTx = await this.limitedCreateTx(jid, profile.userId, pending.transactionData);
+            const confirmedTx = await this.limitedCreateTx(jid, profile.userId, pending.transactionData, lang);
             if (confirmedTx === null) return;
             if (confirmedTx?.id) {
               this.lastRegisteredTx.set(jid, {
@@ -530,12 +551,12 @@ class WhatsAppManager {
                 expiresAt: Date.now() + 30 * 60 * 1000,
               });
             }
-            await this.sendMessage(jid, `✅ Cadastrado!\n${pending.replyText}`);
+            await this.sendMessage(jid, wt("dupConfirmed", lang, { replyText: pending.replyText }));
           } else if (answer === "nao" || answer === "n" || answer === "no" || answer.startsWith("nao ") || answer === "cancelar") {
             this.pendingDuplicates.delete(jid);
-            await this.sendMessage(jid, "🚫 Ok, transação não cadastrada.");
+            await this.sendMessage(jid, wt("dupCancelled", lang));
           } else {
-            await this.sendMessage(jid, `⚠️ Responda *sim* para cadastrar ou *não* para cancelar.\n${pending.replyText}`);
+            await this.sendMessage(jid, wt("dupInvalid", lang, { replyText: pending.replyText }));
           }
           return;
         }
@@ -570,10 +591,13 @@ class WhatsAppManager {
           if (chosen) {
             this.pendingBillIdentity.delete(jid);
             await saveUserIdentityEntity(pendingIdentity.userId, chosen.name, chosen.cnpj);
-            await this.createBillFromExtracted(jid, pendingIdentity.userId, pendingIdentity.extracted, billType);
+            await this.createBillFromExtracted(jid, pendingIdentity.userId, pendingIdentity.extracted, billType, lang);
             log(`WhatsApp: identidade salva — ${chosen.name} (${chosen.cnpj}) para userId=${pendingIdentity.userId}`, "whatsapp");
           } else {
-            await this.sendMessage(jid, `⚠️ Responda *1* ou *2* para identificar quem é você.\n\n1️⃣ ${pendingIdentity.option1.name}\n2️⃣ ${pendingIdentity.option2.name}`);
+            const idMsg = lang === "en"
+              ? `⚠️ Reply *1* or *2* to identify who you are.\n\n1️⃣ ${pendingIdentity.option1.name}\n2️⃣ ${pendingIdentity.option2.name}`
+              : `⚠️ Responda *1* ou *2* para identificar quem é você.\n\n1️⃣ ${pendingIdentity.option1.name}\n2️⃣ ${pendingIdentity.option2.name}`;
+            await this.sendMessage(jid, idMsg);
           }
           return;
         }
@@ -596,7 +620,7 @@ class WhatsAppManager {
               currentAmount: 0 as any,
             });
             this.pendingSavingsDeposit.delete(jid);
-            await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount);
+            await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount, lang);
           } else {
             const goals = pendingSavings.goals;
             const createNewIdx = goals.length + 1;
@@ -605,7 +629,7 @@ class WhatsAppManager {
             if (!isNaN(chosenNum) && chosenNum >= 1 && chosenNum <= goals.length) {
               const goal = goals[chosenNum - 1];
               this.pendingSavingsDeposit.delete(jid);
-              await this.depositIntoGoal(jid, profile.userId, goal.id, goal.title, pendingSavings.amount);
+              await this.depositIntoGoal(jid, profile.userId, goal.id, goal.title, pendingSavings.amount, lang);
             } else if (chosenNum === createNewIdx || answer.includes("criar") || answer.includes("nova") || answer.includes("novo") || answer.includes("new")) {
               if (pendingSavings.originalGoalName) {
                 const newGoal = await storage.createFinancialGoal({
@@ -615,15 +639,18 @@ class WhatsAppManager {
                   currentAmount: 0 as any,
                 });
                 this.pendingSavingsDeposit.delete(jid);
-                await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount);
+                await this.depositIntoGoal(jid, profile.userId, newGoal.id, newGoal.title, pendingSavings.amount, lang);
               } else {
                 this.pendingSavingsDeposit.set(jid, { ...pendingSavings, awaitingNewGoalName: true, expiresAt: Date.now() + 10 * 60 * 1000 });
-                await this.sendMessage(jid, "📝 Qual será o nome da nova reserva?");
+                await this.sendMessage(jid, wt("savingsNewGoalName", lang));
               }
             } else {
               const lines = goals.map((g, i) => `${i + 1}️⃣ ${g.title}`).join("\n");
               const fmtAmt = pendingSavings.amount.toFixed(2).replace(".", ",");
-              await this.sendMessage(jid, `⚠️ Opção inválida. Responda com o número da reserva:\n\n${lines}\n➕ ${createNewIdx} - Criar nova reserva "${pendingSavings.originalGoalName || "..."}" com R$ ${fmtAmt}`);
+              const invalidMsg = lang === "en"
+                ? `⚠️ Invalid option. Reply with the goal number:\n\n${lines}\n➕ ${createNewIdx} - Create new goal "${pendingSavings.originalGoalName || "..."}" with R$ ${fmtAmt}`
+                : `⚠️ Opção inválida. Responda com o número da reserva:\n\n${lines}\n➕ ${createNewIdx} - Criar nova reserva "${pendingSavings.originalGoalName || "..."}" com R$ ${fmtAmt}`;
+              await this.sendMessage(jid, invalidMsg);
             }
           }
           return;
@@ -631,17 +658,17 @@ class WhatsAppManager {
       }
 
       if (imageMsg) {
-        await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg");
+        await this.handleReceiptImage(msg, jid, profile.userId, imageMsg.mimetype || "image/jpeg", lang);
         return;
       }
 
       if (audioMsg) {
-        await this.handleAudioMessage(msg, jid, profile.userId, audioMsg.mimetype || "audio/ogg; codecs=opus");
+        await this.handleAudioMessage(msg, jid, profile.userId, audioMsg.mimetype || "audio/ogg; codecs=opus", lang);
         return;
       }
 
       if (docMsg) {
-        await this.handleDocumentPDF(msg, jid, profile.userId, docMsg.fileName || "documento");
+        await this.handleDocumentPDF(msg, jid, profile.userId, docMsg.fileName || "documento", lang);
         return;
       }
 
@@ -658,7 +685,7 @@ class WhatsAppManager {
 
       if (result.intent === "edit_last") {
         if (!lastTxContext) {
-          await this.sendMessage(jid, "Não encontrei uma transação recente para editar. Cadastre um gasto ou receita primeiro.");
+          await this.sendMessage(jid, wt("editLastNotFound", lang));
           return;
         }
         const changes = result.data;
@@ -671,7 +698,7 @@ class WhatsAppManager {
         if (changes.type != null) updateFields.type = changes.type;
 
         if (Object.keys(updateFields).length === 0) {
-          await this.sendMessage(jid, "Não entendi o que você quer alterar. Pode descrever melhor?");
+          await this.sendMessage(jid, wt("editLastUnknownField", lang));
           return;
         }
 
@@ -693,24 +720,24 @@ class WhatsAppManager {
         });
 
         const typeIcon = finalType === "income" ? "📥" : "💸";
-        await this.sendMessage(jid, `✅ *Transação atualizada!*\n${typeIcon} ${finalDesc} — R$ ${Number(finalAmount).toFixed(2).replace(".", ",")} em *${finalCategory}*`);
+        await this.sendMessage(jid, wt("editLastUpdated", lang, { icon: typeIcon, desc: finalDesc, amount: Number(finalAmount).toFixed(2).replace(".", ","), category: finalCategory }));
         log(`WhatsApp: transação editada id=${lastTxContext.id} para userId=${profile.userId}`, "whatsapp");
         return;
       }
 
       if (result.intent === "savings_deposit") {
-        await this.handleSavingsDeposit(jid, profile.userId, Number(result.data.amount), result.data.goalName || null);
+        await this.handleSavingsDeposit(jid, profile.userId, Number(result.data.amount), result.data.goalName || null, lang);
         return;
       }
 
-      const reply = await this.buildReply(result, profile.userId, jid);
+      const reply = await this.buildReply(result, profile.userId, jid, lang);
       if (reply) {
         await this.sendMessage(jid, reply);
         log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
       }
     } catch (err: any) {
       log(`WhatsApp: erro ao processar mensagem de ${senderPhone} — ${err.message}`, "whatsapp");
-      await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
+      await this.sendMessage(jid, wt("processingError", lang));
     }
   }
 
@@ -721,33 +748,34 @@ class WhatsAppManager {
     jid: string,
     userId: string,
     imageMsg: any,
-    text: string
+    text: string,
+    lang: Lang
   ): Promise<void> {
     if (!imageMsg) {
       const cmdRaw = text.trim().toLowerCase().replace(/\s+/g, " ");
-      if (cmdRaw.startsWith("vincular")) {
-        await this.sendMessage(jid, "✅ Seu número já está vinculado ao *AXIS Business*!\n\nEnvie uma *foto do recibo* para registrar uma despesa corporativa.");
+      if (cmdRaw.startsWith("vincular") || cmdRaw.startsWith("link")) {
+        await this.sendMessage(jid, wt("collabAlreadyLinked", lang));
         return;
       }
-      await this.sendMessage(jid, "📎 Envie uma *foto do recibo* para registrar uma despesa corporativa.\n\nAssim que receber a imagem, vou criar a despesa automaticamente e notificar o gestor.");
+      await this.sendMessage(jid, wt("collabSendReceipt", lang));
       return;
     }
 
     const orgs = await storage.getUserOrganizations(userId);
     if (orgs.length === 0) {
-      await this.sendMessage(jid, "⚠️ Você não está associado a nenhuma empresa. Entre em contato com o administrador.");
+      await this.sendMessage(jid, wt("collabNoOrg", lang));
       return;
     }
     const org = orgs[0];
 
-    await this.sendMessage(jid, "🔍 Analisando comprovante...");
+    await this.sendMessage(jid, wt("receiptAnalyzing", lang));
 
     let buffer: Buffer;
     try {
       buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar mídia (colaborador) — ${dlErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui baixar a imagem. Tente enviar novamente.");
+      await this.sendMessage(jid, wt("receiptDownloadError", lang));
       return;
     }
 
@@ -768,13 +796,13 @@ class WhatsAppManager {
       logWhatsappMessage(jid.split("@")[0], "image_receipt", "collaborator_receipt", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise IA (colaborador) — ${aiErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente uma foto mais nítida.");
+      await this.sendMessage(jid, wt("receiptAnalysisError", lang));
       return;
     }
 
     const validReceipts = multiResult.receipts.filter(r => r.totalAmount);
     if (validReceipts.length === 0) {
-      await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida.");
+      await this.sendMessage(jid, wt("receiptNoValue", lang));
       return;
     }
 
@@ -822,18 +850,20 @@ class WhatsAppManager {
     }
 
     let replyMsg: string;
+    const dateLocale = lang === "en" ? "en-US" : "pt-BR";
     if (createdExpenses.length === 1) {
       const { amount, categoryName, establishment, description, date, receiptItemsList } = createdExpenses[0];
-      const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const dateStr = date.toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "numeric" });
       let replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}`;
-      if (receiptItemsList) replyLine += ` 📋 ${receiptItemsList.length} itens`;
-      replyMsg = `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+      if (receiptItemsList) replyLine += ` 📋 ${receiptItemsList.length} ${lang === "en" ? "items" : "itens"}`;
+      replyMsg = wt("receiptBusinessSaved", lang, { replyLine, orgName: org.name });
     } else {
       const lines = createdExpenses.map(({ amount, categoryName, establishment, description }, i) =>
         `${i + 1}. ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*`
       ).join("\n");
       const totalAmount = createdExpenses.reduce((s, { amount }) => s + amount, 0);
-      replyMsg = `✅ *${createdExpenses.length} despesas registradas!*\n${lines}\n\n💰 Total: R$ ${totalAmount.toFixed(2).replace(".", ",")}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+      const expensesWord = lang === "en" ? "expenses registered" : "despesas registradas";
+      replyMsg = `✅ *${createdExpenses.length} ${expensesWord}!*\n${lines}\n\n💰 Total: R$ ${totalAmount.toFixed(2).replace(".", ",")}\n\n📋 ${lang === "en" ? "Saved to" : "Salvo em"} *${org.name}* — ${lang === "en" ? "awaiting manager approval." : "aguardando aprovação do gestor."}`;
     }
 
     await this.sendMessage(jid, replyMsg);
@@ -868,16 +898,23 @@ class WhatsAppManager {
     try {
       const collaboratorProfile = await storage.getUserProfile(expense.userId);
       if (!collaboratorProfile?.whatsappJid) return;
+      const collabLang = langFromProfile((collaboratorProfile as any).language);
       const amount = Number(expense.amount);
-      const desc = expense.establishment || expense.description || "Despesa";
+      const desc = expense.establishment || expense.description || (collabLang === "en" ? "Expense" : "Despesa");
       let msg: string;
       if (newStatus === "approved") {
-        msg = `✅ *Despesa aprovada!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n📋 Aguardando pagamento pelo gestor.`;
+        msg = collabLang === "en"
+          ? `✅ *Expense approved!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n📋 Awaiting payment by the manager.`
+          : `✅ *Despesa aprovada!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n📋 Aguardando pagamento pelo gestor.`;
       } else if (newStatus === "rejected") {
-        const reason = rejectionComment || "Sem motivo informado";
-        msg = `❌ *Despesa rejeitada*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n💬 Motivo: ${reason}\n\n📎 Envie uma nova foto com as correções para reenviar.`;
+        const reason = rejectionComment || (collabLang === "en" ? "No reason provided" : "Sem motivo informado");
+        msg = collabLang === "en"
+          ? `❌ *Expense rejected*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n💬 Reason: ${reason}\n\n📎 Send a new photo with corrections to resubmit.`
+          : `❌ *Despesa rejeitada*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n💬 Motivo: ${reason}\n\n📎 Envie uma nova foto com as correções para reenviar.`;
       } else if (newStatus === "paid") {
-        msg = `💸 *Reembolso realizado!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n✅ O valor foi marcado como pago pelo gestor.`;
+        msg = collabLang === "en"
+          ? `💸 *Reimbursement processed!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n✅ The amount has been marked as paid by the manager.`
+          : `💸 *Reembolso realizado!*\n💰 R$ ${amount.toFixed(2).replace(".", ",")} — ${desc}\n✅ O valor foi marcado como pago pelo gestor.`;
       } else {
         return;
       }
@@ -894,14 +931,15 @@ class WhatsAppManager {
     msg: proto.IWebMessageInfo,
     jid: string,
     userId: string,
-    mimetype: string
+    mimetype: string,
+    lang: Lang
   ): Promise<void> {
     // ── Plan limit check ──────────────────────────────────────────────────────
     try {
       const { checkLimit, incrementCounter } = await import("./planLimits");
       const photoLimit = await checkLimit(userId, 'whatsapp_photo');
       if (!photoLimit.allowed) {
-        await this.sendMessage(jid, `⛔ *Limite atingido* — ${photoLimit.reason}.\n\n👉 Faça upgrade em: https://axis.app/pricing`);
+        await this.sendMessage(jid, wt("docLimitReached", lang, { reason: photoLimit.reason }));
         return;
       }
       incrementCounter(userId, 'whatsapp_photo').catch(() => {});
@@ -909,14 +947,14 @@ class WhatsAppManager {
       log(`WhatsApp: erro ao checar limite de foto — ${limitErr?.message}`, "whatsapp");
     }
     // ─────────────────────────────────────────────────────────────────────────
-    await this.sendMessage(jid, "🔍 Analisando comprovante...");
+    await this.sendMessage(jid, wt("receiptAnalyzing", lang));
 
     let buffer: Buffer;
     try {
       buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar mídia — ${dlErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui baixar a imagem. Tente enviar novamente.");
+      await this.sendMessage(jid, wt("receiptDownloadError", lang));
       return;
     }
 
@@ -943,13 +981,13 @@ class WhatsAppManager {
       logWhatsappMessage(jid.split("@")[0], "image_receipt", "personal_receipt", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise de imagem pela IA — ${aiErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui analisar a imagem. Tente descrever o gasto em texto, por exemplo: *gastei 50 reais no almoço*");
+      await this.sendMessage(jid, wt("receiptAnalysisErrorText", lang));
       return;
     }
 
     const validReceipts = multiResult.receipts.filter(r => r.totalAmount);
     if (validReceipts.length === 0) {
-      await this.sendMessage(jid, "😕 Não consegui identificar um valor nessa imagem. Tente uma foto mais nítida ou descreva o gasto em texto.");
+      await this.sendMessage(jid, wt("receiptNoValueText", lang));
       return;
     }
 
@@ -1002,11 +1040,15 @@ class WhatsAppManager {
 
       let description: string;
       if (imageType === "pix_received") {
-        description = senderName ? `Pix de ${senderName}` : "Pix recebido";
+        description = senderName
+          ? (lang === "en" ? `Pix from ${senderName}` : `Pix de ${senderName}`)
+          : (lang === "en" ? "Pix received" : "Pix recebido");
       } else if (imageType === "pix_sent") {
-        description = receiverName ? `Pix para ${receiverName}` : "Pix enviado";
+        description = receiverName
+          ? (lang === "en" ? `Pix to ${receiverName}` : `Pix para ${receiverName}`)
+          : (lang === "en" ? "Pix sent" : "Pix enviado");
       } else {
-        description = receipt.establishment || receipt.description || "Comprovante";
+        description = receipt.establishment || receipt.description || (lang === "en" ? "Receipt" : "Comprovante");
       }
 
       const receiptItemsList = receipt.items && receipt.items.length > 1 ? receipt.items : null;
@@ -1025,17 +1067,18 @@ class WhatsAppManager {
         receiptItems: receiptItemsList ? JSON.stringify(receiptItemsList.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
       };
 
-      const dateStr = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-      const timeStr = receipt.time ? ` às ${receipt.time}` : "";
+      const dateLocale = lang === "en" ? "en-US" : "pt-BR";
+      const dateStr = date.toLocaleDateString(dateLocale, { day: "2-digit", month: "2-digit", year: "numeric" });
+      const timeStr = receipt.time ? (lang === "en" ? ` at ${receipt.time}` : ` às ${receipt.time}`) : "";
 
       let replyLine: string;
       if (imageType === "pix_received") {
-        replyLine = `📥 Pix recebido${senderName ? ` de *${senderName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
+        replyLine = `📥 ${lang === "en" ? "Pix received" : "Pix recebido"}${senderName ? ` ${lang === "en" ? "from" : "de"} *${senderName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
       } else if (imageType === "pix_sent") {
-        replyLine = `📤 Pix enviado${receiverName ? ` p/ *${receiverName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
+        replyLine = `📤 ${lang === "en" ? "Pix sent" : "Pix enviado"}${receiverName ? ` ${lang === "en" ? "to" : "p/"} *${receiverName}*` : ""} — R$ ${amount.toFixed(2).replace(".", ",")} (${categoryName}) 📅 ${dateStr}${timeStr}`;
       } else {
-        replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}* 📅 ${dateStr}${timeStr}`;
-        if (receipt.items && receipt.items.length > 1) replyLine += ` 📋 ${receipt.items.length} itens`;
+        replyLine = `💸 ${establishment || description} — R$ ${amount.toFixed(2).replace(".", ",")} ${lang === "en" ? "in" : "em"} *${categoryName}* 📅 ${dateStr}${timeStr}`;
+        if (receipt.items && receipt.items.length > 1) replyLine += ` 📋 ${receipt.items.length} ${lang === "en" ? "items" : "itens"}`;
       }
 
       return { transactionData, amount, transactionType, description, establishment, date, replyLine };
@@ -1061,7 +1104,7 @@ class WhatsAppManager {
         receiptItems: transactionData.receiptItems ?? null, receiptImageBase64, receiptImageUrl,
         date: transactionData.date, source: "whatsapp", status: "pending_review",
       } as any);
-      await this.sendMessage(jid, `✅ *Despesa corporativa registrada!*\n${replyLine}\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`);
+      await this.sendMessage(jid, wt("receiptBusinessSaved", lang, { replyLine, orgName: org.name }));
       return;
     }
 
@@ -1077,11 +1120,7 @@ class WhatsAppManager {
         orgs: userOrgs.map(o => ({ id: o.id, name: o.name })),
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
-      await this.sendMessage(jid,
-        `✅ Comprovante identificado:\n${replyLine}\n\n` +
-        `🏢 Essa despesa é *pessoal* ou corporativa?\n` +
-        `Responda: *pessoal* ou o nome da empresa (${orgNames})`
-      );
+      await this.sendMessage(jid, wt("receiptAskBusiness", lang, { replyLine, orgNames }));
       return;
     }
 
@@ -1113,11 +1152,10 @@ class WhatsAppManager {
           replyText: replyLine,
           expiresAt: Date.now() + 5 * 60 * 1000,
         });
-        await this.sendMessage(jid,
-          `⚠️ *Transação já cadastrada!*\n${replyLine}\n\n` +
-          `Essa transação parece já ter sido registrada. Deseja cadastrar novamente?\n` +
-          `Responda *sim* para cadastrar ou *não* para cancelar.`
-        );
+        const dupMsg = lang === "en"
+          ? `⚠️ *Transaction already registered!*\n${replyLine}\n\nThis transaction seems to have been registered already. Do you want to register it again?\nReply *yes* to save or *no* to cancel.`
+          : `⚠️ *Transação já cadastrada!*\n${replyLine}\n\nEssa transação parece já ter sido registrada. Deseja cadastrar novamente?\nResponda *sim* para cadastrar ou *não* para cancelar.`;
+        await this.sendMessage(jid, dupMsg);
         return;
       }
 
@@ -1134,7 +1172,7 @@ class WhatsAppManager {
           expiresAt: Date.now() + 30 * 60 * 1000,
         });
       }
-      await this.sendMessage(jid, `✅ *Comprovante registrado!*\n${replyLine}`);
+      await this.sendMessage(jid, wt("receiptSaved", lang, { replyLine }));
       log(`WhatsApp image processed — ${transactionType} R$ ${amount}`, "whatsapp");
       return;
     }
@@ -1157,14 +1195,14 @@ class WhatsAppManager {
     }
 
     if (savedCount === 0 && !limitHit) {
-      await this.sendMessage(jid, "😕 Não consegui salvar os comprovantes. Tente novamente.");
+      await this.sendMessage(jid, wt("receiptSaveError", lang));
       return;
     }
     if (limitHit && savedCount === 0) return;
 
     const header = savedCount === 1
-      ? `✅ *1 comprovante registrado!*`
-      : `✅ *${savedCount} comprovantes registrados!*`;
+      ? (lang === "en" ? `✅ *1 receipt saved!*` : `✅ *1 comprovante registrado!*`)
+      : (lang === "en" ? `✅ *${savedCount} receipts saved!*` : `✅ *${savedCount} comprovantes registrados!*`);
     await this.sendMessage(jid, `${header}\n\n${lines.join("\n\n")}`);
     log(`WhatsApp: ${savedCount} comprovantes processados da imagem`, "whatsapp");
   }
@@ -1173,16 +1211,17 @@ class WhatsAppManager {
     msg: proto.IWebMessageInfo,
     jid: string,
     userId: string,
-    mimetype: string
+    mimetype: string,
+    lang: Lang
   ): Promise<void> {
-    await this.sendMessage(jid, "🎙️ Transcrevendo áudio...");
+    await this.sendMessage(jid, wt("audioTranscribing", lang));
 
     let buffer: Buffer;
     try {
       buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar áudio — ${dlErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui baixar o áudio. Tente enviar novamente.");
+      await this.sendMessage(jid, wt("audioDownloadError", lang));
       return;
     }
 
@@ -1192,23 +1231,23 @@ class WhatsAppManager {
       logAiUsage(userId, "audio_transcription").catch(() => {});
     } catch (tErr: any) {
       log(`WhatsApp: falha na transcrição — ${tErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui entender o áudio. Tente falar com mais clareza ou envie uma mensagem de texto.");
+      await this.sendMessage(jid, wt("audioTranscribeError", lang));
       return;
     }
 
     if (!transcription?.trim()) {
-      await this.sendMessage(jid, "😕 Não consegui entender o áudio. Tente enviar uma mensagem de texto.");
+      await this.sendMessage(jid, wt("audioTranscribeEmpty", lang));
       return;
     }
 
     log(`WhatsApp: áudio transcrito — "${transcription.substring(0, 80)}"`, "whatsapp");
-    await this.sendMessage(jid, `🎙️ Entendi: _${transcription}_`);
+    await this.sendMessage(jid, wt("audioUnderstood", lang, { text: transcription }));
 
     const result = await detectIntentAndProcess(transcription, userId);
     logAiUsage(userId, "intent_detection").catch(() => {});
     log(`WhatsApp: intent=${result.intent} (áudio) para userId=${userId}`, "whatsapp");
     logWhatsappMessage(jid.split("@")[0], "audio", result.intent, userId).catch(() => {});
-    const reply = await this.buildReply(result, userId, jid);
+    const reply = await this.buildReply(result, userId, jid, lang);
     if (reply) await this.sendMessage(jid, reply);
   }
 
@@ -1216,13 +1255,14 @@ class WhatsAppManager {
     msg: proto.IWebMessageInfo,
     jid: string,
     userId: string,
-    fileName: string
+    fileName: string,
+    lang: Lang
   ): Promise<void> {
     const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
     const supported = ["pdf", "txt", "csv"].includes(ext);
 
     if (!supported) {
-      await this.sendMessage(jid, `📄 Arquivo *${fileName}* não suportado.\n\nEnvie extratos nos formatos: PDF, TXT ou CSV.`);
+      await this.sendMessage(jid, wt("docUnsupported", lang, { name: fileName }));
       return;
     }
 
@@ -1231,7 +1271,7 @@ class WhatsAppManager {
       const { checkLimit, incrementCounter } = await import("./planLimits");
       const pdfLimit = await checkLimit(userId, 'whatsapp_pdf');
       if (!pdfLimit.allowed) {
-        await this.sendMessage(jid, `⛔ *Limite atingido* — ${pdfLimit.reason}.\n\n👉 Faça upgrade em: https://axis.app/pricing`);
+        await this.sendMessage(jid, wt("docLimitReached", lang, { reason: pdfLimit.reason }));
         return;
       }
       incrementCounter(userId, 'whatsapp_pdf').catch(() => {});
@@ -1240,14 +1280,14 @@ class WhatsAppManager {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    await this.sendMessage(jid, "📄 Analisando extrato... Isso pode levar alguns segundos para arquivos com muitas páginas.");
+    await this.sendMessage(jid, wt("docAnalyzing", lang));
 
     let buffer: Buffer;
     try {
       buffer = await downloadWithTimeout(msg, this.sock);
     } catch (dlErr: any) {
       log(`WhatsApp: falha ao baixar documento — ${dlErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui baixar o arquivo. Tente enviar novamente.");
+      await this.sendMessage(jid, wt("docDownloadError", lang));
       return;
     }
 
@@ -1258,7 +1298,7 @@ class WhatsAppManager {
       logWhatsappMessage(jid.split("@")[0], "document_pdf", extracted?.docType ?? "unknown", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha ao processar PDF — ${aiErr.message}`, "whatsapp");
-      await this.sendMessage(jid, "😕 Não consegui interpretar o extrato. Verifique se o arquivo contém transações legíveis.");
+      await this.sendMessage(jid, wt("docParseError", lang));
       return;
     }
 
@@ -1268,7 +1308,7 @@ class WhatsAppManager {
       if (hasBothEntities) {
         const identityMatch = await matchBillIdentity(userId, extracted);
         if (identityMatch) {
-          await this.createBillFromExtracted(jid, userId, extracted, identityMatch.type);
+          await this.createBillFromExtracted(jid, userId, extracted, identityMatch.type, lang);
         } else {
           this.pendingBillIdentity.set(jid, {
             extracted,
@@ -1277,19 +1317,24 @@ class WhatsAppManager {
             option2: { name: extracted.recipient || "Destinatário", cnpj: extracted.recipientCnpj },
             expiresAt: Date.now() + 5 * 60 * 1000,
           });
-          await this.sendMessage(jid, `🔍 *Quem é você nessa nota?*\n\n1️⃣ ${extracted.issuer || "Emissor"} (${extracted.issuerCnpj})\n2️⃣ ${extracted.recipient || "Destinatário"} (${extracted.recipientCnpj})\n\nResponda *1* ou *2*`);
+          await this.sendMessage(jid, wt("docBillIdentityPrompt", lang, {
+            issuer: extracted.issuer || (lang === "en" ? "Issuer" : "Emissor"),
+            issuerCnpj: extracted.issuerCnpj,
+            recipient: extracted.recipient || (lang === "en" ? "Recipient" : "Destinatário"),
+            recipientCnpj: extracted.recipientCnpj,
+          }));
           log(`WhatsApp PDF bill: aguardando identidade (userId=${userId})`, "whatsapp");
         }
       } else {
         const billType = extracted.type === "income" ? "income" : "expense";
-        await this.createBillFromExtracted(jid, userId, extracted, billType);
+        await this.createBillFromExtracted(jid, userId, extracted, billType, lang);
       }
       return;
     }
 
     const txns: any[] = extracted?.transactions ?? [];
     if (txns.length === 0) {
-      await this.sendMessage(jid, "🤔 Nenhuma transação encontrada no arquivo. Verifique se o extrato está no formato correto.");
+      await this.sendMessage(jid, wt("docNoTransactions", lang));
       return;
     }
 
@@ -1318,7 +1363,7 @@ class WhatsAppManager {
     }).map((t: any) => ({
       userId,
       amount: Number(t.amount),
-      description: t.description || "Sem descrição",
+      description: t.description || (lang === "en" ? "No description" : "Sem descrição"),
       categoryName: t.categoryName || "outros",
       type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
       date: t.date ? new Date(t.date) : new Date(),
@@ -1336,26 +1381,29 @@ class WhatsAppManager {
 
     const totalExpense = toCreate.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
     const totalIncome = toCreate.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
-    const period = extracted.period ? `\n📅 Período: ${extracted.period}` : "";
-    const bank = extracted.bankName ? `\n🏦 Banco: ${extracted.bankName}` : "";
+    const period = extracted.period
+      ? (lang === "en" ? `\n📅 Period: ${extracted.period}` : `\n📅 Período: ${extracted.period}`)
+      : "";
+    const bank = extracted.bankName
+      ? (lang === "en" ? `\n🏦 Bank: ${extracted.bankName}` : `\n🏦 Banco: ${extracted.bankName}`)
+      : "";
 
     let summary: string;
     if (toCreate.length === 0 && skipped > 0) {
-      summary = `✅ Extrato analisado!${bank}${period}\n\nTodas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
+      summary = lang === "en"
+        ? `✅ Statement analyzed!${bank}${period}\n\nAll ${skipped} transactions were already registered — nothing new to import.`
+        : `✅ Extrato analisado!${bank}${period}\n\nTodas as ${skipped} transações já estavam cadastradas — nada novo para importar.`;
     } else {
-      summary =
-        `📊 *Extrato analisado!*${bank}${period}\n\n` +
-        `✅ ${toCreate.length} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n` +
-        `💰 Receitas: R$ ${totalIncome.toFixed(2)}\n` +
-        `💸 Gastos: R$ ${totalExpense.toFixed(2)}\n\n` +
-        `_Disponíveis no AXIS._`;
+      summary = lang === "en"
+        ? `📊 *Statement analyzed!*${bank}${period}\n\n✅ ${toCreate.length} imported${skipped > 0 ? `  ⏭️ ${skipped} already registered` : ""}\n\n💰 Income: R$ ${totalIncome.toFixed(2)}\n💸 Expenses: R$ ${totalExpense.toFixed(2)}\n\n_Available in AXIS._`
+        : `📊 *Extrato analisado!*${bank}${period}\n\n✅ ${toCreate.length} importadas${skipped > 0 ? `  ⏭️ ${skipped} já cadastradas` : ""}\n\n💰 Receitas: R$ ${totalIncome.toFixed(2)}\n💸 Gastos: R$ ${totalExpense.toFixed(2)}\n\n_Disponíveis no AXIS._`;
     }
 
     await this.sendMessage(jid, summary);
     log(`WhatsApp PDF: ${toCreate.length} importadas, ${skipped} duplicadas (userId=${userId})`, "whatsapp");
   }
 
-  private async buildCardWarning(card: any, userId: string): Promise<string> {
+  private async buildCardWarning(card: any, userId: string, lang: Lang): Promise<string> {
     try {
       const limit = Number(card.limit);
       if (!limit || limit <= 0) return "";
@@ -1387,18 +1435,28 @@ class WhatsAppManager {
 
       if (pct >= 90) {
         if (balanceRatio < 0.3) {
-          return `\n\n🚨 *Alerta AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está crítico (R$${bankBalance.toFixed(0)}). Risco de descontrole financeiro.`;
+          return lang === "en"
+            ? `\n\n🚨 *AXIS Alert:* Card *${card.name}* at ${pct.toFixed(0)}% of limit and bank balance is critical (R$${bankBalance.toFixed(0)}). Risk of financial loss of control.`
+            : `\n\n🚨 *Alerta AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está crítico (R$${bankBalance.toFixed(0)}). Risco de descontrole financeiro.`;
         }
-        return `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite — próximo do teto. Avalie pausar os gastos.`;
+        return lang === "en"
+          ? `\n\n⚠️ *AXIS:* Card *${card.name}* at ${pct.toFixed(0)}% of limit — approaching ceiling. Consider pausing spending.`
+          : `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite — próximo do teto. Avalie pausar os gastos.`;
       }
       if (pct >= 70) {
         if (balanceRatio < 0.5) {
-          return `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está baixo. Cuidado com novos gastos no crédito.`;
+          return lang === "en"
+            ? `\n\n⚠️ *AXIS:* Card *${card.name}* at ${pct.toFixed(0)}% of limit and bank balance is low. Be careful with new credit spending.`
+            : `\n\n⚠️ *AXIS:* Cartão *${card.name}* em ${pct.toFixed(0)}% do limite e saldo no banco está baixo. Cuidado com novos gastos no crédito.`;
         }
-        return `\n\n💳 *AXIS:* Cartão *${card.name}* já está em ${pct.toFixed(0)}% do limite este mês.`;
+        return lang === "en"
+          ? `\n\n💳 *AXIS:* Card *${card.name}* is already at ${pct.toFixed(0)}% of limit this month.`
+          : `\n\n💳 *AXIS:* Cartão *${card.name}* já está em ${pct.toFixed(0)}% do limite este mês.`;
       }
       if (pct >= 50) {
-        return `\n\n💳 *AXIS:* Cartão *${card.name}* atingiu ${pct.toFixed(0)}% do limite este mês.`;
+        return lang === "en"
+          ? `\n\n💳 *AXIS:* Card *${card.name}* has reached ${pct.toFixed(0)}% of limit this month.`
+          : `\n\n💳 *AXIS:* Cartão *${card.name}* atingiu ${pct.toFixed(0)}% do limite este mês.`;
       }
       return "";
     } catch {
@@ -1406,7 +1464,7 @@ class WhatsAppManager {
     }
   }
 
-  private async depositIntoGoal(jid: string, userId: string, goalId: string, goalTitle: string, amount: number): Promise<void> {
+  private async depositIntoGoal(jid: string, userId: string, goalId: string, goalTitle: string, amount: number, lang: Lang): Promise<void> {
     const allGoals = await storage.getFinancialGoals(userId);
     const goal = allGoals.find(g => g.id === goalId);
     const currentAmount = goal ? (Number(goal.currentAmount) || 0) : 0;
@@ -1416,26 +1474,24 @@ class WhatsAppManager {
       userId,
       type: "expense",
       amount: amount as any,
-      description: `Depósito em ${goalTitle}`,
+      description: lang === "en" ? `Deposit in ${goalTitle}` : `Depósito em ${goalTitle}`,
       categoryName: "reserva",
       date: new Date(),
       source: "whatsapp",
       paymentMethod: null,
       establishment: null,
-    });
+    }, lang);
     if (goalTx === null) return;
     const fmtAmt = amount.toFixed(2).replace(".", ",");
     const fmtTotal = newAmount.toFixed(2).replace(".", ",");
-    await this.sendMessage(jid, `✅ *R$ ${fmtAmt} guardado em ${goalTitle}!*\n💰 Total na reserva: R$ ${fmtTotal}`);
+    await this.sendMessage(jid, wt("goalDeposited", lang, { amount: fmtAmt, title: goalTitle, total: fmtTotal }));
     log(`WhatsApp: depósito de R$ ${amount} em goal="${goalTitle}" userId=${userId}`, "whatsapp");
   }
 
-  private async limitedCreateTx(jid: string, userId: string, data: Parameters<typeof storage.createTransaction>[0]): Promise<Awaited<ReturnType<typeof storage.createTransaction>> | null> {
+  private async limitedCreateTx(jid: string, userId: string, data: Parameters<typeof storage.createTransaction>[0], lang: Lang = "pt"): Promise<Awaited<ReturnType<typeof storage.createTransaction>> | null> {
     const limitResult = await checkLimit(userId, 'transaction');
     if (!limitResult.allowed) {
-      await this.sendMessage(jid,
-        `⚠️ *Limite de transações atingido!*\n\nVocê já registrou *${limitResult.current}* de *${limitResult.limit}* transações este mês no plano atual.\n\n💡 Faça upgrade para o AXIS Personal AI e tenha transações ilimitadas:\nhttps://axisapp.com/pricing`
-      );
+      await this.sendMessage(jid, wt("txLimitReached", lang, { current: limitResult.current, limit: limitResult.limit }));
       return null;
     }
     const tx = await storage.createTransaction(data);
@@ -1443,13 +1499,11 @@ class WhatsAppManager {
     return tx;
   }
 
-  private async limitedCreateManyTx(jid: string, userId: string, dataArray: Parameters<typeof storage.createManyTransactions>[0]): Promise<boolean> {
+  private async limitedCreateManyTx(jid: string, userId: string, dataArray: Parameters<typeof storage.createManyTransactions>[0], lang: Lang = "pt"): Promise<boolean> {
     if (dataArray.length === 0) return true;
     const limitResult = await checkLimit(userId, 'transaction', dataArray.length);
     if (!limitResult.allowed) {
-      await this.sendMessage(jid,
-        `⚠️ *Limite de transações atingido!*\n\nVocê já registrou *${limitResult.current}* de *${limitResult.limit}* transações este mês no plano atual.\n\n💡 Faça upgrade para o AXIS Personal AI e tenha transações ilimitadas:\nhttps://axisapp.com/pricing`
-      );
+      await this.sendMessage(jid, wt("txLimitReached", lang, { current: limitResult.current, limit: limitResult.limit }));
       return false;
     }
     await storage.createManyTransactions(dataArray);
@@ -1457,9 +1511,9 @@ class WhatsAppManager {
     return true;
   }
 
-  private async handleSavingsDeposit(jid: string, userId: string, amount: number, goalName: string | null): Promise<void> {
+  private async handleSavingsDeposit(jid: string, userId: string, amount: number, goalName: string | null, lang: Lang): Promise<void> {
     if (!amount || isNaN(amount) || amount <= 0) {
-      await this.sendMessage(jid, "Não entendi o valor. Qual é o valor que você quer guardar?");
+      await this.sendMessage(jid, wt("savingsInvalidAmount", lang));
       return;
     }
 
@@ -1475,7 +1529,7 @@ class WhatsAppManager {
         return t === target || t.includes(target) || target.includes(t);
       });
       if (matched) {
-        await this.depositIntoGoal(jid, userId, matched.id, matched.title, amount);
+        await this.depositIntoGoal(jid, userId, matched.id, matched.title, amount, lang);
         return;
       }
     }
@@ -1492,7 +1546,7 @@ class WhatsAppManager {
           emoji: "💰",
           currentAmount: 0 as any,
         });
-        await this.depositIntoGoal(jid, userId, newGoal.id, newGoal.title, amount);
+        await this.depositIntoGoal(jid, userId, newGoal.id, newGoal.title, amount, lang);
       } else {
         this.pendingSavingsDeposit.set(jid, {
           amount,
@@ -1501,15 +1555,23 @@ class WhatsAppManager {
           awaitingNewGoalName: true,
           expiresAt: Date.now() + 10 * 60 * 1000,
         });
-        await this.sendMessage(jid, `📝 Você ainda não tem reservas. Qual será o nome da reserva onde guardar R$ ${fmtAmt}?`);
+        await this.sendMessage(jid, wt("savingsNoGoals", lang, { amount: fmtAmt }));
       }
       return;
     }
 
     const lines = activeGoals.map((g, i) => `${i + 1}️⃣ ${g.title}`).join("\n");
     const createIdx = activeGoals.length + 1;
-    const notFoundMsg = goalName ? `🔍 Reserva *"${goalName}"* não encontrada.\n\n` : "";
-    const menu = `${notFoundMsg}Em qual reserva deseja guardar *R$ ${fmtAmt}*?\n\n${lines}\n➕ ${createIdx} - Criar nova reserva${goalName ? ` "${goalName}"` : ""}`;
+    const notFoundMsg = goalName
+      ? (lang === "en" ? `🔍 Goal *"${goalName}"* not found.\n\n` : `🔍 Reserva *"${goalName}"* não encontrada.\n\n`)
+      : "";
+    const newGoalLabel = lang === "en"
+      ? `➕ ${createIdx} - Create new goal${goalName ? ` "${goalName}"` : ""}`
+      : `➕ ${createIdx} - Criar nova reserva${goalName ? ` "${goalName}"` : ""}`;
+    const menuHeader = lang === "en"
+      ? `${notFoundMsg}Which goal would you like to save *R$ ${fmtAmt}* in?`
+      : `${notFoundMsg}Em qual reserva deseja guardar *R$ ${fmtAmt}*?`;
+    const menu = `${menuHeader}\n\n${lines}\n${newGoalLabel}`;
 
     this.pendingSavingsDeposit.set(jid, {
       amount,
@@ -1521,7 +1583,7 @@ class WhatsAppManager {
     await this.sendMessage(jid, menu);
   }
 
-  private async buildReply(result: IntentResult, userId: string, jid: string): Promise<string> {
+  private async buildReply(result: IntentResult, userId: string, jid: string, lang: Lang = "pt"): Promise<string> {
     const { intent, data } = result;
 
     switch (intent) {
@@ -1551,7 +1613,7 @@ class WhatsAppManager {
               status: "pending_review",
             } as any);
             log(`WhatsApp [business] despesa corporativa via texto — userId=${userId} org=${org.id}`, "whatsapp");
-            return `✅ *Despesa corporativa registrada!*\n💸 R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+            return wt("bizExpenseSavedText", lang, { amount: amount.toFixed(2).replace(".", ","), categoryName, orgName: org.name });
           }
         }
 
@@ -1578,10 +1640,10 @@ class WhatsAppManager {
                 installmentInfo: JSON.stringify({ current: i + 1, total: data.installments, groupId }),
               };
             });
-            const installCreated = await this.limitedCreateManyTx(jid, userId, txList);
+            const installCreated = await this.limitedCreateManyTx(jid, userId, txList, lang);
             if (!installCreated) return "";
-            const warning = await this.buildCardWarning(card, userId);
-            return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!${warning}`;
+            const warning = await this.buildCardWarning(card, userId, lang);
+            return wt("installmentsSaved", lang, { n: data.installments, installAmt: installAmt.toFixed(2), cardName: card.name }) + warning;
           }
         }
         log(`WhatsApp buildReply: intent=${intent} amount=${amount} creditCardId=${data.creditCardId || "none"} userId=${userId}`, "whatsapp");
@@ -1600,7 +1662,7 @@ class WhatsAppManager {
             source: "whatsapp",
             paymentMethod: null,
             creditCardId: singleCard ? singleCard.id : null,
-          });
+          }, lang);
           if (savedTx === null) return "";
           log(`WhatsApp buildReply: transação salva id=${savedTx?.id} creditCardId=${savedTx?.creditCardId}`, "whatsapp");
         } catch (txErr: any) {
@@ -1619,11 +1681,11 @@ class WhatsAppManager {
           });
         }
         if (intent === "income") {
-          return `✅ Receita de R$ ${amount.toFixed(2)} em *${categoryName}* registrada!`;
+          return wt("incomeSaved", lang, { amount: amount.toFixed(2), categoryName });
         }
-        const cardSuffix = singleCard ? ` no *${singleCard.name}*` : "";
-        const cardWarning = singleCard ? await this.buildCardWarning(singleCard, userId) : "";
-        return `✅ Gasto de R$ ${amount.toFixed(2)} em *${categoryName}* registrado${cardSuffix}!${cardWarning}`;
+        const cardSuffix = singleCard ? (lang === "en" ? ` on *${singleCard.name}*` : ` no *${singleCard.name}*`) : "";
+        const cardWarning = singleCard ? await this.buildCardWarning(singleCard, userId, lang) : "";
+        return wt("expenseSaved", lang, { amount: amount.toFixed(2), categoryName, cardSuffix }) + cardWarning;
       }
 
       case "task": {
@@ -1637,8 +1699,11 @@ class WhatsAppManager {
           dueDate: data.dueDate ? new Date(data.dueDate) : null,
           category: data.category || null,
         });
-        const p = priority === "high" ? "alta" : priority === "medium" ? "média" : "baixa";
-        return `✅ Tarefa *${data.title}* criada com prioridade ${p}!`;
+        const priorityLabel = wt(
+          priority === "high" ? "taskPriorityHigh" : priority === "medium" ? "taskPriorityMedium" : "taskPriorityLow",
+          lang
+        );
+        return wt("taskCreated", lang, { title: data.title, priority: priorityLabel });
       }
 
       case "schedule": {
@@ -1651,8 +1716,9 @@ class WhatsAppManager {
           endTime: data.endTime ? new Date(data.endTime) : null,
           status: "pending",
         });
-        const dt = startTime.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-        return `✅ Compromisso *${data.title}* agendado para ${dt}!`;
+        const dtLocale = lang === "en" ? "en-US" : "pt-BR";
+        const dt = startTime.toLocaleString(dtLocale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        return wt("scheduleCreated", lang, { title: data.title, dt });
       }
 
       case "habit": {
@@ -1662,31 +1728,31 @@ class WhatsAppManager {
           frequency: data.frequency || "daily",
           emoji: "⚡",
         });
-        return `✅ Hábito *${data.name}* criado!`;
+        return wt("habitCreated", lang, { name: data.name });
       }
 
       case "chat": {
         const chatReply = await chatWithContext(result.rawText, userId).catch(() => null);
         logAiUsage(userId, "chat").catch(() => {});
-        return chatReply || "💬 Mensagem recebida!";
+        return chatReply || wt("chatFallback", lang);
       }
 
       default:
-        return "🤔 Não entendi. Tente:\n• *gastei 50 no almoço*\n• *criar tarefa reunião*\n• *hábito academia todo dia*\n• *agendar consulta sexta 10h*";
+        return wt("unknownIntent", lang);
     }
   }
 
-  private async createBillFromExtracted(jid: string, userId: string, extracted: any, billType: "income" | "expense"): Promise<void> {
-    const title = extracted.title || "Conta importada";
+  private async createBillFromExtracted(jid: string, userId: string, extracted: any, billType: "income" | "expense", lang: Lang): Promise<void> {
+    const title = extracted.title || (lang === "en" ? "Imported bill" : "Conta importada");
     const amount = Number(extracted.amount) || 0;
     const dueDay = Number(extracted.dueDay) || new Date().getDate();
     const categoryName = extracted.categoryName || "outros";
 
     const notesParts: string[] = [];
-    if (extracted.description) notesParts.push(`Descrição: ${extracted.description}`);
-    if (extracted.issuer) notesParts.push(`Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
-    if (extracted.recipient) notesParts.push(`Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
-    if (extracted.paymentInfo) notesParts.push(`Pagamento: ${extracted.paymentInfo}`);
+    if (extracted.description) notesParts.push(lang === "en" ? `Description: ${extracted.description}` : `Descrição: ${extracted.description}`);
+    if (extracted.issuer) notesParts.push(lang === "en" ? `Issuer: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}` : `Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+    if (extracted.recipient) notesParts.push(lang === "en" ? `Recipient: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}` : `Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+    if (extracted.paymentInfo) notesParts.push(lang === "en" ? `Payment: ${extracted.paymentInfo}` : `Pagamento: ${extracted.paymentInfo}`);
     const notes = notesParts.length > 0 ? notesParts.join("\n") : null;
 
     await storage.createBill({
@@ -1695,18 +1761,20 @@ class WhatsAppManager {
     });
 
     const amountStr = amount.toFixed(2).replace(".", ",");
-    const typeLabel = billType === "income" ? "💰 A receber" : "💸 A pagar";
+    const typeLabel = billType === "income"
+      ? (lang === "en" ? "💰 Receivable" : "💰 A receber")
+      : (lang === "en" ? "💸 Payable" : "💸 A pagar");
     const lines: string[] = [
-      `📋 Conta registrada!\n`,
+      lang === "en" ? `📋 Bill registered!\n` : `📋 Conta registrada!\n`,
       `*${title}*`,
       `${typeLabel}: R$ ${amountStr}`,
-      `📅 Vence dia ${dueDay}`,
+      lang === "en" ? `📅 Due day ${dueDay}` : `📅 Vence dia ${dueDay}`,
     ];
     if (extracted.description) lines.push(`\n📄 ${extracted.description}`);
-    if (extracted.issuer) lines.push(`🏢 Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
-    if (extracted.recipient) lines.push(`👤 Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
+    if (extracted.issuer) lines.push(lang === "en" ? `🏢 Issuer: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}` : `🏢 Emissor: ${extracted.issuer}${extracted.issuerCnpj ? ` (${extracted.issuerCnpj})` : ""}`);
+    if (extracted.recipient) lines.push(lang === "en" ? `👤 Recipient: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}` : `👤 Destinatário: ${extracted.recipient}${extracted.recipientCnpj ? ` (${extracted.recipientCnpj})` : ""}`);
     if (extracted.paymentInfo) lines.push(`💳 ${extracted.paymentInfo}`);
-    lines.push(`\nVeja em Contas no app.`);
+    lines.push(lang === "en" ? `\nSee in Bills in the app.` : `\nVeja em Contas no app.`);
 
     await this.sendMessage(jid, lines.join("\n"));
     log(`WhatsApp PDF bill: "${title}" R$ ${amount} (${billType}) criada (userId=${userId})`, "whatsapp");
