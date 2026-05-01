@@ -11,11 +11,17 @@ import {
   sendLowDisciplineEmail,
 } from "./integrations/sendgrid";
 
+type Lang = "en" | "pt";
+
 async function getUserEmailAndName(userId: string): Promise<{ email: string; name: string } | null> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user || !user.email) return null;
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "usuário";
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "user";
   return { email: user.email, name };
+}
+
+function getLang(profile: { language?: string | null }): Lang {
+  return (profile.language === "en" ? "en" : "pt") as Lang;
 }
 
 function getEmailAlertPrefs(profile: { emailAlerts?: string | null }): {
@@ -55,6 +61,7 @@ export async function checkAndSendBillAlerts(userId: string): Promise<void> {
   const userInfo = await getUserEmailAndName(userId);
   if (!userInfo) return;
 
+  const lang = getLang(profile);
   const bills = await storage.getBills(userId);
   const now = new Date();
   const today = now.getDate();
@@ -74,7 +81,7 @@ export async function checkAndSendBillAlerts(userId: string): Promise<void> {
     if (recentAlerts.length > 0) continue;
     let billStatus = "sent";
     try {
-      await sendBillDueSoonEmail(userInfo.email, userInfo.name, bill.title, bill.amount, daysLeft);
+      await sendBillDueSoonEmail(userInfo.email, userInfo.name, bill.title, bill.amount, daysLeft, lang);
     } catch (err: any) {
       billStatus = "failed";
       console.error(`[alerts] Bill alert failed for ${userInfo.email}: ${err?.message}`);
@@ -93,6 +100,7 @@ export async function checkAndSendOverdueTaskAlerts(userId: string): Promise<voi
   const userInfo = await getUserEmailAndName(userId);
   if (!userInfo) return;
 
+  const lang = getLang(profile);
   const tasks = await storage.getPersonalTasks(userId);
   const now = new Date();
   const overdue = tasks.filter(t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now);
@@ -113,7 +121,7 @@ export async function checkAndSendOverdueTaskAlerts(userId: string): Promise<voi
 
   let overdueStatus = "sent";
   try {
-    await sendOverdueTaskEmail(userInfo.email, userInfo.name, taskList);
+    await sendOverdueTaskEmail(userInfo.email, userInfo.name, taskList, lang);
   } catch (err: any) {
     overdueStatus = "failed";
     console.error(`[alerts] Overdue tasks alert failed for ${userInfo.email}: ${err?.message}`);
@@ -131,6 +139,7 @@ export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<vo
   const userInfo = await getUserEmailAndName(userId);
   if (!userInfo) return;
 
+  const lang = getLang(profile);
   const goals = await storage.getFinancialGoals(userId);
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -148,7 +157,7 @@ export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<vo
     const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     let goalStatus = "sent";
     try {
-      await sendGoalDeadlineEmail(userInfo.email, userInfo.name, goal.title, goal.targetAmount, goal.currentAmount, daysLeft);
+      await sendGoalDeadlineEmail(userInfo.email, userInfo.name, goal.title, goal.targetAmount, goal.currentAmount, daysLeft, lang);
     } catch (err: any) {
       goalStatus = "failed";
       console.error(`[alerts] Goal deadline alert failed for ${userInfo.email}: ${err?.message}`);
@@ -170,13 +179,14 @@ export async function checkAndSendLowDisciplineAlert(userId: string): Promise<vo
   const userInfo = await getUserEmailAndName(userId);
   if (!userInfo) return;
 
+  const lang = getLang(profile);
   const since3DaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
   const recentAlerts = await storage.getRecentAlerts(userId, "low_discipline", null, since3DaysAgo);
   if (recentAlerts.length > 0) return;
 
   let disciplineStatus = "sent";
   try {
-    await sendLowDisciplineEmail(userInfo.email, userInfo.name, score);
+    await sendLowDisciplineEmail(userInfo.email, userInfo.name, score, lang);
   } catch (err: any) {
     disciplineStatus = "failed";
     console.error(`[alerts] Low discipline alert failed for ${userInfo.email}: ${err?.message}`);
@@ -194,6 +204,7 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
   const userInfo = await getUserEmailAndName(userId);
   if (!userInfo) return;
 
+  const lang = getLang(profile);
   const since5DaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
   const recentAlerts = await storage.getRecentAlerts(userId, "weekly_summary", null, since5DaysAgo);
   if (recentAlerts.length > 0) return;
@@ -235,7 +246,7 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
       disciplineScore,
       habitsChecked,
       totalHabits: habits.length,
-    });
+    }, lang);
   } catch (err: any) {
     weeklyStatus = "failed";
     console.error(`[alerts] Weekly summary failed for ${userInfo.email}: ${err?.message}`);
@@ -252,6 +263,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
 
   for (const profile of profiles) {
     const prefs = getEmailAlertPrefs(profile);
+    const lang = getLang(profile);
 
     if (prefs.offlineReminder) {
       const lastLogin = profile.lastLoginAt ? new Date(profile.lastLoginAt) : null;
@@ -265,7 +277,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
             const daysOffline = Math.floor((now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
             let offlineStatus = "sent";
             try {
-              await sendOfflineReminderEmail(userInfo.email, userInfo.name, daysOffline);
+              await sendOfflineReminderEmail(userInfo.email, userInfo.name, daysOffline, lang);
             } catch (err: any) {
               offlineStatus = "failed";
               console.error(`[alerts] Offline reminder failed for ${userInfo.email}: ${err?.message}`);

@@ -3629,7 +3629,9 @@ export async function registerRoutes(
 
             if (collaborator?.email) {
               const collabName = [collaborator.firstName, collaborator.lastName].filter(Boolean).join(" ") || collaborator.email;
-              const managerName = manager ? [manager.firstName, manager.lastName].filter(Boolean).join(" ") || manager.email! : "Gestor";
+              const managerName = manager ? [manager.firstName, manager.lastName].filter(Boolean).join(" ") || manager.email! : "Manager";
+              const _collabProfile = await storage.getUserProfile(collaborator.id).catch(() => null);
+              const _collabLang = (_collabProfile?.language === "en" ? "en" : "pt") as "en" | "pt";
               await sendReimbursementCollaboratorEmail({
                 collaboratorEmail: collaborator.email,
                 collaboratorName: collabName,
@@ -3638,12 +3640,15 @@ export async function registerRoutes(
                 amount: updated.amount,
                 description: updated.description,
                 paidAt,
+                lang: _collabLang,
               });
             }
 
             if (manager?.email) {
               const managerName = [manager.firstName, manager.lastName].filter(Boolean).join(" ") || manager.email;
-              const collabName = collaborator ? [collaborator.firstName, collaborator.lastName].filter(Boolean).join(" ") || collaborator.email! : "Colaborador";
+              const collabName = collaborator ? [collaborator.firstName, collaborator.lastName].filter(Boolean).join(" ") || collaborator.email! : "Collaborator";
+              const _mgrProfile = await storage.getUserProfile(manager.id).catch(() => null);
+              const _mgrLang = (_mgrProfile?.language === "en" ? "en" : "pt") as "en" | "pt";
               await sendReimbursementManagerEmail({
                 managerEmail: manager.email,
                 managerName,
@@ -3652,6 +3657,7 @@ export async function registerRoutes(
                 amount: updated.amount,
                 description: updated.description,
                 paidAt,
+                lang: _mgrLang,
               });
             }
           } catch (emailErr) {

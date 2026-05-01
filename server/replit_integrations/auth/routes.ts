@@ -5,6 +5,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
 import { sendPasswordResetCodeEmail, sendWelcomeEmail } from "../../integrations/sendgrid";
+import { storage } from "../../storage";
+
+function detectLang(req: any): "en" | "pt" {
+  const accept = (req.headers?.["accept-language"] || "").toLowerCase();
+  return accept.startsWith("en") ? "en" : "pt";
+}
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -75,7 +81,7 @@ export function registerAuthRoutes(app: Express): void {
       });
 
       (req.session as any).userId = user.id;
-      sendWelcomeEmail(user.email!, data.firstName).catch(() => {});
+      sendWelcomeEmail(user.email!, data.firstName, detectLang(req)).catch(() => {});
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
@@ -145,7 +151,7 @@ export function registerAuthRoutes(app: Express): void {
       });
 
       (req.session as any).userId = user.id;
-      sendWelcomeEmail(user.email!, data.firstName).catch(() => {});
+      sendWelcomeEmail(user.email!, data.firstName, detectLang(req)).catch(() => {});
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
@@ -273,8 +279,10 @@ export function registerAuthRoutes(app: Express): void {
         passwordResetExpiry: expiry,
       });
 
-      const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "usuário";
-      await sendPasswordResetCodeEmail(user.email!, name, code);
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "user";
+      const _resetProfile = await storage.getUserProfile(user.id).catch(() => null);
+      const _resetLang = (_resetProfile?.language === "en" ? "en" : "pt") as "en" | "pt";
+      await sendPasswordResetCodeEmail(user.email!, name, code, _resetLang);
 
       res.json({ success: true });
     } catch (err: any) {
