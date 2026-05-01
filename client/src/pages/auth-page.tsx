@@ -615,7 +615,7 @@ export default function AuthPage() {
                     className="flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors text-sm mb-2"
                     data-testid="button-back-to-login"
                   >
-                    <ArrowLeft className="w-4 h-4" /> Voltar para login
+                    <ArrowLeft className="w-4 h-4" /> {t("axisAuth.forgotBackToLogin")}
                   </button>
 
                   <div className="flex items-center gap-3 mb-2">
@@ -623,11 +623,11 @@ export default function AuthPage() {
                       <KeyRound className="w-4 h-4" style={{ color: LP.primary }} />
                     </div>
                     <div>
-                      <h1 className="text-xl font-bold tracking-tight">Redefinir senha</h1>
+                      <h1 className="text-xl font-bold tracking-tight">{t("axisAuth.forgotTitle")}</h1>
                       <p className="text-xs text-white/35">
-                        {forgotStep === "email" && "Vamos enviar um código para o seu email"}
-                        {forgotStep === "code" && `Código enviado para ${forgotEmail}`}
-                        {forgotStep === "done" && "Senha redefinida com sucesso!"}
+                        {forgotStep === "email" && t("axisAuth.forgotSubEmail")}
+                        {forgotStep === "code" && t("axisAuth.forgotSubCode", { email: forgotEmail })}
+                        {forgotStep === "done" && t("axisAuth.forgotSubDone")}
                       </p>
                     </div>
                   </div>
@@ -636,7 +636,7 @@ export default function AuthPage() {
                     <form onSubmit={handleSendCode} className="space-y-4" data-testid="form-forgot-email">
                       <div>
                         <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                          Email da conta
+                          {t("axisAuth.forgotEmailLabel")}
                         </label>
                         <input
                           type="email"
@@ -659,7 +659,7 @@ export default function AuthPage() {
                         className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                         data-testid="button-send-code"
                       >
-                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> Enviar código</>}
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> {t("axisAuth.forgotSendCode")}</>}
                       </button>
                     </form>
                   )}
@@ -668,7 +668,7 @@ export default function AuthPage() {
                     <form onSubmit={handleResetWithCode} className="space-y-4" data-testid="form-forgot-code">
                       <div>
                         <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                          Código de 6 dígitos
+                          {t("axisAuth.forgotCodeLabel")}
                         </label>
                         <input
                           type="text"
@@ -680,17 +680,17 @@ export default function AuthPage() {
                           className="auth-input text-center text-2xl tracking-[0.4em] font-bold"
                           data-testid="input-forgot-code"
                         />
-                        <p className="text-xs text-white/25 mt-1.5 text-center">Verifique sua caixa de entrada e spam</p>
+                        <p className="text-xs text-white/25 mt-1.5 text-center">{t("axisAuth.forgotCodeHint")}</p>
                       </div>
                       <div>
                         <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                          Nova senha
+                          {t("axisAuth.forgotNewPwLabel")}
                         </label>
                         <input
                           type="password"
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
-                          placeholder="Mínimo 8 caracteres"
+                          placeholder={t("axisAuth.forgotNewPwPh")}
                           required
                           minLength={8}
                           className="auth-input"
@@ -699,13 +699,13 @@ export default function AuthPage() {
                       </div>
                       <div>
                         <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
-                          Confirmar nova senha
+                          {t("axisAuth.forgotConfirmLabel")}
                         </label>
                         <input
                           type="password"
                           value={forgotConfirm}
                           onChange={(e) => setForgotConfirm(e.target.value)}
-                          placeholder="Repita a senha"
+                          placeholder={t("axisAuth.forgotConfirmPh")}
                           required
                           className="auth-input"
                           data-testid="input-forgot-confirm"
@@ -722,7 +722,7 @@ export default function AuthPage() {
                         className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                         data-testid="button-confirm-reset"
                       >
-                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> Redefinir senha</>}
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> {t("axisAuth.forgotResetBtn")}</>}
                       </button>
                       <button
                         type="button"
@@ -731,7 +731,7 @@ export default function AuthPage() {
                         className="w-full text-xs text-white/25 hover:text-white/45 transition-colors py-1"
                         data-testid="button-resend-code"
                       >
-                        Não recebeu? Reenviar código
+                        {t("axisAuth.forgotResend")}
                       </button>
                     </form>
                   )}
@@ -743,13 +743,13 @@ export default function AuthPage() {
                           <CheckCircle2 className="w-8 h-8" style={{ color: LP.success }} />
                         </div>
                       </div>
-                      <p className="text-white/55 text-sm">Sua senha foi redefinida. Faça login com a nova senha.</p>
+                      <p className="text-white/55 text-sm">{t("axisAuth.forgotDoneMsg")}</p>
                       <button
                         onClick={() => { setForgotStep("idle"); setForgotEmail(""); setForgotCode(""); setForgotNewPassword(""); setForgotConfirm(""); }}
                         className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
                         data-testid="button-goto-login"
                       >
-                        <ArrowRight className="h-4 w-4" /> Ir para login
+                        <ArrowRight className="h-4 w-4" /> {t("axisAuth.forgotGoToLogin")}
                       </button>
                     </div>
                   )}
@@ -849,7 +849,7 @@ export default function AuthPage() {
                             className="text-xs text-white/25 hover:text-white/50 transition-colors"
                             data-testid="button-forgot-password"
                           >
-                            Esqueci minha senha
+                            {t("axisAuth.forgotMyPassword")}
                           </button>
                         </div>
                       )}
