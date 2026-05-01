@@ -937,8 +937,6 @@ export async function registerRoutes(
     try {
       const userId = getUserId(req);
       const { checkLimit, incrementCounter } = await import("./planLimits");
-      const txLimit = await checkLimit(userId, 'transaction');
-      if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
       const schema = z.object({
         amount: z.number().positive(),
         description: z.string().min(1),
@@ -953,6 +951,13 @@ export async function registerRoutes(
         installments: z.number().int().min(1).max(24).optional(),
       });
       const data = schema.parse(req.body);
+
+      // For installment flows, check if there's room for ALL installments
+      const installmentCount = (data.creditCardId && data.installments && data.installments > 1)
+        ? data.installments
+        : 1;
+      const txLimit = await checkLimit(userId, 'transaction', installmentCount);
+      if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
 
       if (data.creditCardId && data.installments && data.installments > 1) {
         const card = await storage.getCreditCard(data.creditCardId, userId);
@@ -983,7 +988,8 @@ export async function registerRoutes(
           });
         }
         const created = await storage.createManyTransactions(txList);
-        incrementCounter(userId, 'transaction').catch(() => {});
+        // Increment counter by actual number of transaction records created (one per installment)
+        incrementCounter(userId, 'transaction', txList.length).catch(() => {});
         saveEventToMemory(userId, `Compra parcelada no cartão ${card.name}: R$${data.amount.toFixed(2)} em ${data.installments}x — "${data.description}"`).catch(() => {});
         return res.status(201).json(created);
       }

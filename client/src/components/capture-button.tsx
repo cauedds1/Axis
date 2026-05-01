@@ -1,12 +1,15 @@
 import { useState, useRef, useCallback } from "react";
-import { Mic, Send, Square, Loader2 } from "lucide-react";
+import { Mic, Send, Square, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
 interface CaptureResult {
   intent: string;
@@ -25,6 +28,13 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
   const { toast } = useToast();
   const { t } = useTranslation();
   const { symbol } = useCurrency();
+  const [, navigate] = useLocation();
+
+  const { data: billingUsage } = useQuery<any>({
+    queryKey: ["/api/billing/usage"],
+    staleTime: 5 * 60 * 1000,
+  });
+  const voiceAllowed = billingUsage?.usage?.voice?.allowed !== false;
 
   const invalidateAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -67,7 +77,20 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
     }
   };
 
+  const handleLockedMicClick = () => {
+    window.dispatchEvent(new CustomEvent("axis:limit-reached", {
+      detail: {
+        limitReached: true,
+        reason: "Transcrição de voz não está disponível no plano Starter",
+        current: 0,
+        limit: 0,
+        upgradeUrl: "/pricing",
+      },
+    }));
+  };
+
   const startRecording = async () => {
+    if (!voiceAllowed) { handleLockedMicClick(); return; }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
@@ -133,6 +156,33 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
     chat: "C",
   };
 
+  const MicButton = ({ className = "", testId = "button-capture-mic" }: { className?: string; testId?: string }) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant={isRecording ? "destructive" : "secondary"}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isProcessing}
+            className={`shrink-0 ${isRecording ? "animate-pulse" : ""} ${!voiceAllowed ? "opacity-50" : ""} ${className}`}
+            data-testid={testId}
+            aria-label={voiceAllowed ? "Gravar voz" : "Voz indisponível no plano Starter"}
+          >
+            {isRecording ? <Square className="h-4 w-4" /> : voiceAllowed ? <Mic className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+          </Button>
+        </TooltipTrigger>
+        {!voiceAllowed && (
+          <TooltipContent side="top" className="max-w-[200px] text-center text-xs">
+            Transcrição de voz disponível a partir do plano Personal AI.{" "}
+            <button className="underline font-medium" onClick={() => navigate("/pricing")}>Ver planos</button>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   if (variant === "inline") {
     return (
       <div className="w-full">
@@ -147,17 +197,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
               data-testid="input-capture-text"
             />
           </div>
-          <Button
-            type="button"
-            size="icon"
-            variant={isRecording ? "destructive" : "secondary"}
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isProcessing}
-            className="shrink-0"
-            data-testid="button-capture-mic"
-          >
-            {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </Button>
+          <MicButton testId="button-capture-mic" />
           <Button type="submit" size="icon" disabled={isProcessing || !text.trim()} className="shrink-0" data-testid="button-capture-send">
             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
@@ -196,17 +236,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
             className="flex-1 bg-background/50 border-border/50"
             data-testid="input-capture-floating"
           />
-          <Button
-            type="button"
-            size="icon"
-            variant={isRecording ? "destructive" : "secondary"}
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isProcessing}
-            className={`shrink-0 ${isRecording ? "animate-pulse" : ""}`}
-            data-testid="button-capture-floating-mic"
-          >
-            {isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </Button>
+          <MicButton testId="button-capture-floating-mic" />
           <Button type="submit" size="icon" disabled={isProcessing || !text.trim()} className="shrink-0" data-testid="button-capture-floating-send">
             {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>

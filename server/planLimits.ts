@@ -104,7 +104,7 @@ async function getOrCreateCounter(userId: string, month: string) {
   return refetch;
 }
 
-export async function checkLimit(userId: string, limitType: LimitType): Promise<LimitResult> {
+export async function checkLimit(userId: string, limitType: LimitType, count = 1): Promise<LimitResult> {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   if (!user) return { allowed: false, reason: 'User not found' };
 
@@ -140,7 +140,7 @@ export async function checkLimit(userId: string, limitType: LimitType): Promise<
   const field = counterField[limitType];
   const current = field ? (counter[field] as number) : 0;
 
-  if (current >= numericLimit) {
+  if (current + count > numericLimit) {
     return {
       allowed: false,
       current,
@@ -154,17 +154,17 @@ export async function checkLimit(userId: string, limitType: LimitType): Promise<
   return { allowed: true, current, limit: numericLimit, plan };
 }
 
-export async function incrementCounter(userId: string, limitType: LimitType): Promise<void> {
+export async function incrementCounter(userId: string, limitType: LimitType, count = 1): Promise<void> {
   const month = getCurrentMonth();
   const counter = await getOrCreateCounter(userId, month);
   if (!counter) return;
 
   const fieldMap: Record<string, Partial<typeof usageCounters.$inferInsert>> = {
-    transaction: { transactions: (counter.transactions || 0) + 1 },
-    ai_capture: { aiCaptures: (counter.aiCaptures || 0) + 1 },
-    whatsapp_photo: { whatsappPhotos: (counter.whatsappPhotos || 0) + 1 },
-    whatsapp_pdf: { whatsappPdfs: (counter.whatsappPdfs || 0) + 1 },
-    chat_message: { chatMessages: (counter.chatMessages || 0) + 1 },
+    transaction: { transactions: (counter.transactions || 0) + count },
+    ai_capture: { aiCaptures: (counter.aiCaptures || 0) + count },
+    whatsapp_photo: { whatsappPhotos: (counter.whatsappPhotos || 0) + count },
+    whatsapp_pdf: { whatsappPdfs: (counter.whatsappPdfs || 0) + count },
+    chat_message: { chatMessages: (counter.chatMessages || 0) + count },
   };
 
   const updates = fieldMap[limitType];

@@ -736,6 +736,60 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  {/* Value insights */}
+                  {(() => {
+                    const receipts = (billingUsage.usage.aiCaptures?.current ?? 0) + (billingUsage.usage.whatsappPhotos?.current ?? 0);
+                    const txs = billingUsage.usage.transactions?.current ?? 0;
+                    const chats = billingUsage.usage.chatMessages?.current ?? 0;
+                    if (receipts === 0 && txs === 0 && chats === 0) return null;
+                    return (
+                      <div>
+                        <SectionLabel>O que o AXIS fez por você este mês</SectionLabel>
+                        <div className="grid grid-cols-3 gap-3">
+                          {receipts > 0 && (
+                            <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-receipts">
+                              <p className="text-2xl font-bold text-primary">{receipts}</p>
+                              <p className="text-xs text-muted-foreground mt-1">recibos processados</p>
+                            </div>
+                          )}
+                          {txs > 0 && (
+                            <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-transactions">
+                              <p className="text-2xl font-bold text-primary">{txs}</p>
+                              <p className="text-xs text-muted-foreground mt-1">transações registradas</p>
+                            </div>
+                          )}
+                          {chats > 0 && (
+                            <div className="rounded-lg border border-border bg-card p-3 text-center" data-testid="insight-chats">
+                              <p className="text-2xl font-bold text-primary">{chats}</p>
+                              <p className="text-xs text-muted-foreground mt-1">mensagens respondidas</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Inline upgrade prompt for Starter */}
+                  {billingUsage.plan === "starter" && (() => {
+                    const txs = billingUsage.usage.transactions;
+                    const nearLimit = txs?.limit && txs.current / txs.limit >= 0.8;
+                    const atVoiceLimit = !billingUsage.usage.voice?.allowed;
+                    if (!nearLimit && !atVoiceLimit) return null;
+                    return (
+                      <Block>
+                        <p className="text-sm font-medium mb-1 text-yellow-400">Você está perto dos seus limites</p>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          {nearLimit ? `${txs.current} de ${txs.limit} transações usadas. ` : ""}
+                          {atVoiceLimit ? "Transcrição de voz não disponível no Starter. " : ""}
+                          Faça upgrade para uso ilimitado.
+                        </p>
+                        <Button className="w-full" size="sm" onClick={() => window.location.href = "/pricing"} data-testid="button-see-plans-inline">
+                          Ver planos
+                        </Button>
+                      </Block>
+                    );
+                  })()}
+
                   {billingUsage.plan === "starter" && (
                     <Block>
                       <p className="text-sm font-medium mb-1">Quer mais recursos?</p>

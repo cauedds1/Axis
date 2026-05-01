@@ -185,7 +185,7 @@ function AppRouter() {
         setLocation("/business/app");
       }
       if (user.accountType === "personal" && location.startsWith("/business/app")) {
-        setLocation("/");
+        setLocation("/pricing");
       }
     }
   }, [user, isLoading, location, setLocation]);
