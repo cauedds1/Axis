@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, Building2, TrendingUp, CreditCard,
   MessageSquare, Mail, Brain, Settings, ClipboardList,
-  ChevronLeft, ChevronRight, Shield, LogOut, AlertTriangle,
+  ChevronLeft, ChevronRight, Shield, LogOut, AlertTriangle, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -22,6 +22,7 @@ import { EmailLogsSection } from "./sections/EmailLogsSection";
 import { AISection } from "./sections/AISection";
 import { SystemSection } from "./sections/SystemSection";
 import { AuditSection } from "./sections/AuditSection";
+import { RevenueSection } from "./sections/RevenueSection";
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { key: "organizations", icon: Building2 },
   { key: "finance", icon: TrendingUp },
   { key: "billing", icon: CreditCard },
+  { key: "revenue", icon: DollarSign },
   { key: "whatsapp", icon: MessageSquare },
   { key: "email", icon: Mail },
   { key: "ai", icon: Brain },
@@ -138,6 +140,7 @@ export default function AdminPanel() {
       case "organizations": return <OrgsSection />;
       case "finance": return <FinanceSection />;
       case "billing": return <BillingSection />;
+      case "revenue": return <RevenueSection />;
       case "whatsapp": return <WhatsAppSection />;
       case "email": return <EmailLogsSection />;
       case "ai": return <AISection />;

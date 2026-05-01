@@ -3539,6 +3539,7 @@
       "organizations": "Organizações",
       "finance": "Financeiro",
       "billing": "Cobrança & Stripe",
+      "revenue": "Receita (AXIS)",
       "whatsapp": "Gerenciador WhatsApp",
       "email": "Log de E-mails",
       "ai": "Controle de IA",
@@ -3838,6 +3839,21 @@
         "system_reset_demo": "Resetar Demo",
         "reset_demo": "Resetar Demo"
       }
+    },
+    "revenue": {
+      "title": "Receita (AXIS)",
+      "mrr": "Receita Mensal Recorrente (MRR)",
+      "arr": "Receita Anual Recorrente (ARR)",
+      "prevMrr": "MRR do Mês Anterior",
+      "mrrGrowth": "Crescimento do MRR",
+      "payingUsers": "Usuários Pagantes",
+      "personalAI": "Personal AI",
+      "teamPlan": "Plano Team",
+      "trialUsers": "Em Trial",
+      "newThisMonth": "Novos Pagantes (este mês)",
+      "newPrevMonth": "Novos Pagantes (mês ant.)",
+      "mrrTrend": "Evolução do MRR (12 meses)",
+      "planBreakdown": "Receita por Plano"
     },
     "system": {
       "title": "Configurações do Sistema",

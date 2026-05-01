@@ -3539,6 +3539,7 @@
       "organizations": "Organizations",
       "finance": "Finance",
       "billing": "Billing & Stripe",
+      "revenue": "Revenue (AXIS)",
       "whatsapp": "WhatsApp Manager",
       "email": "Email Alerts Log",
       "ai": "AI Control",
@@ -3838,6 +3839,21 @@
         "system_reset_demo": "Reset Demo Data",
         "reset_demo": "Reset Demo Data"
       }
+    },
+    "revenue": {
+      "title": "Revenue (AXIS)",
+      "mrr": "Monthly Recurring Revenue (MRR)",
+      "arr": "Annual Recurring Revenue (ARR)",
+      "prevMrr": "Previous Month MRR",
+      "mrrGrowth": "MRR Growth",
+      "payingUsers": "Paying Users",
+      "personalAI": "Personal AI",
+      "teamPlan": "Team Plan",
+      "trialUsers": "Trial Users",
+      "newThisMonth": "New Paying (this month)",
+      "newPrevMonth": "New Paying (prev. month)",
+      "mrrTrend": "MRR Trend (12 months)",
+      "planBreakdown": "Revenue by Plan"
     },
     "system": {
       "title": "System Settings",

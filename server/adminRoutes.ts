@@ -766,6 +766,85 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ─── GET /api/admin/revenue/overview ─────────────────────────────────────
+  app.get("/api/admin/revenue/overview", requireAdmin, async (req, res) => {
+    try {
+      const period = getPeriodBounds();
+
+      const [payingPersonalAI] = await db.select({ count: count() }).from(users).where(eq(users.plan, "personal_ai"));
+      const [payingTeam] = await db.select({ count: count() }).from(users).where(eq(users.plan, "team"));
+      const [starterCount] = await db.select({ count: count() }).from(users).where(eq(users.plan, "starter"));
+      const [trialUsers] = await db.select({ count: count() }).from(users).where(isNotNull(users.trialEndsAt));
+
+      const personalAIPrice = 9;
+      const teamPrice = 29;
+
+      const currentMrr = (payingPersonalAI.count * personalAIPrice) + (payingTeam.count * teamPrice);
+      const arr = currentMrr * 12;
+
+      // Prev month paying counts — users with paying plan created before end of prev month
+      const prevMonthPersonalAI = await db.execute(sql`
+        SELECT COUNT(*)::int as c FROM users WHERE plan = 'personal_ai' AND created_at <= ${period.previous.end}
+      `);
+      const prevMonthTeam = await db.execute(sql`
+        SELECT COUNT(*)::int as c FROM users WHERE plan = 'team' AND created_at <= ${period.previous.end}
+      `);
+      const prevMrr = ((rowNum(prevMonthPersonalAI.rows[0], "c") ?? 0) * personalAIPrice)
+        + ((rowNum(prevMonthTeam.rows[0], "c") ?? 0) * teamPrice);
+
+      const mrrGrowthPct = prevMrr > 0 ? (((currentMrr - prevMrr) / prevMrr) * 100) : null;
+
+      const [newPayingThisMonth] = await db.select({ count: count() }).from(users).where(
+        and(
+          sql`plan IN ('personal_ai', 'team')`,
+          gte(users.createdAt, period.current.start)
+        )
+      );
+      const [newPayingPrevMonth] = await db.select({ count: count() }).from(users).where(
+        and(
+          sql`plan IN ('personal_ai', 'team')`,
+          gte(users.createdAt, period.previous.start),
+          lte(users.createdAt, period.previous.end)
+        )
+      );
+
+      // 12-month MRR history (proxy: cumulative paying users created up to each month × price)
+      const mrrHistoryResult = await db.execute(sql`
+        SELECT
+          TO_CHAR(m.month, 'YYYY-MM') as month,
+          COALESCE(SUM(CASE WHEN u.plan = 'personal_ai' THEN ${personalAIPrice} WHEN u.plan = 'team' THEN ${teamPrice} ELSE 0 END), 0)::int as mrr
+        FROM generate_series(
+          DATE_TRUNC('month', NOW() - INTERVAL '11 months'),
+          DATE_TRUNC('month', NOW()),
+          INTERVAL '1 month'
+        ) AS m(month)
+        LEFT JOIN users u ON u.plan IN ('personal_ai', 'team') AND u.created_at <= (m.month + INTERVAL '1 month - 1 second')
+        GROUP BY m.month
+        ORDER BY m.month ASC
+      `);
+
+      res.json({
+        mrr: currentMrr,
+        arr,
+        prevMrr,
+        mrrGrowthPct,
+        personalAICount: payingPersonalAI.count,
+        teamCount: payingTeam.count,
+        starterCount: starterCount.count,
+        trialUsers: trialUsers.count,
+        payingUsers: payingPersonalAI.count + payingTeam.count,
+        newPayingThisMonth: newPayingThisMonth.count,
+        newPayingPrevMonth: newPayingPrevMonth.count,
+        personalAIRevenue: payingPersonalAI.count * personalAIPrice,
+        teamRevenue: payingTeam.count * teamPrice,
+        mrrHistory: mrrHistoryResult.rows,
+      });
+    } catch (err) {
+      log(`admin revenue error: ${errMsg(err)}`, "admin");
+      res.status(500).json({ message: errMsg(err) });
+    }
+  });
+
   // ─── WhatsApp Config endpoints ────────────────────────────────────────────
   app.get("/api/admin/whatsapp/config", requireAdmin, async (req, res) => {
     try {
