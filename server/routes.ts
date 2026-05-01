@@ -3813,9 +3813,9 @@ export async function registerRoutes(
         customerId = customer.id;
       }
 
-      const baseUrl = process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : `http://localhost:${process.env.PORT || 5000}`;
+      const baseUrl = process.env.APP_URL
+        || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
+        || `http://localhost:${process.env.PORT || 5000}`;
 
       const sessionParams: import('stripe').default.Checkout.SessionCreateParams = {
         customer: customerId,
@@ -3851,9 +3851,9 @@ export async function registerRoutes(
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
 
-      const baseUrl = process.env.REPLIT_DOMAINS
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : `http://localhost:${process.env.PORT || 5000}`;
+      const baseUrl = process.env.APP_URL
+        || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
+        || `http://localhost:${process.env.PORT || 5000}`;
 
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
