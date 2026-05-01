@@ -6,13 +6,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Loader2, ArrowRight, ArrowLeft, Mic, Calendar, Flame,
   Star, Zap, Users, Check, CreditCard, MessageCircle,
-  Repeat, Building2, Shield,
+  Repeat, Building2, Shield, KeyRound,
 } from "lucide-react";
 import { CheckCircle2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTheme, type AxisTheme } from "@/components/theme-provider";
 import { getLandingPalette, type LandingPalette } from "@/lib/landing-palette";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const AuthPaletteContext = createContext<LandingPalette>(getLandingPalette("slim"));
 
@@ -418,6 +419,55 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { theme } = useTheme();
   const LP = getLandingPalette(theme as AxisTheme);
+  const { toast } = useToast();
+
+  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "done">("idle");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirm, setForgotConfirm] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
+  const handleSendCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    setForgotLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/forgot-password", { email: forgotEmail });
+      setForgotStep("code");
+    } catch (err: any) {
+      setForgotError(err?.message || "Erro ao enviar código");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetWithCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError(null);
+    if (forgotNewPassword.length < 8) {
+      setForgotError("A senha deve ter pelo menos 8 caracteres");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirm) {
+      setForgotError("As senhas não conferem");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/reset-with-code", {
+        email: forgotEmail,
+        code: forgotCode,
+        newPassword: forgotNewPassword,
+      });
+      setForgotStep("done");
+    } catch (err: any) {
+      setForgotError(err?.message || "Código incorreto ou expirado");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const { data: productsData } = useQuery<any>({
     queryKey: ["/api/billing/products"],
@@ -537,6 +587,7 @@ export default function AuthPage() {
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
+            key="forgot-wrapper"
             transition={{ duration: 0.5 }}
             className="w-full max-w-[420px] relative z-10"
           >
@@ -549,6 +600,160 @@ export default function AuthPage() {
                   error={planError}
                   onBack={() => setRegStep("form")}
                 />
+              ) : forgotStep !== "idle" ? (
+                <motion.div
+                  key="forgot"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setForgotStep("idle"); setForgotError(null); }}
+                    className="flex items-center gap-1.5 text-white/40 hover:text-white/70 transition-colors text-sm mb-2"
+                    data-testid="button-back-to-login"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Voltar para login
+                  </button>
+
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `rgba(${LP.primaryRgb},0.12)` }}>
+                      <KeyRound className="w-4 h-4" style={{ color: LP.primary }} />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold tracking-tight">Redefinir senha</h1>
+                      <p className="text-xs text-white/35">
+                        {forgotStep === "email" && "Vamos enviar um código para o seu email"}
+                        {forgotStep === "code" && `Código enviado para ${forgotEmail}`}
+                        {forgotStep === "done" && "Senha redefinida com sucesso!"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {forgotStep === "email" && (
+                    <form onSubmit={handleSendCode} className="space-y-4" data-testid="form-forgot-email">
+                      <div>
+                        <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                          Email da conta
+                        </label>
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="seu@email.com"
+                          required
+                          className="auth-input"
+                          data-testid="input-forgot-email"
+                        />
+                      </div>
+                      {forgotError && (
+                        <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: `rgba(${LP.primaryRgb},0.08)`, border: `1px solid rgba(${LP.primaryRgb},0.18)`, color: LP.primary }}>
+                          <span className="mt-0.5">⚠</span><span>{forgotError}</span>
+                        </div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={forgotLoading}
+                        className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                        data-testid="button-send-code"
+                      >
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4" /> Enviar código</>}
+                      </button>
+                    </form>
+                  )}
+
+                  {forgotStep === "code" && (
+                    <form onSubmit={handleResetWithCode} className="space-y-4" data-testid="form-forgot-code">
+                      <div>
+                        <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                          Código de 6 dígitos
+                        </label>
+                        <input
+                          type="text"
+                          value={forgotCode}
+                          onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="000000"
+                          required
+                          maxLength={6}
+                          className="auth-input text-center text-2xl tracking-[0.4em] font-bold"
+                          data-testid="input-forgot-code"
+                        />
+                        <p className="text-xs text-white/25 mt-1.5 text-center">Verifique sua caixa de entrada e spam</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                          Nova senha
+                        </label>
+                        <input
+                          type="password"
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          placeholder="Mínimo 8 caracteres"
+                          required
+                          minLength={8}
+                          className="auth-input"
+                          data-testid="input-forgot-new-password"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-white/40 mb-2 font-medium tracking-wide uppercase" style={{ letterSpacing: "0.06em" }}>
+                          Confirmar nova senha
+                        </label>
+                        <input
+                          type="password"
+                          value={forgotConfirm}
+                          onChange={(e) => setForgotConfirm(e.target.value)}
+                          placeholder="Repita a senha"
+                          required
+                          className="auth-input"
+                          data-testid="input-forgot-confirm"
+                        />
+                      </div>
+                      {forgotError && (
+                        <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: `rgba(${LP.primaryRgb},0.08)`, border: `1px solid rgba(${LP.primaryRgb},0.18)`, color: LP.primary }}>
+                          <span className="mt-0.5">⚠</span><span>{forgotError}</span>
+                        </div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={forgotLoading || forgotCode.length !== 6}
+                        className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                        data-testid="button-confirm-reset"
+                      >
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> Redefinir senha</>}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendCode}
+                        disabled={forgotLoading}
+                        className="w-full text-xs text-white/25 hover:text-white/45 transition-colors py-1"
+                        data-testid="button-resend-code"
+                      >
+                        Não recebeu? Reenviar código
+                      </button>
+                    </form>
+                  )}
+
+                  {forgotStep === "done" && (
+                    <div className="space-y-5 text-center">
+                      <div className="flex justify-center">
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: `rgba(${LP.successRgb},0.12)` }}>
+                          <CheckCircle2 className="w-8 h-8" style={{ color: LP.success }} />
+                        </div>
+                      </div>
+                      <p className="text-white/55 text-sm">Sua senha foi redefinida. Faça login com a nova senha.</p>
+                      <button
+                        onClick={() => { setForgotStep("idle"); setForgotEmail(""); setForgotCode(""); setForgotNewPassword(""); setForgotConfirm(""); }}
+                        className="auth-submit-button w-full py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                        data-testid="button-goto-login"
+                      >
+                        <ArrowRight className="h-4 w-4" /> Ir para login
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
               ) : (
                 <motion.div
                   key="form"
@@ -636,6 +841,18 @@ export default function AuthPage() {
                         className="auth-input"
                         data-testid="input-password"
                       />
+                      {isLogin && (
+                        <div className="flex justify-end mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => { setForgotEmail(email); setForgotStep("email"); setForgotError(null); }}
+                            className="text-xs text-white/25 hover:text-white/50 transition-colors"
+                            data-testid="button-forgot-password"
+                          >
+                            Esqueci minha senha
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {error && (

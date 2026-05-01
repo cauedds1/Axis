@@ -369,3 +369,31 @@ export async function sendLowDisciplineEmail(
     html,
   });
 }
+
+export async function sendPasswordResetCodeEmail(
+  userEmail: string,
+  userName: string,
+  code: string,
+): Promise<void> {
+  const html = baseTemplate(`
+    <div class="badge-info">🔐 Redefinição de senha</div>
+    <h1>Ei, ${userName.split(" ")[0]}!</h1>
+    <p>Você solicitou a redefinição da sua senha no AXIS. Use o código abaixo para continuar:</p>
+
+    <div style="text-align:center; margin: 28px 0;">
+      <div style="display:inline-block; background: rgba(0,230,255,0.08); border: 1.5px solid rgba(0,230,255,0.25); border-radius: 16px; padding: 20px 40px;">
+        <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #00E6FF; font-family: monospace;">${code}</span>
+      </div>
+      <p style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.3);">Este código expira em <strong style="color:rgba(255,255,255,0.5);">15 minutos</strong></p>
+    </div>
+
+    <hr class="divider"/>
+    <p style="font-size:13px; color:rgba(255,255,255,0.35);">Se você não solicitou essa redefinição, ignore este email — sua senha permanece a mesma.</p>
+  `);
+
+  await sendEmail({
+    to: userEmail,
+    subject: `🔐 ${code} é seu código de redefinição de senha — AXIS`,
+    html,
+  });
+}

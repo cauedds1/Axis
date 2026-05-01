@@ -3,6 +3,8 @@ import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import crypto from "crypto";
+import { sendPasswordResetCodeEmail } from "../../integrations/sendgrid";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -243,6 +245,79 @@ export function registerAuthRoutes(app: Express): void {
     } catch (error) {
       console.error("Change password error:", error);
       res.status(500).json({ error: "Erro ao alterar senha" });
+    }
+  });
+
+  // ─── FORGOT PASSWORD (send 6-digit code by email) ────────────────────────────
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email obrigatório" });
+      }
+
+      const user = await authStorage.getUserByEmail(email.trim().toLowerCase());
+      if (!user) {
+        return res.json({ success: true });
+      }
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const hashed = await bcrypt.hash(code, 10);
+      const expiry = new Date(Date.now() + 15 * 60 * 1000);
+
+      await authStorage.updateUser(user.id, {
+        passwordResetToken: hashed,
+        passwordResetExpiry: expiry,
+      });
+
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || "usuário";
+      await sendPasswordResetCodeEmail(user.email!, name, code);
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Forgot password error:", err);
+      res.status(500).json({ error: "Erro ao enviar código" });
+    }
+  });
+
+  // ─── RESET WITH CODE ──────────────────────────────────────────────────────────
+
+  app.post("/api/auth/reset-with-code", async (req, res) => {
+    try {
+      const { email, code, newPassword } = req.body;
+      if (!email || !code || !newPassword) {
+        return res.status(400).json({ error: "Campos obrigatórios ausentes" });
+      }
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 8 caracteres" });
+      }
+
+      const user = await authStorage.getUserByEmail(email.trim().toLowerCase());
+      if (!user || !user.passwordResetToken || !user.passwordResetExpiry) {
+        return res.status(400).json({ error: "Código inválido ou expirado" });
+      }
+
+      if (new Date() > new Date(user.passwordResetExpiry)) {
+        return res.status(400).json({ error: "Código expirado. Solicite um novo." });
+      }
+
+      const valid = await bcrypt.compare(String(code).trim(), user.passwordResetToken);
+      if (!valid) {
+        return res.status(400).json({ error: "Código incorreto" });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await authStorage.updateUser(user.id, {
+        password: hashed,
+        passwordResetToken: null,
+        passwordResetExpiry: null,
+      });
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Reset with code error:", err);
+      res.status(500).json({ error: "Erro ao redefinir senha" });
     }
   });
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock, CreditCard, Zap, Users, Star } from "lucide-react";
+import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock, CreditCard, Zap, Users, Star, KeyRound, ShieldCheck } from "lucide-react";
 import { SUPPORTED_CURRENCIES, getCurrencyName } from "@/lib/currencies";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -376,6 +376,53 @@ export default function SettingsPage() {
   });
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const [cpOpen, setCpOpen] = useState(false);
+  const [cpStep, setCpStep] = useState<"email" | "code" | "done">("email");
+  const [cpCode, setCpCode] = useState("");
+  const [cpNewPassword, setCpNewPassword] = useState("");
+  const [cpConfirm, setCpConfirm] = useState("");
+  const [cpLoading, setCpLoading] = useState(false);
+  const [cpError, setCpError] = useState<string | null>(null);
+
+  const cpEmail = userData?.email || "";
+
+  const handleSendChangeCode = async () => {
+    setCpError(null);
+    setCpLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/forgot-password", { email: cpEmail });
+      setCpStep("code");
+    } catch (err: any) {
+      setCpError(err?.message || "Erro ao enviar código");
+    } finally {
+      setCpLoading(false);
+    }
+  };
+
+  const handleConfirmChange = async () => {
+    setCpError(null);
+    if (cpNewPassword.length < 8) { setCpError("A senha deve ter pelo menos 8 caracteres"); return; }
+    if (cpNewPassword !== cpConfirm) { setCpError("As senhas não conferem"); return; }
+    setCpLoading(true);
+    try {
+      await apiRequest("POST", "/api/auth/reset-with-code", { email: cpEmail, code: cpCode, newPassword: cpNewPassword });
+      setCpStep("done");
+    } catch (err: any) {
+      setCpError(err?.message || "Código incorreto ou expirado");
+    } finally {
+      setCpLoading(false);
+    }
+  };
+
+  const resetCpState = () => {
+    setCpOpen(false);
+    setCpStep("email");
+    setCpCode("");
+    setCpNewPassword("");
+    setCpConfirm("");
+    setCpError(null);
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -829,6 +876,94 @@ export default function SettingsPage() {
           {activeTab === "conta" && (
             <div className="space-y-4" data-testid="tab-content-conta">
               <h2 className="text-base font-semibold">{t("axisSettings.tabAccount")}</h2>
+
+              <Block>
+                <div className="flex items-center gap-2 mb-1">
+                  <KeyRound className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Segurança</p>
+                </div>
+                <p className="text-sm text-muted-foreground">Altere sua senha a qualquer momento. Um código de verificação será enviado para {cpEmail || "seu email"}.</p>
+
+                {!cpOpen ? (
+                  <Button variant="outline" className="w-full mt-1" onClick={() => setCpOpen(true)} data-testid="button-open-change-password">
+                    <KeyRound className="h-4 w-4 mr-2" /> Alterar senha
+                  </Button>
+                ) : (
+                  <div className="mt-2 space-y-3">
+                    {cpStep === "email" && (
+                      <>
+                        <p className="text-xs text-muted-foreground">Um código de 6 dígitos será enviado para <strong className="text-foreground">{cpEmail}</strong>.</p>
+                        {cpError && <p className="text-xs text-destructive">{cpError}</p>}
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={handleSendChangeCode} disabled={cpLoading || !cpEmail} data-testid="button-send-change-code">
+                            {cpLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                            Enviar código
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={resetCpState} data-testid="button-cancel-change-password">Cancelar</Button>
+                        </div>
+                      </>
+                    )}
+
+                    {cpStep === "code" && (
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-muted-foreground font-medium">Código recebido por email</label>
+                          <input
+                            type="text"
+                            value={cpCode}
+                            onChange={(e) => setCpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            placeholder="000000"
+                            maxLength={6}
+                            className="w-full rounded-lg bg-white/5 border border-white/10 text-white px-3 py-2 text-center text-xl font-bold tracking-[0.3em] placeholder:text-white/20 outline-none focus:border-white/25"
+                            data-testid="input-change-code"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-muted-foreground font-medium">Nova senha</label>
+                          <input
+                            type="password"
+                            value={cpNewPassword}
+                            onChange={(e) => setCpNewPassword(e.target.value)}
+                            placeholder="Mínimo 8 caracteres"
+                            className="w-full rounded-lg bg-white/5 border border-white/10 text-white px-3 py-2 text-sm placeholder:text-white/20 outline-none focus:border-white/25"
+                            data-testid="input-new-password"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-muted-foreground font-medium">Confirmar nova senha</label>
+                          <input
+                            type="password"
+                            value={cpConfirm}
+                            onChange={(e) => setCpConfirm(e.target.value)}
+                            placeholder="Repita a senha"
+                            className="w-full rounded-lg bg-white/5 border border-white/10 text-white px-3 py-2 text-sm placeholder:text-white/20 outline-none focus:border-white/25"
+                            data-testid="input-confirm-password"
+                          />
+                        </div>
+                        {cpError && <p className="text-xs text-destructive">{cpError}</p>}
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={handleConfirmChange} disabled={cpLoading || cpCode.length !== 6} data-testid="button-confirm-change-password">
+                            {cpLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ShieldCheck className="h-3 w-3 mr-1" />}
+                            Confirmar
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={handleSendChangeCode} disabled={cpLoading} data-testid="button-resend-change-code">
+                            Reenviar código
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={resetCpState}>Cancelar</Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {cpStep === "done" && (
+                      <div className="flex items-center gap-2 py-2">
+                        <Check className="h-4 w-4 text-emerald-400" />
+                        <p className="text-sm text-emerald-400">Senha alterada com sucesso!</p>
+                        <Button size="sm" variant="ghost" className="ml-auto" onClick={resetCpState}>Fechar</Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Block>
 
               <Block danger>
                 <div className="flex items-center gap-2 mb-1">
