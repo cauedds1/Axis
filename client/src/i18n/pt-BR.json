@@ -3755,7 +3755,9 @@
       "search": "Buscar",
       "filter": "Filtrar",
       "export": "Exportar",
-      "refresh": "Atualizar"
+      "refresh": "Atualizar",
+      "empty": "Nenhum registro",
+      "logout": "Sair"
     }
   }
 }

@@ -415,7 +415,12 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM organizations`);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM organizations o
+        LEFT JOIN users u ON u.id = o.admin_user_id
+        WHERE (${search} = '' OR o.name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})
+      `);
 
       res.json({ organizations: orgs.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
@@ -957,7 +962,11 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM audit_logs`);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count FROM audit_logs
+        WHERE (${actionFilter || ''} = '' OR action = ${actionFilter || ''})
+          AND (${actorFilter || ''} = '' OR actor_email ILIKE ${'%' + actorFilter + '%'})
+      `);
 
       res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
@@ -1078,13 +1087,43 @@ export function viewingModeMiddleware(req: Request, res: Response, next: NextFun
 // ─── Maintenance Mode Middleware ───────────────────────────────────────────────
 // Returns 503 for all non-admin, non-static API routes when maintenance is on.
 // Register this BEFORE all other routes in routes.ts.
+const MAINTENANCE_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AXIS — Em Manutenção / Under Maintenance</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+           background: #0a0a0a; color: #fff; font-family: system-ui, sans-serif; text-align: center; padding: 2rem; }
+    .card { max-width: 460px; }
+    .logo { font-size: 2rem; font-weight: 800; letter-spacing: -0.05em; color: #7a9e8a; margin-bottom: 1rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+    p { color: #888; font-size: 0.9rem; line-height: 1.6; }
+    hr { border-color: #222; margin: 1.5rem 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">AXIS</div>
+    <h1>Sistema em manutenção</h1>
+    <p>Estamos realizando melhorias. Tente novamente em breve.</p>
+    <hr/>
+    <h1>Under Maintenance</h1>
+    <p>We are performing scheduled maintenance. Please try again shortly.</p>
+  </div>
+</body>
+</html>`;
+
 export async function maintenanceMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Skip admin routes, auth routes, and static assets
+  // Always allow admin panel, admin API, auth API, and Vite HMR/assets through
   if (
     req.path.startsWith("/api/admin") ||
     req.path.startsWith("/api/auth") ||
-    req.path.startsWith("/assets") ||
-    !req.path.startsWith("/api/")
+    req.path.startsWith("/admin") ||
+    req.path.startsWith("/@") ||
+    req.path.startsWith("/node_modules") ||
+    req.path.startsWith("/src")
   ) {
     return next();
   }
@@ -1099,7 +1138,13 @@ export async function maintenanceMiddleware(req: Request, res: Response, next: N
         const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
         if (user?.email === adminEmail) return next();
       }
-      return res.status(503).json({ message: "O sistema está em manutenção. Tente novamente em breve.", maintenanceMode: true });
+      // API calls get JSON 503; browser navigation gets HTML 503 page
+      const wantsJson = req.path.startsWith("/api/") ||
+        (req.headers.accept ?? "").includes("application/json");
+      if (wantsJson) {
+        return res.status(503).json({ message: "O sistema está em manutenção. Tente novamente em breve.", maintenanceMode: true });
+      }
+      return res.status(503).set("Content-Type", "text/html").send(MAINTENANCE_HTML);
     }
   } catch {
     // If DB check fails, allow through to not block normal operation

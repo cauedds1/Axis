@@ -93,16 +93,24 @@ export default function AdminPanel() {
   const [section, setSection] = useState<Section>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const { data: accessCheck, isLoading: checkLoading, isError } = useQuery<{ isAdmin: boolean }>({
+  const { data: accessCheck, isLoading: checkLoading, isError } = useQuery<{ isAdmin: boolean; email?: string }>({
     queryKey: ["/api/auth/is-admin"],
     retry: false,
   });
+
+  const { toast } = useToast();
 
   const shouldRedirect = !checkLoading && (isError || !accessCheck?.isAdmin);
 
   useEffect(() => {
     if (shouldRedirect) setLocation("/");
   }, [shouldRedirect, setLocation]);
+
+  const logout = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/auth/logout"),
+    onSuccess: () => setLocation("/login"),
+    onError: () => { toast({ variant: "destructive", title: "Logout failed" }); setLocation("/login"); },
+  });
 
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === "pt-BR" ? "en" : "pt-BR");
@@ -196,6 +204,22 @@ export default function AdminPanel() {
             <div className="ml-auto flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-xs text-muted-foreground">Live</span>
+              {accessCheck?.email && (
+                <span data-testid="text-admin-email" className="text-xs text-muted-foreground font-mono border border-border rounded px-2 py-0.5 hidden md:inline">
+                  {accessCheck.email}
+                </span>
+              )}
+              <Button
+                data-testid="button-admin-logout"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => logout.mutate()}
+                disabled={logout.isPending}
+              >
+                <LogOut className="h-3.5 w-3.5 mr-1" />
+                {t("common.logout") || "Logout"}
+              </Button>
             </div>
           </header>
 

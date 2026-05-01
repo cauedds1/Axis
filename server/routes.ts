@@ -3139,12 +3139,6 @@ export async function registerRoutes(
     }
   });
 
-  // ── ADMIN CHECK ─────────────────────────────────────────────────────────
-  app.get("/api/auth/is-admin", isAuthenticated, async (req, res) => {
-    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.json({ isAdmin: await isAdminRequest(req) });
-  });
-
   // ── WHATSAPP ROUTES ─────────────────────────────────────────────────────
   app.get("/api/whatsapp/status", isAuthenticated, async (req, res) => {
     const admin = await isAdminRequest(req);

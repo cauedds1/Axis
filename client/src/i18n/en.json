@@ -3742,6 +3742,7 @@
       "loading": "Loading...",
       "error": "Error loading data",
       "noData": "No data found",
+      "empty": "No records",
       "page": "Page",
       "of": "of",
       "prev": "Previous",
@@ -3755,7 +3756,8 @@
       "search": "Search",
       "filter": "Filter",
       "export": "Export",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "logout": "Logout"
     }
   }
 }
