@@ -238,7 +238,9 @@ export function WhatsAppSection() {
     setQrPollingInstances(prev => {
       const next = new Set(prev);
       for (const [key, inst] of Object.entries(modeData.instances) as [InstanceKey, InstanceData][]) {
-        if (inst.status === "connected" || inst.status === "disconnected") {
+        if (inst.status === "qr_pending") {
+          next.add(key);
+        } else if (inst.status === "connected" || inst.status === "disconnected") {
           next.delete(key);
         }
       }
