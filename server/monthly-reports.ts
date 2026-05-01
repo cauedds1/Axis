@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
@@ -6,6 +7,152 @@ import { eq } from "drizzle-orm";
 import { sendEmail } from "./integrations/sendgrid";
 
 type Lang = "en" | "pt";
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const AI_SUMMARY_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`AI summary timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+function getOpenAIClient(): OpenAI | null {
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
+  return new OpenAI({ apiKey, baseURL });
+}
+
+async function generatePersonalAiSummary(
+  data: PersonalReportData,
+  month: number,
+  year: number,
+  lang: Lang,
+): Promise<string | null> {
+  try {
+    const client = getOpenAIClient();
+    if (!client) return null;
+
+    const mn = monthName(month, lang);
+    const fmt = (v: number) => fmtAmt(v, data.currency, lang);
+    const topHabit = data.habitStats.length > 0
+      ? `${data.habitStats[0].name} (${data.habitStats[0].streak} ${lang === "en" ? "day streak" : "dias de sequência"})`
+      : null;
+    const topGoal = data.activeGoals.length > 0
+      ? `${data.activeGoals[0].title} at ${data.activeGoals[0].pct}%`
+      : null;
+
+    const facts = [
+      `Income: ${fmt(data.income)} (${data.prevIncome > 0 ? (data.income >= data.prevIncome ? "+" : "") + Math.round(((data.income - data.prevIncome) / data.prevIncome) * 100) + "% vs last month" : "no prev. data"})`,
+      `Expenses: ${fmt(data.expenses)} (${data.prevExpenses > 0 ? (data.expenses >= data.prevExpenses ? "+" : "") + Math.round(((data.expenses - data.prevExpenses) / data.prevExpenses) * 100) + "% vs last month" : "no prev. data"})`,
+      `Balance: ${fmt(data.balance)}`,
+      `Savings rate: ${data.savingsRate}%`,
+      `Discipline score: ${data.disciplineScore}/10`,
+      `Tasks completed: ${data.completedTasks}, pending: ${data.pendingTasks}${data.overdueTasks > 0 ? `, overdue: ${data.overdueTasks}` : ""}`,
+      topHabit ? `Top habit: ${topHabit}` : null,
+      topGoal ? `Top goal progress: ${topGoal}` : null,
+      data.topCategories.length > 0 ? `Biggest expense category: ${data.topCategories[0].name} (${fmt(data.topCategories[0].amount)})` : null,
+    ].filter(Boolean).join("\n");
+
+    const systemPrompt = lang === "en"
+      ? `You are a friendly personal finance assistant. Write a concise 2–3 sentence summary paragraph for a monthly report email. Highlight the most important trends and be encouraging. Use specific numbers. Do not use markdown or bullet points — plain prose only.`
+      : `Você é um assistente financeiro pessoal amigável. Escreva um parágrafo resumido de 2–3 frases para um email de relatório mensal. Destaque as tendências mais importantes e seja encorajador. Use números específicos. Não use markdown nem listas — apenas texto corrido.`;
+
+    const userPrompt = lang === "en"
+      ? `Write a 2–3 sentence narrative summary for ${data.userName}'s ${mn} ${year} report based on these data points:\n${facts}`
+      : `Escreva um resumo narrativo de 2–3 frases para o relatório de ${mn} de ${year} de ${data.userName} com base nestes dados:\n${facts}`;
+
+    const response = await withTimeout(
+      client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+      }),
+      AI_SUMMARY_TIMEOUT_MS,
+    );
+
+    return response.choices[0]?.message?.content?.trim() || null;
+  } catch (err: any) {
+    console.warn(`[monthly-reports] AI summary generation failed (personal): ${err?.message}`);
+    return null;
+  }
+}
+
+async function generateBusinessAiSummary(
+  data: BusinessReportData,
+  month: number,
+  year: number,
+  lang: Lang,
+): Promise<string | null> {
+  try {
+    const client = getOpenAIClient();
+    if (!client) return null;
+
+    const mn = monthName(month, lang);
+    const fmt = (v: number) => fmtAmt(v, data.currency, lang);
+    const prevMn = monthName(month === 0 ? 11 : month - 1, lang);
+
+    const expChange = data.prevApprovedExpenses > 0
+      ? Math.round(((data.approvedExpenses - data.prevApprovedExpenses) / data.prevApprovedExpenses) * 100)
+      : null;
+    const revChange = data.prevReceivedAmount > 0
+      ? Math.round(((data.receivedAmount - data.prevReceivedAmount) / data.prevReceivedAmount) * 100)
+      : null;
+
+    const facts = [
+      `Organization: ${data.orgName}`,
+      `Revenue received: ${fmt(data.receivedAmount)}${revChange !== null ? ` (${revChange >= 0 ? "+" : ""}${revChange}% vs ${prevMn})` : ""}`,
+      `Approved expenses: ${fmt(data.approvedExpenses)}${expChange !== null ? ` (${expChange >= 0 ? "+" : ""}${expChange}% vs ${prevMn})` : ""}`,
+      `Net result: ${fmt(data.netResult)}`,
+      `Projected balance: ${fmt(data.projectedBalance)}`,
+      data.overdueReceivable > 0 ? `Overdue receivables: ${fmt(data.overdueReceivable)}` : null,
+      data.billsOverdue > 0 ? `Overdue bills: ${fmt(data.billsOverdue)}` : null,
+      data.topCategories.length > 0 ? `Top expense category: ${data.topCategories[0].name} (${fmt(data.topCategories[0].amount)})` : null,
+    ].filter(Boolean).join("\n");
+
+    const systemPrompt = lang === "en"
+      ? `You are a concise business financial analyst. Write a 2–3 sentence summary paragraph for a monthly business report email. Highlight the most important trends, flag any concerns, and be professional. Use specific numbers. No markdown or bullet points — plain prose only.`
+      : `Você é um analista financeiro empresarial conciso. Escreva um parágrafo de 2–3 frases para o email de relatório mensal empresarial. Destaque as tendências mais importantes, aponte preocupações se houver, e seja profissional. Use números específicos. Sem markdown ou listas — apenas texto corrido.`;
+
+    const userPrompt = lang === "en"
+      ? `Write a 2–3 sentence narrative summary for ${data.orgName}'s ${mn} ${year} business report based on:\n${facts}`
+      : `Escreva um resumo narrativo de 2–3 frases para o relatório empresarial de ${mn} de ${year} da ${data.orgName} com base em:\n${facts}`;
+
+    const response = await withTimeout(
+      client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 200,
+        temperature: 0.7,
+      }),
+      AI_SUMMARY_TIMEOUT_MS,
+    );
+
+    return response.choices[0]?.message?.content?.trim() || null;
+  } catch (err: any) {
+    console.warn(`[monthly-reports] AI summary generation failed (business): ${err?.message}`);
+    return null;
+  }
+}
 
 const APP_URL =
   process.env.APP_URL ||
@@ -256,7 +403,7 @@ async function buildPersonalReportData(userId: string, month: number, year: numb
   };
 }
 
-function buildPersonalHtml(data: PersonalReportData, month: number, year: number, lang: Lang): string {
+function buildPersonalHtml(data: PersonalReportData, month: number, year: number, lang: Lang, aiSummary?: string | null): string {
   const c = data.currency;
   const fmt = (v: number) => fmtAmt(v, c, lang);
   const mn = monthName(month, lang);
@@ -294,10 +441,18 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
   const ctaLabel = isEn ? "Open AXIS →" : "Abrir o AXIS →";
   const dayLabel = isEn ? "day" : "dia";
 
+  const aiSummaryHtml = aiSummary
+    ? `<div style="background:rgba(0,230,255,0.05);border:1px solid rgba(0,230,255,0.15);border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+        <p style="color:rgba(255,255,255,0.75);font-size:14px;line-height:1.7;margin:0;">✨ ${escapeHtml(aiSummary)}</p>
+      </div>`
+    : "";
+
   let html = `
     <div class="badge badge-info">📊 ${isEn ? "Monthly Report" : "Relatório Mensal"} · ${mn} ${year}</div>
     <h1>${isEn ? `Hey, ${firstName}!` : `Olá, ${firstName}!`}</h1>
     <p>${subtitle}</p>
+
+    ${aiSummaryHtml}
 
     <hr class="divider"/>
 
@@ -478,7 +633,8 @@ export async function sendPersonalMonthlyReport(userId: string, month: number, y
     : `📊 Seu Relatório Pessoal de ${mn} de ${year} — AXIS`;
 
   try {
-    const html = buildPersonalHtml(data, month, year, lang);
+    const aiSummary = await generatePersonalAiSummary(data, month, year, lang);
+    const html = buildPersonalHtml(data, month, year, lang, aiSummary);
     await sendEmail({ to: user.email, subject, html });
     return "sent";
   } catch (err: any) {
@@ -626,7 +782,7 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
   };
 }
 
-function buildBusinessHtml(data: BusinessReportData, month: number, year: number, lang: Lang): string {
+function buildBusinessHtml(data: BusinessReportData, month: number, year: number, lang: Lang, aiSummary?: string | null): string {
   const c = data.currency;
   const fmt = (v: number) => fmtAmt(v, c, lang);
   const mn = monthName(month, lang);
@@ -644,6 +800,12 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
     ? Math.round(((data.receivedAmount - data.prevReceivedAmount) / data.prevReceivedAmount) * 100)
     : 0;
 
+  const aiSummaryHtml = aiSummary
+    ? `<div style="background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+        <p style="color:rgba(255,255,255,0.75);font-size:14px;line-height:1.7;margin:0;">✨ ${escapeHtml(aiSummary)}</p>
+      </div>`
+    : "";
+
   let html = `
     <div class="badge badge-purple">🏢 ${isEn ? "Business Report" : "Relatório Empresarial"} · ${mn} ${year}</div>
     <h1>${isEn ? `Hey, ${firstName}!` : `Olá, ${firstName}!`}</h1>
@@ -651,6 +813,8 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
       ? `Here's the financial summary for <strong style="color:#A78BFA">${data.orgName}</strong> in ${mn} ${year}.`
       : `Aqui está o resumo financeiro de <strong style="color:#A78BFA">${data.orgName}</strong> em ${mn} de ${year}.`
     }</p>
+
+    ${aiSummaryHtml}
 
     <hr class="divider"/>
 
@@ -810,7 +974,8 @@ export async function sendBusinessMonthlyReport(
     : `📊 ${data.orgName} — Relatório Empresarial de ${mn} de ${year} — AXIS`;
 
   try {
-    const html = buildBusinessHtml(data, month, year, lang);
+    const aiSummary = await generateBusinessAiSummary(data, month, year, lang);
+    const html = buildBusinessHtml(data, month, year, lang, aiSummary);
     await sendEmail({ to: adminUser.email, subject, html });
     return "sent";
   } catch (err: any) {
