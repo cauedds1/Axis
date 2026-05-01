@@ -3704,7 +3704,11 @@
       "modelAvailable": "Model Available",
       "yes": "Yes",
       "no": "No",
-      "latencyMs": "Latency (ms)"
+      "latencyMs": "Latency (ms)",
+      "keyMissing": "OpenAI API key is not configured",
+      "keyMissingHint": "Set the OPENAI_API_KEY environment variable to enable AI features (chat, transcription, PDF analysis, onboarding diagnosis).",
+      "keyInvalid": "OpenAI API key appears to be invalid",
+      "keyInvalidHint": "The key is set but failed validation. Check it is correct and has sufficient credits."
     },
     "audit": {
       "title": "Audit Log",

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Search, Mail, Send } from "lucide-react";
+import { Search, Mail, Send, CheckCircle, XCircle, Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,9 @@ export function EmailLogsSection() {
     typeCounts?: { alert_type: string; count: number }[];
     currentMonth?: number;
     prevMonth?: number;
+    totalSent?: number;
+    totalFailed?: number;
+    successRate?: number;
   }>({
     queryKey: ["/api/admin/email-logs", page, search, alertType, sortBy, sortDir],
     queryFn: () => adminFetch(`/api/admin/email-logs?${emailParams.toString()}`),
@@ -98,15 +101,12 @@ export function EmailLogsSection() {
         </Button>
       </div>
 
-      {(data?.typeCounts ?? []).length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
-          <StatCard label="This Month" value={data!.currentMonth ?? 0} icon={Mail} color="text-yellow-400" />
-          <StatCard label="Prev Month" value={data!.prevMonth ?? 0} icon={Mail} />
-          {(data!.typeCounts ?? []).slice(0, 2).map((tc, i) => (
-            <StatCard key={i} label={tc.alert_type} value={tc.count} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Total Sent" value={data?.totalSent ?? 0} icon={CheckCircle} color="text-emerald-400" />
+        <StatCard label="Total Failed" value={data?.totalFailed ?? 0} icon={XCircle} color="text-red-400" />
+        <StatCard label="Success Rate" value={`${data?.successRate ?? 100}%`} icon={Percent} color={(data?.successRate ?? 100) >= 95 ? "text-emerald-400" : "text-yellow-400"} />
+        <StatCard label="This Month" value={data?.currentMonth ?? 0} icon={Mail} color="text-blue-400" />
+      </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

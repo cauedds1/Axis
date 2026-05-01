@@ -3704,7 +3704,11 @@
       "modelAvailable": "Modelo Dispon\u00edvel",
       "yes": "Sim",
       "no": "N\u00e3o",
-      "latencyMs": "Lat\u00eancia (ms)"
+      "latencyMs": "Lat\u00eancia (ms)",
+      "keyMissing": "Chave de API do OpenAI nao configurada",
+      "keyMissingHint": "Configure a variavel de ambiente OPENAI_API_KEY para ativar os recursos de IA (chat, transcricao, analise de PDF, diagnostico de onboarding).",
+      "keyInvalid": "Chave de API do OpenAI parece invalida",
+      "keyInvalidHint": "A chave esta definida, mas falhou na validacao. Verifique se esta correta e tem creditos suficientes."
     },
     "audit": {
       "title": "Audit Log",

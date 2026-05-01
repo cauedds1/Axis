@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Search, ExternalLink, Brain, Users, TrendingUp, AlertTriangle, Zap, CreditCard } from "lucide-react";
 import { BarChart2 } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   SectionTitle, SubTitle, StatCard, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDate, fmtCurrency, adminFetch } from "../admin-utils";
+import { fmtDate, fmtCurrency, adminFetch, PIE_COLORS } from "../admin-utils";
 
 type SortDir = "asc" | "desc";
 
@@ -51,6 +52,31 @@ export function BillingSection() {
         <StatCard label="New This Month" value={(ov.newSubscribersThisMonth as number) ?? 0} icon={Zap} color="text-blue-400" />
         <StatCard label="Prev Month" value={(ov.newSubscribersPrevMonth as number) ?? 0} icon={BarChart2} />
       </div>
+
+      {((ov.personalAICount as number) + (ov.teamCount as number) + (ov.starterCount as number)) > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <SubTitle>Plan Distribution</SubTitle>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={[
+                  { name: "Personal AI", value: (ov.personalAICount as number) ?? 0 },
+                  { name: "Team", value: (ov.teamCount as number) ?? 0 },
+                  { name: "Starter (Free)", value: (ov.starterCount as number) ?? 0 },
+                  { name: "Trial", value: (ov.trialUsers as number) ?? 0 },
+                ].filter(d => d.value > 0)}
+                dataKey="value" nameKey="name" cx="50%" cy="50%"
+                innerRadius={50} outerRadius={80}
+                data-testid="chart-plan-donut"
+              >
+                {[0, 1, 2, 3].map(i => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <SubTitle>Subscribed Users</SubTitle>
       <div className="relative max-w-sm">

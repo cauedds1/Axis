@@ -865,6 +865,14 @@ export function registerAdminRoutes(app: Express) {
 
       const typeCounts = await db.execute(sql`SELECT alert_type, COUNT(*)::int as count FROM email_alert_log GROUP BY alert_type ORDER BY count DESC`);
 
+      const [sentRow] = await db.select({ count: count() }).from(emailAlertLog).where(eq(emailAlertLog.status, "sent"));
+      const [failedRow] = await db.select({ count: count() }).from(emailAlertLog).where(eq(emailAlertLog.status, "failed"));
+      const totalSent = sentRow?.count ?? 0;
+      const totalFailed = failedRow?.count ?? 0;
+      const successRate = (totalSent + totalFailed) > 0
+        ? Math.round((totalSent / (totalSent + totalFailed)) * 100)
+        : 100;
+
       res.json({
         logs: rows.rows,
         total: rowNum(totalCountResult.rows[0], "count") ?? 0,
@@ -873,6 +881,9 @@ export function registerAdminRoutes(app: Express) {
         currentMonth: currentMonth.count,
         prevMonth: prevMonth.count,
         typeCounts: typeCounts.rows,
+        totalSent,
+        totalFailed,
+        successRate,
       });
     } catch (err) {
       res.status(500).json({ message: errMsg(err) });

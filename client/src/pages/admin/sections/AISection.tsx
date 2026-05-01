@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Brain, Activity, Zap } from "lucide-react";
+import { Search, Brain, Activity, Zap, AlertTriangle } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,22 @@ export function AISection() {
   return (
     <div className="space-y-6">
       <SectionTitle>{t("ai.title")}</SectionTitle>
+
+      {status && !status.valid && (
+        <div className={`flex items-start gap-3 p-4 rounded-lg border ${status.set ? "border-yellow-500/40 bg-yellow-500/10" : "border-red-500/40 bg-red-500/10"}`}
+          data-testid="banner-ai-key-warning">
+          <AlertTriangle className={`h-5 w-5 mt-0.5 shrink-0 ${status.set ? "text-yellow-400" : "text-red-400"}`} />
+          <div>
+            <p className={`font-semibold text-sm ${status.set ? "text-yellow-300" : "text-red-300"}`}>
+              {status.set ? t("ai.keyInvalid") : t("ai.keyMissing")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {status.set ? t("ai.keyInvalidHint") : t("ai.keyMissingHint")}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Today" value={overview?.today ?? 0} icon={Brain} color="text-violet-400" />
         <StatCard label="Yesterday" value={overview?.yesterday ?? 0} icon={Brain} />

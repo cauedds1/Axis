@@ -130,12 +130,14 @@ export function UsersSection() {
           <TableWrapper>
             <thead>
               <tr>
+                <Th>{" "}</Th>
                 <Th onClick={() => toggleSort("first_name")}>{t("users.name")}<SortIcon field="first_name" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("email")}>{t("users.email")}<SortIcon field="email" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("plan")}>{t("users.plan")}<SortIcon field="plan" sort={sortBy} dir={sortDir} /></Th>
                 <Th>Type</Th>
                 <Th>Status</Th>
-                <Th onClick={() => toggleSort("last_login_at")}>{t("users.lastLogin")}<SortIcon field="last_login_at" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("transaction_count")}>Txns<SortIcon field="transaction_count" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("discipline_score")}>Score<SortIcon field="discipline_score" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("lastActivity")}>{t("users.lastActivity")}<SortIcon field="lastActivity" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("created_at")}>{t("users.createdAt")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
                 <Th>{t("users.actions")}</Th>
@@ -143,12 +145,18 @@ export function UsersSection() {
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <EmptyRow colSpan={9} label={t("common.noData")} />
+                <EmptyRow colSpan={11} label={t("common.noData")} />
               ) : rows.map((u) => {
                 const isDeactivated = !!(u.deactivated_at ?? u.deactivatedAt);
+                const initials = ((u.first_name as string)?.[0] ?? (u.email as string)?.[0] ?? "?").toUpperCase();
+                const disciplineScore = (u.discipline_score ?? u.disciplineScore) as number | null;
                 return (
                   <tr key={u.id as string} className={`hover:bg-accent/30 transition-colors cursor-pointer ${isDeactivated ? "opacity-60" : ""}`}
                     data-testid={`row-user-${u.id}`} onClick={() => setViewUser(u)}>
+                    <Td>
+                      <div className="w-7 h-7 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold shrink-0"
+                        data-testid={`avatar-${u.id}`}>{initials}</div>
+                    </Td>
                     <Td><span className="font-medium text-foreground">{userName(u as Parameters<typeof userName>[0])}</span></Td>
                     <Td className="text-muted-foreground text-xs">{u.email as string}</Td>
                     <Td><Badge variant="outline" className="text-xs capitalize">{(u.plan as string) ?? "free"}</Badge></Td>
@@ -158,7 +166,12 @@ export function UsersSection() {
                         ? <Badge variant="destructive" className="text-xs">Deactivated</Badge>
                         : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">Active</Badge>}
                     </Td>
-                    <Td className="text-muted-foreground text-xs">{u.last_login_at ? fmtDateTime(u.last_login_at as string) : t("users.never")}</Td>
+                    <Td className="text-muted-foreground text-xs tabular-nums">{(u.transaction_count ?? u.transactionCount ?? 0) as number}</Td>
+                    <Td>
+                      {disciplineScore !== null
+                        ? <span className={`text-xs font-semibold tabular-nums ${disciplineScore >= 7 ? "text-emerald-400" : disciplineScore >= 4 ? "text-yellow-400" : "text-red-400"}`}>{disciplineScore}/10</span>
+                        : <span className="text-muted-foreground/40">—</span>}
+                    </Td>
                     <Td className="text-muted-foreground text-xs">{u.last_activity ? fmtDateTime(u.last_activity as string) : <span className="text-muted-foreground/40">—</span>}</Td>
                     <Td className="text-muted-foreground">{fmtDate((u.created_at ?? u.createdAt) as string)}</Td>
                     <Td onClick={e => e.stopPropagation()}>

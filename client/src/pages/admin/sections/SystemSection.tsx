@@ -111,20 +111,15 @@ export function SystemSection() {
     },
   });
 
-  const seedDemo = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/admin/demo/seed", {});
-      return res.json() as Promise<{ credentials?: { email: string; password: string } }>;
-    },
-    onSuccess: (data) => toast({
-      title: data?.credentials ? `Seeded: ${data.credentials.email} / ${data.credentials.password}` : t("system.seeded"),
-    }),
-  });
-
-  const resetDemo = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/demo/reset", {}),
-    onSuccess: () => toast({ title: t("system.reset") }),
-  });
+  const ENV_HINTS: Record<string, string> = {
+    OPENAI_API_KEY: "Required for AI features (chat, transcription, PDF analysis). Get yours at platform.openai.com → API Keys.",
+    SENDGRID_API_KEY: "Required for email alerts. Create a key in SendGrid → Settings → API Keys.",
+    STRIPE_SECRET_KEY: "Required for payments. Found in Stripe Dashboard → Developers → API Keys.",
+    STRIPE_WEBHOOK_SECRET: "Required for Stripe webhook events. Generate in Stripe Dashboard → Webhooks → your endpoint.",
+    ADMIN_EMAIL: "Your admin email address. Set to your own email to unlock this admin panel.",
+    APP_URL: "Public app URL (e.g. https://axis.replit.app). Used in email templates.",
+    DATABASE_URL: "PostgreSQL connection string. Auto-configured by Replit Postgres integration.",
+  };
 
   const formatUptime = (s: number) => {
     if (!s) return "—";
@@ -163,17 +158,14 @@ export function SystemSection() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <SubTitle>{t("system.demo")}</SubTitle>
-          <div className="flex gap-2">
-            <Button data-testid="button-seed-demo" size="sm" variant="outline"
-              onClick={() => seedDemo.mutate()} disabled={seedDemo.isPending}>
-              <Database className="h-3.5 w-3.5 mr-1" />{t("system.seedDemo")}
-            </Button>
-            <Button data-testid="button-reset-demo" size="sm" variant="outline"
-              onClick={() => resetDemo.mutate()} disabled={resetDemo.isPending}
-              className="text-destructive border-destructive/30 hover:bg-destructive/10">
-              <Trash2 className="h-3.5 w-3.5 mr-1" />{t("system.resetDemo")}
-            </Button>
+          <SubTitle>Rate Limits</SubTitle>
+          <div className="space-y-1.5 text-xs text-muted-foreground">
+            {Object.entries(rateLimits).map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between">
+                <span className="font-mono capitalize">{k}</span>
+                <span>{v.max} req / {Math.round(v.windowMs / 60_000)}m</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -181,18 +173,23 @@ export function SystemSection() {
       {envVars.length > 0 && (
         <div>
           <SubTitle>Environment Variables</SubTitle>
-          <TableWrapper>
-            <thead><tr><Th>Key</Th><Th>Set</Th><Th>Value</Th></tr></thead>
-            <tbody>
-              {envVars.map((ev, i) => (
-                <tr key={i} className="hover:bg-accent/30">
-                  <Td className="font-mono text-xs">{ev.key}</Td>
-                  <Td>{ev.set ? <Check className="h-4 w-4 text-green-400" /> : <X className="h-4 w-4 text-red-400" />}</Td>
-                  <Td className="font-mono text-xs text-muted-foreground">{ev.value ?? (ev.set ? "***" : "—")}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </TableWrapper>
+          <div className="space-y-2">
+            {envVars.map((ev, i) => (
+              <div key={i} className={`flex flex-col gap-0.5 p-3 rounded-lg border text-xs ${ev.set ? "border-border bg-card" : "border-yellow-500/30 bg-yellow-500/5"}`}
+                data-testid={`env-row-${ev.key}`}>
+                <div className="flex items-center gap-2">
+                  {ev.set
+                    ? <Check className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                    : <X className="h-3.5 w-3.5 text-red-400 shrink-0" />}
+                  <span className="font-mono font-semibold">{ev.key}</span>
+                  {ev.set && <span className="font-mono text-muted-foreground ml-2">{ev.value ?? "***"}</span>}
+                </div>
+                {!ev.set && ENV_HINTS[ev.key] && (
+                  <p className="text-muted-foreground pl-5">{ENV_HINTS[ev.key]}</p>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
