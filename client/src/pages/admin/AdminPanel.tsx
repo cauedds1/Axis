@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, Building2, TrendingUp, CreditCard,
-  MessageSquare, Mail, Brain, ClipboardList, Settings,
+  MessageSquare, Mail, Brain, Settings,
   ChevronLeft, ChevronRight, Shield, LogOut, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ import { BillingSection } from "./sections/BillingSection";
 import { WhatsAppSection } from "./sections/WhatsAppSection";
 import { EmailLogsSection } from "./sections/EmailLogsSection";
 import { AISection } from "./sections/AISection";
-import { AuditSection } from "./sections/AuditSection";
 import { SystemSection } from "./sections/SystemSection";
 
 const NAV_ITEMS = [
@@ -32,7 +31,6 @@ const NAV_ITEMS = [
   { key: "whatsapp", icon: MessageSquare },
   { key: "email", icon: Mail },
   { key: "ai", icon: Brain },
-  { key: "audit", icon: ClipboardList },
   { key: "system", icon: Settings },
 ] as const;
 
@@ -133,7 +131,6 @@ export default function AdminPanel() {
       case "whatsapp": return <WhatsAppSection />;
       case "email": return <EmailLogsSection />;
       case "ai": return <AISection />;
-      case "audit": return <AuditSection />;
       case "system": return <SystemSection />;
     }
   };

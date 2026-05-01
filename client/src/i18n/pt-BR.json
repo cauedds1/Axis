@@ -3558,7 +3558,17 @@
       "systemHealth": "Saúde do Sistema",
       "healthy": "Saudável",
       "degraded": "Degradado",
-      "down": "Offline"
+      "down": "Offline",
+      "organizations": "Organizações",
+      "transactions": "Transações",
+      "personal": "Pessoal",
+      "business": "Empresarial",
+      "collaborators": "Colaboradores",
+      "dailySignups": "Cadastros por Dia (30d)",
+      "userTypeBreakdown": "Distribuição por Tipo",
+      "topUsers": "Usuários Mais Ativos",
+      "activityCount": "Atividade",
+      "txCount": "Transações"
     },
     "users": {
       "title": "Gestão de Usuários",

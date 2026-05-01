@@ -1,45 +1,119 @@
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Users, Activity, Zap, Building2, Brain, MessageSquare, Mail, TrendingUp } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { StatCard, SectionTitle, SubTitle } from "../AdminComponents";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from "recharts";
+import { StatCard, SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow } from "../AdminComponents";
+import { fmtDate } from "../admin-utils";
+
+interface StatsData {
+  users: { total: number; personal: number; business: number; collaborators: number; currentMonth: number; prevMonth: number; newToday: number };
+  activeUsers: { last7d: number; last30d: number; prevLast30d: number };
+  transactions: { total: number; currentMonth: number; prevMonth: number };
+  organizations: { total: number; currentMonth: number; prevMonth: number };
+  aiCalls30d: number;
+  whatsappMessages30d: number;
+  emailAlerts30d: number;
+  dailySignups: { day: string; count: number }[];
+  topUsers: { id: string; email: string; first_name: string; last_name: string; account_type: string; plan: string; activity_count: number; tx_count: number }[];
+}
+
+const PIE_COLORS = ["#7a9e8a", "#6b8ee0", "#e08a6b"];
 
 export function DashboardSection() {
   const { t } = useTranslation("axisAdmin");
-  const { data, isLoading } = useQuery<Record<string, unknown>>({ queryKey: ["/api/admin/stats"] });
+  const { data, isLoading } = useQuery<StatsData>({ queryKey: ["/api/admin/stats"] });
 
   if (isLoading) return <div className="text-muted-foreground">{t("common.loading")}</div>;
   if (!data) return <div className="text-muted-foreground">{t("common.error")}</div>;
 
-  const d = data as Record<string, Record<string, unknown>>;
+  const userTypeData = [
+    { name: t("dashboard.personal"), value: data.users.personal },
+    { name: t("dashboard.business"), value: data.users.business },
+    { name: t("dashboard.collaborators"), value: data.users.collaborators },
+  ].filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("dashboard.title")}</SectionTitle>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label={t("dashboard.totalUsers")} value={(d.users?.total as number) ?? 0} icon={Users} />
-        <StatCard label={t("dashboard.activeToday")} value={(d.activeUsers?.last7d as number) ?? 0} icon={Activity} color="text-green-400" sub="last 7d" />
-        <StatCard label={t("dashboard.newUsersToday")} value={(d.users?.newToday as number) ?? 0} icon={Zap} color="text-blue-400" />
-        <StatCard label="Organizations" value={(d.organizations?.total as number) ?? 0} icon={Building2} color="text-violet-400" />
-        <StatCard label={t("dashboard.aiCalls")} value={(data.aiCalls30d as number) ?? 0} icon={Brain} color="text-violet-400" />
-        <StatCard label={t("dashboard.whatsappMessages")} value={(data.whatsappMessages30d as number) ?? 0} icon={MessageSquare} color="text-green-400" />
-        <StatCard label={t("dashboard.emailAlerts")} value={(data.emailAlerts30d as number) ?? 0} icon={Mail} color="text-yellow-400" />
-        <StatCard label="Transactions" value={(d.transactions?.total as number) ?? 0} icon={TrendingUp} color="text-emerald-400" />
+        <StatCard label={t("dashboard.totalUsers")} value={data.users.total} icon={Users} />
+        <StatCard label={t("dashboard.activeToday")} value={data.activeUsers.last7d} icon={Activity} color="text-green-400" sub="last 7d" />
+        <StatCard label={t("dashboard.newUsersToday")} value={data.users.newToday} icon={Zap} color="text-blue-400" />
+        <StatCard label={t("dashboard.organizations")} value={data.organizations.total} icon={Building2} color="text-violet-400" />
+        <StatCard label={t("dashboard.aiCalls")} value={data.aiCalls30d} icon={Brain} color="text-violet-400" />
+        <StatCard label={t("dashboard.whatsappMessages")} value={data.whatsappMessages30d} icon={MessageSquare} color="text-green-400" />
+        <StatCard label={t("dashboard.emailAlerts")} value={data.emailAlerts30d} icon={Mail} color="text-yellow-400" />
+        <StatCard label={t("dashboard.transactions")} value={data.transactions.total} icon={TrendingUp} color="text-emerald-400" />
       </div>
 
-      {Array.isArray(data.dailySignups) && (data.dailySignups as unknown[]).length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <SubTitle>Daily Signups (30d)</SubTitle>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data.dailySignups as object[]}>
-              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#888" }} tickFormatter={(s: string) => s?.slice(5) ?? s} />
-              <YAxis tick={{ fontSize: 10, fill: "#888" }} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
-              <Bar dataKey="count" fill="#7a9e8a" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {data.dailySignups.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4">
+            <SubTitle>{t("dashboard.dailySignups")}</SubTitle>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={data.dailySignups}>
+                <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#888" }} tickFormatter={(s: string) => s?.slice(5) ?? s} />
+                <YAxis tick={{ fontSize: 10, fill: "#888" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+                <Bar dataKey="count" fill="#7a9e8a" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {userTypeData.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-4">
+            <SubTitle>{t("dashboard.userTypeBreakdown")}</SubTitle>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={userTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={35}>
+                  {userTypeData.map((_entry, index) => (
+                    <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-4">
+        <SubTitle>{t("dashboard.topUsers")}</SubTitle>
+        <TableWrapper>
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <Th>{t("users.email")}</Th>
+                <Th>{t("users.type")}</Th>
+                <Th>{t("users.plan")}</Th>
+                <Th className="text-right">{t("dashboard.activityCount")}</Th>
+                <Th className="text-right">{t("dashboard.txCount")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.topUsers.length === 0 ? (
+                <EmptyRow colSpan={5} label={t("common.empty")} />
+              ) : (
+                data.topUsers.map((u) => (
+                  <tr key={u.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                    <Td data-testid={`text-topuser-email-${u.id}`}>{u.email}</Td>
+                    <Td>{u.account_type}</Td>
+                    <Td>{u.plan}</Td>
+                    <Td className="text-right font-mono">{u.activity_count}</Td>
+                    <Td className="text-right font-mono">{u.tx_count}</Td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </TableWrapper>
+      </div>
     </div>
   );
 }

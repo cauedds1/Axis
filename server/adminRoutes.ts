@@ -63,6 +63,13 @@ function getPagination(req: Request) {
   return { page, limit, offset, search };
 }
 
+// ─── Sort helper ─────────────────────────────────────────────────────────────
+function getSortClause(req: Request, allowed: string[], defaultCol: string, defaultDir: "ASC" | "DESC" = "DESC") {
+  const col = allowed.includes(req.query.sortBy as string) ? (req.query.sortBy as string) : defaultCol;
+  const dir = (req.query.sortDir as string)?.toUpperCase() === "ASC" ? "ASC" : defaultDir;
+  return sql.raw(`${col} ${dir}`);
+}
+
 // ─── Period helper ────────────────────────────────────────────────────────────
 function getPeriodBounds(monthsBack = 1): { current: { start: Date; end: Date }; previous: { start: Date; end: Date } } {
   const now = new Date();
@@ -310,11 +317,12 @@ export function registerAdminRoutes(app: Express) {
       // Generate a secure random reset token (hex string)
       const crypto = await import("crypto");
       const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
       const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      // Store raw token — it is single-use and time-limited
+      // Store SHA-256 hash — never the raw token
       await db.update(users).set({
-        passwordResetToken: rawToken,
+        passwordResetToken: hashedToken,
         passwordResetExpiry: expiry,
         updatedAt: new Date(),
       }).where(eq(users.id, req.params.id));
@@ -322,23 +330,20 @@ export function registerAdminRoutes(app: Express) {
       const appUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
       const resetLink = `${appUrl}/reset-password?token=${rawToken}`;
 
-      try {
-        await sendEmail({
-          to: targetUser.email!,
-          subject: "AXIS — Redefinição de Senha / Password Reset",
-          html: `
-            <p>O administrador solicitou a redefinição da sua senha AXIS.</p>
-            <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Redefinir Senha</a></p>
-            <p>O link expira em 24 horas. Se não solicitou, ignore este e-mail.</p>
-            <hr/>
-            <p>An administrator initiated a password reset for your AXIS account.</p>
-            <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset Password</a></p>
-            <p>This link expires in 24 hours. If you did not request this, please ignore this email.</p>
-          `,
-        });
-      } catch (emailErr: any) {
-        log(`reset-password email failed: ${emailErr?.message}`, "admin");
-      }
+      // Throw if email fails — the caller must know the link was never delivered
+      await sendEmail({
+        to: targetUser.email!,
+        subject: "AXIS — Redefinição de Senha / Password Reset",
+        html: `
+          <p>O administrador solicitou a redefinição da sua senha AXIS.</p>
+          <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Redefinir Senha</a></p>
+          <p>O link expira em 24 horas. Se não solicitou, ignore este e-mail.</p>
+          <hr/>
+          <p>An administrator initiated a password reset for your AXIS account.</p>
+          <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset Password</a></p>
+          <p>This link expires in 24 hours. If you did not request this, please ignore this email.</p>
+        `,
+      });
 
       await logAudit(actor.id, actor.email, "user.reset_password", "user", req.params.id, { email: targetUser.email });
       res.json({ success: true, message: `Password reset link sent to ${targetUser.email}` });
@@ -391,6 +396,7 @@ export function registerAdminRoutes(app: Express) {
     try {
       const { page, limit, offset, search } = getPagination(req);
       const period = getPeriodBounds();
+      const orderBy = getSortClause(req, ["name", "member_count", "total_expenses", "created_at"], "created_at");
 
       const orgs = await db.execute(sql`
         SELECT o.id, o.name, o.cnpj, o.created_at,
@@ -405,7 +411,7 @@ export function registerAdminRoutes(app: Express) {
         LEFT JOIN business_expenses be ON be.organization_id = o.id
         WHERE (${search} = '' OR o.name ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})
         GROUP BY o.id, u.email, u.first_name, u.last_name
-        ORDER BY o.created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -568,6 +574,7 @@ export function registerAdminRoutes(app: Express) {
       const categoryFilter = req.query.category as string;
       const dateFrom = req.query.dateFrom as string;
       const dateTo = req.query.dateTo as string;
+      const orderBy = getSortClause(req, ["created_at", "amount", "date", "description", "user_email"], "created_at");
 
       const rows = await db.execute(sql`
         SELECT t.*, u.email as user_email, u.first_name, u.last_name
@@ -578,7 +585,7 @@ export function registerAdminRoutes(app: Express) {
           AND (${categoryFilter || ''} = '' OR t.category_name = ${categoryFilter || ''})
           AND (${dateFrom || ''} = '' OR t.date >= ${dateFrom ? new Date(dateFrom) : new Date(0)})
           AND (${dateTo || ''} = '' OR t.date <= ${dateTo ? new Date(dateTo) : new Date()})
-        ORDER BY t.created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -644,6 +651,7 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/admin/billing/subscriptions", requireAdmin, async (req, res) => {
     try {
       const { page, limit, offset, search } = getPagination(req);
+      const orderBy = getSortClause(req, ["email", "plan", "trial_ends_at", "created_at"], "created_at");
 
       const rows = await db.execute(sql`
         SELECT id, email, first_name, last_name, plan, account_type,
@@ -651,7 +659,7 @@ export function registerAdminRoutes(app: Express) {
         FROM users
         WHERE stripe_subscription_id IS NOT NULL
           AND (${search} = '' OR email ILIKE ${'%' + search + '%'})
-        ORDER BY created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -720,13 +728,14 @@ export function registerAdminRoutes(app: Express) {
       const { page, limit, offset, search } = getPagination(req);
       const alertTypeFilter = req.query.alertType as string;
 
+      const orderBy = getSortClause(req, ["sent_at", "recipient", "alert_type"], "sent_at");
       const rows = await db.execute(sql`
         SELECT eal.*, u.email as user_email, u.first_name, u.last_name
         FROM email_alert_log eal
         LEFT JOIN users u ON u.id = eal.user_id
         WHERE (${alertTypeFilter || ''} = '' OR eal.alert_type = ${alertTypeFilter || ''})
           AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR eal.recipient ILIKE ${'%' + search + '%'})
-        ORDER BY eal.sent_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -822,13 +831,14 @@ export function registerAdminRoutes(app: Express) {
       const { page, limit, offset, search } = getPagination(req);
       const callTypeFilter = req.query.callType as string;
 
+      const orderBy = getSortClause(req, ["created_at", "call_type", "tokens_used", "user_email"], "created_at");
       const rows = await db.execute(sql`
         SELECT al.*, u.email as user_email
         FROM ai_usage_logs al
         LEFT JOIN users u ON u.id = al.user_id
         WHERE (${callTypeFilter || ''} = '' OR al.call_type = ${callTypeFilter || ''})
           AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR al.call_type ILIKE ${'%' + search + '%'})
-        ORDER BY al.created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -938,11 +948,12 @@ export function registerAdminRoutes(app: Express) {
       const actionFilter = req.query.action as string;
       const actorFilter = req.query.actor as string;
 
+      const orderBy = getSortClause(req, ["created_at", "action", "actor_email"], "created_at");
       const rows = await db.execute(sql`
         SELECT * FROM audit_logs
         WHERE (${actionFilter || ''} = '' OR action = ${actionFilter || ''})
           AND (${actorFilter || ''} = '' OR actor_email ILIKE ${'%' + actorFilter + '%'})
-        ORDER BY created_at DESC
+        ORDER BY ${orderBy}
         LIMIT ${limit} OFFSET ${offset}
       `);
 

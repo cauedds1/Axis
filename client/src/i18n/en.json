@@ -3558,7 +3558,17 @@
       "systemHealth": "System Health",
       "healthy": "Healthy",
       "degraded": "Degraded",
-      "down": "Down"
+      "down": "Down",
+      "organizations": "Organizations",
+      "transactions": "Transactions",
+      "personal": "Personal",
+      "business": "Business",
+      "collaborators": "Collaborators",
+      "dailySignups": "Daily Signups (30d)",
+      "userTypeBreakdown": "User Type Breakdown",
+      "topUsers": "Top Active Users",
+      "activityCount": "Activity",
+      "txCount": "Transactions"
     },
     "users": {
       "title": "User Management",

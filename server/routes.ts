@@ -3118,8 +3118,10 @@ export async function registerRoutes(
       if (!token || !newPassword || newPassword.length < 8) {
         return res.status(400).json({ message: "Token e senha (mín. 8 caracteres) são obrigatórios." });
       }
+      const crypto = await import("crypto");
+      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
       const [user] = await db.select().from(users)
-        .where(eq(users.passwordResetToken, token));
+        .where(eq(users.passwordResetToken, hashedToken));
       if (!user || !user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
         return res.status(400).json({ message: "Link inválido ou expirado. Solicite um novo." });
       }
