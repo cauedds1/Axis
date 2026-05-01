@@ -308,7 +308,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
 
     if (isFirstOfMonth && prefs.monthlyPersonal) {
       const recentPersonal = await storage.getRecentAlerts(profile.userId, "monthly_personal", null, todayStart);
-      if (recentPersonal.length === 0) {
+      if (!recentPersonal.some(r => r.status === "sent")) {
         const result = await sendPersonalMonthlyReport(profile.userId, reportMonth, reportYear).catch(() => "failed" as const);
         if (result !== "skipped") {
           const userInfo = await getUserEmailAndName(profile.userId);
@@ -343,9 +343,9 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
         const prefs = getEmailAlertPrefs(managerProfile);
         if (!prefs.monthlyBusiness) continue;
 
-        // Dedup per user+org: don't send twice today for the same org
+        // Dedup per user+org: only skip if already successfully sent today
         const recentBusiness = await storage.getRecentAlerts(managerId, "monthly_business", org.id, todayStart);
-        if (recentBusiness.length > 0) continue;
+        if (recentBusiness.some(r => r.status === "sent")) continue;
 
         const result = await sendBusinessMonthlyReport(org.id, managerId, reportMonth, reportYear).catch(() => "failed" as const);
         if (result !== "skipped") {
