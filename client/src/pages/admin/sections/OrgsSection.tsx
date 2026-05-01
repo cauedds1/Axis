@@ -64,7 +64,7 @@ export function OrgsSection() {
     },
     onSuccess: (resp) => {
       const orgName = resp?.orgName ?? "org";
-      toast({ title: `Now viewing ${orgName} in read-only mode. Navigating to business app…` });
+      toast({ title: t("orgs.impersonateSuccess", { orgName }) });
       qc.invalidateQueries({ queryKey: ["/api/admin/impersonate/status"] });
       setConfirmImpersonate(null);
       // Navigate into the org's business context
@@ -93,7 +93,7 @@ export function OrgsSection() {
                 <Th onClick={() => toggleSort("name")}>{t("orgs.name")}<SortIcon field="name" sort={sortBy} dir={sortDir} /></Th>
                 <Th>{t("orgs.owner")}</Th>
                 <Th onClick={() => toggleSort("member_count")}>{t("orgs.members")}<SortIcon field="member_count" sort={sortBy} dir={sortDir} /></Th>
-                <Th onClick={() => toggleSort("total_expenses")}>Total Expenses<SortIcon field="total_expenses" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("total_expenses")}>{t("orgs.totalExpenses")}<SortIcon field="total_expenses" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("created_at")}>{t("orgs.createdAt")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
@@ -111,7 +111,7 @@ export function OrgsSection() {
                   <Td className="text-muted-foreground">{fmtDate((o.created_at ?? o.createdAt) as string)}</Td>
                   <Td onClick={e => e.stopPropagation()}>
                     <Button data-testid={`button-impersonate-${o.id}`} variant="ghost" size="sm"
-                      title="View org as owner (read-only)"
+                      title={t("orgs.impersonateTooltip")}
                       onClick={e => { e.stopPropagation(); setConfirmImpersonate(o); }}>
                       <UserCog className="h-3.5 w-3.5" />
                     </Button>
@@ -129,7 +129,7 @@ export function OrgsSection() {
           <DialogHeader><DialogTitle>{t("orgs.viewAs")}</DialogTitle></DialogHeader>
           <div className="text-sm text-muted-foreground">{t("orgs.impersonateNote")}</div>
           <div className="font-medium text-foreground">
-            {confirmImpersonate?.name as string} ({(confirmImpersonate?.owner_email ?? confirmImpersonate?.ownerEmail ?? "no owner") as string})
+            {confirmImpersonate?.name as string} ({(confirmImpersonate?.owner_email ?? confirmImpersonate?.ownerEmail ?? t("orgs.noOwner")) as string})
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmImpersonate(null)}>{t("common.cancel")}</Button>
@@ -151,10 +151,10 @@ export function OrgsSection() {
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  ["Owner", (viewOrg?.owner_email ?? viewOrg?.ownerEmail ?? "—")],
-                  ["Members", orgDetail.members?.length ?? 0],
-                  ["Pending Approvals", orgDetail.pendingApprovals ?? 0],
-                  ["Created", fmtDate((viewOrg?.created_at ?? viewOrg?.createdAt) as string)],
+                  [t("orgs.owner"), (viewOrg?.owner_email ?? viewOrg?.ownerEmail ?? "—")],
+                  [t("orgs.members"), orgDetail.members?.length ?? 0],
+                  [t("orgs.pendingApprovals"), orgDetail.pendingApprovals ?? 0],
+                  [t("orgs.created"), fmtDate((viewOrg?.created_at ?? viewOrg?.createdAt) as string)],
                 ].map(([label, val]) => (
                   <div key={label as string} className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
                     <div className="text-xs text-muted-foreground">{label as string}</div>
@@ -164,7 +164,7 @@ export function OrgsSection() {
               </div>
               {orgDetail.members?.length > 0 && (
                 <div>
-                  <div className="text-sm font-semibold text-foreground mb-2">Members</div>
+                  <div className="text-sm font-semibold text-foreground mb-2">{t("orgs.members")}</div>
                   <div className="space-y-1">
                     {orgDetail.members.map((m) => (
                       <div key={m.user_id ?? m.userId} className="flex justify-between text-xs bg-background/30 rounded px-3 py-2">
@@ -177,11 +177,11 @@ export function OrgsSection() {
               )}
               {orgDetail.categoryBreakdown?.length > 0 && (
                 <div>
-                  <div className="text-sm font-semibold text-foreground mb-2">Top Expense Categories</div>
+                  <div className="text-sm font-semibold text-foreground mb-2">{t("orgs.topCategories")}</div>
                   <div className="space-y-1">
                     {orgDetail.categoryBreakdown.map((c) => (
                       <div key={c.category_name} className="flex justify-between text-xs bg-background/30 rounded px-3 py-2">
-                        <span className="text-foreground capitalize">{c.category_name ?? "Uncategorized"}</span>
+                        <span className="text-foreground capitalize">{c.category_name ?? t("orgs.uncategorized")}</span>
                         <span className="text-emerald-400">{fmtCurrency(c.total)} ({c.count} txns)</span>
                       </div>
                     ))}

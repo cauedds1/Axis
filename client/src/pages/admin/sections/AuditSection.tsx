@@ -56,7 +56,7 @@ export function AuditSection() {
             <SelectValue placeholder={t("audit.action")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Actions</SelectItem>
+            <SelectItem value="all">{t("audit.allActions")}</SelectItem>
             {ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>

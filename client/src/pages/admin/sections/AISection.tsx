@@ -70,9 +70,9 @@ export function AISection() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Today" value={overview?.today ?? 0} icon={Brain} color="text-violet-400" />
-        <StatCard label="Yesterday" value={overview?.yesterday ?? 0} icon={Brain} />
-        <StatCard label="This Month" value={overview?.thisMonth ?? 0} icon={Activity} color="text-blue-400" />
+        <StatCard label={t("ai.today")} value={overview?.today ?? 0} icon={Brain} color="text-violet-400" />
+        <StatCard label={t("ai.yesterday")} value={overview?.yesterday ?? 0} icon={Brain} />
+        <StatCard label={t("ai.thisMonth")} value={overview?.thisMonth ?? 0} icon={Activity} color="text-blue-400" />
         <StatCard label={t("ai.status")}
           value={status?.valid ? "✓ OK" : status?.set ? "⚠ Key set, invalid" : "✗ Not set"}
           icon={Zap} color={status?.valid ? "text-green-400" : "text-red-400"} />
@@ -96,7 +96,7 @@ export function AISection() {
           </div>
 
           <div className="bg-card border border-border rounded-xl p-4">
-            <SubTitle>{t("ai.byType")} — Table</SubTitle>
+            <SubTitle>{t("ai.byType")}</SubTitle>
             <TableWrapper>
               <thead><tr><Th>{t("ai.callType")}</Th><Th>{t("ai.count")}</Th><Th>{t("ai.tokens")}</Th></tr></thead>
               <tbody>
@@ -114,7 +114,7 @@ export function AISection() {
       )}
 
       <div>
-        <SubTitle>AI Call Logs</SubTitle>
+        <SubTitle>{t("ai.callLogs")}</SubTitle>
         <div className="flex flex-wrap gap-3 mb-3">
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -124,7 +124,7 @@ export function AISection() {
           <Select value={callTypeFilter} onValueChange={v => { setCallTypeFilter(v); setPage(1); }}>
             <SelectTrigger data-testid="select-ai-calltype" className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="all">{t("ai.allTypes")}</SelectItem>
               {AI_CALL_TYPES.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -136,10 +136,10 @@ export function AISection() {
             <TableWrapper>
               <thead>
                 <tr>
-                  <Th onClick={() => toggleSort("user_email")}>User<SortIcon field="user_email" sort={sortBy} dir={sortDir} /></Th>
-                  <Th onClick={() => toggleSort("call_type")}>Type<SortIcon field="call_type" sort={sortBy} dir={sortDir} /></Th>
-                  <Th onClick={() => toggleSort("tokens_used")}>Tokens<SortIcon field="tokens_used" sort={sortBy} dir={sortDir} /></Th>
-                  <Th onClick={() => toggleSort("created_at")}>Time<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
+                  <Th onClick={() => toggleSort("user_email")}>{t("ai.user")}<SortIcon field="user_email" sort={sortBy} dir={sortDir} /></Th>
+                  <Th onClick={() => toggleSort("call_type")}>{t("ai.callType")}<SortIcon field="call_type" sort={sortBy} dir={sortDir} /></Th>
+                  <Th onClick={() => toggleSort("tokens_used")}>{t("ai.tokens")}<SortIcon field="tokens_used" sort={sortBy} dir={sortDir} /></Th>
+                  <Th onClick={() => toggleSort("created_at")}>{t("ai.time")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
                 </tr>
               </thead>
               <tbody>

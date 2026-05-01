@@ -132,7 +132,7 @@ export function SystemSection() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label={t("system.uptime")} value={formatUptime(health.uptime)} icon={Activity} color="text-green-400" />
-        <StatCard label="Memory (heap used)" value={health.memory?.heapUsed != null ? `${health.memory.heapUsed} MB` : "—"} icon={Database} />
+        <StatCard label={t("system.memory")} value={health.memory?.heapUsed != null ? `${health.memory.heapUsed} MB` : "—"} icon={Database} />
         <StatCard label={t("system.nodeVersion")} value={health.nodeVersion ?? "—"} icon={Server} />
         <StatCard label={t("system.dbConnected")} value={health.dbConnected ? "✓ Yes" : "✗ No"} icon={Database}
           color={health.dbConnected ? "text-green-400" : "text-red-400"} />
@@ -143,7 +143,7 @@ export function SystemSection() {
           <SubTitle>{t("system.maintenance")}</SubTitle>
           <div className="flex items-center gap-3">
             <div className={`h-2 w-2 rounded-full ${maintenanceMode ? "bg-yellow-400" : "bg-green-400"}`} />
-            <span className="text-sm font-medium">{maintenanceMode ? "ENABLED" : "DISABLED"}</span>
+            <span className="text-sm font-medium">{maintenanceMode ? t("system.enabled") : t("system.disabled")}</span>
           </div>
           <div className="flex gap-2">
             <Button data-testid="button-enable-maintenance" size="sm" variant="outline"
@@ -158,7 +158,7 @@ export function SystemSection() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <SubTitle>Rate Limits</SubTitle>
+          <SubTitle>{t("system.rateLimitsCard")}</SubTitle>
           <div className="space-y-1.5 text-xs text-muted-foreground">
             {Object.entries(rateLimits).map(([k, v]) => (
               <div key={k} className="flex items-center justify-between">
@@ -172,7 +172,7 @@ export function SystemSection() {
 
       {envVars.length > 0 && (
         <div>
-          <SubTitle>Environment Variables</SubTitle>
+          <SubTitle>{t("system.envVars")}</SubTitle>
           <div className="space-y-2">
             {envVars.map((ev, i) => (
               <div key={i} className={`flex flex-col gap-0.5 p-3 rounded-lg border text-xs ${ev.set ? "border-border bg-card" : "border-yellow-500/30 bg-yellow-500/5"}`}
@@ -232,7 +232,7 @@ export function SystemSection() {
         <div>
           <SubTitle>{t("system.rateLimits")}</SubTitle>
           <TableWrapper>
-            <thead><tr><Th>Name</Th><Th>{t("system.window")}</Th><Th>{t("system.max")}</Th><Th>{t("system.description")}</Th></tr></thead>
+            <thead><tr><Th>{t("system.name")}</Th><Th>{t("system.window")}</Th><Th>{t("system.max")}</Th><Th>{t("system.description")}</Th></tr></thead>
             <tbody>
               {Object.entries(rateLimits).map(([key, val]) => (
                 <tr key={key} className="hover:bg-accent/30">
@@ -261,7 +261,7 @@ export function SystemSection() {
               <SelectValue placeholder={t("audit.action")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
+              <SelectItem value="all">{t("audit.allActions")}</SelectItem>
               {AUDIT_ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
             </SelectContent>
           </Select>

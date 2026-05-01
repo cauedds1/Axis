@@ -20,8 +20,8 @@ const savedLang: SupportedLanguage = SUPPORTED_LANGUAGES.includes(rawSaved as Su
 
 i18n.use(initReactI18next).init({
   resources: {
-    "pt-BR": { translation: ptBR },
-    en: { translation: en },
+    "pt-BR": { translation: ptBR, axisAdmin: ptBR.axisAdmin },
+    en: { translation: en, axisAdmin: en.axisAdmin },
   },
   lng: savedLang,
   fallbackLng: "pt-BR",

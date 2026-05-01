@@ -66,9 +66,9 @@ export function FinanceSection() {
     <div className="space-y-6">
       <SectionTitle>{t("finance.title")}</SectionTitle>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard label="Current Month Volume" value={fmtCurrency(overview?.currentMonthVolume as number)} icon={TrendingUp} color="text-emerald-400" />
-        <StatCard label="Prev Month Volume" value={fmtCurrency(overview?.prevMonthVolume as number)} icon={BarChart2} color="text-blue-400" />
-        <StatCard label="Avg Spend / User" value={fmtCurrency(overview?.avgSpendPerUser as number)} icon={CreditCard} />
+        <StatCard label={t("finance.currentMonthVolume")} value={fmtCurrency(overview?.currentMonthVolume as number)} icon={TrendingUp} color="text-emerald-400" />
+        <StatCard label={t("finance.prevMonthVolume")} value={fmtCurrency(overview?.prevMonthVolume as number)} icon={BarChart2} color="text-blue-400" />
+        <StatCard label={t("finance.avgSpendPerUser")} value={fmtCurrency(overview?.avgSpendPerUser as number)} icon={CreditCard} />
       </div>
 
       {allChartData.length > 0 && (
@@ -98,7 +98,7 @@ export function FinanceSection() {
 
       {topCatData.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <SubTitle>Top Expense Categories</SubTitle>
+          <SubTitle>{t("finance.topCategories")}</SubTitle>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={topCatData} layout="vertical">
               <XAxis type="number" tick={{ fontSize: 11, fill: "#888" }} />
@@ -127,12 +127,12 @@ export function FinanceSection() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="all">{t("finance.allTypes")}</SelectItem>
+              <SelectItem value="income">{t("finance.income")}</SelectItem>
+              <SelectItem value="expense">{t("finance.expense")}</SelectItem>
             </SelectContent>
           </Select>
-          <Input data-testid="input-finance-category" className="w-36" placeholder="Category"
+          <Input data-testid="input-finance-category" className="w-36" placeholder={t("finance.category")}
             value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }} />
           <Input data-testid="input-finance-date-from" type="date" className="w-36"
             value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />

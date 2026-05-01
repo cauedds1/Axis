@@ -43,27 +43,27 @@ export function BillingSection() {
     <div className="space-y-6">
       <SectionTitle>{t("billing.title")}</SectionTitle>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Paying Users" value={(ov.payingUsers as number) ?? 0} icon={CreditCard} color="text-green-400" />
-        <StatCard label="Personal AI" value={(ov.personalAICount as number) ?? 0} icon={Brain} color="text-violet-400" />
-        <StatCard label="Team Plan" value={(ov.teamCount as number) ?? 0} icon={Users} color="text-blue-400" />
+        <StatCard label={t("billing.payingUsers")} value={(ov.payingUsers as number) ?? 0} icon={CreditCard} color="text-green-400" />
+        <StatCard label={t("billing.personalAI")} value={(ov.personalAICount as number) ?? 0} icon={Brain} color="text-violet-400" />
+        <StatCard label={t("billing.teamPlan")} value={(ov.teamCount as number) ?? 0} icon={Users} color="text-blue-400" />
         <StatCard label={t("billing.mrrStripe")} value={fmtCurrency(ov.mrr as number)} icon={TrendingUp} color="text-emerald-400" />
-        <StatCard label="Starter (Free)" value={(ov.starterCount as number) ?? 0} icon={Users} />
-        <StatCard label="Trial Users" value={(ov.trialUsers as number) ?? 0} icon={AlertTriangle} color="text-yellow-400" />
-        <StatCard label="New This Month" value={(ov.newSubscribersThisMonth as number) ?? 0} icon={Zap} color="text-blue-400" />
-        <StatCard label="Prev Month" value={(ov.newSubscribersPrevMonth as number) ?? 0} icon={BarChart2} />
+        <StatCard label={t("billing.starterFree")} value={(ov.starterCount as number) ?? 0} icon={Users} />
+        <StatCard label={t("billing.trialUsers")} value={(ov.trialUsers as number) ?? 0} icon={AlertTriangle} color="text-yellow-400" />
+        <StatCard label={t("billing.newThisMonth")} value={(ov.newSubscribersThisMonth as number) ?? 0} icon={Zap} color="text-blue-400" />
+        <StatCard label={t("billing.prevMonth")} value={(ov.newSubscribersPrevMonth as number) ?? 0} icon={BarChart2} />
       </div>
 
       {((ov.personalAICount as number) + (ov.teamCount as number) + (ov.starterCount as number)) > 0 && (
         <div className="bg-card border border-border rounded-xl p-4">
-          <SubTitle>Plan Distribution</SubTitle>
+          <SubTitle>{t("billing.planDistribution")}</SubTitle>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
                 data={[
-                  { name: "Personal AI", value: (ov.personalAICount as number) ?? 0 },
-                  { name: "Team", value: (ov.teamCount as number) ?? 0 },
-                  { name: "Starter (Free)", value: (ov.starterCount as number) ?? 0 },
-                  { name: "Trial", value: (ov.trialUsers as number) ?? 0 },
+                  { name: t("billing.personalAI"), value: (ov.personalAICount as number) ?? 0 },
+                  { name: t("billing.teamPlan"), value: (ov.teamCount as number) ?? 0 },
+                  { name: t("billing.starterFree"), value: (ov.starterCount as number) ?? 0 },
+                  { name: t("billing.trialUsers"), value: (ov.trialUsers as number) ?? 0 },
                 ].filter(d => d.value > 0)}
                 dataKey="value" nameKey="name" cx="50%" cy="50%"
                 innerRadius={50} outerRadius={80}
@@ -78,7 +78,7 @@ export function BillingSection() {
         </div>
       )}
 
-      <SubTitle>Subscribed Users</SubTitle>
+      <SubTitle>{t("billing.subscribedUsers")}</SubTitle>
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input data-testid="input-billing-search" className="pl-9" placeholder={t("common.search")}
@@ -91,12 +91,12 @@ export function BillingSection() {
           <TableWrapper>
             <thead>
               <tr>
-                <Th onClick={() => toggleSort("email")}>Email<SortIcon field="email" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("email")}>{t("billing.email")}<SortIcon field="email" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("plan")}>{t("billing.plan")}<SortIcon field="plan" sort={sortBy} dir={sortDir} /></Th>
-                <Th>Stripe Sub ID</Th>
-                <Th onClick={() => toggleSort("trial_ends_at")}>Trial Ends<SortIcon field="trial_ends_at" sort={sortBy} dir={sortDir} /></Th>
+                <Th>{t("billing.stripeSubId")}</Th>
+                <Th onClick={() => toggleSort("trial_ends_at")}>{t("billing.trialEnds")}<SortIcon field="trial_ends_at" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("created_at")}>{t("billing.currentPeriodEnd")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
-                <Th>Stripe</Th>
+                <Th>{t("billing.stripe")}</Th>
               </tr>
             </thead>
             <tbody>

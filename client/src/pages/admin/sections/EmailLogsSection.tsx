@@ -11,7 +11,7 @@ import {
 } from "../AdminComponents";
 import { fmtDateTime, adminFetch } from "../admin-utils";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 // Canonical alert type names — must match alertType values written in server/alerts.ts
 const ALERT_TYPES = ["bill_due_soon", "overdue_tasks", "goal_deadline", "low_discipline", "weekly_summary", "offline_reminder", "admin_test_email"];
@@ -54,16 +54,8 @@ export function EmailLogsSection() {
 
   const testEmailMutation = useMutation({
     mutationFn: async (recipient: string) => {
-      const res = await fetch("/api/admin/system/test-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipient: recipient || undefined }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: res.statusText }));
-        throw new Error(err.message ?? res.statusText);
-      }
-      return res.json();
+      const res = await apiRequest("POST", "/api/admin/system/test-email", { recipient: recipient || undefined });
+      return res.json() as Promise<{ recipient: string }>;
     },
     onSuccess: (result: { recipient: string }) => {
       toast({ title: t("email.testSent"), description: result.recipient });
@@ -102,10 +94,10 @@ export function EmailLogsSection() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total Sent" value={data?.totalSent ?? 0} icon={CheckCircle} color="text-emerald-400" />
-        <StatCard label="Total Failed" value={data?.totalFailed ?? 0} icon={XCircle} color="text-red-400" />
-        <StatCard label="Success Rate" value={`${data?.successRate ?? 100}%`} icon={Percent} color={(data?.successRate ?? 100) >= 95 ? "text-emerald-400" : "text-yellow-400"} />
-        <StatCard label="This Month" value={data?.currentMonth ?? 0} icon={Mail} color="text-blue-400" />
+        <StatCard label={t("email.totalSent")} value={data?.totalSent ?? 0} icon={CheckCircle} color="text-emerald-400" />
+        <StatCard label={t("email.totalFailed")} value={data?.totalFailed ?? 0} icon={XCircle} color="text-red-400" />
+        <StatCard label={t("email.successRate")} value={`${data?.successRate ?? 100}%`} icon={Percent} color={(data?.successRate ?? 100) >= 95 ? "text-emerald-400" : "text-yellow-400"} />
+        <StatCard label={t("email.thisMonth")} value={data?.currentMonth ?? 0} icon={Mail} color="text-blue-400" />
       </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
@@ -118,7 +110,7 @@ export function EmailLogsSection() {
             <SelectValue placeholder={t("email.alertType")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="all">{t("email.allTypes")}</SelectItem>
             {ALERT_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>

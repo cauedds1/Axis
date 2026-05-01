@@ -134,10 +134,10 @@ export function UsersSection() {
                 <Th onClick={() => toggleSort("first_name")}>{t("users.name")}<SortIcon field="first_name" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("email")}>{t("users.email")}<SortIcon field="email" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("plan")}>{t("users.plan")}<SortIcon field="plan" sort={sortBy} dir={sortDir} /></Th>
-                <Th>Type</Th>
-                <Th>Status</Th>
-                <Th onClick={() => toggleSort("transaction_count")}>Txns<SortIcon field="transaction_count" sort={sortBy} dir={sortDir} /></Th>
-                <Th onClick={() => toggleSort("discipline_score")}>Score<SortIcon field="discipline_score" sort={sortBy} dir={sortDir} /></Th>
+                <Th>{t("users.type")}</Th>
+                <Th>{t("users.status")}</Th>
+                <Th onClick={() => toggleSort("transaction_count")}>{t("users.transactions")}<SortIcon field="transaction_count" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("discipline_score")}>{t("users.disciplineScore")}<SortIcon field="discipline_score" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("lastActivity")}>{t("users.lastActivity")}<SortIcon field="lastActivity" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("created_at")}>{t("users.createdAt")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
                 <Th>{t("users.actions")}</Th>
@@ -163,8 +163,8 @@ export function UsersSection() {
                     <Td className="text-muted-foreground text-xs capitalize">{(u.account_type ?? u.accountType ?? "—") as string}</Td>
                     <Td>
                       {isDeactivated
-                        ? <Badge variant="destructive" className="text-xs">Deactivated</Badge>
-                        : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">Active</Badge>}
+                        ? <Badge variant="destructive" className="text-xs">{t("users.statusDeactivated")}</Badge>
+                        : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">{t("users.statusActive")}</Badge>}
                     </Td>
                     <Td className="text-muted-foreground text-xs tabular-nums">{(u.transaction_count ?? u.transactionCount ?? 0) as number}</Td>
                     <Td>
@@ -245,7 +245,7 @@ export function UsersSection() {
           </DialogHeader>
           <div className="text-sm text-muted-foreground">
             {confirmDeactivate && !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt)
-              ? "This will restore the user's access to AXIS." : "This will block the user from logging in."}
+              ? t("users.reactivateHint") : t("users.deactivateHint")}
           </div>
           <div className="font-medium text-foreground">{confirmDeactivate?.email as string}</div>
           <DialogFooter>
@@ -263,7 +263,7 @@ export function UsersSection() {
       <Dialog open={!!confirmResetPw} onOpenChange={() => setConfirmResetPw(null)}>
         <DialogContent className="bg-card border-border">
           <DialogHeader><DialogTitle>{t("users.resetPassword")}</DialogTitle></DialogHeader>
-          <div className="text-sm text-muted-foreground">A password reset link will be emailed to the user (expires in 24h).</div>
+          <div className="text-sm text-muted-foreground">{t("users.resetPasswordHint")}</div>
           <div className="font-medium text-foreground">{confirmResetPw?.email as string}</div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmResetPw(null)}>{t("common.cancel")}</Button>
@@ -281,14 +281,14 @@ export function UsersSection() {
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  ["Email", userDetail.user?.email],
-                  ["Plan", userDetail.user?.plan],
-                  ["Account Type", userDetail.user?.account_type ?? userDetail.user?.accountType],
-                  ["Status", (userDetail.user?.deactivated_at ?? userDetail.user?.deactivatedAt) ? "Deactivated" : "Active"],
-                  ["Transactions", userDetail.stats?.transactions ?? 0],
-                  ["Habits", userDetail.stats?.habits ?? 0],
-                  ["Tasks", userDetail.stats?.tasks ?? 0],
-                  ["Discipline Score", `${userDetail.profile?.disciplineScore ?? userDetail.profile?.discipline_score ?? "—"}/10`],
+                  [t("users.email"), userDetail.user?.email],
+                  [t("users.plan"), userDetail.user?.plan],
+                  [t("users.accountType"), userDetail.user?.account_type ?? userDetail.user?.accountType],
+                  [t("users.status"), (userDetail.user?.deactivated_at ?? userDetail.user?.deactivatedAt) ? t("users.statusDeactivated") : t("users.statusActive")],
+                  [t("users.transactions"), userDetail.stats?.transactions ?? 0],
+                  [t("users.habits"), userDetail.stats?.habits ?? 0],
+                  [t("users.tasks"), userDetail.stats?.tasks ?? 0],
+                  [t("users.disciplineScore"), `${userDetail.profile?.disciplineScore ?? userDetail.profile?.discipline_score ?? "—"}/10`],
                 ] as [string, string | number | undefined][]).map(([label, val]) => (
                   <div key={label} className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
                     <div className="text-xs text-muted-foreground">{label}</div>
@@ -298,13 +298,13 @@ export function UsersSection() {
               </div>
               {userDetail.user?.stripeSubscriptionId && (
                 <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
-                  <div className="text-xs text-muted-foreground">Stripe Subscription</div>
+                  <div className="text-xs text-muted-foreground">{t("users.stripeSubscription")}</div>
                   <a href={`https://dashboard.stripe.com/subscriptions/${userDetail.user.stripeSubscriptionId}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline text-sm">{userDetail.user.stripeSubscriptionId}</a>
                 </div>
               )}
               {userDetail.recentTransactions?.length > 0 && (
                 <div>
-                  <div className="text-sm font-semibold text-foreground mb-2">Recent Transactions</div>
+                  <div className="text-sm font-semibold text-foreground mb-2">{t("users.recentTransactions")}</div>
                   <div className="space-y-1">
                     {userDetail.recentTransactions.slice(0, 5).map((tx) => (
                       <div key={tx.id} className="flex justify-between text-xs text-muted-foreground bg-background/30 rounded px-3 py-2">
@@ -315,7 +315,7 @@ export function UsersSection() {
                   </div>
                 </div>
               )}
-              <div className="text-xs text-muted-foreground">Joined: {fmtDate(userDetail.user?.created_at ?? userDetail.user?.createdAt)}</div>
+              <div className="text-xs text-muted-foreground">{t("users.joined")}: {fmtDate(userDetail.user?.created_at ?? userDetail.user?.createdAt)}</div>
             </div>
           ) : null}
           <DialogFooter>

@@ -185,7 +185,7 @@ export default function AdminPanel() {
                 </Button>
                 <Button data-testid="button-go-app" variant="ghost" size="sm" className="w-full justify-start text-xs text-muted-foreground" onClick={() => setLocation("/")}>
                   <LogOut className="h-3.5 w-3.5 mr-2" />
-                  Back to App
+                  {t("admin.backToApp")}
                 </Button>
               </div>
             </motion.aside>
@@ -203,7 +203,7 @@ export default function AdminPanel() {
             </div>
             <div className="ml-auto flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-muted-foreground">Live</span>
+              <span className="text-xs text-muted-foreground">{t("admin.live")}</span>
               {accessCheck?.email && (
                 <span data-testid="text-admin-email" className="text-xs text-muted-foreground font-mono border border-border rounded px-2 py-0.5 hidden md:inline">
                   {accessCheck.email}
