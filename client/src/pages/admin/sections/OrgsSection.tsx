@@ -182,7 +182,7 @@ export function OrgsSection() {
                     {orgDetail.categoryBreakdown.map((c) => (
                       <div key={c.category_name} className="flex justify-between text-xs bg-background/30 rounded px-3 py-2">
                         <span className="text-foreground capitalize">{c.category_name ?? t("orgs.uncategorized")}</span>
-                        <span className="text-emerald-400">{fmtCurrency(c.total)} ({c.count} txns)</span>
+                        <span className="text-emerald-400">{fmtCurrency(c.total)} ({c.count} {t("orgs.txns")})</span>
                       </div>
                     ))}
                   </div>

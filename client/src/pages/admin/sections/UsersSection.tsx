@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import {
   SectionTitle, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDate, fmtDateTime, fmtCurrency, userName, adminFetch, PLAN_OPTIONS } from "../admin-utils";
+import { fmtDate, fmtDateTime, fmtCurrency, userName, adminFetch, PLAN_OPTIONS, formatPlan, formatAccountType } from "../admin-utils";
 
 type SortDir = "asc" | "desc";
 
@@ -159,8 +159,8 @@ export function UsersSection() {
                     </Td>
                     <Td><span className="font-medium text-foreground">{userName(u as Parameters<typeof userName>[0])}</span></Td>
                     <Td className="text-muted-foreground text-xs">{u.email as string}</Td>
-                    <Td><Badge variant="outline" className="text-xs capitalize">{(u.plan as string) ?? "free"}</Badge></Td>
-                    <Td className="text-muted-foreground text-xs capitalize">{(u.account_type ?? u.accountType ?? "—") as string}</Td>
+                    <Td><Badge variant="outline" className="text-xs">{formatPlan((u.plan as string) ?? "starter")}</Badge></Td>
+                    <Td className="text-muted-foreground text-xs">{formatAccountType((u.account_type ?? u.accountType) as string)}</Td>
                     <Td>
                       {isDeactivated
                         ? <Badge variant="destructive" className="text-xs">{t("users.statusDeactivated")}</Badge>
@@ -282,8 +282,8 @@ export function UsersSection() {
               <div className="grid grid-cols-2 gap-3">
                 {([
                   [t("users.email"), userDetail.user?.email],
-                  [t("users.plan"), userDetail.user?.plan],
-                  [t("users.accountType"), userDetail.user?.account_type ?? userDetail.user?.accountType],
+                  [t("users.plan"), formatPlan(userDetail.user?.plan)],
+                  [t("users.accountType"), formatAccountType(userDetail.user?.account_type ?? userDetail.user?.accountType)],
                   [t("users.status"), (userDetail.user?.deactivated_at ?? userDetail.user?.deactivatedAt) ? t("users.statusDeactivated") : t("users.statusActive")],
                   [t("users.transactions"), userDetail.stats?.transactions ?? 0],
                   [t("users.habits"), userDetail.stats?.habits ?? 0],

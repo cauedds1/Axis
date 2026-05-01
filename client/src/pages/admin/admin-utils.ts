@@ -27,6 +27,31 @@ export function adminFetch(url: string) {
 }
 
 export const PLAN_OPTIONS = ["starter", "personal_ai", "team"] as const;
+
+const PLAN_LABELS: Record<string, string> = {
+  personal_ai: "Personal AI",
+  team: "Team Plan",
+  starter: "Starter (Free)",
+  trial: "Trial",
+  free: "Free",
+};
+
+const ACCOUNT_TYPE_LABELS: Record<string, string> = {
+  personal: "Personal",
+  personal_ai: "Personal AI",
+  business: "Business",
+  collaborator: "Collaborator",
+};
+
+export function formatPlan(plan: string | undefined | null): string {
+  if (!plan) return "—";
+  return PLAN_LABELS[plan] ?? plan;
+}
+
+export function formatAccountType(type: string | undefined | null): string {
+  if (!type) return "—";
+  return ACCOUNT_TYPE_LABELS[type] ?? type;
+}
 export const PIE_COLORS = ["#7a9e8a", "#6b8fa0", "#a07a9e", "#9ea07a", "#7a8ea0", "#a09a7a"];
 export const CHART_PERIODS = [
   { label: "3M", months: 3 },

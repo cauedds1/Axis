@@ -3569,7 +3569,9 @@
       "topUsers": "Top Active Users",
       "activityCount": "Activity",
       "txCount": "Transactions",
-      "allTime": "All"
+      "allTime": "All",
+      "period7d": "7 days",
+      "period30d": "30 days"
     },
     "users": {
       "title": "User Management",
@@ -3634,7 +3636,8 @@
       "viewingAs": "Viewing as org:",
       "stopImpersonate": "Stop Impersonation",
       "impersonateStopped": "Impersonation stopped. Back to admin.",
-      "uncategorized": "Uncategorized"
+      "uncategorized": "Uncategorized",
+      "txns": "txns"
     },
     "finance": {
       "title": "Financial Overview",

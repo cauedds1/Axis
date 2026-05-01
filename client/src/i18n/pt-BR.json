@@ -3569,7 +3569,9 @@
       "topUsers": "Usuários Mais Ativos",
       "activityCount": "Atividade",
       "txCount": "Transações",
-      "allTime": "Todos"
+      "allTime": "Todos",
+      "period7d": "7 dias",
+      "period30d": "30 dias"
     },
     "users": {
       "title": "Gestão de Usuários",
@@ -3634,7 +3636,8 @@
       "topCategories": "Principais Categorias de Despesa",
       "impersonateTooltip": "Ver organização como proprietário (somente leitura)",
       "impersonateSuccess": "Agora visualizando {{orgName}} em modo somente leitura. Navegando para o app de negócios…",
-      "uncategorized": "Sem categoria"
+      "uncategorized": "Sem categoria",
+      "txns": "trans."
     },
     "finance": {
       "title": "Monitoramento Financeiro",

@@ -3,18 +3,15 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Activity, Database, Server, Edit, Check, X, Trash2, Search } from "lucide-react";
+import { Activity, Database, Server, Edit, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  SectionTitle, SubTitle, StatCard, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
+  SectionTitle, SubTitle, StatCard, TableWrapper, Th, Td,
 } from "../AdminComponents";
-import { fmtDateTime, adminFetch } from "../admin-utils";
+import { fmtDateTime } from "../admin-utils";
 
 interface HealthData {
   dbConnected: boolean;
@@ -42,12 +39,6 @@ interface RateLimitEntry {
   description?: string;
 }
 
-const AUDIT_ACTION_TYPES = [
-  "impersonate", "impersonate_stop", "delete_user", "deactivate_user", "reactivate_user",
-  "reset_password", "update_plan", "maintenance_on", "maintenance_off", "seed_demo", "reset_demo",
-];
-
-type SortDir = "asc" | "desc";
 
 export function SystemSection() {
   const { t } = useTranslation("axisAdmin");
@@ -62,30 +53,6 @@ export function SystemSection() {
 
   const [editConfig, setEditConfig] = useState<ConfigEntry | null>(null);
   const [editValue, setEditValue] = useState("");
-
-  // Audit log state
-  const [auditPage, setAuditPage] = useState(1);
-  const [auditActor, setAuditActor] = useState("");
-  const [auditAction, setAuditAction] = useState("");
-  const [auditSortBy, setAuditSortBy] = useState("created_at");
-  const [auditSortDir, setAuditSortDir] = useState<SortDir>("desc");
-
-  const toggleAuditSort = (col: string) => {
-    if (auditSortBy === col) setAuditSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setAuditSortBy(col); setAuditSortDir("asc"); }
-    setAuditPage(1);
-  };
-
-  const auditParams = new URLSearchParams({ page: String(auditPage), limit: "20", sortBy: auditSortBy, sortDir: auditSortDir });
-  if (auditActor) auditParams.set("actor", auditActor);
-  if (auditAction) auditParams.set("action", auditAction);
-
-  const { data: auditData, isLoading: auditLoading } = useQuery<{ logs: Record<string, unknown>[]; total: number }>({
-    queryKey: ["/api/admin/audit-logs", auditPage, auditActor, auditAction, auditSortBy, auditSortDir],
-    queryFn: () => adminFetch(`/api/admin/audit-logs?${auditParams.toString()}`),
-  });
-
-  const auditLogs = auditData?.logs ?? [];
 
   const health = healthData ?? {} as HealthData;
   const envVars = configData?.envVars ?? [];
@@ -246,58 +213,6 @@ export function SystemSection() {
           </TableWrapper>
         </div>
       )}
-
-      {/* ── Audit Log subsection ───────────────────────────────────────── */}
-      <div className="border-t border-border pt-6 space-y-4">
-        <SubTitle>{t("audit.title")}</SubTitle>
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input data-testid="input-audit-actor" className="pl-9" placeholder={t("audit.actor")}
-              value={auditActor} onChange={e => { setAuditActor(e.target.value); setAuditPage(1); }} />
-          </div>
-          <Select value={auditAction || "all"} onValueChange={v => { setAuditAction(v === "all" ? "" : v); setAuditPage(1); }}>
-            <SelectTrigger data-testid="select-audit-action" className="w-48">
-              <SelectValue placeholder={t("audit.action")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("audit.allActions")}</SelectItem>
-              {AUDIT_ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        {auditLoading ? (
-          <div className="text-muted-foreground">{t("common.loading")}</div>
-        ) : (
-          <>
-            <TableWrapper>
-              <thead>
-                <tr>
-                  <Th onClick={() => toggleAuditSort("actor_email")}>{t("audit.actor")}<SortIcon field="actor_email" sort={auditSortBy} dir={auditSortDir} /></Th>
-                  <Th onClick={() => toggleAuditSort("action")}>{t("audit.action")}<SortIcon field="action" sort={auditSortBy} dir={auditSortDir} /></Th>
-                  <Th>{t("audit.target")}</Th>
-                  <Th>{t("audit.targetId")}</Th>
-                  <Th onClick={() => toggleAuditSort("created_at")}>{t("audit.timestamp")}<SortIcon field="created_at" sort={auditSortBy} dir={auditSortDir} /></Th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.length === 0 ? (
-                  <EmptyRow colSpan={5} label={t("common.noData")} />
-                ) : auditLogs.map((l, i) => (
-                  <tr key={i} className="hover:bg-accent/30" data-testid={`row-audit-${i}`}>
-                    <Td className="text-muted-foreground text-xs">{(l.actor_email ?? l.actorEmail ?? l.actor_id ?? "—") as string}</Td>
-                    <Td><Badge variant="outline" className="text-xs">{l.action as string}</Badge></Td>
-                    <Td className="text-xs">{(l.target_type ?? l.targetType ?? "—") as string}</Td>
-                    <Td className="font-mono text-xs text-muted-foreground max-w-xs truncate">{(l.target_id ?? l.targetId ?? "—") as string}</Td>
-                    <Td className="text-muted-foreground">{fmtDateTime((l.created_at ?? l.createdAt) as string)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </TableWrapper>
-            <Pagination page={auditPage} total={auditData?.total ?? 0} limit={20} onPage={setAuditPage} />
-          </>
-        )}
-      </div>
 
       <Dialog open={!!editConfig} onOpenChange={() => setEditConfig(null)}>
         <DialogContent className="bg-card border-border">

@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { StatCard, SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow, SortIcon } from "../AdminComponents";
-import { fmtDate, adminFetch } from "../admin-utils";
+import { fmtDate, adminFetch, formatPlan, formatAccountType } from "../admin-utils";
 import { Button } from "@/components/ui/button";
 
 interface StatsData {
@@ -107,7 +107,7 @@ export function DashboardSection() {
             {(["7d", "30d", "all"] as const).map((p) => (
               <Button key={p} variant={topPeriod === p ? "secondary" : "ghost"} size="sm"
                 className="h-6 px-2 text-xs" onClick={() => setTopPeriod(p)}>
-                {p === "all" ? t("dashboard.allTime") : p}
+                {p === "7d" ? t("dashboard.period7d") : p === "30d" ? t("dashboard.period30d") : t("dashboard.allTime")}
               </Button>
             ))}
           </div>
@@ -133,8 +133,8 @@ export function DashboardSection() {
               (topData?.topUsers ?? []).map((u) => (
                 <tr key={u.id} className="border-t border-border hover:bg-muted/20 transition-colors">
                   <Td data-testid={`text-topuser-email-${u.id}`}>{u.email}</Td>
-                  <Td>{u.account_type}</Td>
-                  <Td>{u.plan}</Td>
+                  <Td>{formatAccountType(u.account_type)}</Td>
+                  <Td>{formatPlan(u.plan)}</Td>
                   <Td className="text-right font-mono">{u.activity_count}</Td>
                   <Td className="text-right font-mono">{u.tx_count}</Td>
                 </tr>
