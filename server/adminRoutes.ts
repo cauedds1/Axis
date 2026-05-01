@@ -55,7 +55,7 @@ export async function isAdminRequest(req: Request): Promise<boolean> {
 }
 
 // ─── Pagination helper ────────────────────────────────────────────────────────
-function getPagination(req: Request) {
+function getPaginationParams(req: Request) {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
   const offset = (page - 1) * limit;
@@ -278,7 +278,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/users ─────────────────────────────────────────────────
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const planFilter = req.query.plan as string;
       const typeFilter = req.query.accountType as string;
 
@@ -478,7 +478,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/organizations ─────────────────────────────────────────
   app.get("/api/admin/organizations", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const period = getPeriodBounds();
       const orderBy = getSortClause(req, ["name", "member_count", "total_expenses", "created_at"], "created_at");
 
@@ -660,7 +660,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/finance/transactions ──────────────────────────────────
   app.get("/api/admin/finance/transactions", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const typeFilter = req.query.type as string;
       const categoryFilter = req.query.category as string;
       const dateFrom = req.query.dateFrom as string;
@@ -741,7 +741,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/billing/subscriptions ─────────────────────────────────
   app.get("/api/admin/billing/subscriptions", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const orderBy = getSortClause(req, ["email", "plan", "trial_ends_at", "created_at"], "created_at");
 
       const rows = await db.execute(sql`
@@ -837,7 +837,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/email-logs ────────────────────────────────────────────
   app.get("/api/admin/email-logs", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const alertTypeFilter = req.query.alertType as string;
 
       const orderBy = getSortClause(req, ["sent_at", "recipient", "alert_type"], "sent_at");
@@ -951,7 +951,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/ai/logs ───────────────────────────────────────────────
   app.get("/api/admin/ai/logs", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const { page, limit, offset, search } = getPaginationParams(req);
       const callTypeFilter = req.query.callType as string;
 
       const orderBy = getSortClause(req, ["created_at", "call_type", "tokens_used", "user_email"], "created_at");
@@ -1095,7 +1095,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/audit-logs ────────────────────────────────────────────
   app.get("/api/admin/audit-logs", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset } = getPagination(req);
+      const { page, limit, offset } = getPaginationParams(req);
       const actionFilter = req.query.action as string;
       const actorFilter = req.query.actor as string;
 
