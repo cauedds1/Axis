@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runPeriodicAlertsForAll } from "./alerts";
-import { whatsappManager } from "./whatsapp";
+import { whatsappManager, whatsappPersonalManager, whatsappBusinessManager, getWhatsAppMode } from "./whatsapp";
 
 const app = express();
 const httpServer = createServer(app);
@@ -148,8 +148,19 @@ app.use((req, res, next) => {
       }, 30_000);
 
       if (process.env.NODE_ENV === "production") {
-        whatsappManager.hasSessionAsync().then(has => {
-          if (has) whatsappManager.initialize().catch(() => {});
+        getWhatsAppMode().then(waMode => {
+          if (waMode === "dual") {
+            whatsappPersonalManager.hasSessionAsync().then(has => {
+              if (has) whatsappPersonalManager.initialize().catch(() => {});
+            });
+            whatsappBusinessManager.hasSessionAsync().then(has => {
+              if (has) whatsappBusinessManager.initialize().catch(() => {});
+            });
+          } else {
+            whatsappManager.hasSessionAsync().then(has => {
+              if (has) whatsappManager.initialize().catch(() => {});
+            });
+          }
         });
       }
 

@@ -3146,7 +3146,9 @@ export async function registerRoutes(
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
-    const instance = (req.query.instance as string) || "default";
+    const mode = await getWhatsAppMode();
+    const rawInstance = (req.query.instance as string) || "default";
+    const instance = mode === "single" ? "default" : rawInstance;
     const mgr = getWhatsAppManager(instance);
     res.json({
       status: mgr.getStatus(),
@@ -3159,7 +3161,9 @@ export async function registerRoutes(
     try {
       const admin = await isAdminRequest(req);
       if (!admin) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
-      const instance = (req.body?.instance as string) || "default";
+      const mode = await getWhatsAppMode();
+      const rawInstance = (req.body?.instance as string) || "default";
+      const instance = mode === "single" ? "default" : rawInstance;
       const mgr = getWhatsAppManager(instance);
       const currentStatus = mgr.getStatus();
       if (currentStatus === "connected") {
@@ -3184,7 +3188,9 @@ export async function registerRoutes(
   app.post("/api/whatsapp/disconnect", isAuthenticated, async (req, res) => {
     try {
       if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode desconectar o WhatsApp" });
-      const instance = (req.body?.instance as string) || "default";
+      const mode = await getWhatsAppMode();
+      const rawInstance = (req.body?.instance as string) || "default";
+      const instance = mode === "single" ? "default" : rawInstance;
       const mgr = getWhatsAppManager(instance);
       await mgr.disconnect();
       res.json({ success: true });
@@ -3196,7 +3202,9 @@ export async function registerRoutes(
   app.post("/api/whatsapp/reset", isAuthenticated, async (req, res) => {
     try {
       if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode resetar o WhatsApp" });
-      const instance = (req.body?.instance as string) || "default";
+      const mode = await getWhatsAppMode();
+      const rawInstance = (req.body?.instance as string) || "default";
+      const instance = mode === "single" ? "default" : rawInstance;
       const mgr = getWhatsAppManager(instance);
       await mgr.disconnect();
       setTimeout(() => {

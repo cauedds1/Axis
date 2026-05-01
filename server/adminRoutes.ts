@@ -930,9 +930,12 @@ export function registerAdminRoutes(app: Express) {
         await whatsappManagers.personal.disconnect().catch(() => {});
         await whatsappManagers.business.disconnect().catch(() => {});
       }
-      // When switching to dual: disconnect the default instance
+      // When switching to dual: disconnect the default instance, then initialize both named instances
       if (mode === "dual") {
         await whatsappManagers.default.disconnect().catch(() => {});
+        // Initialize personal and business in background (shows QR if no session, auto-reconnects if session exists)
+        whatsappManagers.personal.initialize().catch(e => log(`WhatsApp personal init error: ${e.message}`, "whatsapp"));
+        whatsappManagers.business.initialize().catch(e => log(`WhatsApp business init error: ${e.message}`, "whatsapp"));
       }
 
       await logAudit(actor.id, actor.email, "admin.whatsapp_mode", "system", null, { mode });
