@@ -113,6 +113,7 @@ export function registerRateLimiters(app: Express) {
   app.use("/api/auth/register", authLimiter);
   app.use("/api/auth/forgot-password", authLimiter);
   app.use("/api/auth/reset-password", authLimiter);
+  app.use("/api/auth/reset-with-code", authLimiter);
   app.use("/api", globalLimiter);
 }
 

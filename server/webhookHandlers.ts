@@ -49,11 +49,6 @@ export class WebhookHandlers {
       log(`Stripe webhook: duplicate event ${event.id} ignored`, 'stripe');
       return;
     }
-    if (processedEventIds.size >= MAX_PROCESSED_IDS) {
-      const first = processedEventIds.values().next().value;
-      if (first) processedEventIds.delete(first);
-    }
-    processedEventIds.add(event.id);
 
     const relevantEvents: Stripe.Event.Type[] = [
       'customer.subscription.created',
@@ -111,6 +106,12 @@ export class WebhookHandlers {
       stripeSubscriptionId,
       trialEndsAt,
     }).where(eq(users.id, user.id));
+
+    if (processedEventIds.size >= MAX_PROCESSED_IDS) {
+      const first = processedEventIds.values().next().value;
+      if (first) processedEventIds.delete(first);
+    }
+    processedEventIds.add(event.id);
 
     log(`Stripe webhook: updated user ${user.id} plan → ${plan}`, 'stripe');
   }

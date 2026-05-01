@@ -414,7 +414,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
   const c = data.currency;
   const fmt = (v: number) => fmtAmt(v, c, lang);
   const mn = monthName(month, lang);
-  const firstName = data.userName.split(" ")[0];
+  const firstName = escapeHtml(data.userName.split(" ")[0]);
 
   const incomeChange = data.prevIncome > 0
     ? Math.round(((data.income - data.prevIncome) / data.prevIncome) * 100)
@@ -502,7 +502,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
       html += `
       <div class="cat-row">
         <div class="cat-dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></div>
-        <span class="cat-name">${cat.name}</span>
+        <span class="cat-name">${escapeHtml(cat.name)}</span>
         <span class="cat-amt">${fmt(cat.amount)}</span>
         <span class="cat-pct">${cat.pct}%</span>
       </div>`;
@@ -517,7 +517,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
       html += `
       <div class="cat-row">
         <div class="cat-dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></div>
-        <span class="cat-name">${est.name}</span>
+        <span class="cat-name">${escapeHtml(est.name)}</span>
         <span class="cat-amt">${fmt(est.amount)}</span>
       </div>`;
     });
@@ -532,7 +532,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
       html += `
       <div style="margin-bottom:14px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-          <span style="color:rgba(255,255,255,0.7);font-size:13px;">${card.name}</span>
+          <span style="color:rgba(255,255,255,0.7);font-size:13px;">${escapeHtml(card.name)}</span>
           <span style="font-size:12px;color:rgba(255,255,255,0.45);">${fmt(card.used)} / ${fmt(card.limit)}</span>
         </div>
         <div class="progress-bg"><div class="progress-fill" style="width:${card.pct}%;background:${barColor};"></div></div>
@@ -548,7 +548,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
       html += `
       <div class="goal-row">
         <div class="goal-header">
-          <span class="goal-title">${g.emoji} ${g.title}</span>
+          <span class="goal-title">${escapeHtml(g.emoji || "")} ${escapeHtml(g.title)}</span>
           <span class="goal-pct">${g.pct}%</span>
         </div>
         <div class="progress-bg"><div class="progress-fill" style="width:${g.pct}%;"></div></div>
@@ -564,8 +564,8 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
     data.habitStats.forEach(h => {
       html += `
       <div class="habit-row">
-        <span class="habit-emoji">${h.emoji}</span>
-        <span class="habit-name">${h.name}</span>
+        <span class="habit-emoji">${escapeHtml(h.emoji || "")}</span>
+        <span class="habit-name">${escapeHtml(h.name)}</span>
         <span class="habit-streak">🔥 ${h.streak}</span>
         <span style="font-size:11px;color:rgba(255,255,255,0.3);margin-left:10px;">${h.completedDays} ${dayLabel}${lang === "en" && h.completedDays !== 1 ? "s" : ""}</span>
       </div>`;
@@ -604,7 +604,7 @@ function buildPersonalHtml(data: PersonalReportData, month: number, year: number
     data.upcomingBills.forEach(b => {
       html += `
       <div class="stat-row">
-        <span class="stat-label">${b.title} <span style="color:rgba(255,255,255,0.25);font-size:11px;">(${isEn ? "day" : "dia"} ${b.dueDay})</span></span>
+        <span class="stat-label">${escapeHtml(b.title)} <span style="color:rgba(255,255,255,0.25);font-size:11px;">(${isEn ? "day" : "dia"} ${b.dueDay})</span></span>
         <span class="stat-value">${fmt(b.amount)}</span>
       </div>`;
     });
@@ -794,7 +794,7 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
   const fmt = (v: number) => fmtAmt(v, c, lang);
   const mn = monthName(month, lang);
   const prevMn = monthName(month === 0 ? 11 : month - 1, lang);
-  const firstName = data.adminName.split(" ")[0];
+  const firstName = escapeHtml(data.adminName.split(" ")[0]);
   const isEn = lang === "en";
 
   const netColor = data.netResult >= 0 ? "#4ECDC4" : "#FF6B6B";
@@ -817,8 +817,8 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
     <div class="badge badge-purple">🏢 ${isEn ? "Business Report" : "Relatório Empresarial"} · ${mn} ${year}</div>
     <h1>${isEn ? `Hey, ${firstName}!` : `Olá, ${firstName}!`}</h1>
     <p>${isEn
-      ? `Here's the financial summary for <strong style="color:#A78BFA">${data.orgName}</strong> in ${mn} ${year}.`
-      : `Aqui está o resumo financeiro de <strong style="color:#A78BFA">${data.orgName}</strong> em ${mn} de ${year}.`
+      ? `Here's the financial summary for <strong style="color:#A78BFA">${escapeHtml(data.orgName)}</strong> in ${mn} ${year}.`
+      : `Aqui está o resumo financeiro de <strong style="color:#A78BFA">${escapeHtml(data.orgName)}</strong> em ${mn} de ${year}.`
     }</p>
 
     ${aiSummaryHtml}
@@ -884,7 +884,7 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
       html += `
       <div class="cat-row">
         <div class="cat-dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></div>
-        <span class="cat-name">${cat.name}</span>
+        <span class="cat-name">${escapeHtml(cat.name)}</span>
         <span class="cat-amt">${fmt(cat.amount)}</span>
         <span class="cat-pct">${cat.pct}%</span>
       </div>`;
@@ -899,7 +899,7 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
       html += `
       <div class="cat-row">
         <div class="cat-dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></div>
-        <span class="cat-name">${col.name}</span>
+        <span class="cat-name">${escapeHtml(col.name)}</span>
         <span class="cat-amt">${fmt(col.amount)}</span>
         <span class="cat-pct">${col.count} ${isEn ? "exp." : "desp."}</span>
       </div>`;
