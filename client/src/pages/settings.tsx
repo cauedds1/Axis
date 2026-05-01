@@ -139,8 +139,6 @@ function WhatsAppTab() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [phoneSaved, setPhoneSaved] = useState(false);
-  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
-
   const { data: profile } = useQuery<any>({ queryKey: ["/api/user/profile"] });
   useEffect(() => {
     const saved = profile?.profile?.whatsappPhone;
@@ -156,15 +154,6 @@ function WhatsAppTab() {
     mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
     onSuccess: () => setTimeout(() => refetch(), 1500),
     onError: () => toast({ title: t("axisSettings.waConnectError"), variant: "destructive" }),
-  });
-  const unlinkMutation = useMutation({
-    mutationFn: () => apiRequest("PATCH", "/api/user/whatsapp-phone", { phone: "" }),
-    onSuccess: () => {
-      setPhone("");
-      queryClient.invalidateQueries({ queryKey: ["/api/user/profile"] });
-      toast({ title: t("axisSettings.waUnlinked") });
-    },
-    onError: () => toast({ title: t("axisSettings.waUnlinkError"), variant: "destructive" }),
   });
   const resetMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
@@ -226,15 +215,6 @@ function WhatsAppTab() {
                   <ExternalLink className="h-3 w-3" /> {t("axisSettings.waOpenChat")}
                 </a>
               )}
-              <button
-                onClick={() => setConfirmDisconnect(true)}
-                disabled={unlinkMutation.isPending}
-                className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
-                style={{ color: MP.negative, borderColor: `${MP.negative}4D`, background: `${MP.negative}14` }}
-                data-testid="button-whatsapp-disconnect"
-              >
-                {unlinkMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : t("axisSettings.waDisconnectBtn")}
-              </button>
             </div>
           ) : wStatus === "disconnected" ? (
             <button
@@ -339,26 +319,6 @@ function WhatsAppTab() {
         </div>
       </Block>
 
-      <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
-        <AlertDialogContent data-testid="dialog-confirm-whatsapp-disconnect">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("axisSettings.waUnlinkTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("axisSettings.waUnlinkDialogDesc")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-whatsapp-disconnect">{t("axisSettings.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { setConfirmDisconnect(false); unlinkMutation.mutate(); }}
-              data-testid="button-confirm-whatsapp-disconnect"
-            >
-              {t("axisSettings.waUnlinkBtn")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
