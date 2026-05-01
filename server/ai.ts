@@ -575,6 +575,7 @@ REGRAS:
   if (!classified.docType) classified.docType = "statement";
 
   if (classified.docType === "bill") {
+    logAiUsage(userId, "pdf_analysis").catch(() => {});
     return classified;
   }
 
@@ -594,6 +595,7 @@ REGRAS:
     }
   }
 
+  logAiUsage(userId, "pdf_analysis").catch(() => {});
   return {
     docType: "statement",
     bankName: classified.bankName || null,
@@ -1057,7 +1059,7 @@ Máximo de 5 fatos por conversa (aumente para 5 quando houver informações de r
   }
 }
 
-export async function generateOnboardingDiagnosis(profileData: any): Promise<string> {
+export async function generateOnboardingDiagnosis(profileData: any, userId?: string): Promise<string> {
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
@@ -1078,6 +1080,7 @@ Não use emojis. Sem listas. Texto corrido, profissional e humano.`
     ],
   });
 
+  if (userId) logAiUsage(userId, "onboarding_diagnosis").catch(() => {});
   return response.choices[0]?.message?.content || "Bem-vindo ao AXIS. Vamos organizar sua vida juntos.";
 }
 
@@ -1092,7 +1095,7 @@ export interface DeepAnalysis {
   suggestedFirstHabit: string | null;
 }
 
-export async function deepAnalyzeOnboarding(profileData: any): Promise<DeepAnalysis> {
+export async function deepAnalyzeOnboarding(profileData: any, userId?: string): Promise<DeepAnalysis> {
   const openai = getOpenAIClient();
 
   const fallback: DeepAnalysis = {
@@ -1144,6 +1147,7 @@ Regras:
     if (!content) return fallback;
 
     const parsed = JSON.parse(content) as DeepAnalysis;
+    if (userId) logAiUsage(userId, "onboarding_diagnosis").catch(() => {});
     return {
       mainChallengeAnalysis: parsed.mainChallengeAnalysis || "",
       goalsBreakdown: parsed.goalsBreakdown || "",

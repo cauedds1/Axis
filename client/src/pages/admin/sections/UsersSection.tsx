@@ -136,13 +136,14 @@ export function UsersSection() {
                 <Th>Type</Th>
                 <Th>Status</Th>
                 <Th onClick={() => toggleSort("last_login_at")}>{t("users.lastLogin")}<SortIcon field="last_login_at" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("lastActivity")}>{t("users.lastActivity")}<SortIcon field="lastActivity" sort={sortBy} dir={sortDir} /></Th>
                 <Th onClick={() => toggleSort("created_at")}>{t("users.createdAt")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <EmptyRow colSpan={8} label={t("common.noData")} />
+                <EmptyRow colSpan={9} label={t("common.noData")} />
               ) : rows.map((u) => {
                 const isDeactivated = !!(u.deactivated_at ?? u.deactivatedAt);
                 return (
@@ -158,6 +159,7 @@ export function UsersSection() {
                         : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">Active</Badge>}
                     </Td>
                     <Td className="text-muted-foreground text-xs">{u.last_login_at ? fmtDateTime(u.last_login_at as string) : t("users.never")}</Td>
+                    <Td className="text-muted-foreground text-xs">{u.last_activity ? fmtDateTime(u.last_activity as string) : <span className="text-muted-foreground/40">—</span>}</Td>
                     <Td className="text-muted-foreground">{fmtDate((u.created_at ?? u.createdAt) as string)}</Td>
                     <Td onClick={e => e.stopPropagation()}>
                       <div className="flex gap-1">

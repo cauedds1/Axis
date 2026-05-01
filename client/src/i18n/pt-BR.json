@@ -3583,6 +3583,7 @@
       "name": "Nome",
       "createdAt": "Criado em",
       "lastLogin": "Último Login",
+      "lastActivity": "Última Atividade",
       "actions": "Ações",
       "editPlan": "Editar Plano",
       "deactivate": "Desativar",

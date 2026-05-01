@@ -2426,10 +2426,9 @@ export async function registerRoutes(
       let diagnosis = null;
       if (profileData) {
         const [diagnosisResult, deepResult] = await Promise.allSettled([
-          generateOnboardingDiagnosis(profileData),
-          deepAnalyzeOnboarding(profileData),
+          generateOnboardingDiagnosis(profileData, userId),
+          deepAnalyzeOnboarding(profileData, userId),
         ]);
-        logAiUsage(userId, "onboarding_diagnosis").catch(() => {});
 
         if (diagnosisResult.status === "fulfilled") {
           diagnosis = diagnosisResult.value;

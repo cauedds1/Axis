@@ -230,7 +230,17 @@ export function registerAdminRoutes(app: Express) {
       const rawSort = req.query.sortBy as string;
       const sortDir = req.query.sortDir === "asc" ? sql`ASC` : sql`DESC`;
       const isProfileSort = ALLOWED_SORT_PROFILE.includes(rawSort);
+      const isLastActivitySort = rawSort === "lastActivity";
       const sortCol = isProfileSort ? rawSort : (ALLOWED_SORT_USER.includes(rawSort) ? rawSort : "created_at");
+
+      let orderClause: ReturnType<typeof sql>;
+      if (isLastActivitySort) {
+        orderClause = sql`GREATEST(MAX(t.created_at), MAX(h.created_at), MAX(pt.created_at)) ${sortDir} NULLS LAST`;
+      } else if (isProfileSort) {
+        orderClause = sql`up.${sql.raw(sortCol)} ${sortDir}`;
+      } else {
+        orderClause = sql`u.${sql.raw(sortCol)} ${sortDir}`;
+      }
 
       const rows = await db.execute(sql`
         SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
@@ -240,7 +250,8 @@ export function registerAdminRoutes(app: Express) {
                COUNT(DISTINCT t.id)::int as transaction_count,
                COUNT(DISTINCT h.id)::int as habit_count,
                COUNT(DISTINCT pt.id)::int as task_count,
-               COALESCE(up.discipline_score, 5) as discipline_score
+               COALESCE(up.discipline_score, 5) as discipline_score,
+               GREATEST(MAX(t.created_at), MAX(h.created_at), MAX(pt.created_at)) as last_activity
         FROM users u
         LEFT JOIN transactions t ON t.user_id = u.id
         LEFT JOIN habits h ON h.user_id = u.id
@@ -250,7 +261,7 @@ export function registerAdminRoutes(app: Express) {
           AND (${planFilter || ''} = '' OR u.plan = ${planFilter || ''})
           AND (${typeFilter || ''} = '' OR u.account_type = ${typeFilter || ''})
         GROUP BY u.id, up.discipline_score, up.last_login_at
-        ORDER BY ${isProfileSort ? sql`up.${sql.raw(sortCol)}` : sql`u.${sql.raw(sortCol)}`} ${sortDir}
+        ORDER BY ${orderClause}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
