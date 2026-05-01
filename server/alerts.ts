@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/models/auth";
+import { organizations } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import {
   sendBillDueSoonEmail,
@@ -10,6 +11,7 @@ import {
   sendGoalDeadlineEmail,
   sendLowDisciplineEmail,
 } from "./integrations/sendgrid";
+import { sendPersonalMonthlyReport, sendBusinessMonthlyReport } from "./monthly-reports";
 
 type Lang = "en" | "pt";
 
@@ -31,6 +33,8 @@ function getEmailAlertPrefs(profile: { emailAlerts?: string | null }): {
   weeklySummary: boolean;
   goalDeadline: boolean;
   lowDiscipline: boolean;
+  monthlyPersonal: boolean;
+  monthlyBusiness: boolean;
 } {
   try {
     const p = JSON.parse(profile.emailAlerts || "{}");
@@ -41,9 +45,11 @@ function getEmailAlertPrefs(profile: { emailAlerts?: string | null }): {
       weeklySummary: p.weeklySummary !== false,
       goalDeadline: p.goalDeadline !== false,
       lowDiscipline: p.lowDiscipline !== false,
+      monthlyPersonal: p.monthlyPersonal !== false,
+      monthlyBusiness: p.monthlyBusiness !== false,
     };
   } catch {
-    return { billDueSoon: true, offlineReminder: true, overdueTask: true, weeklySummary: true, goalDeadline: true, lowDiscipline: true };
+    return { billDueSoon: true, offlineReminder: true, overdueTask: true, weeklySummary: true, goalDeadline: true, lowDiscipline: true, monthlyPersonal: true, monthlyBusiness: true };
   }
 }
 
@@ -260,6 +266,12 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const isMonday = now.getDay() === 1;
+  const isFirstOfMonth = now.getDate() === 1;
+
+  // For monthly reports, report on the previous month
+  const reportMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  const reportYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const since20DaysAgo = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
 
   for (const profile of profiles) {
     const prefs = getEmailAlertPrefs(profile);
@@ -291,6 +303,51 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
 
     if (isMonday && prefs.weeklySummary) {
       await checkAndSendWeeklySummaryForUser(profile.userId).catch(() => {});
+    }
+
+    if (isFirstOfMonth && prefs.monthlyPersonal) {
+      const recentPersonal = await storage.getRecentAlerts(profile.userId, "monthly_personal", null, since20DaysAgo);
+      if (recentPersonal.length === 0) {
+        const result = await sendPersonalMonthlyReport(profile.userId, reportMonth, reportYear).catch(() => "failed" as const);
+        if (result !== "skipped") {
+          const userInfo = await getUserEmailAndName(profile.userId);
+          await storage.createEmailAlertLog({
+            userId: profile.userId,
+            alertType: "monthly_personal",
+            referenceId: null,
+            recipient: userInfo?.email || "",
+            status: result,
+          });
+          if (result === "sent") console.log(`[alerts] Personal monthly report sent to ${userInfo?.email}`);
+        }
+      }
+    }
+  }
+
+  if (isFirstOfMonth) {
+    const allOrgs = await db.select().from(organizations);
+    for (const org of allOrgs) {
+      if (!org.adminUserId) continue;
+      const adminProfile = await storage.getUserProfile(org.adminUserId);
+      if (!adminProfile) continue;
+      const prefs = getEmailAlertPrefs(adminProfile);
+      if (!prefs.monthlyBusiness) continue;
+
+      const recentBusiness = await storage.getRecentAlerts(org.adminUserId, "monthly_business", org.id, since20DaysAgo);
+      if (recentBusiness.length > 0) continue;
+
+      const result = await sendBusinessMonthlyReport(org.id, org.adminUserId, reportMonth, reportYear).catch(() => "failed" as const);
+      if (result !== "skipped") {
+        const userInfo = await getUserEmailAndName(org.adminUserId);
+        await storage.createEmailAlertLog({
+          userId: org.adminUserId,
+          alertType: "monthly_business",
+          referenceId: org.id,
+          recipient: userInfo?.email || "",
+          status: result,
+        });
+        if (result === "sent") console.log(`[alerts] Business monthly report sent for org ${org.name} to ${userInfo?.email}`);
+      }
     }
   }
 }

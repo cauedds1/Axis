@@ -493,6 +493,8 @@ export async function registerRoutes(
         weeklySummary: prefs.weeklySummary !== false,
         goalDeadline: prefs.goalDeadline !== false,
         lowDiscipline: prefs.lowDiscipline !== false,
+        monthlyPersonal: prefs.monthlyPersonal !== false,
+        monthlyBusiness: prefs.monthlyBusiness !== false,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -502,7 +504,7 @@ export async function registerRoutes(
   app.patch("/api/user/notifications", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { billDueSoon, offlineReminder, overdueTask, weeklySummary, goalDeadline, lowDiscipline } = req.body;
+      const { billDueSoon, offlineReminder, overdueTask, weeklySummary, goalDeadline, lowDiscipline, monthlyPersonal, monthlyBusiness } = req.body;
       const prefs = {
         billDueSoon: billDueSoon !== false,
         offlineReminder: offlineReminder !== false,
@@ -510,6 +512,8 @@ export async function registerRoutes(
         weeklySummary: weeklySummary !== false,
         goalDeadline: goalDeadline !== false,
         lowDiscipline: lowDiscipline !== false,
+        monthlyPersonal: monthlyPersonal !== false,
+        monthlyBusiness: monthlyBusiness !== false,
       };
       await storage.upsertUserProfile(userId, { emailAlerts: JSON.stringify(prefs) });
       res.json(prefs);

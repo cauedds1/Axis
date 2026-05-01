@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock, CreditCard, Zap, Users, Star, KeyRound, ShieldCheck } from "lucide-react";
+import { Loader2, Wifi, WifiOff, QrCode, MessageCircle, Check, RefreshCw, UserCog, ExternalLink, Trash2, TriangleAlert, Palette, LayoutGrid, Smartphone, Lock, CreditCard, Zap, Users, Star, KeyRound, ShieldCheck, Bell } from "lucide-react";
 import { SUPPORTED_CURRENCIES, getCurrencyName } from "@/lib/currencies";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -20,16 +20,17 @@ function formatBotPhone(raw: string): string {
   return `+${d}`;
 }
 
-type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "billing" | "conta";
+type SettingsTab = "aparencia" | "modulos" | "cadastro" | "whatsapp" | "billing" | "notificacoes" | "conta";
 
 function getTabs(t: (k: string) => string): { id: SettingsTab; label: string; Icon: any }[] {
   return [
-    { id: "aparencia",  label: t("axisSettings.tabAppearance"), Icon: Palette },
-    { id: "modulos",   label: t("axisSettings.tabModules"),    Icon: LayoutGrid },
-    { id: "cadastro",  label: t("axisSettings.tabProfile"),    Icon: UserCog },
-    { id: "whatsapp",  label: "WhatsApp",                      Icon: Smartphone },
-    { id: "billing",   label: "Assinatura",                    Icon: CreditCard },
-    { id: "conta",     label: t("axisSettings.tabAccount"),    Icon: TriangleAlert },
+    { id: "aparencia",     label: t("axisSettings.tabAppearance"),    Icon: Palette },
+    { id: "modulos",       label: t("axisSettings.tabModules"),        Icon: LayoutGrid },
+    { id: "cadastro",      label: t("axisSettings.tabProfile"),        Icon: UserCog },
+    { id: "whatsapp",      label: "WhatsApp",                          Icon: Smartphone },
+    { id: "billing",       label: "Assinatura",                        Icon: CreditCard },
+    { id: "notificacoes",  label: t("axisSettings.tabNotifications"),  Icon: Bell },
+    { id: "conta",         label: t("axisSettings.tabAccount"),        Icon: TriangleAlert },
   ];
 }
 
@@ -440,6 +441,27 @@ export default function SettingsPage() {
     enabled: activeTab === "billing",
     refetchOnWindowFocus: true,
   });
+
+  const { data: notifData, isLoading: isLoadingNotif } = useQuery<any>({
+    queryKey: ["/api/user/notifications"],
+    enabled: activeTab === "notificacoes",
+  });
+
+  const notifMutation = useMutation({
+    mutationFn: async (prefs: Record<string, boolean>) => {
+      const res = await apiRequest("PATCH", "/api/user/notifications", prefs);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/notifications"] });
+      toast({ title: t("axisSettings.saved") });
+    },
+  });
+
+  const toggleNotif = (key: string, current: boolean) => {
+    if (!notifData) return;
+    notifMutation.mutate({ ...notifData, [key]: !current });
+  };
 
   const portalMutation = useMutation({
     mutationFn: async () => {
@@ -869,6 +891,80 @@ export default function SettingsPage() {
               ) : (
                 <p className="text-sm text-muted-foreground">Não foi possível carregar as informações de billing.</p>
               )}
+            </div>
+          )}
+
+          {/* ── Notificações ── */}
+          {activeTab === "notificacoes" && (
+            <div className="space-y-4" data-testid="tab-content-notificacoes">
+              <div>
+                <h2 className="text-base font-semibold">{t("axisSettings.emailAlertsTitle")}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{t("axisSettings.emailAlertsDesc")}</p>
+                {notifData?.email && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("axisSettings.alertEmail")} <span className="text-foreground font-medium">{notifData.email}</span>
+                  </p>
+                )}
+              </div>
+
+              {isLoadingNotif ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : notifData ? (
+                <div className="space-y-2">
+                  {([
+                    { key: "billDueSoon",      label: t("axisSettings.alertBillDueSoon"),      desc: t("axisSettings.alertBillDueSoonDesc") },
+                    { key: "overdueTask",       label: t("axisSettings.alertOverdueTask"),       desc: t("axisSettings.alertOverdueTaskDesc") },
+                    { key: "weeklySummary",     label: t("axisSettings.alertWeeklySummary"),     desc: t("axisSettings.alertWeeklySummaryDesc") },
+                    { key: "goalDeadline",      label: t("axisSettings.alertGoalDeadline"),      desc: t("axisSettings.alertGoalDeadlineDesc") },
+                    { key: "lowDiscipline",     label: t("axisSettings.alertLowDiscipline"),     desc: t("axisSettings.alertLowDisciplineDesc") },
+                    { key: "offlineReminder",   label: t("axisSettings.alertOfflineReminder"),   desc: t("axisSettings.alertOfflineReminderDesc") },
+                    { key: "monthlyPersonal",   label: t("axisSettings.alertMonthlyPersonal"),   desc: t("axisSettings.alertMonthlyPersonalDesc"),  highlight: true },
+                    { key: "monthlyBusiness",   label: t("axisSettings.alertMonthlyBusiness"),   desc: t("axisSettings.alertMonthlyBusinessDesc"),   highlight: true },
+                  ] as { key: string; label: string; desc: string; highlight?: boolean }[]).map(({ key, label, desc, highlight }) => {
+                    const enabled: boolean = notifData[key] !== false;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleNotif(key, enabled)}
+                        disabled={notifMutation.isPending}
+                        className="w-full text-left px-4 py-3 rounded-xl border transition-colors flex items-center justify-between gap-3"
+                        style={{
+                          borderColor: enabled
+                            ? highlight ? "rgba(167,139,250,0.4)" : "hsl(var(--primary) / 0.4)"
+                            : "hsl(var(--border))",
+                          background: enabled
+                            ? highlight ? "rgba(167,139,250,0.07)" : "hsl(var(--primary) / 0.06)"
+                            : "transparent",
+                        }}
+                        data-testid={`toggle-notif-${key}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium flex items-center gap-1.5">
+                            {highlight && <span style={{ fontSize: 14 }}>📊</span>}
+                            {label}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{desc}</p>
+                        </div>
+                        <div
+                          className="w-10 h-6 rounded-full relative flex-shrink-0 transition-all"
+                          style={{
+                            background: enabled
+                              ? highlight ? "rgb(167,139,250)" : "hsl(var(--primary))"
+                              : "rgba(255,255,255,0.1)",
+                          }}
+                        >
+                          <div
+                            className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
+                            style={{ left: enabled ? "calc(100% - 20px)" : "4px" }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           )}
 
