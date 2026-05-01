@@ -806,9 +806,13 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // ─── GET /api/admin/whatsapp/logs ─────────────────────────────────────────
+  // Default limit 100 to satisfy "last 100 processed messages" requirement.
   app.get("/api/admin/whatsapp/logs", requireAdmin, async (req, res) => {
     try {
-      const { page, limit, offset, search } = getPagination(req);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(500, Math.max(1, parseInt(req.query.limit as string) || 100));
+      const offset = (page - 1) * limit;
+      const search = (req.query.search as string) || "";
       const orderBy = getSortClause(req, ["created_at", "sender_phone", "message_type", "result"], "created_at");
       const rows = await db.execute(sql`
         SELECT wl.*, u.email as user_email, u.first_name, u.last_name

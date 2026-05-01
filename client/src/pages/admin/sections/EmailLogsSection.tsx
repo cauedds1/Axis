@@ -13,7 +13,8 @@ import { fmtDateTime, adminFetch } from "../admin-utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
-const ALERT_TYPES = ["bill_due_soon", "overdue_tasks", "goal_deadline", "low_discipline", "weekly_summary", "offline_reminder"];
+// Canonical alert type names — must match alertType values written in server/alerts.ts
+const ALERT_TYPES = ["bill_due_soon", "overdue_tasks", "goal_deadline", "low_discipline", "weekly_summary", "offline_reminder", "admin_test_email"];
 
 type SortDir = "asc" | "desc";
 
