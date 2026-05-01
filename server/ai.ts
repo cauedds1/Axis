@@ -6,6 +6,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { users, creditCards } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { logAiUsage } from "./adminLogger";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   BRL: "R$", USD: "$", EUR: "€", GBP: "£", JPY: "¥",
@@ -125,6 +126,7 @@ export async function transcribeAudio(audioBuffer: Buffer, mimeType: string): Pr
     model: "whisper-1",
     language: "pt",
   });
+  logAiUsage(null, "audio_transcription").catch(() => {});
   return transcription.text;
 }
 
@@ -341,6 +343,7 @@ REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
     }
   }
 
+  logAiUsage(userId, "chat").catch(() => {});
   return { intent: parsed.intent, data: parsed, rawText: text };
 }
 
@@ -442,6 +445,7 @@ REGRA CRÍTICA DE DIREÇÃO DO PIX:
 
   const parsed = JSON.parse(response.choices[0]?.message?.content || '{"count":0,"receipts":[]}');
   const receipts: any[] = Array.isArray(parsed.receipts) ? parsed.receipts : [];
+  logAiUsage(userId, "receipt_analysis").catch(() => {});
   return { count: receipts.length, receipts };
 }
 

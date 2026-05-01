@@ -72,6 +72,7 @@ import PrivacyPolicy from "@/pages/privacy-policy";
 import Reports from "@/pages/reports";
 import BusinessLanding from "@/pages/business-landing";
 import BusinessAuthPage from "@/pages/business-auth-page";
+import AdminPanel from "@/pages/admin/AdminPanel";
 import { BusinessLayout } from "@/components/BusinessLayout";
 import BusinessWelcome from "@/pages/business/BusinessWelcome";
 import { BusinessThemeProvider } from "@/components/theme-provider";
@@ -174,7 +175,7 @@ function AppRouter() {
       if (location.startsWith("/business/app")) {
         setLocation("/business/auth");
       } else {
-        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business", "/pricing"];
+        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business", "/pricing", "/admin"];
         if (!publicPaths.includes(location) && !location.startsWith("/r/")) {
           setLocation("/");
         }
@@ -210,6 +211,7 @@ function AppRouter() {
     return (
       <AnimatePresence mode="wait">
         <Switch>
+          <Route path="/admin" component={AdminPanel} />
           <Route path="/auth">
             {() => (
               <ThemeProvider>
@@ -262,6 +264,7 @@ function AppRouter() {
   return (
     <AuthErrorBoundary>
       <Switch>
+        <Route path="/admin" component={AdminPanel} />
         <Route path="/r/:token" component={PublicReport} />
         <Route path="/business/welcome">
           {() => <BusinessThemeProvider><BusinessWelcome /></BusinessThemeProvider>}

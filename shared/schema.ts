@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean, integer, real, date, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, integer, real, date, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -410,3 +410,51 @@ export type BusinessReceivable = typeof businessReceivables.$inferSelect;
 export type InsertBusinessReceivable = z.infer<typeof insertBusinessReceivableSchema>;
 export type BusinessCorporateCard = typeof businessCorporateCards.$inferSelect;
 export type InsertBusinessCorporateCard = z.infer<typeof insertBusinessCorporateCardSchema>;
+
+// ── SYSTEM CONFIG (key/value store for runtime config) ───────────────────────
+export const systemConfig = pgTable("system_config", {
+  key: varchar("key").primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+export type SystemConfig = typeof systemConfig.$inferSelect;
+
+// ── AUDIT LOGS ────────────────────────────────────────────────────────────────
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  actorId: varchar("actor_id"),
+  actorEmail: text("actor_email"),
+  action: text("action").notNull(),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+// ── AI USAGE LOGS ─────────────────────────────────────────────────────────────
+export const aiUsageLogs = pgTable("ai_usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  callType: text("call_type").notNull(),
+  tokensUsed: integer("tokens_used"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertAiUsageLogSchema = createInsertSchema(aiUsageLogs).omit({ id: true, createdAt: true });
+export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
+export type InsertAiUsageLog = z.infer<typeof insertAiUsageLogSchema>;
+
+// ── WHATSAPP LOGS ─────────────────────────────────────────────────────────────
+export const whatsappLogs = pgTable("whatsapp_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  senderPhone: text("sender_phone"),
+  messageType: text("message_type").notNull().default("text"),
+  result: text("result"),
+  userId: varchar("user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export const insertWhatsappLogSchema = createInsertSchema(whatsappLogs).omit({ id: true, createdAt: true });
+export type WhatsappLog = typeof whatsappLogs.$inferSelect;
+export type InsertWhatsappLog = z.infer<typeof insertWhatsappLogSchema>;

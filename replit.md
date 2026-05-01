@@ -45,6 +45,16 @@ Not specified.
 - `scripts/seed-stripe-products.ts`: idempotent Stripe product/price seeder
 - Business endpoints (`/api/business/*`) guarded by Team-plan middleware; collaborators bypass the guard
 
+**Super Admin Panel** (`/admin`):
+- Accessible only when logged in as the `ADMIN_EMAIL` env-var user
+- Backend: `server/adminRoutes.ts` — all endpoints at `/api/admin/*` with `requireAdmin` middleware + rate limiting
+- Shared logging helpers: `server/adminLogger.ts` — `logAiUsage()`, `logWhatsappMessage()`, `logAudit()`
+- New DB tables: `systemConfig`, `auditLogs`, `aiUsageLogs`, `whatsappLogs` (in `shared/schema.ts`)
+- Frontend: `client/src/pages/admin/AdminPanel.tsx` — 10-section sidebar layout
+- Sections: Dashboard, User Management (CRUD + plan override), Organizations, Finance (MRR/ARR + charts), Billing/Stripe, WhatsApp Manager, Email Alerts Log, AI Control, Audit Log, System Settings
+- Fully bilingual (EN / PT-BR) via `axisAdmin` namespace in i18n files
+- AI instrumentation: `server/ai.ts` calls `logAiUsage()` after transcription, intent detection, receipt analysis
+
 ## External Dependencies
 - **PostgreSQL**: Primary database for all application data.
 - **S3-compatible Storage**: For storing user-uploaded files, such as receipt images.

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { registerAdminRoutes } from "./adminRoutes";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { log } from "./log";
@@ -3918,6 +3919,9 @@ export async function registerRoutes(
       res.json({ data: [] });
     }
   });
+
+  // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
+  registerAdminRoutes(app);
 
   // ─────────────────────────────────────────────────────────────────────────────
 
