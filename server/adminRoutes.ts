@@ -1222,19 +1222,23 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 export async function maintenanceMiddleware(req: Request, res: Response, next: NextFunction) {
   // Always allow:
   //   • /api/admin/*  — admin panel API
-  //   • /api/auth/login & /api/auth/user — so the admin can authenticate and
-  //     the frontend can check session state during maintenance; other auth
-  //     endpoints (register, etc.) ARE blocked so non-admin sign-ups are
-  //     prevented while the system is down.
-  //   • /admin/* and Vite HMR paths — static assets for the admin UI
+  //   • /api/auth/is-admin — frontend admin guard check (needed to render /admin)
+  //   • /api/auth/login, /logout, /user — admin can log in and check session
+  //     Other auth endpoints (register, etc.) return 503 so non-admin
+  //     sign-ups are prevented while the system is down.
+  //   • /admin/* and /auth — SPA routes for admin login UI
+  //   • Vite HMR / static asset paths
   const isAllowedAuthPath =
     req.path === "/api/auth/login" ||
     req.path === "/api/auth/logout" ||
-    req.path === "/api/auth/user";
+    req.path === "/api/auth/user" ||
+    req.path === "/api/auth/is-admin";
   if (
     req.path.startsWith("/api/admin") ||
     isAllowedAuthPath ||
     req.path.startsWith("/admin") ||
+    req.path === "/auth" ||
+    req.path.startsWith("/auth/") ||
     req.path.startsWith("/@") ||
     req.path.startsWith("/node_modules") ||
     req.path.startsWith("/src")
