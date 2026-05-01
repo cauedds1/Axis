@@ -13,7 +13,8 @@ export function fmtCurrency(n: number | null | undefined) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
-export function userName(row: { first_name?: string; firstName?: string; last_name?: string; lastName?: string; email?: string }) {
+export function userName(row: { first_name?: string; firstName?: string; last_name?: string; lastName?: string; email?: string } | null | undefined) {
+  if (!row) return "—";
   const fn = row.first_name ?? row.firstName ?? "";
   const ln = row.last_name ?? row.lastName ?? "";
   return (fn + " " + ln).trim() || row.email?.split("@")[0] || "—";

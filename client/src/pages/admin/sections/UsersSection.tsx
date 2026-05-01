@@ -61,7 +61,7 @@ export function UsersSection() {
     queryFn: () => adminFetch(`/api/admin/users?${params.toString()}`),
   });
 
-  const rows = data?.users ?? [];
+  const rows = (data?.users ?? []).filter((u): u is Record<string, unknown> => u != null);
   const total = data?.total ?? 0;
 
   const updatePlan = useMutation({
