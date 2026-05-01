@@ -385,6 +385,8 @@ export default function SettingsPage() {
   const [cpLoading, setCpLoading] = useState(false);
   const [cpError, setCpError] = useState<string | null>(null);
 
+  const { data: userData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
+
   const cpEmail = userData?.email || "";
 
   const handleSendChangeCode = async () => {
@@ -432,8 +434,6 @@ export default function SettingsPage() {
       setActiveTab("billing");
     }
   }, []);
-
-  const { data: userData } = useQuery<any>({ queryKey: ["/api/user/profile"] });
 
   const { data: billingUsage, isLoading: isLoadingUsage } = useQuery<any>({
     queryKey: ["/api/billing/usage"],
