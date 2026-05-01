@@ -217,6 +217,50 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ─── GET /api/admin/top-users ─────────────────────────────────────────────
+  // Supports period=7d|30d|all and sortBy=activity_count|tx_count
+  app.get("/api/admin/top-users", requireAdmin, async (req, res) => {
+    try {
+      const period = (req.query.period as string) || "30d";
+      const sortCol = req.query.sortBy === "tx_count" ? "tx_count" : "activity_count";
+      const sortDir = req.query.sortDir === "asc" ? "ASC" : "DESC";
+      let since: Date | null = null;
+      if (period === "7d") since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      else if (period === "30d") since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      // Use FILTER clause to apply period constraint on aggregates
+      const rows = since
+        ? await db.execute(sql`
+            SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
+                   (COUNT(DISTINCT t.id) FILTER (WHERE t.created_at >= ${since}) +
+                    COUNT(DISTINCT h.id) FILTER (WHERE h.created_at >= ${since}) +
+                    COUNT(DISTINCT pt.id) FILTER (WHERE pt.created_at >= ${since}))::int as activity_count,
+                   COUNT(DISTINCT t.id) FILTER (WHERE t.created_at >= ${since})::int as tx_count
+            FROM users u
+            LEFT JOIN transactions t ON t.user_id = u.id
+            LEFT JOIN habits h ON h.user_id = u.id
+            LEFT JOIN personal_tasks pt ON pt.user_id = u.id
+            GROUP BY u.id
+            ORDER BY ${sql.raw(sortCol)} ${sql.raw(sortDir)}
+            LIMIT 10
+          `)
+        : await db.execute(sql`
+            SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
+                   (COUNT(DISTINCT t.id) + COUNT(DISTINCT h.id) + COUNT(DISTINCT pt.id))::int as activity_count,
+                   COUNT(DISTINCT t.id)::int as tx_count
+            FROM users u
+            LEFT JOIN transactions t ON t.user_id = u.id
+            LEFT JOIN habits h ON h.user_id = u.id
+            LEFT JOIN personal_tasks pt ON pt.user_id = u.id
+            GROUP BY u.id
+            ORDER BY ${sql.raw(sortCol)} ${sql.raw(sortDir)}
+            LIMIT 10
+          `);
+      res.json({ topUsers: rows.rows });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
   // ─── GET /api/admin/users ─────────────────────────────────────────────────
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
@@ -746,10 +790,23 @@ export function registerAdminRoutes(app: Express) {
   // ─── GET /api/admin/whatsapp/logs ─────────────────────────────────────────
   app.get("/api/admin/whatsapp/logs", requireAdmin, async (req, res) => {
     try {
-      const { limit, offset } = getPagination(req);
-      const logs = await db.select().from(whatsappLogs).orderBy(desc(whatsappLogs.createdAt)).limit(limit).offset(offset);
-      const [total] = await db.select({ count: count() }).from(whatsappLogs);
-      res.json({ logs, total: total.count });
+      const { page, limit, offset, search } = getPagination(req);
+      const orderBy = getSortClause(req, ["created_at", "sender_phone", "message_type", "result"], "created_at");
+      const rows = await db.execute(sql`
+        SELECT wl.*, u.email as user_email, u.first_name, u.last_name
+        FROM whatsapp_logs wl
+        LEFT JOIN users u ON u.id = wl.user_id
+        WHERE (${search} = '' OR wl.sender_phone ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'} OR wl.result ILIKE ${'%' + search + '%'})
+        ORDER BY ${orderBy}
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM whatsapp_logs wl
+        LEFT JOIN users u ON u.id = wl.user_id
+        WHERE (${search} = '' OR wl.sender_phone ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'} OR wl.result ILIKE ${'%' + search + '%'})
+      `);
+      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -1165,7 +1222,7 @@ export async function maintenanceMiddleware(req: Request, res: Response, next: N
       const userId = req.session?.userId;
       if (adminEmail && userId) {
         const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
-        if (user?.email === adminEmail) return next();
+        if (user?.email?.toLowerCase() === adminEmail.toLowerCase()) return next();
       }
       // API calls get JSON 503; browser navigation gets HTML 503 page
       const wantsJson = req.path.startsWith("/api/") ||

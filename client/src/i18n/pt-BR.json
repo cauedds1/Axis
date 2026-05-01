@@ -3568,7 +3568,8 @@
       "userTypeBreakdown": "Distribuição por Tipo",
       "topUsers": "Usuários Mais Ativos",
       "activityCount": "Atividade",
-      "txCount": "Transações"
+      "txCount": "Transações",
+      "allTime": "Todos"
     },
     "users": {
       "title": "Gestão de Usuários",

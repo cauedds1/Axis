@@ -6,9 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Phone, X, AlertTriangle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow, Pagination,
+  SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
 import { fmtDateTime, adminFetch } from "../admin-utils";
 
@@ -17,9 +18,18 @@ export function WhatsAppSection() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [qrPolling, setQrPolling] = useState(false);
+
+  const toggleSort = (col: string) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("desc"); }
+    setPage(1);
+  };
 
   const { data: statusData, isLoading: statusLoading } = useQuery<Record<string, unknown>>({
     queryKey: ["/api/whatsapp/status"],
@@ -27,9 +37,11 @@ export function WhatsAppSection() {
     refetchInterval: qrPolling ? 3000 : false,
   });
 
+  const logsParams = new URLSearchParams({ page: String(page), limit: "20", sortBy, sortDir });
+  if (search) logsParams.set("search", search);
   const { data: logsData, isLoading: logsLoading } = useQuery<{ logs: Record<string, unknown>[]; total: number }>({
-    queryKey: ["/api/admin/whatsapp/logs", page],
-    queryFn: () => adminFetch(`/api/admin/whatsapp/logs?page=${page}&limit=20`),
+    queryKey: ["/api/admin/whatsapp/logs", page, search, sortBy, sortDir],
+    queryFn: () => adminFetch(`/api/admin/whatsapp/logs?${logsParams}`),
   });
 
   const status = (statusData?.status as string) ?? "disconnected";
@@ -172,7 +184,16 @@ export function WhatsAppSection() {
         </DialogContent>
       </Dialog>
 
-      <SubTitle>{t("whatsapp.logs")}</SubTitle>
+      <div className="flex items-center justify-between gap-3">
+        <SubTitle>{t("whatsapp.logs")}</SubTitle>
+        <Input
+          data-testid="input-search-wlogs"
+          className="h-8 w-56 text-xs bg-background border-border"
+          placeholder={t("common.search") + "…"}
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+        />
+      </div>
       {logsLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -180,10 +201,10 @@ export function WhatsAppSection() {
           <TableWrapper>
             <thead>
               <tr>
-                <Th>{t("whatsapp.sender")}</Th>
-                <Th>{t("whatsapp.messageType")}</Th>
-                <Th>{t("whatsapp.result")}</Th>
-                <Th>{t("whatsapp.receivedAt")}</Th>
+                <Th onClick={() => toggleSort("sender_phone")}>{t("whatsapp.sender")}<SortIcon field="sender_phone" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("message_type")}>{t("whatsapp.messageType")}<SortIcon field="message_type" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("result")}>{t("whatsapp.result")}<SortIcon field="result" sort={sortBy} dir={sortDir} /></Th>
+                <Th onClick={() => toggleSort("created_at")}>{t("whatsapp.receivedAt")}<SortIcon field="created_at" sort={sortBy} dir={sortDir} /></Th>
               </tr>
             </thead>
             <tbody>

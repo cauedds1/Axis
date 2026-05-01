@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Users, Activity, Zap, Building2, Brain, MessageSquare, Mail, TrendingUp } from "lucide-react";
@@ -5,8 +6,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { StatCard, SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow } from "../AdminComponents";
-import { fmtDate } from "../admin-utils";
+import { StatCard, SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow, SortIcon } from "../AdminComponents";
+import { fmtDate, adminFetch } from "../admin-utils";
+import { Button } from "@/components/ui/button";
 
 interface StatsData {
   users: { total: number; personal: number; business: number; collaborators: number; currentMonth: number; prevMonth: number; newToday: number };
@@ -22,9 +24,24 @@ interface StatsData {
 
 const PIE_COLORS = ["#7a9e8a", "#6b8ee0", "#e08a6b"];
 
+type TopUser = { id: string; email: string; first_name: string; last_name: string; account_type: string; plan: string; activity_count: number; tx_count: number };
+
 export function DashboardSection() {
   const { t } = useTranslation("axisAdmin");
+  const [topPeriod, setTopPeriod] = useState<"7d" | "30d" | "all">("30d");
+  const [topSort, setTopSort] = useState("activity_count");
+  const [topDir, setTopDir] = useState<"asc" | "desc">("desc");
+
   const { data, isLoading } = useQuery<StatsData>({ queryKey: ["/api/admin/stats"] });
+  const { data: topData } = useQuery<{ topUsers: TopUser[] }>({
+    queryKey: ["/api/admin/top-users", topPeriod, topSort, topDir],
+    queryFn: () => adminFetch(`/api/admin/top-users?period=${topPeriod}&sortBy=${topSort}&sortDir=${topDir}`),
+  });
+
+  const toggleTopSort = (col: string) => {
+    if (topSort === col) setTopDir(d => d === "asc" ? "desc" : "asc");
+    else { setTopSort(col); setTopDir("desc"); }
+  };
 
   if (isLoading) return <div className="text-muted-foreground">{t("common.loading")}</div>;
   if (!data) return <div className="text-muted-foreground">{t("common.error")}</div>;
@@ -83,35 +100,47 @@ export function DashboardSection() {
         )}
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-4">
-        <SubTitle>{t("dashboard.topUsers")}</SubTitle>
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <SubTitle>{t("dashboard.topUsers")}</SubTitle>
+          <div className="flex gap-1">
+            {(["7d", "30d", "all"] as const).map((p) => (
+              <Button key={p} variant={topPeriod === p ? "secondary" : "ghost"} size="sm"
+                className="h-6 px-2 text-xs" onClick={() => setTopPeriod(p)}>
+                {p === "all" ? t("dashboard.allTime") : p}
+              </Button>
+            ))}
+          </div>
+        </div>
         <TableWrapper>
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <Th>{t("users.email")}</Th>
-                <Th>{t("users.type")}</Th>
-                <Th>{t("users.plan")}</Th>
-                <Th className="text-right">{t("dashboard.activityCount")}</Th>
-                <Th className="text-right">{t("dashboard.txCount")}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.topUsers.length === 0 ? (
-                <EmptyRow colSpan={5} label={t("common.empty")} />
-              ) : (
-                data.topUsers.map((u) => (
-                  <tr key={u.id} className="border-t border-border hover:bg-muted/20 transition-colors">
-                    <Td data-testid={`text-topuser-email-${u.id}`}>{u.email}</Td>
-                    <Td>{u.account_type}</Td>
-                    <Td>{u.plan}</Td>
-                    <Td className="text-right font-mono">{u.activity_count}</Td>
-                    <Td className="text-right font-mono">{u.tx_count}</Td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <thead>
+            <tr>
+              <Th>{t("users.email")}</Th>
+              <Th>{t("users.type")}</Th>
+              <Th>{t("users.plan")}</Th>
+              <Th className="text-right" onClick={() => toggleTopSort("activity_count")}>
+                {t("dashboard.activityCount")}<SortIcon field="activity_count" sort={topSort} dir={topDir} />
+              </Th>
+              <Th className="text-right" onClick={() => toggleTopSort("tx_count")}>
+                {t("dashboard.txCount")}<SortIcon field="tx_count" sort={topSort} dir={topDir} />
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {(topData?.topUsers ?? []).length === 0 ? (
+              <EmptyRow colSpan={5} label={t("common.empty")} />
+            ) : (
+              (topData?.topUsers ?? []).map((u) => (
+                <tr key={u.id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                  <Td data-testid={`text-topuser-email-${u.id}`}>{u.email}</Td>
+                  <Td>{u.account_type}</Td>
+                  <Td>{u.plan}</Td>
+                  <Td className="text-right font-mono">{u.activity_count}</Td>
+                  <Td className="text-right font-mono">{u.tx_count}</Td>
+                </tr>
+              ))
+            )}
+          </tbody>
         </TableWrapper>
       </div>
     </div>

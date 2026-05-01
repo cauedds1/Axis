@@ -3568,7 +3568,8 @@
       "userTypeBreakdown": "User Type Breakdown",
       "topUsers": "Top Active Users",
       "activityCount": "Activity",
-      "txCount": "Transactions"
+      "txCount": "Transactions",
+      "allTime": "All"
     },
     "users": {
       "title": "User Management",
