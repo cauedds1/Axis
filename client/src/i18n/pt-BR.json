@@ -3594,7 +3594,10 @@
       "owner": "Proprietário",
       "members": "Membros",
       "plan": "Plano",
-      "createdAt": "Criado em"
+      "createdAt": "Criado em",
+      "impersonate": "Ver como Proprietário",
+      "viewAs": "Ver Org como Proprietário (Somente Leitura)",
+      "impersonateNote": "Sua sessão de admin mudará para o contexto do proprietário desta organização em modo somente leitura. Nenhuma alteração será permitida."
     },
     "finance": {
       "title": "Monitoramento Financeiro",

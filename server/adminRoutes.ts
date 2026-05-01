@@ -170,9 +170,16 @@ export function registerAdminRoutes(app: Express) {
       const planFilter = req.query.plan as string;
       const typeFilter = req.query.accountType as string;
 
+      // Whitelist sort columns to prevent SQL injection
+      const ALLOWED_SORT = ["created_at", "email", "first_name", "plan", "account_type"];
+      const rawSort = req.query.sortBy as string;
+      const sortCol = ALLOWED_SORT.includes(rawSort) ? rawSort : "created_at";
+      const sortDir = req.query.sortDir === "asc" ? sql`ASC` : sql`DESC`;
+
       const rows = await db.execute(sql`
         SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
-               u.stripe_subscription_id, u.trial_ends_at, u.created_at,
+               u.stripe_subscription_id, u.stripe_customer_id, u.trial_ends_at, u.created_at,
+               u.deactivated_at,
                COUNT(DISTINCT t.id)::int as transaction_count,
                COUNT(DISTINCT h.id)::int as habit_count,
                COUNT(DISTINCT pt.id)::int as task_count,
@@ -186,18 +193,18 @@ export function registerAdminRoutes(app: Express) {
           AND (${planFilter || ''} = '' OR u.plan = ${planFilter || ''})
           AND (${typeFilter || ''} = '' OR u.account_type = ${typeFilter || ''})
         GROUP BY u.id, up.discipline_score
-        ORDER BY u.created_at DESC
+        ORDER BY u.${sql.raw(sortCol)} ${sortDir}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`
+      const totalCountResult = await db.execute(sql`
         SELECT COUNT(*)::int as count FROM users
         WHERE (${search} = '' OR email ILIKE ${'%' + search + '%'} OR first_name ILIKE ${'%' + search + '%'} OR last_name ILIKE ${'%' + search + '%'})
           AND (${planFilter || ''} = '' OR plan = ${planFilter || ''})
           AND (${typeFilter || ''} = '' OR account_type = ${typeFilter || ''})
       `);
 
-      res.json({ users: rows.rows, total: (totalCount.rows[0] as any)?.count ?? 0, page, limit });
+      res.json({ users: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       log(`admin users error: ${err?.message}`, "admin");
       res.status(500).json({ message: err?.message });
@@ -347,9 +354,9 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`SELECT COUNT(*)::int as count FROM organizations`);
+      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM organizations`);
 
-      res.json({ organizations: orgs.rows, total: (totalCount.rows[0] as any)?.count ?? 0, page, limit });
+      res.json({ organizations: orgs.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -386,7 +393,9 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // ─── POST /api/admin/organizations/:id/impersonate ────────────────────────
-  // Sets the admin's session to the org owner, so they can browse as that user
+  // Read-only preview of the org owner's context.
+  // Does NOT replace userId in session — sets viewingUserId for read-only access.
+  // All POST/PUT/PATCH/DELETE routes (except /api/admin/*) are blocked while viewing.
   app.post("/api/admin/organizations/:id/impersonate", requireAdmin, async (req, res) => {
     try {
       const actor = (req as any).adminUser;
@@ -398,25 +407,23 @@ export function registerAdminRoutes(app: Express) {
         .where(and(eq(organizationMembers.organizationId, req.params.id), eq(organizationMembers.role, "owner")));
       if (!ownerMember) return res.status(404).json({ message: "Proprietário não encontrado" });
 
-      // Save admin session for restoration and set session to org owner
-      (req.session as any).adminImpersonating = actor.id;
-      (req.session as any).userId = ownerMember.userId;
+      // Set read-only viewing context — admin userId unchanged
+      (req.session as any).viewingUserId = ownerMember.userId;
+      (req.session as any).viewingOrgId = req.params.id;
 
       await logAudit(actor.id, actor.email, "org.impersonate", "organization", req.params.id, { orgName: org.name, targetUserId: ownerMember.userId });
-      res.json({ success: true, orgName: org.name, redirectTo: "/" });
+      res.json({ success: true, orgName: org.name, viewingUserId: ownerMember.userId });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
   });
 
   // ─── POST /api/admin/impersonate/stop ─────────────────────────────────────
-  // Restores the admin's original session after impersonation
+  // Clears the read-only viewing context
   app.post("/api/admin/impersonate/stop", async (req, res) => {
     try {
-      const originalAdminId = (req.session as any).adminImpersonating;
-      if (!originalAdminId) return res.status(400).json({ message: "Nenhuma sessão de impersonação ativa" });
-      (req.session as any).userId = originalAdminId;
-      delete (req.session as any).adminImpersonating;
+      delete (req.session as any).viewingUserId;
+      delete (req.session as any).viewingOrgId;
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -449,7 +456,7 @@ export function registerAdminRoutes(app: Express) {
         LIMIT 10
       `);
 
-      const [avgPersonal] = await db.execute(sql`
+      const avgPersonalResult = await db.execute(sql`
         SELECT AVG(user_total)::real as avg FROM (
           SELECT user_id, SUM(amount) as user_total FROM transactions
           WHERE type = 'expense'
@@ -466,16 +473,16 @@ export function registerAdminRoutes(app: Express) {
       `);
 
       const period = getPeriodBounds();
-      const [currentVol] = await db.execute(sql`SELECT COALESCE(SUM(amount),0)::real as vol FROM transactions WHERE type='expense' AND date >= ${period.current.start}`);
-      const [prevVol] = await db.execute(sql`SELECT COALESCE(SUM(amount),0)::real as vol FROM transactions WHERE type='expense' AND date >= ${period.previous.start} AND date <= ${period.previous.end}`);
+      const currentVolResult = await db.execute(sql`SELECT COALESCE(SUM(amount),0)::real as vol FROM transactions WHERE type='expense' AND date >= ${period.current.start}`);
+      const prevVolResult = await db.execute(sql`SELECT COALESCE(SUM(amount),0)::real as vol FROM transactions WHERE type='expense' AND date >= ${period.previous.start} AND date <= ${period.previous.end}`);
 
       res.json({
         monthlyVolume: monthlyVolume.rows,
         topCategories: topCategories.rows,
-        avgSpendPerUser: (avgPersonal.rows[0] as any)?.avg ?? 0,
+        avgSpendPerUser: (avgPersonalResult.rows[0] as any)?.avg ?? 0,
         currencies: currencies.rows,
-        currentMonthVolume: (currentVol.rows[0] as any)?.vol ?? 0,
-        prevMonthVolume: (prevVol.rows[0] as any)?.vol ?? 0,
+        currentMonthVolume: (currentVolResult.rows[0] as any)?.vol ?? 0,
+        prevMonthVolume: (prevVolResult.rows[0] as any)?.vol ?? 0,
       });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -504,9 +511,9 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`SELECT COUNT(*)::int as count FROM transactions t LEFT JOIN users u ON u.id = t.user_id WHERE (${search} = '' OR t.description ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})`);
+      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM transactions t LEFT JOIN users u ON u.id = t.user_id WHERE (${search} = '' OR t.description ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})`);
 
-      res.json({ transactions: rows.rows, total: (totalCount.rows[0] as any)?.count ?? 0, page, limit });
+      res.json({ transactions: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -568,9 +575,9 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`SELECT COUNT(*)::int as count FROM users WHERE stripe_subscription_id IS NOT NULL`);
+      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM users WHERE stripe_subscription_id IS NOT NULL`);
 
-      res.json({ subscriptions: rows.rows, total: (totalCount.rows[0] as any)?.count ?? 0, page, limit });
+      res.json({ subscriptions: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -643,7 +650,7 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`SELECT COUNT(*)::int as count FROM email_alert_log`);
+      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM email_alert_log`);
 
       const period = getPeriodBounds();
       const [currentMonth] = await db.select({ count: count() }).from(emailAlertLog).where(gte(emailAlertLog.sentAt, period.current.start));
@@ -653,7 +660,7 @@ export function registerAdminRoutes(app: Express) {
 
       res.json({
         logs: rows.rows,
-        total: (totalCount.rows[0] as any)?.count ?? 0,
+        total: (totalCountResult.rows[0] as any)?.count ?? 0,
         page,
         limit,
         currentMonth: currentMonth.count,
@@ -823,9 +830,9 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const [totalCount] = await db.execute(sql`SELECT COUNT(*)::int as count FROM audit_logs`);
+      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM audit_logs`);
 
-      res.json({ logs: rows.rows, total: (totalCount.rows[0] as any)?.count ?? 0, page, limit });
+      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -924,6 +931,21 @@ export function registerAdminRoutes(app: Express) {
   });
 
   log("Admin routes registered", "admin");
+}
+
+// ─── Read-Only Viewing Mode Middleware ───────────────────────────────────────────
+// Blocks all mutating requests when the admin is in read-only impersonation mode.
+// Register this AFTER maintenanceMiddleware but BEFORE all other routes in routes.ts.
+export function viewingModeMiddleware(req: Request, res: Response, next: NextFunction) {
+  const viewingUserId = (req.session as any)?.viewingUserId;
+  if (
+    viewingUserId &&
+    ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&
+    !req.path.startsWith("/api/admin")
+  ) {
+    return res.status(403).json({ message: "Operação bloqueada: você está em modo de visualização somente leitura." });
+  }
+  next();
 }
 
 // ─── Maintenance Mode Middleware ───────────────────────────────────────────────

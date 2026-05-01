@@ -34,6 +34,24 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
+  // ─── GET /api/auth/is-admin ──────────────────────────────────────────────────
+  // Returns {isAdmin: true} if the logged-in user matches ADMIN_EMAIL; 403 otherwise.
+  app.get("/api/auth/is-admin", async (req: any, res) => {
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL;
+      if (!adminEmail) return res.status(403).json({ isAdmin: false, reason: "ADMIN_EMAIL not configured" });
+      const userId = req.session?.userId;
+      if (!userId) return res.status(401).json({ isAdmin: false, reason: "Not authenticated" });
+      const user = await authStorage.getUser(userId);
+      if (!user || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
+        return res.status(403).json({ isAdmin: false });
+      }
+      res.json({ isAdmin: true, email: user.email });
+    } catch (err: any) {
+      res.status(500).json({ isAdmin: false, reason: err?.message });
+    }
+  });
+
   // ─── PERSONAL AUTH ───────────────────────────────────────────────────────────
 
   app.post("/api/auth/register", async (req, res) => {

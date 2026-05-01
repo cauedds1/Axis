@@ -10,7 +10,7 @@ import {
   ChevronLeft, ChevronRight, Search, Shield, Activity,
   Database, Zap, Check, X, Trash2, Edit, LogOut, BarChart2,
   Phone, Server, Lock, AlertTriangle,
-  KeyRound, UserX, UserCheck, UserCog
+  KeyRound, UserX, UserCheck, UserCog, ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,18 +176,33 @@ function UsersSection() {
   const [search, setSearch] = useState("");
   const [plan, setPlan] = useState("all");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [editUser, setEditUser] = useState<any>(null);
   const [newPlan, setNewPlan] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const [confirmDeactivate, setConfirmDeactivate] = useState<any>(null);
   const [confirmResetPw, setConfirmResetPw] = useState<any>(null);
+  const [viewUser, setViewUser] = useState<any>(null);
 
-  const params = new URLSearchParams({ page: String(page), limit: "20" });
+  const params = new URLSearchParams({ page: String(page), limit: "20", sortBy, sortDir });
   if (search) params.set("search", search);
   if (plan !== "all") params.set("plan", plan);
 
+  const { data: userDetail, isLoading: userDetailLoading } = useQuery<any>({
+    queryKey: ["/api/admin/users", viewUser?.id],
+    queryFn: () => viewUser ? adminFetch(`/api/admin/users/${viewUser.id}`) : null,
+    enabled: !!viewUser,
+  });
+
+  const toggleSort = (col: string) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+    setPage(1);
+  };
+
   const { data, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/users", page, search, plan],
+    queryKey: ["/api/admin/users", page, search, plan, sortBy, sortDir],
     queryFn: () => adminFetch(`/api/admin/users?${params.toString()}`),
   });
 
@@ -265,12 +280,12 @@ function UsersSection() {
           <TableWrapper>
             <thead>
               <tr>
-                <Th>{t("users.name")}</Th>
-                <Th>{t("users.email")}</Th>
-                <Th>{t("users.plan")}</Th>
+                <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("first_name")}>{t("users.name")} {sortBy === "first_name" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
+                <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("email")}>{t("users.email")} {sortBy === "email" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
+                <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("plan")}>{t("users.plan")} {sortBy === "plan" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
                 <Th>Type</Th>
                 <Th>Status</Th>
-                <Th>{t("users.createdAt")}</Th>
+                <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("created_at")}>{t("users.createdAt")} {sortBy === "created_at" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
@@ -280,7 +295,7 @@ function UsersSection() {
               ) : rows.map((u: any) => {
                 const isDeactivated = !!(u.deactivated_at ?? u.deactivatedAt);
                 return (
-                <tr key={u.id} className={`hover:bg-accent/30 transition-colors ${isDeactivated ? "opacity-60" : ""}`} data-testid={`row-user-${u.id}`}>
+                <tr key={u.id} className={`hover:bg-accent/30 transition-colors cursor-pointer ${isDeactivated ? "opacity-60" : ""}`} data-testid={`row-user-${u.id}`} onClick={() => setViewUser(u)}>
                   <Td><span className="font-medium text-foreground">{userName(u)}</span></Td>
                   <Td className="text-muted-foreground text-xs">{u.email}</Td>
                   <Td><Badge variant="outline" className="text-xs capitalize">{u.plan ?? "free"}</Badge></Td>
@@ -292,19 +307,19 @@ function UsersSection() {
                     }
                   </Td>
                   <Td className="text-muted-foreground">{fmtDate(u.created_at ?? u.createdAt)}</Td>
-                  <Td>
+                  <Td onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1">
                       <Button
                         data-testid={`button-edit-plan-${u.id}`}
                         variant="ghost" size="sm" title={t("users.editPlan")}
-                        onClick={() => { setEditUser(u); setNewPlan(u.plan ?? "starter"); }}
+                        onClick={e => { e.stopPropagation(); setEditUser(u); setNewPlan(u.plan ?? "starter"); }}
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         data-testid={`button-reset-pw-${u.id}`}
                         variant="ghost" size="sm" title={t("users.resetPassword")}
-                        onClick={() => setConfirmResetPw(u)}
+                        onClick={e => { e.stopPropagation(); setConfirmResetPw(u); }}
                       >
                         <KeyRound className="h-3.5 w-3.5" />
                       </Button>
@@ -312,7 +327,7 @@ function UsersSection() {
                         data-testid={`button-deactivate-${u.id}`}
                         variant="ghost" size="sm"
                         title={isDeactivated ? t("users.reactivate") : t("users.deactivate")}
-                        onClick={() => setConfirmDeactivate(u)}
+                        onClick={e => { e.stopPropagation(); setConfirmDeactivate(u); }}
                         className={isDeactivated ? "text-emerald-400 hover:text-emerald-400" : "text-amber-400 hover:text-amber-400"}
                       >
                         {isDeactivated ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
@@ -320,7 +335,7 @@ function UsersSection() {
                       <Button
                         data-testid={`button-delete-user-${u.id}`}
                         variant="ghost" size="sm" title={t("common.delete")}
-                        onClick={() => setConfirmDelete(u)}
+                        onClick={e => { e.stopPropagation(); setConfirmDelete(u); }}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -407,6 +422,78 @@ function UsersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── User Details Drawer ─────────────────────────────────────────── */}
+      <Dialog open={!!viewUser} onOpenChange={() => setViewUser(null)}>
+        <DialogContent className="bg-card border-border max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{userName(viewUser)} — {t("users.title")}</DialogTitle>
+          </DialogHeader>
+          {userDetailLoading ? (
+            <div className="text-muted-foreground py-4">{t("common.loading")}</div>
+          ) : userDetail ? (
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Email</div>
+                  <div className="font-medium text-sm">{userDetail.user?.email}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Plan</div>
+                  <div className="font-medium text-sm capitalize">{userDetail.user?.plan ?? "—"}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Account Type</div>
+                  <div className="font-medium text-sm capitalize">{userDetail.user?.account_type ?? userDetail.user?.accountType ?? "—"}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="font-medium text-sm">{userDetail.user?.deactivated_at ?? userDetail.user?.deactivatedAt ? "Deactivated" : "Active"}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Transactions</div>
+                  <div className="font-medium text-sm">{userDetail.stats?.transactions ?? 0}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Habits</div>
+                  <div className="font-medium text-sm">{userDetail.stats?.habits ?? 0}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Tasks</div>
+                  <div className="font-medium text-sm">{userDetail.stats?.tasks ?? 0}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Discipline Score</div>
+                  <div className="font-medium text-sm">{userDetail.profile?.disciplineScore ?? userDetail.profile?.discipline_score ?? "—"}/10</div>
+                </div>
+              </div>
+              {userDetail.user?.stripeSubscriptionId && (
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Stripe Subscription</div>
+                  <a href={`https://dashboard.stripe.com/subscriptions/${userDetail.user.stripeSubscriptionId}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline text-sm">{userDetail.user.stripeSubscriptionId}</a>
+                </div>
+              )}
+              {userDetail.recentTransactions?.length > 0 && (
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-2">Recent Transactions</div>
+                  <div className="space-y-1">
+                    {userDetail.recentTransactions.slice(0, 5).map((tx: any) => (
+                      <div key={tx.id} className="flex justify-between text-xs text-muted-foreground bg-background/30 rounded px-3 py-2">
+                        <span>{tx.description ?? "—"}</span>
+                        <span className={tx.type === "expense" ? "text-red-400" : "text-emerald-400"}>{fmtCurrency(tx.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">Joined: {fmtDate(userDetail.user?.created_at ?? userDetail.user?.createdAt)}</div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewUser(null)}>{t("common.cancel")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -416,11 +503,18 @@ function OrgsSection() {
   const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [confirmImpersonate, setConfirmImpersonate] = useState<any>(null);
+  const [viewOrg, setViewOrg] = useState<any>(null);
   const navigate = useLocation()[1];
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/admin/organizations", page],
     queryFn: () => adminFetch(`/api/admin/organizations?page=${page}&limit=20`),
+  });
+
+  const { data: orgDetail, isLoading: orgDetailLoading } = useQuery<any>({
+    queryKey: ["/api/admin/organizations", viewOrg?.id],
+    queryFn: () => viewOrg ? adminFetch(`/api/admin/organizations/${viewOrg.id}`) : null,
+    enabled: !!viewOrg,
   });
 
   const orgs: any[] = data?.organizations ?? [];
@@ -429,9 +523,8 @@ function OrgsSection() {
   const impersonate = useMutation({
     mutationFn: (id: string) => apiRequest("POST", `/api/admin/organizations/${id}/impersonate`),
     onSuccess: (data: any) => {
-      toast({ title: `Impersonating ${data?.orgName ?? "org"}. Redirecting to app…` });
+      toast({ title: `Now viewing ${data?.orgName ?? "org"} in read-only mode.` });
       setConfirmImpersonate(null);
-      setTimeout(() => navigate("/"), 800);
     },
     onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
@@ -458,17 +551,18 @@ function OrgsSection() {
               {orgs.length === 0 ? (
                 <EmptyRow colSpan={6} label={t("common.noData")} />
               ) : orgs.map((o: any) => (
-                <tr key={o.id} className="hover:bg-accent/30 transition-colors" data-testid={`row-org-${o.id}`}>
+                <tr key={o.id} className="hover:bg-accent/30 transition-colors cursor-pointer" data-testid={`row-org-${o.id}`}
+                  onClick={() => setViewOrg(o)}>
                   <Td><span className="font-medium text-foreground">{o.name}</span></Td>
                   <Td className="text-muted-foreground text-xs">{o.owner_email ?? o.ownerEmail ?? "—"}</Td>
                   <Td>{o.member_count ?? o.memberCount ?? 0}</Td>
                   <Td className="text-emerald-400">{fmtCurrency(o.total_expenses ?? o.totalExpenses)}</Td>
                   <Td className="text-muted-foreground">{fmtDate(o.created_at ?? o.createdAt)}</Td>
-                  <Td>
+                  <Td onClick={e => e.stopPropagation()}>
                     <Button
                       data-testid={`button-impersonate-${o.id}`}
-                      variant="ghost" size="sm" title="Impersonate org owner"
-                      onClick={() => setConfirmImpersonate(o)}
+                      variant="ghost" size="sm" title="View org as owner (read-only)"
+                      onClick={e => { e.stopPropagation(); setConfirmImpersonate(o); }}
                     >
                       <UserCog className="h-3.5 w-3.5" />
                     </Button>
@@ -481,18 +575,81 @@ function OrgsSection() {
         </>
       )}
 
+      {/* ─── Confirm Impersonate ───────────────────────────────────────────── */}
       <Dialog open={!!confirmImpersonate} onOpenChange={() => setConfirmImpersonate(null)}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader><DialogTitle>Impersonate Org Owner</DialogTitle></DialogHeader>
-          <div className="text-sm text-muted-foreground">
-            Your admin session will switch to this org's owner. You can restore it from the app by visiting <strong>/admin</strong> again.
-          </div>
+          <DialogHeader><DialogTitle>{t("orgs.viewAs")}</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">{t("orgs.impersonateNote")}</div>
           <div className="font-medium text-foreground">{confirmImpersonate?.name} ({confirmImpersonate?.owner_email ?? confirmImpersonate?.ownerEmail ?? "no owner"})</div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmImpersonate(null)}>{t("common.cancel")}</Button>
             <Button data-testid="button-confirm-impersonate" onClick={() => confirmImpersonate && impersonate.mutate(confirmImpersonate.id)} disabled={impersonate.isPending}>
-              Impersonate
+              {t("orgs.impersonate")}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Org Details Drawer ────────────────────────────────────────────── */}
+      <Dialog open={!!viewOrg} onOpenChange={() => setViewOrg(null)}>
+        <DialogContent className="bg-card border-border max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{viewOrg?.name} — {t("orgs.title")}</DialogTitle>
+          </DialogHeader>
+          {orgDetailLoading ? (
+            <div className="text-muted-foreground py-4">{t("common.loading")}</div>
+          ) : orgDetail ? (
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Owner</div>
+                  <div className="font-medium text-sm">{viewOrg?.owner_email ?? viewOrg?.ownerEmail ?? "—"}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Members</div>
+                  <div className="font-medium text-sm">{orgDetail.members?.length ?? 0}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Pending Approvals</div>
+                  <div className="font-medium text-sm">{orgDetail.pendingApprovals ?? 0}</div>
+                </div>
+                <div className="bg-background/50 border border-border rounded-lg p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Created</div>
+                  <div className="font-medium text-sm">{fmtDate(viewOrg?.created_at ?? viewOrg?.createdAt)}</div>
+                </div>
+              </div>
+
+              {orgDetail.members?.length > 0 && (
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-2">Members</div>
+                  <div className="space-y-1">
+                    {orgDetail.members.map((m: any) => (
+                      <div key={m.user_id ?? m.userId} className="flex justify-between text-xs bg-background/30 rounded px-3 py-2">
+                        <span className="text-foreground">{m.first_name ?? ""} {m.last_name ?? ""} <span className="text-muted-foreground">{m.email}</span></span>
+                        <Badge variant="outline" className="text-xs capitalize">{m.role}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {orgDetail.categoryBreakdown?.length > 0 && (
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-2">Top Expense Categories</div>
+                  <div className="space-y-1">
+                    {orgDetail.categoryBreakdown.map((c: any) => (
+                      <div key={c.category_name} className="flex justify-between text-xs bg-background/30 rounded px-3 py-2">
+                        <span className="text-foreground capitalize">{c.category_name ?? "Uncategorized"}</span>
+                        <span className="text-emerald-400">{fmtCurrency(c.total)} ({c.count} txns)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewOrg(null)}>{t("common.cancel")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -500,9 +657,17 @@ function OrgsSection() {
   );
 }
 
+const CHART_PERIODS = [
+  { label: "3M", months: 3 },
+  { label: "6M", months: 6 },
+  { label: "1Y", months: 12 },
+  { label: "All", months: 999 },
+];
+
 function FinanceSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
+  const [chartPeriod, setChartPeriod] = useState(12);
 
   const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/finance/overview"] });
   const { data: txData, isLoading } = useQuery<any>({
@@ -511,10 +676,11 @@ function FinanceSection() {
   });
 
   // Backend returns monthlyVolume array with {month, total_volume, count}
-  const chartData = (overview?.monthlyVolume ?? []).map((m: any) => ({
+  const allChartData = (overview?.monthlyVolume ?? []).map((m: any) => ({
     month: m.month,
     Volume: m.total_volume ?? 0,
   }));
+  const chartData = chartPeriod >= 999 ? allChartData : allChartData.slice(-chartPeriod);
 
   return (
     <div className="space-y-6">
@@ -525,9 +691,21 @@ function FinanceSection() {
         <StatCard label="Avg Spend / User" value={fmtCurrency(overview?.avgSpendPerUser)} icon={CreditCard} />
       </div>
 
-      {chartData.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <SubTitle>{t("finance.revenueByMonth")}</SubTitle>
+      {allChartData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <SubTitle>{t("finance.revenueByMonth")}</SubTitle>
+            <div className="flex gap-1">
+              {CHART_PERIODS.map(p => (
+                <button
+                  key={p.label}
+                  data-testid={`button-chart-period-${p.label}`}
+                  onClick={() => setChartPeriod(p.months)}
+                  className={`text-xs px-2 py-1 rounded transition-colors ${chartPeriod === p.months ? "bg-primary/20 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                >{p.label}</button>
+              ))}
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#888" }} />
@@ -635,18 +813,30 @@ function BillingSection() {
                 <Th>Stripe Sub ID</Th>
                 <Th>Trial Ends</Th>
                 <Th>{t("billing.currentPeriodEnd")}</Th>
+                <Th>Stripe</Th>
               </tr>
             </thead>
             <tbody>
               {(subData?.subscriptions ?? []).length === 0 ? (
-                <EmptyRow colSpan={5} label={t("common.noData")} />
+                <EmptyRow colSpan={6} label={t("common.noData")} />
               ) : (subData?.subscriptions ?? []).map((s: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-sub-${i}`}>
                   <Td className="text-muted-foreground text-xs">{s.email}</Td>
                   <Td><Badge variant="outline" className="text-xs capitalize">{s.plan}</Badge></Td>
-                  <Td className="font-mono text-xs text-muted-foreground max-w-xs truncate">{s.stripe_subscription_id ?? "—"}</Td>
+                  <Td className="font-mono text-xs max-w-xs truncate">
+                    {s.stripe_subscription_id
+                      ? <a href={`https://dashboard.stripe.com/subscriptions/${s.stripe_subscription_id}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline" title="Open in Stripe">{s.stripe_subscription_id}</a>
+                      : <span className="text-muted-foreground">—</span>}
+                  </Td>
                   <Td className="text-muted-foreground">{fmtDate(s.trial_ends_at)}</Td>
                   <Td className="text-muted-foreground">{fmtDate(s.created_at)}</Td>
+                  <Td>
+                    {s.stripe_customer_id ? (
+                      <a href={`https://dashboard.stripe.com/customers/${s.stripe_customer_id}`} target="_blank" rel="noreferrer" data-testid={`link-stripe-customer-${i}`}>
+                        <Button variant="ghost" size="sm" title="View customer in Stripe"><ExternalLink className="h-3.5 w-3.5 text-blue-400" /></Button>
+                      </a>
+                    ) : <span className="text-muted-foreground text-xs">—</span>}
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -1196,7 +1386,7 @@ export default function AdminPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const { data: accessCheck, isLoading: checkLoading, isError } = useQuery<any>({
-    queryKey: ["/api/admin/stats"],
+    queryKey: ["/api/auth/is-admin"],
     retry: false,
   });
 
@@ -1215,7 +1405,7 @@ export default function AdminPanel() {
     );
   }
 
-  if (isError || !accessCheck) {
+  if (isError || !accessCheck?.isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">

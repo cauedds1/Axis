@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { registerAdminRoutes, maintenanceMiddleware } from "./adminRoutes";
+import { registerAdminRoutes, maintenanceMiddleware, viewingModeMiddleware } from "./adminRoutes";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { log } from "./log";
@@ -377,6 +377,8 @@ export async function registerRoutes(
 
   // Maintenance mode: returns 503 for all non-admin/non-auth API routes when enabled
   app.use(maintenanceMiddleware);
+  // Read-only viewing mode: blocks mutations when admin is impersonating an org
+  app.use(viewingModeMiddleware);
 
   app.get("/api/user/identity", isAuthenticated, async (req, res) => {
     try {

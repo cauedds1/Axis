@@ -3594,7 +3594,10 @@
       "owner": "Owner",
       "members": "Members",
       "plan": "Plan",
-      "createdAt": "Created At"
+      "createdAt": "Created At",
+      "impersonate": "View as Owner",
+      "viewAs": "View Org as Owner (Read-Only)",
+      "impersonateNote": "Your admin session will switch to this org owner's context in read-only mode. No mutations will be allowed."
     },
     "finance": {
       "title": "Financial Overview",
