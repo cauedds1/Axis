@@ -184,7 +184,7 @@ function AppRouter() {
       if ((user.accountType === "business" || user.accountType === "collaborator") && !location.startsWith("/business") && !location.startsWith("/r/")) {
         setLocation("/business/app");
       }
-      if (user.accountType === "personal" && location.startsWith("/business/app")) {
+      if (user.accountType === "personal" && location.startsWith("/business/app") && user.plan !== "team") {
         setLocation("/pricing");
       }
     }

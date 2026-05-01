@@ -4,6 +4,7 @@
  * Usage: npx tsx scripts/seed-stripe-products.ts
  *
  * This script creates (or finds existing) Stripe Products and Prices for:
+ *   - Starter: free (product only, no recurring price)
  *   - Personal AI: R$9/month with 7-day free trial
  *   - Team: R$29/month
  *
@@ -16,6 +17,14 @@
 import { getUncachableStripeClient } from '../server/stripeClient';
 
 const PLANS = [
+  {
+    planKey: 'starter',
+    name: 'AXIS Starter',
+    description: 'Free tier with basic limits — 200 transactions, 30 AI captures, and 10 chat messages per month.',
+    unitAmount: null, // Free plan — product only, no recurring price
+    currency: null,
+    trialPeriodDays: undefined,
+  },
   {
     planKey: 'personal_ai',
     name: 'AXIS Personal AI',
@@ -56,6 +65,11 @@ async function seed() {
         metadata: { plan: plan.planKey },
       });
       console.log(`  + Created product: ${product.id}`);
+    }
+
+    if (!plan.unitAmount || !plan.currency) {
+      console.log(`  ✓ Free plan — no recurring price needed.`);
+      continue;
     }
 
     // Check if a matching active price already exists for this product

@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { Home, DollarSign, Calendar, CheckSquare, MessageCircle, LogOut, Settings, Flame, Zap, BarChart2 } from "lucide-react";
+import { Home, DollarSign, Calendar, CheckSquare, MessageCircle, LogOut, Settings, Flame, Zap, BarChart2, Building2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
 import { DisciplinePanel } from "@/components/discipline-panel";
@@ -118,6 +118,10 @@ export function AppSidebar() {
     navItems.push({ label: t("axisSidebar.tasks"), icon: CheckSquare, path: "/tasks", active: location === "/tasks", color: P.tasks });
   }
   navItems.push({ label: t("axisSidebar.chat"), icon: MessageCircle, path: "/chat", active: location === "/chat", color: P.chat });
+
+  if (user?.plan === "team") {
+    navItems.push({ label: "Business", icon: Building2, path: "/business/app", active: location.startsWith("/business/app"), color: P.primary });
+  }
 
   return (
     <>

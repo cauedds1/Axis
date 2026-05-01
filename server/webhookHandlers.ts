@@ -123,8 +123,9 @@ export class WebhookHandlers {
 
     await db.update(users).set({
       plan,
-      stripeSubscriptionId: stripeSubscriptionId ?? undefined,
-      trialEndsAt: trialEndsAt ?? undefined,
+      // Explicitly null-clear on cancellation so stale subscription data is removed
+      stripeSubscriptionId: stripeSubscriptionId,
+      trialEndsAt: trialEndsAt,
     }).where(eq(users.id, user.id));
 
     log(`Stripe webhook: updated user ${user.id} plan → ${plan}`, 'stripe');
