@@ -290,13 +290,14 @@ function UsersSection() {
                 <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("plan")}>{t("users.plan")} {sortBy === "plan" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
                 <Th>Type</Th>
                 <Th>Status</Th>
+                <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("last_login_at")}>{t("users.lastLogin")} {sortBy === "last_login_at" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
                 <Th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort("created_at")}>{t("users.createdAt")} {sortBy === "created_at" ? (sortDir === "asc" ? "↑" : "↓") : ""}</Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <EmptyRow colSpan={7} label={t("common.noData")} />
+                <EmptyRow colSpan={8} label={t("common.noData")} />
               ) : rows.map((u: any) => {
                 const isDeactivated = !!(u.deactivated_at ?? u.deactivatedAt);
                 return (
@@ -311,6 +312,7 @@ function UsersSection() {
                       : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">Active</Badge>
                     }
                   </Td>
+                  <Td className="text-muted-foreground text-xs">{u.last_login_at ? fmtDateTime(u.last_login_at) : t("users.never")}</Td>
                   <Td className="text-muted-foreground">{fmtDate(u.created_at ?? u.createdAt)}</Td>
                   <Td onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1">
@@ -507,13 +509,17 @@ function OrgsSection() {
   const { t } = useTranslation("axisAdmin");
   const { toast } = useToast();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [confirmImpersonate, setConfirmImpersonate] = useState<any>(null);
   const [viewOrg, setViewOrg] = useState<any>(null);
   const navigate = useLocation()[1];
 
+  const params = new URLSearchParams({ page: String(page), limit: "20" });
+  if (search) params.set("search", search);
+
   const { data, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/organizations", page],
-    queryFn: () => adminFetch(`/api/admin/organizations?page=${page}&limit=20`),
+    queryKey: ["/api/admin/organizations", page, search],
+    queryFn: () => adminFetch(`/api/admin/organizations?${params.toString()}`),
   });
 
   const { data: orgDetail, isLoading: orgDetailLoading } = useQuery<any>({
@@ -526,17 +532,30 @@ function OrgsSection() {
   const total = data?.total ?? 0;
 
   const impersonate = useMutation({
-    mutationFn: (id: string) => apiRequest("POST", `/api/admin/organizations/${id}/impersonate`),
-    onSuccess: (data: any) => {
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/admin/organizations/${id}/impersonate`);
+      return res.json() as Promise<{ orgName?: string; message?: string }>;
+    },
+    onSuccess: (data) => {
       toast({ title: `Now viewing ${data?.orgName ?? "org"} in read-only mode.` });
       setConfirmImpersonate(null);
     },
-    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
 
   return (
     <div className="space-y-4">
       <SectionTitle>{t("orgs.title")}</SectionTitle>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          data-testid="input-orgs-search"
+          className="pl-9"
+          placeholder={t("common.search")}
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+        />
+      </div>
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -673,11 +692,18 @@ function FinanceSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
   const [chartPeriod, setChartPeriod] = useState(12);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/finance/overview"] });
+
+  const txParams = new URLSearchParams({ page: String(page), limit: "20" });
+  if (search) txParams.set("search", search);
+  if (typeFilter !== "all") txParams.set("type", typeFilter);
+
   const { data: txData, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/finance/transactions", page],
-    queryFn: () => adminFetch(`/api/admin/finance/transactions?page=${page}&limit=20`),
+    queryKey: ["/api/admin/finance/transactions", page, search, typeFilter],
+    queryFn: () => adminFetch(`/api/admin/finance/transactions?${txParams.toString()}`),
   });
 
   // Backend returns monthlyVolume array with {month, total_volume, count}
@@ -742,6 +768,28 @@ function FinanceSection() {
 
       <div>
         <SubTitle>{t("finance.recentTransactions")}</SubTitle>
+        <div className="flex flex-wrap gap-3 mb-3">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              data-testid="input-finance-search"
+              className="pl-9"
+              placeholder={t("common.search")}
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={v => { setTypeFilter(v); setPage(1); }}>
+            <SelectTrigger data-testid="select-finance-type" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("users.allPlans").replace("Plans", "Types")}</SelectItem>
+              <SelectItem value="income">{t("finance.type")} — Income</SelectItem>
+              <SelectItem value="expense">{t("finance.type")} — Expense</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {isLoading ? (
           <div className="text-muted-foreground">{t("common.loading")}</div>
         ) : (
@@ -781,11 +829,16 @@ function FinanceSection() {
 function BillingSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
 
   const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/billing/overview"] });
+
+  const billingParams = new URLSearchParams({ page: String(page), limit: "20" });
+  if (search) billingParams.set("search", search);
+
   const { data: subData, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/billing/subscriptions", page],
-    queryFn: () => adminFetch(`/api/admin/billing/subscriptions?page=${page}&limit=20`),
+    queryKey: ["/api/admin/billing/subscriptions", page, search],
+    queryFn: () => adminFetch(`/api/admin/billing/subscriptions?${billingParams.toString()}`),
   });
 
   // Backend: {planCounts, mrr, payingUsers, personalAICount, teamCount, starterCount, trialUsers}
@@ -806,6 +859,16 @@ function BillingSection() {
       </div>
 
       <SubTitle>Subscribed Users</SubTitle>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          data-testid="input-billing-search"
+          className="pl-9"
+          placeholder={t("common.search")}
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
+        />
+      </div>
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -879,8 +942,11 @@ function WhatsAppSection() {
   const hasQr = !!statusData?.qrCode;
 
   const connect = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
-    onSuccess: (data: any) => {
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/whatsapp/connect");
+      return res.json() as Promise<{ status?: string; qrCode?: string }>;
+    },
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
       if (data?.qrCode || data?.status === "connecting") {
         setQrPolling(true);
@@ -890,7 +956,7 @@ function WhatsAppSection() {
         toast({ title: t("whatsapp.connected") });
       }
     },
-    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
 
   const disconnect = useMutation({
@@ -1062,12 +1128,21 @@ function WhatsAppSection() {
   );
 }
 
+const ALERT_TYPES = ["bill_due_soon", "overdue_tasks", "goal_deadline", "low_discipline", "weekly_summary", "offline_reminder"];
+
 function EmailLogsSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [alertType, setAlertType] = useState("all");
+
+  const emailParams = new URLSearchParams({ page: String(page), limit: "20" });
+  if (search) emailParams.set("search", search);
+  if (alertType !== "all") emailParams.set("alertType", alertType);
+
   const { data, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/email-logs", page],
-    queryFn: () => adminFetch(`/api/admin/email-logs?page=${page}&limit=20`),
+    queryKey: ["/api/admin/email-logs", page, search, alertType],
+    queryFn: () => adminFetch(`/api/admin/email-logs?${emailParams.toString()}`),
   });
 
   const logs: any[] = data?.logs ?? [];
@@ -1084,6 +1159,27 @@ function EmailLogsSection() {
           ))}
         </div>
       )}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-testid="input-email-search"
+            className="pl-9"
+            placeholder={t("email.to")}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        <Select value={alertType} onValueChange={v => { setAlertType(v); setPage(1); }}>
+          <SelectTrigger data-testid="select-alert-type" className="w-48">
+            <SelectValue placeholder={t("email.alertType")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("users.allPlans").replace("Plans", "Types")}</SelectItem>
+            {ALERT_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -1121,13 +1217,27 @@ function EmailLogsSection() {
   );
 }
 
+const AI_CALL_TYPES = ["chat", "onboarding_diagnosis", "pdf_extract", "transaction_categorize", "habit_suggestion", "voice_transcription"];
+
 function AISection() {
   const { t } = useTranslation("axisAdmin");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [callTypeFilter, setCallTypeFilter] = useState("all");
 
-  // Backend: {today, yesterday, thisMonth, prevMonth, breakdown: [{call_type, count, total_tokens}], recentCalls}
+  // Backend: {today, yesterday, thisMonth, prevMonth, breakdown: [{call_type, count, total_tokens}]}
   const { data: overview } = useQuery<any>({ queryKey: ["/api/admin/ai/overview"] });
   // Backend: {set, valid}
   const { data: status } = useQuery<any>({ queryKey: ["/api/admin/ai/status"] });
+
+  const aiLogsParams = new URLSearchParams({ page: String(page), limit: "20" });
+  if (search) aiLogsParams.set("search", search);
+  if (callTypeFilter !== "all") aiLogsParams.set("callType", callTypeFilter);
+
+  const { data: logsData, isLoading: logsLoading } = useQuery<any>({
+    queryKey: ["/api/admin/ai/logs", page, search, callTypeFilter],
+    queryFn: () => adminFetch(`/api/admin/ai/logs?${aiLogsParams.toString()}`),
+  });
 
   const breakdown: any[] = overview?.breakdown ?? [];
 
@@ -1182,24 +1292,52 @@ function AISection() {
         </div>
       )}
 
-      {(overview?.recentCalls ?? []).length > 0 && (
-        <div>
-          <SubTitle>Recent AI Calls</SubTitle>
-          <TableWrapper>
-            <thead><tr><Th>User</Th><Th>Type</Th><Th>Tokens</Th><Th>Time</Th></tr></thead>
-            <tbody>
-              {(overview.recentCalls ?? []).slice(0, 20).map((c: any, i: number) => (
-                <tr key={i} className="hover:bg-accent/30">
-                  <Td className="text-muted-foreground text-xs">{c.user_email ?? "anon"}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{c.call_type}</Badge></Td>
-                  <Td className="font-mono text-xs">{c.tokens_used ?? "—"}</Td>
-                  <Td className="text-muted-foreground">{fmtDateTime(c.created_at)}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </TableWrapper>
+      <div>
+        <SubTitle>AI Call Logs</SubTitle>
+        <div className="flex flex-wrap gap-3 mb-3">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              data-testid="input-ai-search"
+              className="pl-9"
+              placeholder={t("common.search")}
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+          <Select value={callTypeFilter} onValueChange={v => { setCallTypeFilter(v); setPage(1); }}>
+            <SelectTrigger data-testid="select-ai-calltype" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {AI_CALL_TYPES.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        {logsLoading ? (
+          <div className="text-muted-foreground">{t("common.loading")}</div>
+        ) : (
+          <>
+            <TableWrapper>
+              <thead><tr><Th>User</Th><Th>Type</Th><Th>Tokens</Th><Th>Time</Th></tr></thead>
+              <tbody>
+                {(logsData?.logs ?? []).length === 0 ? (
+                  <EmptyRow colSpan={4} label={t("common.noData")} />
+                ) : (logsData?.logs ?? []).map((c: any, i: number) => (
+                  <tr key={i} className="hover:bg-accent/30" data-testid={`row-ai-${i}`}>
+                    <Td className="text-muted-foreground text-xs">{c.user_email ?? "anon"}</Td>
+                    <Td><Badge variant="outline" className="text-xs">{c.call_type}</Badge></Td>
+                    <Td className="font-mono text-xs">{c.tokens_used ?? "—"}</Td>
+                    <Td className="text-muted-foreground">{fmtDateTime(c.created_at)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableWrapper>
+            <Pagination page={page} total={logsData?.total ?? 0} limit={20} onPage={setPage} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -1207,16 +1345,46 @@ function AISection() {
 function AuditSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
+  const [actor, setActor] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+
+  const auditParams = new URLSearchParams({ page: String(page), limit: "20" });
+  if (actor) auditParams.set("actor", actor);
+  if (actionFilter) auditParams.set("action", actionFilter);
+
   const { data, isLoading } = useQuery<any>({
-    queryKey: ["/api/admin/audit-logs", page],
-    queryFn: () => adminFetch(`/api/admin/audit-logs?page=${page}&limit=20`),
+    queryKey: ["/api/admin/audit-logs", page, actor, actionFilter],
+    queryFn: () => adminFetch(`/api/admin/audit-logs?${auditParams.toString()}`),
   });
 
   const logs: any[] = data?.logs ?? [];
 
+  const ACTION_TYPES = ["impersonate", "impersonate_stop", "delete_user", "deactivate_user", "reactivate_user", "reset_password", "update_plan", "maintenance_on", "maintenance_off", "seed_demo", "reset_demo"];
+
   return (
     <div className="space-y-4">
       <SectionTitle>{t("audit.title")}</SectionTitle>
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            data-testid="input-audit-actor"
+            className="pl-9"
+            placeholder={t("audit.actor")}
+            value={actor}
+            onChange={e => { setActor(e.target.value); setPage(1); }}
+          />
+        </div>
+        <Select value={actionFilter || "all"} onValueChange={v => { setActionFilter(v === "all" ? "" : v); setPage(1); }}>
+          <SelectTrigger data-testid="select-audit-action" className="w-48">
+            <SelectValue placeholder={t("audit.action")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("users.allPlans").replace("Plans", "Actions")}</SelectItem>
+            {ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       {isLoading ? (
         <div className="text-muted-foreground">{t("common.loading")}</div>
       ) : (
@@ -1292,8 +1460,11 @@ function SystemSection() {
   });
 
   const seedDemo = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/demo/seed", {}),
-    onSuccess: (data: any) => toast({ title: data?.credentials ? `Seeded: ${data.credentials.email} / ${data.credentials.password}` : t("system.seeded") }),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/demo/seed", {});
+      return res.json() as Promise<{ credentials?: { email: string; password: string } }>;
+    },
+    onSuccess: (data) => toast({ title: data?.credentials ? `Seeded: ${data.credentials.email} / ${data.credentials.password}` : t("system.seeded") }),
   });
 
   const resetDemo = useMutation({

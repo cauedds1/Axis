@@ -1,3 +1,4 @@
+import "./express-augment";
 import { type Express, type Request, type Response, type NextFunction } from "express";
 import { db } from "./db";
 import { log } from "./log";
@@ -25,13 +26,13 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return res.status(403).json({ message: "ADMIN_EMAIL not configured" });
-    const userId = (req.session as any)?.userId;
+    const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ message: "Não autenticado" });
     const [user] = await db.select().from(users).where(eq(users.id, userId));
     if (!user || user.email !== adminEmail) {
       return res.status(403).json({ message: "Acesso negado" });
     }
-    (req as any).adminUser = user;
+    req.adminUser = user;
     next();
   } catch (err: any) {
     log(`requireAdmin error: ${err?.message}`, "admin");
@@ -192,15 +193,18 @@ export function registerAdminRoutes(app: Express) {
       const typeFilter = req.query.accountType as string;
 
       // Whitelist sort columns to prevent SQL injection
-      const ALLOWED_SORT = ["created_at", "email", "first_name", "plan", "account_type"];
+      const ALLOWED_SORT_USER = ["created_at", "email", "first_name", "plan", "account_type"];
+      const ALLOWED_SORT_PROFILE = ["last_login_at"];
       const rawSort = req.query.sortBy as string;
-      const sortCol = ALLOWED_SORT.includes(rawSort) ? rawSort : "created_at";
       const sortDir = req.query.sortDir === "asc" ? sql`ASC` : sql`DESC`;
+      const isProfileSort = ALLOWED_SORT_PROFILE.includes(rawSort);
+      const sortCol = isProfileSort ? rawSort : (ALLOWED_SORT_USER.includes(rawSort) ? rawSort : "created_at");
 
       const rows = await db.execute(sql`
         SELECT u.id, u.email, u.first_name, u.last_name, u.account_type, u.plan,
                u.stripe_subscription_id, u.stripe_customer_id, u.trial_ends_at, u.created_at,
                u.deactivated_at,
+               up.last_login_at,
                COUNT(DISTINCT t.id)::int as transaction_count,
                COUNT(DISTINCT h.id)::int as habit_count,
                COUNT(DISTINCT pt.id)::int as task_count,
@@ -213,8 +217,8 @@ export function registerAdminRoutes(app: Express) {
         WHERE (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR u.first_name ILIKE ${'%' + search + '%'} OR u.last_name ILIKE ${'%' + search + '%'})
           AND (${planFilter || ''} = '' OR u.plan = ${planFilter || ''})
           AND (${typeFilter || ''} = '' OR u.account_type = ${typeFilter || ''})
-        GROUP BY u.id, up.discipline_score
-        ORDER BY u.${sql.raw(sortCol)} ${sortDir}
+        GROUP BY u.id, up.discipline_score, up.last_login_at
+        ORDER BY ${isProfileSort ? sql`up.${sql.raw(sortCol)}` : sql`u.${sql.raw(sortCol)}`} ${sortDir}
         LIMIT ${limit} OFFSET ${offset}
       `);
 
@@ -254,7 +258,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/deactivate ─────────────────────────────────
   app.post("/api/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
       // Set deactivatedAt to mark account as deactivated
@@ -271,7 +275,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/reactivate ─────────────────────────────────
   app.post("/api/admin/users/:id/reactivate", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
       await db.update(users).set({ deactivatedAt: null, updatedAt: new Date() }).where(eq(users.id, req.params.id));
@@ -285,7 +289,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/users/:id/reset-password ─────────────────────────────
   app.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
 
@@ -316,7 +320,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── DELETE /api/admin/users/:id ─────────────────────────────────────────
   app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
       if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
       await logAudit(actor.id, actor.email, "user.delete", "user", req.params.id, { email: user.email });
@@ -338,7 +342,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── PATCH /api/admin/users/:id/plan ─────────────────────────────────────
   app.patch("/api/admin/users/:id/plan", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const { plan, reason } = req.body;
       if (!["starter", "personal_ai", "team"].includes(plan)) return res.status(400).json({ message: "Plano inválido" });
       const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
@@ -419,7 +423,7 @@ export function registerAdminRoutes(app: Express) {
   // All POST/PUT/PATCH/DELETE routes (except /api/admin/*) are blocked while viewing.
   app.post("/api/admin/organizations/:id/impersonate", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [org] = await db.select().from(organizations).where(eq(organizations.id, req.params.id));
       if (!org) return res.status(404).json({ message: "Organização não encontrada" });
 
@@ -429,8 +433,8 @@ export function registerAdminRoutes(app: Express) {
       if (!ownerMember) return res.status(404).json({ message: "Proprietário não encontrado" });
 
       // Set read-only viewing context — admin userId unchanged
-      (req.session as any).viewingUserId = ownerMember.userId;
-      (req.session as any).viewingOrgId = req.params.id;
+      req.session.viewingUserId = ownerMember.userId;
+      req.session.viewingOrgId = req.params.id;
 
       await logAudit(actor.id, actor.email, "org.impersonate", "organization", req.params.id, { orgName: org.name, targetUserId: ownerMember.userId });
       res.json({ success: true, orgName: org.name, viewingUserId: ownerMember.userId });
@@ -443,8 +447,8 @@ export function registerAdminRoutes(app: Express) {
   // Clears the read-only viewing context
   app.post("/api/admin/impersonate/stop", requireAdmin, async (req, res) => {
     try {
-      delete (req.session as any).viewingUserId;
-      delete (req.session as any).viewingOrgId;
+      delete req.session.viewingUserId;
+      delete req.session.viewingOrgId;
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -626,7 +630,7 @@ export function registerAdminRoutes(app: Express) {
 
   app.post("/api/admin/whatsapp/config", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const { botNumber, displayName } = req.body;
 
       if (botNumber !== undefined) {
@@ -666,12 +670,18 @@ export function registerAdminRoutes(app: Express) {
         FROM email_alert_log eal
         LEFT JOIN users u ON u.id = eal.user_id
         WHERE (${alertTypeFilter || ''} = '' OR eal.alert_type = ${alertTypeFilter || ''})
-          AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'})
+          AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR eal.recipient ILIKE ${'%' + search + '%'})
         ORDER BY eal.sent_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM email_alert_log`);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM email_alert_log eal
+        LEFT JOIN users u ON u.id = eal.user_id
+        WHERE (${alertTypeFilter || ''} = '' OR eal.alert_type = ${alertTypeFilter || ''})
+          AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR eal.recipient ILIKE ${'%' + search + '%'})
+      `);
 
       const period = getPeriodBounds();
       const [currentMonth] = await db.select({ count: count() }).from(emailAlertLog).where(gte(emailAlertLog.sentAt, period.current.start));
@@ -751,6 +761,36 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ─── GET /api/admin/ai/logs ───────────────────────────────────────────────
+  app.get("/api/admin/ai/logs", requireAdmin, async (req, res) => {
+    try {
+      const { page, limit, offset, search } = getPagination(req);
+      const callTypeFilter = req.query.callType as string;
+
+      const rows = await db.execute(sql`
+        SELECT al.*, u.email as user_email
+        FROM ai_usage_logs al
+        LEFT JOIN users u ON u.id = al.user_id
+        WHERE (${callTypeFilter || ''} = '' OR al.call_type = ${callTypeFilter || ''})
+          AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR al.call_type ILIKE ${'%' + search + '%'})
+        ORDER BY al.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM ai_usage_logs al
+        LEFT JOIN users u ON u.id = al.user_id
+        WHERE (${callTypeFilter || ''} = '' OR al.call_type = ${callTypeFilter || ''})
+          AND (${search} = '' OR u.email ILIKE ${'%' + search + '%'} OR al.call_type ILIKE ${'%' + search + '%'})
+      `);
+
+      res.json({ logs: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
   // ─── GET /api/admin/system/config ─────────────────────────────────────────
   app.get("/api/admin/system/config", requireAdmin, async (req, res) => {
     const envStatus = (key: string) => !!process.env[key];
@@ -778,7 +818,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/system/config ────────────────────────────────────────
   app.post("/api/admin/system/config", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const { key, value } = req.body;
       if (!key || typeof key !== "string") return res.status(400).json({ message: "key é obrigatório" });
       await db.insert(systemConfig).values({ key, value: String(value ?? ""), updatedAt: new Date() })
@@ -793,7 +833,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── DELETE /api/admin/system/config/:key ─────────────────────────────────
   app.delete("/api/admin/system/config/:key", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       await db.delete(systemConfig).where(eq(systemConfig.key, req.params.key));
       await logAudit(actor.id, actor.email, "admin.config_delete", "system", null, { key: req.params.key });
       res.json({ success: true });
@@ -826,7 +866,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/system/maintenance ───────────────────────────────────
   app.post("/api/admin/system/maintenance", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const { enabled } = req.body;
       await db.insert(systemConfig).values({ key: "maintenance_mode", value: String(!!enabled), updatedAt: new Date() }).onConflictDoUpdate({ target: systemConfig.key, set: { value: String(!!enabled), updatedAt: new Date() } });
       await logAudit(actor.id, actor.email, "admin.maintenance_toggle", "system", null, { enabled });
@@ -862,7 +902,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/demo/seed ────────────────────────────────────────────
   app.post("/api/admin/demo/seed", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const demoEmail = "demo@axis.app";
       const demoPassword = "demo1234";
 
@@ -925,7 +965,7 @@ export function registerAdminRoutes(app: Express) {
   // ─── POST /api/admin/demo/reset ───────────────────────────────────────────
   app.post("/api/admin/demo/reset", requireAdmin, async (req, res) => {
     try {
-      const actor = (req as any).adminUser;
+      const actor = req.adminUser;
       const [demoUser] = await db.select().from(users).where(eq(users.email, "demo@axis.app"));
       if (demoUser) {
         await db.delete(transactions).where(eq(transactions.userId, demoUser.id));
@@ -958,7 +998,7 @@ export function registerAdminRoutes(app: Express) {
 // Blocks all mutating requests when the admin is in read-only impersonation mode.
 // Register this AFTER maintenanceMiddleware but BEFORE all other routes in routes.ts.
 export function viewingModeMiddleware(req: Request, res: Response, next: NextFunction) {
-  const viewingUserId = (req.session as any)?.viewingUserId;
+  const viewingUserId = req.session?.viewingUserId;
   if (
     viewingUserId &&
     ["POST", "PUT", "PATCH", "DELETE"].includes(req.method) &&
@@ -988,7 +1028,7 @@ export async function maintenanceMiddleware(req: Request, res: Response, next: N
     if (row?.value === "true") {
       // Allow admin users through even in maintenance mode
       const adminEmail = process.env.ADMIN_EMAIL;
-      const userId = (req.session as any)?.userId;
+      const userId = req.session?.userId;
       if (adminEmail && userId) {
         const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
         if (user?.email === adminEmail) return next();
