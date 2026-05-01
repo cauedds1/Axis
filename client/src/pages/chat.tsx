@@ -148,6 +148,13 @@ export default function Chat() {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/chat/upload", { method: "POST", body: formData, credentials: "include" });
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.limitReached) {
+          window.dispatchEvent(new CustomEvent("axis:limit-reached", { detail: body }));
+          throw new Error("__limit_reached__");
+        }
+      }
       if (!res.ok) throw new Error(t("axisChat.errorFile"));
       return res.json();
     },
@@ -156,7 +163,8 @@ export default function Chat() {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      if (error.message === "__limit_reached__") return;
       toast({ title: t("axisChat.errorFile"), variant: "destructive" });
     },
   });

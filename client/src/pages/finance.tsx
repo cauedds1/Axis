@@ -261,6 +261,14 @@ export default function Finance() {
       const formData = new FormData();
       formData.append("image", file);
       const res = await fetch("/api/finance/photo", { method: "POST", body: formData, credentials: "include" });
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.limitReached) {
+          window.dispatchEvent(new CustomEvent("axis:limit-reached", { detail: body }));
+          throw new Error("__limit_reached__");
+        }
+      }
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       return res.json();
     },
     onSuccess: (data: { count: number; receipts: any[] }) => {
@@ -271,6 +279,10 @@ export default function Finance() {
         setPhotoResults(receipts);
         setExpandedReceiptIdx(receipts.length === 1 ? 0 : null);
       }
+    },
+    onError: (error: Error) => {
+      if (error.message === "__limit_reached__") return;
+      toast({ title: t("axisFinance.photoNoReceipt"), variant: "destructive" });
     },
   });
 
@@ -294,6 +306,14 @@ export default function Finance() {
       const formData = new FormData();
       formData.append("pdf", file);
       const res = await fetch("/api/finance/pdf", { method: "POST", body: formData, credentials: "include" });
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.limitReached) {
+          window.dispatchEvent(new CustomEvent("axis:limit-reached", { detail: body }));
+          throw new Error("__limit_reached__");
+        }
+      }
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       return res.json();
     },
     onSuccess: async (data) => {
