@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { registerAdminRoutes, maintenanceMiddleware, viewingModeMiddleware } from "./adminRoutes";
+import { registerAdminRoutes, maintenanceMiddleware, viewingModeMiddleware, isAdminRequest } from "./adminRoutes";
 import { storage } from "./storage";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 import { log } from "./log";
@@ -26,20 +26,6 @@ function getUserId(req: any): string {
   return req.session?.viewingUserId ?? req.session?.userId;
 }
 
-async function isAdminUser(req: any): Promise<boolean> {
-  try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail) { log("isAdminUser: ADMIN_EMAIL not set", "express"); return false; }
-    const userId = getUserId(req);
-    if (!userId) return false;
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    const result = user?.email === adminEmail;
-    return result;
-  } catch (err: any) {
-    log(`isAdminUser error: ${err?.message}`, "express");
-    return false;
-  }
-}
 
 function paramId(req: any): string {
   return req.params.id as string;
@@ -502,11 +488,13 @@ export async function registerRoutes(
 
       if (req.file) {
         text = await transcribeAudio(req.file.buffer, req.file.mimetype);
+        logAiUsage(userId, "audio_transcription").catch(() => {});
       }
 
       if (!text) return res.status(400).json({ message: "Nenhum input fornecido" });
 
       const result = await detectIntentAndProcess(text, userId);
+      logAiUsage(userId, "intent_detection").catch(() => {});
 
       let created: any = null;
       switch (result.intent) {
@@ -602,12 +590,14 @@ export async function registerRoutes(
             frequency: result.data.frequency || "daily",
           });
           break;
-        case "chat":
+        case "chat": {
           const chatResponse = await chatWithContext(text, userId);
+          logAiUsage(userId, "chat").catch(() => {});
           await storage.createChatMessage({ userId, role: "user", content: text });
           await storage.createChatMessage({ userId, role: "assistant", content: chatResponse });
           created = { response: chatResponse };
           break;
+        }
       }
 
       incrementCounter(userId, 'ai_capture').catch(() => {});
@@ -627,6 +617,7 @@ export async function registerRoutes(
       if (!aiLimit.allowed) return res.status(402).json({ limitReached: true, plan: aiLimit.plan, reason: aiLimit.reason, current: aiLimit.current, limit: aiLimit.limit, upgradeUrl: aiLimit.upgradeUrl });
       const base64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       const result = await processMultipleReceipts(base64, userId);
+      logAiUsage(userId, "receipt_analysis").catch(() => {});
       incrementCounter(userId, 'ai_capture').catch(() => {});
       res.json(result);
     } catch (error: any) {
@@ -820,6 +811,7 @@ export async function registerRoutes(
         const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
         uploadIncrement(userId, 'ai_capture').catch(() => {});
         const multiResult = await processMultipleReceipts(base64, userId);
+        logAiUsage(userId, "receipt_analysis").catch(() => {});
         const validReceipts = multiResult.receipts.filter((r: any) => r.totalAmount && r.imageType !== "unknown");
 
         if (validReceipts.length === 0) {
@@ -1901,6 +1893,7 @@ export async function registerRoutes(
 
       try {
         const intentResult = await detectIntentAndProcess(message, userId);
+        logAiUsage(userId, "intent_detection").catch(() => {});
 
         if (intentResult.intent === "bill") {
           // Create bill directly — no confirmation needed
@@ -1940,6 +1933,7 @@ export async function registerRoutes(
       }
 
       const rawResponse = await chatWithContext(message, userId);
+      logAiUsage(userId, "chat").catch(() => {});
 
       // Parse ALL [AXIS_ACTION] blocks — schedule creation triggered by AI
       const actionMatches = [...rawResponse.matchAll(/\[AXIS_ACTION\]([\s\S]*?)\[\/AXIS_ACTION\]/g)];
@@ -3117,15 +3111,41 @@ export async function registerRoutes(
     }
   });
 
+  // ── PASSWORD RESET (public — token-based) ───────────────────────────────
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!token || !newPassword || newPassword.length < 8) {
+        return res.status(400).json({ message: "Token e senha (mín. 8 caracteres) são obrigatórios." });
+      }
+      const [user] = await db.select().from(users)
+        .where(eq(users.passwordResetToken, token));
+      if (!user || !user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
+        return res.status(400).json({ message: "Link inválido ou expirado. Solicite um novo." });
+      }
+      const bcryptLib = await import("bcryptjs");
+      const hashed = await bcryptLib.hash(newPassword, 10);
+      await db.update(users).set({
+        password: hashed,
+        passwordResetToken: null,
+        passwordResetExpiry: null,
+        updatedAt: new Date(),
+      }).where(eq(users.id, user.id));
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
   // ── ADMIN CHECK ─────────────────────────────────────────────────────────
   app.get("/api/auth/is-admin", isAuthenticated, async (req, res) => {
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.json({ isAdmin: await isAdminUser(req) });
+    res.json({ isAdmin: await isAdminRequest(req) });
   });
 
   // ── WHATSAPP ROUTES ─────────────────────────────────────────────────────
   app.get("/api/whatsapp/status", isAuthenticated, async (req, res) => {
-    const admin = await isAdminUser(req);
+    const admin = await isAdminRequest(req);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
@@ -3138,7 +3158,7 @@ export async function registerRoutes(
 
   app.post("/api/whatsapp/connect", isAuthenticated, async (req, res) => {
     try {
-      const admin = await isAdminUser(req);
+      const admin = await isAdminRequest(req);
       if (!admin) return res.status(403).json({ message: "Apenas o administrador pode conectar o WhatsApp" });
       const currentStatus = whatsappManager.getStatus();
       if (currentStatus === "connected") {
@@ -3162,7 +3182,7 @@ export async function registerRoutes(
 
   app.post("/api/whatsapp/disconnect", isAuthenticated, async (req, res) => {
     try {
-      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode desconectar o WhatsApp" });
+      if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode desconectar o WhatsApp" });
       await whatsappManager.disconnect();
       res.json({ success: true });
     } catch (error: any) {
@@ -3172,7 +3192,7 @@ export async function registerRoutes(
 
   app.post("/api/whatsapp/reset", isAuthenticated, async (req, res) => {
     try {
-      if (!(await isAdminUser(req))) return res.status(403).json({ message: "Apenas o administrador pode resetar o WhatsApp" });
+      if (!(await isAdminRequest(req))) return res.status(403).json({ message: "Apenas o administrador pode resetar o WhatsApp" });
       await whatsappManager.disconnect();
       setTimeout(() => {
         whatsappManager.initialize().catch(err => console.error("WhatsApp reset error:", err));

@@ -18,7 +18,7 @@ import { uploadBase64Image, isStorageConfigured } from "./lib/file-storage";
 import { detectIntentAndProcess, chatWithContext, processMultipleReceipts, transcribeAudio, processPDFExtract, matchBillIdentity, saveUserIdentityEntity } from "./ai";
 import type { IntentResult } from "./ai";
 import { log } from "./log";
-import { logWhatsappMessage } from "./adminLogger";
+import { logWhatsappMessage, logAiUsage } from "./adminLogger";
 import * as fs from "fs";
 import * as path from "path";
 import { db } from "./db";
@@ -633,6 +633,7 @@ class WhatsAppManager {
       const lastTxContext = this.lastRegisteredTx.get(jid);
 
       const result = await detectIntentAndProcess(text, profile.userId, lastTxContext);
+      logAiUsage(profile.userId, "intent_detection").catch(() => {});
       log(`WhatsApp: intent=${result.intent} para userId=${profile.userId}`, "whatsapp");
       logWhatsappMessage(senderPhone, "text", result.intent, profile.userId).catch(() => {});
 
@@ -744,6 +745,7 @@ class WhatsAppManager {
     let multiResult: { count: number; receipts: any[] };
     try {
       multiResult = await processMultipleReceipts(dataUrl, userId, userName);
+      logAiUsage(userId, "receipt_analysis").catch(() => {});
       logWhatsappMessage(jid.split("@")[0], "image_receipt", "collaborator_receipt", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise IA (colaborador) — ${aiErr.message}`, "whatsapp");
@@ -918,6 +920,7 @@ class WhatsAppManager {
     let multiResult: { count: number; receipts: any[] };
     try {
       multiResult = await processMultipleReceipts(dataUrl, userId, userName);
+      logAiUsage(userId, "receipt_analysis").catch(() => {});
       logWhatsappMessage(jid.split("@")[0], "image_receipt", "personal_receipt", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha na análise de imagem pela IA — ${aiErr.message}`, "whatsapp");
@@ -1143,6 +1146,7 @@ class WhatsAppManager {
     let transcription: string;
     try {
       transcription = await transcribeAudio(buffer, mimetype);
+      logAiUsage(userId, "audio_transcription").catch(() => {});
     } catch (tErr: any) {
       log(`WhatsApp: falha na transcrição — ${tErr.message}`, "whatsapp");
       await this.sendMessage(jid, "😕 Não consegui entender o áudio. Tente falar com mais clareza ou envie uma mensagem de texto.");
@@ -1158,6 +1162,7 @@ class WhatsAppManager {
     await this.sendMessage(jid, `🎙️ Entendi: _${transcription}_`);
 
     const result = await detectIntentAndProcess(transcription, userId);
+    logAiUsage(userId, "intent_detection").catch(() => {});
     log(`WhatsApp: intent=${result.intent} (áudio) para userId=${userId}`, "whatsapp");
     logWhatsappMessage(jid.split("@")[0], "audio", result.intent, userId).catch(() => {});
     const reply = await this.buildReply(result, userId, jid);
@@ -1206,6 +1211,7 @@ class WhatsAppManager {
     let extracted: any;
     try {
       extracted = await processPDFExtract(buffer, userId);
+      logAiUsage(userId, "pdf_extract").catch(() => {});
       logWhatsappMessage(jid.split("@")[0], "document_pdf", extracted?.docType ?? "unknown", userId).catch(() => {});
     } catch (aiErr: any) {
       log(`WhatsApp: falha ao processar PDF — ${aiErr.message}`, "whatsapp");
@@ -1592,6 +1598,7 @@ class WhatsAppManager {
 
       case "chat": {
         const chatReply = await chatWithContext(result.rawText, userId).catch(() => null);
+        logAiUsage(userId, "chat").catch(() => {});
         return chatReply || "💬 Mensagem recebida!";
       }
 

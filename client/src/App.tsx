@@ -73,6 +73,7 @@ import Reports from "@/pages/reports";
 import BusinessLanding from "@/pages/business-landing";
 import BusinessAuthPage from "@/pages/business-auth-page";
 import AdminPanel from "@/pages/admin/AdminPanel";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { BusinessLayout } from "@/components/BusinessLayout";
 import BusinessWelcome from "@/pages/business/BusinessWelcome";
 import { BusinessThemeProvider } from "@/components/theme-provider";
@@ -175,7 +176,7 @@ function AppRouter() {
       if (location.startsWith("/business/app")) {
         setLocation("/business/auth");
       } else {
-        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business", "/pricing", "/admin"];
+        const publicPaths = ["/", "/auth", "/business/auth", "/privacy", "/business", "/pricing", "/admin", "/reset-password"];
         if (!publicPaths.includes(location) && !location.startsWith("/r/")) {
           setLocation("/");
         }
@@ -241,6 +242,7 @@ function AppRouter() {
             )}
           </Route>
           <Route path="/r/:token" component={PublicReport} />
+          <Route path="/reset-password" component={ResetPasswordPage} />
           <Route path="/business" component={BusinessLanding} />
           <Route path="/">
             {() => (
@@ -266,6 +268,7 @@ function AppRouter() {
       <Switch>
         <Route path="/admin" component={AdminPanel} />
         <Route path="/r/:token" component={PublicReport} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/business/welcome">
           {() => <BusinessThemeProvider><BusinessWelcome /></BusinessThemeProvider>}
         </Route>

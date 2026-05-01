@@ -22,7 +22,7 @@ import { whatsappManager } from "./whatsapp";
 export { logAiUsage, logWhatsappMessage } from "./adminLogger";
 
 // ─── Admin guard middleware ────────────────────────────────────────────────────
-async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) return res.status(403).json({ message: "ADMIN_EMAIL not configured" });
@@ -37,6 +37,20 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   } catch (err: any) {
     log(`requireAdmin error: ${err?.message}`, "admin");
     res.status(500).json({ message: "Erro interno" });
+  }
+}
+
+/** Boolean helper — safe to call from any route. Does NOT set req.adminUser. */
+export async function isAdminRequest(req: Request): Promise<boolean> {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) return false;
+    const userId = (req as any).session?.userId;
+    if (!userId) return false;
+    const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+    return user?.email === adminEmail;
+  } catch {
+    return false;
   }
 }
 
@@ -293,25 +307,41 @@ export function registerAdminRoutes(app: Express) {
       const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
       if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
 
-      // Generate a temporary password
-      const bcrypt = await import("bcryptjs");
-      const tempPassword = Math.random().toString(36).slice(-10) + "Ax!";
-      const hashed = await bcrypt.hash(tempPassword, 10);
-      await db.update(users).set({ password: hashed, updatedAt: new Date() }).where(eq(users.id, req.params.id));
+      // Generate a secure random reset token (hex string)
+      const crypto = await import("crypto");
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      // Send email with temp password (if SendGrid is configured)
+      // Store raw token — it is single-use and time-limited
+      await db.update(users).set({
+        passwordResetToken: rawToken,
+        passwordResetExpiry: expiry,
+        updatedAt: new Date(),
+      }).where(eq(users.id, req.params.id));
+
+      const appUrl = process.env.APP_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+      const resetLink = `${appUrl}/reset-password?token=${rawToken}`;
+
       try {
         await sendEmail({
           to: targetUser.email!,
-          subject: "AXIS — Senha Temporária / Temporary Password",
-          html: `<p>Sua senha foi redefinida pelo administrador.</p><p><strong>Senha temporária:</strong> <code>${tempPassword}</code></p><p>Por favor, troque imediatamente após o login.</p><hr/><p>Your password was reset by an administrator.</p><p><strong>Temporary password:</strong> <code>${tempPassword}</code></p><p>Please change it immediately after logging in.</p>`,
+          subject: "AXIS — Redefinição de Senha / Password Reset",
+          html: `
+            <p>O administrador solicitou a redefinição da sua senha AXIS.</p>
+            <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Redefinir Senha</a></p>
+            <p>O link expira em 24 horas. Se não solicitou, ignore este e-mail.</p>
+            <hr/>
+            <p>An administrator initiated a password reset for your AXIS account.</p>
+            <p><a href="${resetLink}" style="background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Reset Password</a></p>
+            <p>This link expires in 24 hours. If you did not request this, please ignore this email.</p>
+          `,
         });
       } catch (emailErr: any) {
         log(`reset-password email failed: ${emailErr?.message}`, "admin");
       }
 
       await logAudit(actor.id, actor.email, "user.reset_password", "user", req.params.id, { email: targetUser.email });
-      res.json({ success: true, message: `Password reset for ${targetUser.email}` });
+      res.json({ success: true, message: `Password reset link sent to ${targetUser.email}` });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -536,7 +566,16 @@ export function registerAdminRoutes(app: Express) {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      const totalCountResult = await db.execute(sql`SELECT COUNT(*)::int as count FROM transactions t LEFT JOIN users u ON u.id = t.user_id WHERE (${search} = '' OR t.description ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})`);
+      const totalCountResult = await db.execute(sql`
+        SELECT COUNT(*)::int as count
+        FROM transactions t
+        LEFT JOIN users u ON u.id = t.user_id
+        WHERE (${search} = '' OR t.description ILIKE ${'%' + search + '%'} OR u.email ILIKE ${'%' + search + '%'})
+          AND (${typeFilter || ''} = '' OR t.type = ${typeFilter || ''})
+          AND (${categoryFilter || ''} = '' OR t.category_name = ${categoryFilter || ''})
+          AND (${dateFrom || ''} = '' OR t.date >= ${dateFrom ? new Date(dateFrom) : new Date(0)})
+          AND (${dateTo || ''} = '' OR t.date <= ${dateTo ? new Date(dateTo) : new Date()})
+      `);
 
       res.json({ transactions: rows.rows, total: (totalCountResult.rows[0] as any)?.count ?? 0, page, limit });
     } catch (err: any) {
