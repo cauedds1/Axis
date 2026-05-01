@@ -24,6 +24,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 const pendingChatBills = new Map<string, { extracted: any; expiresAt: number }>();
 
 function serverError(res: any, err: any): void {
+  console.error("[server] 500 error:", err?.message || err);
   const msg = process.env.NODE_ENV === "production" ? "Internal Server Error" : (err?.message || "Internal Server Error");
   res.status(500).json({ message: msg });
 }
