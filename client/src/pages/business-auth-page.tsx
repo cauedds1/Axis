@@ -100,7 +100,7 @@ function DemoCard({ def, delay }: { def: typeof DEMO_CARD_DEFS[0]; delay: number
 function BrandPanel() {
   const { t } = useTranslation();
   return (
-    <div className="relative flex flex-col justify-between h-full p-10 xl:p-14 overflow-hidden">
+    <div className="relative flex flex-col h-full p-8 xl:p-12 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "#060608" }} />
       <div className="absolute top-[-15%] right-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(59,130,246,0.10) 0%, rgba(99,102,241,0.05) 40%, transparent 65%)`, filter: "blur(90px)" }} />
       <div className="absolute bottom-[-10%] left-[-15%] w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 55%)`, filter: "blur(70px)" }} />
@@ -113,50 +113,52 @@ function BrandPanel() {
       <div className="absolute top-[30%] right-[30%] w-px h-20 rotate-45 landing-float-2" style={{ background: `linear-gradient(to bottom, transparent, rgba(59,130,246,0.15), transparent)` }} />
       <div className="absolute bottom-[45%] left-[22%] w-px h-24 -rotate-12 landing-float-1" style={{ background: `linear-gradient(to bottom, transparent, rgba(99,102,241,0.12), transparent)` }} />
 
-      <div className="relative z-10">
-        <div className="flex items-center gap-3.5 mb-1">
-          <img src="/logo-business.png" alt="AXIS Business" className="w-16 h-16 rounded-2xl object-cover" />
-          <div>
-            <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">
-              AXIS <span style={{ color: PRIMARY }}>Business</span>
-            </span>
+      <div className="relative z-10 flex flex-col justify-between flex-1 max-w-[420px]">
+        <div>
+          <div className="flex items-center gap-3.5 mb-1">
+            <img src="/logo-business.png" alt="AXIS Business" className="w-14 h-14 rounded-2xl object-cover" />
+            <div>
+              <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">
+                AXIS <span style={{ color: PRIMARY }}>Business</span>
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative z-10 flex-1 flex flex-col justify-start pt-0 pb-10 gap-8">
+        <div className="flex-1 flex flex-col justify-center py-8 gap-7">
+          <div>
+            <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-4">
+              <span className="text-white">{t("axisBizAuth.heroTitle1")}</span>{" "}
+              <span style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 50%, ${TERTIARY} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                {t("axisBizAuth.heroTitle2")}
+              </span>
+              <br />
+              <span className="text-white/30 text-3xl xl:text-4xl">{t("axisBizAuth.heroSub")}</span>
+            </h2>
+            <FeatureRotator />
+          </div>
+          <div className="flex flex-col gap-3">
+            {DEMO_CARD_DEFS.map((def, i) => (
+              <DemoCard key={i} def={def} delay={i * 0.12} />
+            ))}
+          </div>
+        </div>
+
         <div>
-          <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
-            <span className="text-white">{t("axisBizAuth.heroTitle1")}</span>{" "}
-            <span style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 50%, ${TERTIARY} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              {t("axisBizAuth.heroTitle2")}
-            </span>
-            <br />
-            <span className="text-white/30 text-3xl xl:text-4xl">{t("axisBizAuth.heroSub")}</span>
-          </h2>
-          <FeatureRotator />
-        </div>
-        <div className="flex flex-col gap-3">
-          {DEMO_CARD_DEFS.map((def, i) => (
-            <DemoCard key={i} def={def} delay={i * 0.12} />
-          ))}
-        </div>
-      </div>
-
-      <div className="relative z-10">
-        <div className="h-px w-full mb-5" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
-        <div className="flex items-center gap-6">
-          {[
-            { label: t("axisBizAuth.modReceipts"), color: PRIMARY },
-            { label: t("axisBizAuth.modApprovals"), color: SECONDARY },
-            { label: t("axisBizAuth.modAudit"), color: TERTIARY },
-            { label: t("axisBizAuth.modReports"), color: ACCENT },
-          ].map((mod) => (
-            <div key={mod.label} className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
-              <span className="text-xs text-white/25" data-testid={`text-module-${mod.label.toLowerCase()}`}>{mod.label}</span>
-            </div>
-          ))}
+          <div className="h-px w-full mb-4" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
+          <div className="flex items-center gap-6">
+            {[
+              { label: t("axisBizAuth.modReceipts"), color: PRIMARY },
+              { label: t("axisBizAuth.modApprovals"), color: SECONDARY },
+              { label: t("axisBizAuth.modAudit"), color: TERTIARY },
+              { label: t("axisBizAuth.modReports"), color: ACCENT },
+            ].map((mod) => (
+              <div key={mod.label} className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
+                <span className="text-xs text-white/25" data-testid={`text-module-${mod.label.toLowerCase()}`}>{mod.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

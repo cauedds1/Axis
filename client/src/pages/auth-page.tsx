@@ -111,7 +111,7 @@ function BrandPanel() {
     { key: "module3", color: LP.success },
   ];
   return (
-    <div className="relative flex flex-col justify-between h-full p-10 xl:p-14 overflow-hidden">
+    <div className="relative flex flex-col h-full p-8 xl:p-12 overflow-hidden">
       <div className="absolute inset-0" style={{ background: "#060608" }} />
 
       <div className="absolute top-[-15%] right-[-5%] w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgba(${LP.primaryRgb},0.09) 0%, rgba(${LP.secondaryRgb},0.04) 40%, transparent 65%)`, filter: "blur(90px)" }} />
@@ -127,45 +127,47 @@ function BrandPanel() {
       <div className="absolute top-[30%] right-[30%] w-px h-20 rotate-45 landing-float-2" style={{ background: `linear-gradient(to bottom, transparent, ${LP.primary}18, transparent)` }} />
       <div className="absolute bottom-[45%] left-[22%] w-px h-24 -rotate-12 landing-float-1" style={{ background: `linear-gradient(to bottom, transparent, ${LP.secondary}14, transparent)` }} />
 
-      <div className="relative z-10">
-        <div className="flex items-center gap-3.5 mb-1">
-          <img src="/logo.png" alt="AXIS" className="w-16 h-16 rounded-2xl object-cover" />
-          <div>
-            <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">AXIS</span>
-            <span className="text-xs text-white/25 tracking-wide">{t("axisAuth.brandSubtitle")}</span>
+      <div className="relative z-10 flex flex-col justify-between flex-1 max-w-[420px]">
+        <div>
+          <div className="flex items-center gap-3.5 mb-1">
+            <img src="/logo.png" alt="AXIS" className="w-14 h-14 rounded-2xl object-cover" />
+            <div>
+              <span className="text-2xl font-bold tracking-tight text-white block" data-testid="text-brand-name">AXIS</span>
+              <span className="text-xs text-white/25 tracking-wide">{t("axisAuth.brandSubtitle")}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative z-10 flex-1 flex flex-col justify-center py-10 gap-8">
+        <div className="flex-1 flex flex-col justify-center py-8 gap-7">
+          <div>
+            <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-4">
+              <span className="text-white">{t("axisAuth.heroTitle1")}</span>{" "}
+              <span style={{ background: `linear-gradient(135deg, ${LP.primary} 0%, ${LP.secondary} 50%, ${LP.tertiary} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                {t("axisAuth.heroGradient")}
+              </span>
+              <br />
+              <span className="text-white/30 text-3xl xl:text-4xl">{t("axisAuth.heroSubtitle")}</span>
+            </h2>
+            <FeatureRotator />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {[0, 1, 2].map((i) => (
+              <DemoCard key={i} cardIndex={i} delay={i * 0.12} />
+            ))}
+          </div>
+        </div>
+
         <div>
-          <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-5">
-            <span className="text-white">{t("axisAuth.heroTitle1")}</span>{" "}
-            <span style={{ background: `linear-gradient(135deg, ${LP.primary} 0%, ${LP.secondary} 50%, ${LP.tertiary} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
-              {t("axisAuth.heroGradient")}
-            </span>
-            <br />
-            <span className="text-white/30 text-3xl xl:text-4xl">{t("axisAuth.heroSubtitle")}</span>
-          </h2>
-          <FeatureRotator />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <DemoCard key={i} cardIndex={i} delay={i * 0.12} />
-          ))}
-        </div>
-      </div>
-
-      <div className="relative z-10">
-        <div className="h-px w-full mb-5" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
-        <div className="flex items-center gap-6">
-          {modules.map((mod) => (
-            <div key={mod.key} className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
-              <span className="text-xs text-white/25" data-testid={`text-module-${mod.key}`}>{t(`axisAuth.${mod.key}`)}</span>
-            </div>
-          ))}
+          <div className="h-px w-full mb-4" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent)" }} />
+          <div className="flex items-center gap-6">
+            {modules.map((mod) => (
+              <div key={mod.key} className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: mod.color, boxShadow: `0 0 6px ${mod.color}60` }} />
+                <span className="text-xs text-white/25" data-testid={`text-module-${mod.key}`}>{t(`axisAuth.${mod.key}`)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
