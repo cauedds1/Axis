@@ -397,3 +397,109 @@ export async function sendPasswordResetCodeEmail(
     html,
   });
 }
+
+export async function sendReimbursementCollaboratorEmail(opts: {
+  collaboratorEmail: string;
+  collaboratorName: string;
+  managerName: string;
+  orgName: string;
+  amount: number;
+  description: string;
+  paidAt: Date;
+}): Promise<void> {
+  const { collaboratorEmail, collaboratorName, managerName, orgName, amount, description, paidAt } = opts;
+  const amountFmt = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const dateFmt = paidAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const html = baseTemplate(`
+    <div class="badge-info">✅ Reembolso processado</div>
+    <h1>Seu reembolso foi enviado</h1>
+    <p>Olá, <strong style="color:#fff;">${collaboratorName.split(" ")[0]}</strong>.</p>
+    <p>Informamos que o seu reembolso referente à despesa abaixo foi processado por <strong style="color:#fff;">${managerName}</strong> em nome de <strong style="color:#fff;">${orgName}</strong>.</p>
+
+    <hr class="divider"/>
+
+    <div style="margin: 20px 0;">
+      <div class="stat-row">
+        <span class="stat-label">Descrição</span>
+        <span class="stat-value" style="font-size:13px;">${description}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Valor</span>
+        <span class="stat-value highlight">${amountFmt}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Data de pagamento</span>
+        <span class="stat-value" style="font-size:13px;">${dateFmt}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Empresa</span>
+        <span class="stat-value" style="font-size:13px;">${orgName}</span>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <p style="font-size:13px; color:rgba(255,255,255,0.4);">Caso tenha dúvidas sobre este reembolso, entre em contato com o seu gestor ou acesse o AXIS para verificar o histórico completo.</p>
+    <a href="${APP_URL}" class="cta">Acessar AXIS →</a>
+  `);
+
+  await sendEmail({
+    to: collaboratorEmail,
+    subject: `✅ Reembolso de ${amountFmt} processado — ${orgName}`,
+    html,
+  });
+}
+
+export async function sendReimbursementManagerEmail(opts: {
+  managerEmail: string;
+  managerName: string;
+  collaboratorName: string;
+  orgName: string;
+  amount: number;
+  description: string;
+  paidAt: Date;
+}): Promise<void> {
+  const { managerEmail, managerName, collaboratorName, orgName, amount, description, paidAt } = opts;
+  const amountFmt = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const dateFmt = paidAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const html = baseTemplate(`
+    <div class="badge-purple">📋 Reembolso confirmado</div>
+    <h1>Reembolso registrado com sucesso</h1>
+    <p>Olá, <strong style="color:#fff;">${managerName.split(" ")[0]}</strong>.</p>
+    <p>Este é um comprovante de que o reembolso abaixo foi marcado como enviado em <strong style="color:#fff;">${orgName}</strong>. O colaborador foi notificado automaticamente.</p>
+
+    <hr class="divider"/>
+
+    <div style="margin: 20px 0;">
+      <div class="stat-row">
+        <span class="stat-label">Colaborador</span>
+        <span class="stat-value" style="font-size:13px;">${collaboratorName}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Descrição</span>
+        <span class="stat-value" style="font-size:13px;">${description}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Valor reembolsado</span>
+        <span class="stat-value highlight">${amountFmt}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Data de registro</span>
+        <span class="stat-value" style="font-size:13px;">${dateFmt}</span>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <p style="font-size:13px; color:rgba(255,255,255,0.4);">Guarde este email como comprovante. Você pode consultar todos os reembolsos no painel do AXIS Business.</p>
+    <a href="${APP_URL}/business" class="cta">Acessar painel Business →</a>
+  `);
+
+  await sendEmail({
+    to: managerEmail,
+    subject: `📋 Reembolso de ${amountFmt} para ${collaboratorName} registrado — ${orgName}`,
+    html,
+  });
+}

@@ -16,6 +16,8 @@ import { eq } from "drizzle-orm";
 import { whatsappManager, whatsappManagers, getWhatsAppMode, getWhatsAppManager } from "./whatsapp";
 import { generateExpenseExcel } from "./business-reports";
 import { uploadBase64Image, isStorageConfigured } from "./lib/file-storage";
+import { authStorage } from "./replit_integrations/auth/storage";
+import { sendReimbursementCollaboratorEmail, sendReimbursementManagerEmail } from "./integrations/sendgrid";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -3545,6 +3547,49 @@ export async function registerRoutes(
 
       if (["approved", "rejected", "paid"].includes(status)) {
         whatsappManager.notifyCollaboratorExpenseStatus(updated, status, rejectionComment).catch(() => {});
+      }
+
+      if (status === "paid" && updated) {
+        (async () => {
+          try {
+            const [collaborator, manager] = await Promise.all([
+              authStorage.getUser(updated.userId),
+              authStorage.getUser(userId),
+            ]);
+            const orgName = org.tradeName || org.name;
+            const paidAt = updated.paidAt ?? new Date();
+
+            if (collaborator?.email) {
+              const collabName = [collaborator.firstName, collaborator.lastName].filter(Boolean).join(" ") || collaborator.email;
+              const managerName = manager ? [manager.firstName, manager.lastName].filter(Boolean).join(" ") || manager.email! : "Gestor";
+              await sendReimbursementCollaboratorEmail({
+                collaboratorEmail: collaborator.email,
+                collaboratorName: collabName,
+                managerName,
+                orgName,
+                amount: updated.amount,
+                description: updated.description,
+                paidAt,
+              });
+            }
+
+            if (manager?.email) {
+              const managerName = [manager.firstName, manager.lastName].filter(Boolean).join(" ") || manager.email;
+              const collabName = collaborator ? [collaborator.firstName, collaborator.lastName].filter(Boolean).join(" ") || collaborator.email! : "Colaborador";
+              await sendReimbursementManagerEmail({
+                managerEmail: manager.email,
+                managerName,
+                collaboratorName: collabName,
+                orgName,
+                amount: updated.amount,
+                description: updated.description,
+                paidAt,
+              });
+            }
+          } catch (emailErr) {
+            log(`Reimbursement email error: ${(emailErr as any)?.message}`, "email");
+          }
+        })();
       }
 
       res.json(updated);
