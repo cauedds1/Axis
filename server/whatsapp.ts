@@ -1529,6 +1529,32 @@ class WhatsAppManager {
       case "income": {
         const amount = Number(data.amount);
         const categoryName = data.categoryName || "outros";
+
+        // In BUSINESS instance: route expenses directly to the org (text-based expense flow)
+        if (this.instanceName === "business" && intent === "expense") {
+          const userOrgs = await storage.getUserOrganizations(userId);
+          if (userOrgs.length > 0) {
+            const org = userOrgs[0];
+            await storage.createBusinessExpense({
+              organizationId: org.id,
+              userId,
+              amount: amount as any,
+              description: data.description || categoryName,
+              categoryName,
+              establishment: data.establishment || null,
+              paymentMethod: null,
+              receiptItems: null,
+              receiptImageBase64: undefined,
+              receiptImageUrl: undefined,
+              date: data.date ? new Date(data.date) : new Date(),
+              source: "whatsapp",
+              status: "pending_review",
+            } as any);
+            log(`WhatsApp [business] despesa corporativa via texto — userId=${userId} org=${org.id}`, "whatsapp");
+            return `✅ *Despesa corporativa registrada!*\n💸 R$ ${amount.toFixed(2).replace(".", ",")} em *${categoryName}*\n\n📋 Salvo em *${org.name}* — aguardando aprovação do gestor.`;
+          }
+        }
+
         if (data.creditCardId && data.installments && data.installments > 1) {
           const card = await storage.getCreditCard(data.creditCardId, userId);
           if (card) {
