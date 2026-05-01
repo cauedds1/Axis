@@ -125,19 +125,18 @@ function BrandPanel() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center py-8 gap-7">
+        <div className="flex-1 flex flex-col justify-center py-6 gap-6">
           <div>
-            <h2 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.08] mb-4">
+            <h2 className="text-3xl xl:text-4xl font-bold tracking-tight leading-[1.1] mb-2">
               <span className="text-white">{t("axisBizAuth.heroTitle1")}</span>{" "}
               <span style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 50%, ${TERTIARY} 100%)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 {t("axisBizAuth.heroTitle2")}
               </span>
-              <br />
-              <span className="text-white/30 text-3xl xl:text-4xl">{t("axisBizAuth.heroSub")}</span>
             </h2>
+            <p className="text-sm text-white/35 leading-relaxed mb-3">{t("axisBizAuth.heroSub")}</p>
             <FeatureRotator />
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             {DEMO_CARD_DEFS.map((def, i) => (
               <DemoCard key={i} def={def} delay={i * 0.12} />
             ))}
