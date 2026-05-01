@@ -8,7 +8,7 @@
 Antes de publicar, você precisará:
 1. Capturar **screenshots** do painel admin (`/admin`) com métricas reais
 2. Capturar o **dashboard do Stripe** mostrando receita e assinantes
-3. Gravar um **vídeo-demo** de 2–5 min mostrando o fluxo completo (opcional, mas aumenta conversão em ~40%)
+3. Gravar um **vídeo-demo** de 2–5 min mostrando o fluxo completo (opcional, mas recomendado — listings com vídeo tendem a converter melhor)
 4. Definir se a venda inclui o **domínio customizado** (se houver) e ajustar o preço pedido de acordo
 5. Criar conta no Flippa em [flippa.com](https://flippa.com) e iniciar o processo em "Sell > SaaS"
 
@@ -49,7 +49,7 @@ Full-stack SaaS with personal finance, habits, tasks, AI chat, and a multi-tenan
 
 AXIS is a production-ready, AI-powered SaaS platform with two integrated products in one codebase:
 
-**AXIS Personal** — a life organizer that helps users manage finances, tasks, habits, agenda, and goals through voice or text commands. The AI understands natural language ("I spent R$35 on lunch"), categorizes the expense automatically, and updates the dashboard in real time.
+**AXIS Personal** — a life organizer that helps users manage finances, tasks, habits, agenda, and goals through voice or text commands. The AI understands natural language ("I spent $12 on lunch"), categorizes the expense automatically, and updates the dashboard in real time.
 
 **AXIS Business** — a corporate expense management system with multi-tenant organization support. Teams submit expenses via WhatsApp photos, admins approve or reject, and finance managers export detailed reports.
 
