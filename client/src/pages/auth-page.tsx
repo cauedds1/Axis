@@ -174,30 +174,6 @@ function BrandPanel() {
 
 const SAGE = "rgba(122,158,138,";
 
-const PERSONAL_PLANS = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "Grátis",
-    priceDetail: "para sempre",
-    icon: Star,
-    iconColor: "text-white/40",
-    highlight: false,
-    features: ["200 transações/mês", "30 capturas AI/mês", "10 msgs de chat/mês", "2 metas · 5 hábitos"],
-  },
-  {
-    id: "personal_ai",
-    name: "Personal AI",
-    price: "R$9",
-    priceDetail: "/mês",
-    trialNote: "7 dias grátis",
-    icon: Zap,
-    iconColor: "text-yellow-400",
-    highlight: true,
-    features: ["Tudo ilimitado", "Transcrição de voz", "WhatsApp foto & PDF", "Chat AI ilimitado"],
-  },
-];
-
 function PlanSelectionStep({
   onSelect,
   isLoading,
@@ -209,7 +185,52 @@ function PlanSelectionStep({
   error: string | null;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
+
+  const personalPlans = [
+    {
+      id: "starter",
+      name: "Starter",
+      price: t("axisAuth.planFree"),
+      priceDetail: t("axisAuth.planForever"),
+      trialNote: null as string | null,
+      iconColor: "text-white/40",
+      highlight: false,
+      icon: Star,
+      features: [
+        t("axisAuth.planStarterF1"),
+        t("axisAuth.planStarterF2"),
+        t("axisAuth.planStarterF3"),
+        t("axisAuth.planStarterF4"),
+      ],
+    },
+    {
+      id: "personal_ai",
+      name: "Personal AI",
+      price: "$9",
+      priceDetail: "/mo",
+      trialNote: t("axisAuth.planTrial7"),
+      iconColor: "text-yellow-400",
+      highlight: true,
+      icon: Zap,
+      features: [
+        t("axisAuth.planPersonalF1"),
+        t("axisAuth.planPersonalF2"),
+        t("axisAuth.planPersonalF3"),
+        t("axisAuth.planPersonalF4"),
+      ],
+    },
+  ];
+
+  const teamFeatures = [
+    t("axisAuth.planTeamF1"),
+    t("axisAuth.planTeamF2"),
+    t("axisAuth.planTeamF3"),
+    t("axisAuth.planTeamF4"),
+    t("axisAuth.planTeamF5"),
+    t("axisAuth.planTeamF6"),
+  ];
 
   return (
     <motion.div
@@ -226,21 +247,21 @@ function PlanSelectionStep({
           className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/50 transition-colors mb-5"
           data-testid="button-plan-back"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("axisAuth.back")}
         </button>
-        <h1 className="text-2xl font-bold tracking-tight mb-1.5">Escolha seu plano</h1>
-        <p className="text-sm text-white/35">Sua conta só é criada após escolher e confirmar.</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1.5">{t("axisAuth.planStepTitle")}</h1>
+        <p className="text-sm text-white/35">{t("axisAuth.planStepSub")}</p>
       </div>
 
-      {/* ── AXIS Pessoal ── */}
+      {/* ── AXIS Personal / Pessoal ── */}
       <div className="mb-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: `${SAGE}1)` }} />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">AXIS Pessoal</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">{t("axisAuth.axisPessoal")}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
-          {PERSONAL_PLANS.map((plan) => {
+          {personalPlans.map((plan) => {
             const Icon = plan.icon;
             const isSelected = selected === plan.id;
             return (
@@ -251,14 +272,10 @@ function PlanSelectionStep({
                 className="text-left rounded-xl p-3.5 transition-all"
                 style={{
                   background: isSelected
-                    ? plan.highlight
-                      ? `${SAGE}0.12)`
-                      : "rgba(255,255,255,0.06)"
+                    ? plan.highlight ? `${SAGE}0.12)` : "rgba(255,255,255,0.06)"
                     : "rgba(255,255,255,0.02)",
                   border: isSelected
-                    ? plan.highlight
-                      ? `1.5px solid ${SAGE}0.5)`
-                      : "1.5px solid rgba(255,255,255,0.2)"
+                    ? plan.highlight ? `1.5px solid ${SAGE}0.5)` : "1.5px solid rgba(255,255,255,0.2)"
                     : "1px solid rgba(255,255,255,0.07)",
                 }}
                 data-testid={`button-select-plan-${plan.id}`}
@@ -297,7 +314,7 @@ function PlanSelectionStep({
       <div className="mb-5">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">AXIS Business</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">{t("axisAuth.axisBusiness")}</span>
         </div>
 
         <button
@@ -323,11 +340,11 @@ function PlanSelectionStep({
             )}
           </div>
           <div className="flex items-baseline gap-1 mb-2">
-            <span className="text-base font-bold text-white/80">R$29</span>
-            <span className="text-[10px] text-white/30">/mês</span>
+            <span className="text-base font-bold text-white/80">$29</span>
+            <span className="text-[10px] text-white/30">/mo</span>
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-            {["Tudo do Personal AI", "Versão Business completa", "Múltiplos colaboradores", "Relatórios de equipe", "Suporte prioritário", "Exportação de dados"].map((f) => (
+            {teamFeatures.map((f) => (
               <p key={f} className="text-[10px] text-white/40 flex items-start gap-1">
                 <span className="flex-shrink-0 text-purple-400/60">·</span>{f}
               </p>
@@ -336,7 +353,7 @@ function PlanSelectionStep({
           {selected === "team" && (
             <div className="mt-2.5 pt-2.5 flex items-center gap-1.5" style={{ borderTop: "1px solid rgba(168,85,247,0.15)" }}>
               <Building2 className="h-3 w-3 text-purple-400/60" />
-              <p className="text-[10px] text-purple-400/70">Acessa o AXIS Business após o pagamento</p>
+              <p className="text-[10px] text-purple-400/70">{t("axisAuth.planTeamBizNote")}</p>
             </div>
           )}
         </button>
@@ -366,12 +383,12 @@ function PlanSelectionStep({
         ) : (
           <>
             {!selected
-              ? "Selecione um plano"
+              ? t("axisAuth.planSelectBtn")
               : selected === "starter"
-                ? "Criar conta grátis"
+                ? t("axisAuth.planCtaFree")
                 : selected === "personal_ai"
-                  ? "Criar conta e ir para pagamento"
-                  : "Criar conta Business e pagar"}
+                  ? t("axisAuth.planCtaPaid")
+                  : t("axisAuth.planCtaBiz")}
             {!isLoading && selected && <ArrowRight className="h-4 w-4" />}
           </>
         )}
@@ -379,7 +396,7 @@ function PlanSelectionStep({
 
       <p className="text-center text-[10px] text-white/20 mt-3">
         <Shield className="inline h-3 w-3 mr-1 opacity-60" />
-        Pagamento seguro via Stripe · Cancele quando quiser
+        {t("axisAuth.planSecurityNote")}
       </p>
     </motion.div>
   );
@@ -641,7 +658,7 @@ export default function AuthPage() {
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
-                            {isLogin ? t("axisAuth.loginBtn") : "Próximo: escolher plano"}
+                            {isLogin ? t("axisAuth.loginBtn") : t("axisAuth.nextChoosePlan")}
                             <ArrowRight className="h-4 w-4" />
                           </>
                         )}

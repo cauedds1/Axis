@@ -746,17 +746,17 @@ export default function BusinessAuthPage() {
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <Users className="h-3.5 w-3.5 text-purple-400" />
-                        <span className="text-xs font-semibold text-white/70">Plano Team · R$29/mês</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase" style={{ background: "rgba(139,92,246,0.2)", color: "rgb(192,132,252)" }}>Necessário</span>
+                        <span className="text-xs font-semibold text-white/70">{t("pricing.bizTeamPlan")}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase" style={{ background: "rgba(139,92,246,0.2)", color: "rgb(192,132,252)" }}>{t("pricing.bizTeamRequired")}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                        {["Business completo", "Múltiplos colaboradores", "Relatórios de equipe", "Suporte prioritário"].map((f) => (
+                        {[t("pricing.bizTeamF1"), t("pricing.bizTeamF2"), t("pricing.bizTeamF3"), t("pricing.bizTeamF4")].map((f) => (
                           <p key={f} className="text-[10px] text-white/40 flex items-center gap-1">
                             <Check className="h-2.5 w-2.5 text-purple-400/70 flex-shrink-0" />{f}
                           </p>
                         ))}
                       </div>
-                      <p className="text-[10px] text-white/25 mt-2">Você será redirecionado para o pagamento após criar a conta.</p>
+                      <p className="text-[10px] text-white/25 mt-2">{t("pricing.bizTeamRedirect")}</p>
                     </div>
 
                     {submitError && (
@@ -771,7 +771,7 @@ export default function BusinessAuthPage() {
                         <ArrowLeft className="h-4 w-4" /> {t("axisBizAuth.back")}
                       </button>
                       <button type="submit" disabled={isLoading} className="flex-[2] py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-auth-submit">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Criar conta e ir para pagamento</span><ArrowRight className="h-4 w-4" /></>}
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>{t("pricing.bizCreateAndPay")}</span><ArrowRight className="h-4 w-4" /></>}
                       </button>
                     </div>
                   </motion.form>
