@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -858,118 +858,171 @@ function WhatsAppSection() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
-  const [botNumber, setBotNumber] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [qrPolling, setQrPolling] = useState(false);
 
-  // Backend: {configuredNumber, displayName, connectedPhone, status, isNumberMatch}
-  const { data: configData, isLoading: configLoading } = useQuery<any>({ queryKey: ["/api/admin/whatsapp/config"] });
+  // Use the same existing WhatsApp status endpoint the main app uses (admin gets QR code)
+  const { data: statusData, isLoading: statusLoading } = useQuery<any>({
+    queryKey: ["/api/whatsapp/status"],
+    queryFn: () => adminFetch("/api/whatsapp/status"),
+    refetchInterval: qrPolling ? 3000 : false,
+  });
+
   const { data: logsData, isLoading: logsLoading } = useQuery<any>({
     queryKey: ["/api/admin/whatsapp/logs", page],
     queryFn: () => adminFetch(`/api/admin/whatsapp/logs?page=${page}&limit=20`),
   });
 
-  const isConnected = configData?.status === "connected" || configData?.connectedPhone != null;
+  const status = statusData?.status ?? "disconnected";
+  const isConnected = status === "connected";
+  const hasQr = !!statusData?.qrCode;
 
-  const saveConfig = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/whatsapp/config", {
-      botNumber: botNumber || configData?.configuredNumber,
-      displayName: displayName || configData?.displayName,
-    }),
-    onSuccess: () => {
-      toast({ title: t("whatsapp.saved") });
-      qc.invalidateQueries({ queryKey: ["/api/admin/whatsapp/config"] });
-    },
-  });
-
-  const resetConnection = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/admin/whatsapp/config", { botNumber: "", displayName: "" }),
-    onSuccess: () => {
-      toast({ title: "WhatsApp connection reset" });
-      qc.invalidateQueries({ queryKey: ["/api/admin/whatsapp/config"] });
-      setConfirmReset(false);
+  const connect = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/connect"),
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
+      if (data?.qrCode || data?.status === "connecting") {
+        setQrPolling(true);
+        toast({ title: t("whatsapp.connecting") });
+      } else if (data?.status === "connected") {
+        setQrPolling(false);
+        toast({ title: t("whatsapp.connected") });
+      }
     },
     onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
+
+  const disconnect = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/disconnect"),
+    onSuccess: () => {
+      setQrPolling(false);
+      setConfirmDisconnect(false);
+      toast({ title: t("whatsapp.disconnected") });
+      qc.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+  });
+
+  const reset = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/whatsapp/reset"),
+    onSuccess: () => {
+      setQrPolling(false);
+      setConfirmReset(false);
+      toast({ title: t("whatsapp.disconnected") });
+      qc.invalidateQueries({ queryKey: ["/api/whatsapp/status"] });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+  });
+
+  // Stop polling once connected
+  if (isConnected && qrPolling) setQrPolling(false);
 
   return (
     <div className="space-y-6">
       <SectionTitle>{t("whatsapp.title")}</SectionTitle>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* ─── Status card ─── */}
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <SubTitle>{t("whatsapp.connection")}</SubTitle>
-          <div className="flex items-center gap-2">
-            <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
-            <span className={`font-medium ${isConnected ? "text-green-400" : "text-red-400"}`}>
-              {isConnected ? t("whatsapp.connected") : t("whatsapp.disconnected")}
-            </span>
-          </div>
-          {configData?.connectedPhone && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Phone className="h-4 w-4" />
-              {configData.connectedPhone}
-            </div>
-          )}
-          {configData?.isNumberMatch === false && (
-            <div className="text-xs text-yellow-400 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Number mismatch with configured bot number
-            </div>
-          )}
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <SubTitle>{t("whatsapp.config")}</SubTitle>
-          {configLoading ? (
+          {statusLoading ? (
             <div className="text-muted-foreground text-sm">{t("common.loading")}</div>
           ) : (
             <>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("whatsapp.botNumber")}</Label>
-                <Input
-                  data-testid="input-bot-number"
-                  defaultValue={configData?.configuredNumber ?? ""}
-                  onChange={e => setBotNumber(e.target.value)}
-                  placeholder="+5511999999999"
-                />
+              <div className="flex items-center gap-2">
+                <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-400 animate-pulse" : status === "connecting" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
+                <span className={`font-medium ${isConnected ? "text-green-400" : status === "connecting" ? "text-yellow-400" : "text-red-400"}`}>
+                  {isConnected ? t("whatsapp.connected") : status === "connecting" ? t("whatsapp.connecting") : t("whatsapp.disconnected")}
+                </span>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">{t("whatsapp.displayName")}</Label>
-                <Input
-                  data-testid="input-display-name"
-                  defaultValue={configData?.displayName ?? ""}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder="AXIS Bot"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button data-testid="button-save-whatsapp-config" size="sm" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>
-                  {t("whatsapp.save")}
-                </Button>
-                {isConnected && (
+              {statusData?.phone && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Phone className="h-4 w-4" />
+                  {statusData.phone}
+                </div>
+              )}
+              <div className="flex gap-2 flex-wrap">
+                {!isConnected && (
                   <Button
-                    data-testid="button-reset-whatsapp"
-                    size="sm" variant="outline"
-                    className="text-destructive border-destructive/40"
-                    onClick={() => setConfirmReset(true)}
+                    data-testid="button-whatsapp-connect"
+                    size="sm" onClick={() => connect.mutate()} disabled={connect.isPending || status === "connecting"}
                   >
-                    <X className="h-3.5 w-3.5 mr-1" /> Disconnect
+                    {connect.isPending ? t("common.loading") : t("whatsapp.connect")}
                   </Button>
                 )}
+                {isConnected && (
+                  <Button
+                    data-testid="button-whatsapp-disconnect"
+                    size="sm" variant="outline"
+                    className="text-amber-400 border-amber-400/40"
+                    onClick={() => setConfirmDisconnect(true)}
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" /> {t("whatsapp.disconnect")}
+                  </Button>
+                )}
+                <Button
+                  data-testid="button-whatsapp-reset"
+                  size="sm" variant="outline"
+                  className="text-destructive border-destructive/40"
+                  onClick={() => setConfirmReset(true)}
+                >
+                  {t("whatsapp.resetConfig")}
+                </Button>
               </div>
             </>
           )}
         </div>
+
+        {/* ─── QR Code card ─── */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <SubTitle>QR Code</SubTitle>
+          {hasQr ? (
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">{t("whatsapp.scanQr")}</div>
+              <img
+                src={statusData.qrCode}
+                alt="WhatsApp QR Code"
+                className="rounded-lg border border-border w-48 h-48 object-contain bg-white"
+                data-testid="img-whatsapp-qr"
+              />
+              <div className="text-xs text-yellow-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> {t("whatsapp.qrExpires")}
+              </div>
+            </div>
+          ) : isConnected ? (
+            <div className="text-emerald-400 text-sm flex items-center gap-2">
+              <Check className="h-4 w-4" /> {t("whatsapp.connected")}
+            </div>
+          ) : (
+            <div className="text-muted-foreground text-sm">{t("whatsapp.connectFirst")}</div>
+          )}
+        </div>
       </div>
 
+      {/* ─── Disconnect dialog ─── */}
+      <Dialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>{t("whatsapp.disconnect")}</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">{t("whatsapp.disconnectNote")}</div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDisconnect(false)}>{t("common.cancel")}</Button>
+            <Button data-testid="button-confirm-disconnect-whatsapp" variant="destructive" onClick={() => disconnect.mutate()} disabled={disconnect.isPending}>
+              {t("whatsapp.disconnect")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Reset dialog ─── */}
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader><DialogTitle>Reset WhatsApp Connection</DialogTitle></DialogHeader>
-          <div className="text-sm text-muted-foreground">This will clear the configured number and disconnect the WhatsApp bot. You will need to reconfigure it afterwards.</div>
+          <DialogHeader><DialogTitle>{t("whatsapp.resetConfig")}</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">{t("whatsapp.resetNote")}</div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmReset(false)}>{t("common.cancel")}</Button>
-            <Button data-testid="button-confirm-reset-whatsapp" variant="destructive" onClick={() => resetConnection.mutate()} disabled={resetConnection.isPending}>
-              Disconnect
+            <Button data-testid="button-confirm-reset-whatsapp" variant="destructive" onClick={() => reset.mutate()} disabled={reset.isPending}>
+              {t("whatsapp.resetConfig")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1040,16 +1093,22 @@ function EmailLogsSection() {
               <tr>
                 <Th>{t("email.to")}</Th>
                 <Th>{t("email.alertType")}</Th>
+                <Th>{t("email.status")}</Th>
                 <Th>{t("email.sentAt")}</Th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 ? (
-                <EmptyRow colSpan={3} label={t("common.noData")} />
+                <EmptyRow colSpan={4} label={t("common.noData")} />
               ) : logs.map((l: any, i: number) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-email-${i}`}>
-                  <Td className="text-muted-foreground text-xs">{l.user_email ?? l.toEmail ?? l.to_email ?? l.userId ?? "—"}</Td>
+                  <Td className="text-muted-foreground text-xs">{l.recipient ?? l.user_email ?? l.userId ?? "—"}</Td>
                   <Td><Badge variant="outline" className="text-xs">{l.alert_type ?? l.alertType}</Badge></Td>
+                  <Td>
+                    <Badge variant="outline" className={`text-xs ${(l.status ?? "sent") === "failed" ? "border-red-500 text-red-400" : "border-green-500 text-green-400"}`}>
+                      {(l.status ?? "sent") === "failed" ? t("email.failed") : t("email.sent")}
+                    </Badge>
+                  </Td>
                   <Td className="text-muted-foreground">{fmtDateTime(l.sent_at ?? l.sentAt)}</Td>
                 </tr>
               ))}
@@ -1395,6 +1454,12 @@ export default function AdminPanel() {
     retry: false,
   });
 
+  const shouldRedirect = !checkLoading && (isError || !accessCheck?.isAdmin);
+
+  useEffect(() => {
+    if (shouldRedirect) setLocation("/");
+  }, [shouldRedirect, setLocation]);
+
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === "pt-BR" ? "en" : "pt-BR");
   };
@@ -1410,17 +1475,8 @@ export default function AdminPanel() {
     );
   }
 
-  if (isError || !accessCheck?.isAdmin) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <Lock className="h-10 w-10 text-destructive mx-auto" />
-          <div className="text-foreground font-semibold">Access Denied</div>
-          <div className="text-muted-foreground text-sm">Admin access required. Set ADMIN_EMAIL and log in as that user.</div>
-          <Button variant="outline" size="sm" onClick={() => setLocation("/")}>← Back to App</Button>
-        </div>
-      </div>
-    );
+  if (shouldRedirect) {
+    return null;
   }
 
   const renderSection = () => {

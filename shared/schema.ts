@@ -158,6 +158,8 @@ export const emailAlertLog = pgTable("email_alert_log", {
   userId: varchar("user_id").notNull(),
   alertType: text("alert_type").notNull(),
   referenceId: text("reference_id"),
+  recipient: text("recipient"),
+  status: text("status").default("sent"),
   sentAt: timestamp("sent_at").defaultNow(),
 });
 

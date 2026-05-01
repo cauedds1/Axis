@@ -72,9 +72,15 @@ export async function checkAndSendBillAlerts(userId: string): Promise<void> {
     const since25DaysAgo = new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000);
     const recentAlerts = await storage.getRecentAlerts(userId, "bill_due_soon", bill.id, since25DaysAgo);
     if (recentAlerts.length > 0) continue;
-    await sendBillDueSoonEmail(userInfo.email, userInfo.name, bill.title, bill.amount, daysLeft);
-    await storage.createEmailAlertLog({ userId, alertType: "bill_due_soon", referenceId: bill.id });
-    console.log(`[alerts] Bill alert sent to ${userInfo.email} for "${bill.title}" (${daysLeft}d left)`);
+    let billStatus = "sent";
+    try {
+      await sendBillDueSoonEmail(userInfo.email, userInfo.name, bill.title, bill.amount, daysLeft);
+    } catch (err: any) {
+      billStatus = "failed";
+      console.error(`[alerts] Bill alert failed for ${userInfo.email}: ${err?.message}`);
+    }
+    await storage.createEmailAlertLog({ userId, alertType: "bill_due_soon", referenceId: bill.id, recipient: userInfo.email, status: billStatus });
+    if (billStatus === "sent") console.log(`[alerts] Bill alert sent to ${userInfo.email} for "${bill.title}" (${daysLeft}d left)`);
   }
 }
 
@@ -105,9 +111,15 @@ export async function checkAndSendOverdueTaskAlerts(userId: string): Promise<voi
       daysOverdue: Math.floor((now.getTime() - new Date(t.dueDate!).getTime()) / (1000 * 60 * 60 * 24)),
     }));
 
-  await sendOverdueTaskEmail(userInfo.email, userInfo.name, taskList);
-  await storage.createEmailAlertLog({ userId, alertType: "overdue_tasks", referenceId: todayKey });
-  console.log(`[alerts] Overdue tasks alert sent to ${userInfo.email} (${overdue.length} tasks)`);
+  let overdueStatus = "sent";
+  try {
+    await sendOverdueTaskEmail(userInfo.email, userInfo.name, taskList);
+  } catch (err: any) {
+    overdueStatus = "failed";
+    console.error(`[alerts] Overdue tasks alert failed for ${userInfo.email}: ${err?.message}`);
+  }
+  await storage.createEmailAlertLog({ userId, alertType: "overdue_tasks", referenceId: todayKey, recipient: userInfo.email, status: overdueStatus });
+  if (overdueStatus === "sent") console.log(`[alerts] Overdue tasks alert sent to ${userInfo.email} (${overdue.length} tasks)`);
 }
 
 export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<void> {
@@ -134,9 +146,15 @@ export async function checkAndSendGoalDeadlineAlerts(userId: string): Promise<vo
     if (recentAlerts.length > 0) continue;
 
     const daysLeft = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    await sendGoalDeadlineEmail(userInfo.email, userInfo.name, goal.title, goal.targetAmount, goal.currentAmount, daysLeft);
-    await storage.createEmailAlertLog({ userId, alertType: "goal_deadline", referenceId: goal.id });
-    console.log(`[alerts] Goal deadline alert sent to ${userInfo.email} for "${goal.title}" (${daysLeft}d left)`);
+    let goalStatus = "sent";
+    try {
+      await sendGoalDeadlineEmail(userInfo.email, userInfo.name, goal.title, goal.targetAmount, goal.currentAmount, daysLeft);
+    } catch (err: any) {
+      goalStatus = "failed";
+      console.error(`[alerts] Goal deadline alert failed for ${userInfo.email}: ${err?.message}`);
+    }
+    await storage.createEmailAlertLog({ userId, alertType: "goal_deadline", referenceId: goal.id, recipient: userInfo.email, status: goalStatus });
+    if (goalStatus === "sent") console.log(`[alerts] Goal deadline alert sent to ${userInfo.email} for "${goal.title}" (${daysLeft}d left)`);
   }
 }
 
@@ -156,9 +174,15 @@ export async function checkAndSendLowDisciplineAlert(userId: string): Promise<vo
   const recentAlerts = await storage.getRecentAlerts(userId, "low_discipline", null, since3DaysAgo);
   if (recentAlerts.length > 0) return;
 
-  await sendLowDisciplineEmail(userInfo.email, userInfo.name, score);
-  await storage.createEmailAlertLog({ userId, alertType: "low_discipline", referenceId: null });
-  console.log(`[alerts] Low discipline alert sent to ${userInfo.email} (score: ${score})`);
+  let disciplineStatus = "sent";
+  try {
+    await sendLowDisciplineEmail(userInfo.email, userInfo.name, score);
+  } catch (err: any) {
+    disciplineStatus = "failed";
+    console.error(`[alerts] Low discipline alert failed for ${userInfo.email}: ${err?.message}`);
+  }
+  await storage.createEmailAlertLog({ userId, alertType: "low_discipline", referenceId: null, recipient: userInfo.email, status: disciplineStatus });
+  if (disciplineStatus === "sent") console.log(`[alerts] Low discipline alert sent to ${userInfo.email} (score: ${score})`);
 }
 
 async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
@@ -203,15 +227,21 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
 
   const disciplineScore = profile.disciplineScore ?? 5;
 
-  await sendWeeklySummaryEmail(userInfo.email, userInfo.name, {
-    pendingTasks,
-    upcomingBills,
-    disciplineScore,
-    habitsChecked,
-    totalHabits: habits.length,
-  });
-  await storage.createEmailAlertLog({ userId, alertType: "weekly_summary", referenceId: null });
-  console.log(`[alerts] Weekly summary sent to ${userInfo.email}`);
+  let weeklyStatus = "sent";
+  try {
+    await sendWeeklySummaryEmail(userInfo.email, userInfo.name, {
+      pendingTasks,
+      upcomingBills,
+      disciplineScore,
+      habitsChecked,
+      totalHabits: habits.length,
+    });
+  } catch (err: any) {
+    weeklyStatus = "failed";
+    console.error(`[alerts] Weekly summary failed for ${userInfo.email}: ${err?.message}`);
+  }
+  await storage.createEmailAlertLog({ userId, alertType: "weekly_summary", referenceId: null, recipient: userInfo.email, status: weeklyStatus });
+  if (weeklyStatus === "sent") console.log(`[alerts] Weekly summary sent to ${userInfo.email}`);
 }
 
 export async function runPeriodicAlertsForAll(): Promise<void> {
@@ -233,9 +263,15 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
           const userInfo = await getUserEmailAndName(profile.userId);
           if (userInfo) {
             const daysOffline = Math.floor((now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
-            await sendOfflineReminderEmail(userInfo.email, userInfo.name, daysOffline);
-            await storage.createEmailAlertLog({ userId: profile.userId, alertType: "offline_reminder", referenceId: null });
-            console.log(`[alerts] Offline reminder sent to ${userInfo.email} (${daysOffline}d offline)`);
+            let offlineStatus = "sent";
+            try {
+              await sendOfflineReminderEmail(userInfo.email, userInfo.name, daysOffline);
+            } catch (err: any) {
+              offlineStatus = "failed";
+              console.error(`[alerts] Offline reminder failed for ${userInfo.email}: ${err?.message}`);
+            }
+            await storage.createEmailAlertLog({ userId: profile.userId, alertType: "offline_reminder", referenceId: null, recipient: userInfo.email, status: offlineStatus });
+            if (offlineStatus === "sent") console.log(`[alerts] Offline reminder sent to ${userInfo.email} (${daysOffline}d offline)`);
           }
         }
       }

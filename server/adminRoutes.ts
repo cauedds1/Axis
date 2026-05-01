@@ -986,6 +986,13 @@ export async function maintenanceMiddleware(req: Request, res: Response, next: N
   try {
     const [row] = await db.select().from(systemConfig).where(eq(systemConfig.key, "maintenance_mode"));
     if (row?.value === "true") {
+      // Allow admin users through even in maintenance mode
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const userId = (req.session as any)?.userId;
+      if (adminEmail && userId) {
+        const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+        if (user?.email === adminEmail) return next();
+      }
       return res.status(503).json({ message: "O sistema está em manutenção. Tente novamente em breve.", maintenanceMode: true });
     }
   } catch {
