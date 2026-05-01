@@ -3852,6 +3852,7 @@
       "trialUsers": "Em Trial",
       "newThisMonth": "Novos Pagantes (este mês)",
       "newPrevMonth": "Novos Pagantes (mês ant.)",
+      "churnThisMonth": "Cancelamentos (este mês)",
       "mrrTrend": "Evolução do MRR (12 meses)",
       "planBreakdown": "Receita por Plano"
     },

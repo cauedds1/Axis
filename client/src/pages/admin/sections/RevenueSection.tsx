@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, TrendingUp, TrendingDown, Users, Zap, BarChart2, CreditCard, Brain } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Users, Zap, BarChart2, CreditCard, Brain, UserMinus } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -21,6 +21,7 @@ interface RevenueData {
   payingUsers: number;
   newPayingThisMonth: number;
   newPayingPrevMonth: number;
+  churnThisMonth: number;
   personalAIRevenue: number;
   teamRevenue: number;
   mrrHistory: { month: string; mrr: number }[];
@@ -50,8 +51,8 @@ export function RevenueSection() {
   if (!data) return <div className="text-muted-foreground">{t("common.error")}</div>;
 
   const planBreakdown = [
-    { name: t("billing.personalAI"), value: data.personalAIRevenue },
-    { name: t("billing.teamPlan"), value: data.teamRevenue },
+    { name: t("revenue.personalAI"), value: data.personalAIRevenue },
+    { name: t("revenue.teamPlan"), value: data.teamRevenue },
   ].filter(d => d.value > 0);
 
   const chartData = (data.mrrHistory ?? []).map(row => ({
@@ -91,7 +92,7 @@ export function RevenueSection() {
         <StatCard label={t("revenue.teamPlan")} value={data.teamCount} icon={Users} color="text-blue-400" />
         <StatCard label={t("revenue.trialUsers")} value={data.trialUsers} icon={BarChart2} color="text-yellow-400" />
         <StatCard label={t("revenue.newThisMonth")} value={data.newPayingThisMonth} icon={Zap} color="text-emerald-400" />
-        <StatCard label={t("revenue.newPrevMonth")} value={data.newPayingPrevMonth} icon={BarChart2} />
+        <StatCard label={t("revenue.churnThisMonth")} value={data.churnThisMonth} icon={UserMinus} color="text-red-400" data-testid="card-churn" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -154,11 +155,11 @@ export function RevenueSection() {
             </ResponsiveContainer>
             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
               <div className="flex justify-between">
-                <span>{t("billing.personalAI")}</span>
+                <span>{t("revenue.personalAI")}</span>
                 <span className="font-mono">{fmtCurrency(data.personalAIRevenue)}</span>
               </div>
               <div className="flex justify-between">
-                <span>{t("billing.teamPlan")}</span>
+                <span>{t("revenue.teamPlan")}</span>
                 <span className="font-mono">{fmtCurrency(data.teamRevenue)}</span>
               </div>
             </div>

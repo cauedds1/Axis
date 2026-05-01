@@ -3852,6 +3852,7 @@
       "trialUsers": "Trial Users",
       "newThisMonth": "New Paying (this month)",
       "newPrevMonth": "New Paying (prev. month)",
+      "churnThisMonth": "Churned (this month)",
       "mrrTrend": "MRR Trend (12 months)",
       "planBreakdown": "Revenue by Plan"
     },

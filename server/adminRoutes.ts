@@ -808,6 +808,15 @@ export function registerAdminRoutes(app: Express) {
         )
       );
 
+      // Churn this month: had a Stripe subscription but are now on starter/free, updated this month
+      const [churnThisMonth] = await db.select({ count: count() }).from(users).where(
+        and(
+          isNotNull(users.stripeSubscriptionId),
+          sql`plan NOT IN ('personal_ai', 'team')`,
+          gte(users.updatedAt, period.current.start)
+        )
+      );
+
       // 12-month MRR history (proxy: cumulative paying users created up to each month × price)
       const mrrHistoryResult = await db.execute(sql`
         SELECT
@@ -835,6 +844,7 @@ export function registerAdminRoutes(app: Express) {
         payingUsers: payingPersonalAI.count + payingTeam.count,
         newPayingThisMonth: newPayingThisMonth.count,
         newPayingPrevMonth: newPayingPrevMonth.count,
+        churnThisMonth: churnThisMonth.count,
         personalAIRevenue: payingPersonalAI.count * personalAIPrice,
         teamRevenue: payingTeam.count * teamPrice,
         mrrHistory: mrrHistoryResult.rows,
