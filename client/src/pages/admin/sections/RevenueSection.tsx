@@ -92,7 +92,8 @@ export function RevenueSection() {
         <StatCard label={t("revenue.teamPlan")} value={data.teamCount} icon={Users} color="text-blue-400" />
         <StatCard label={t("revenue.trialUsers")} value={data.trialUsers} icon={BarChart2} color="text-yellow-400" />
         <StatCard label={t("revenue.newThisMonth")} value={data.newPayingThisMonth} icon={Zap} color="text-emerald-400" />
-        <StatCard label={t("revenue.churnThisMonth")} value={data.churnThisMonth} icon={UserMinus} color="text-red-400" data-testid="card-churn" />
+        <StatCard label={t("revenue.newPrevMonth")} value={data.newPayingPrevMonth} icon={BarChart2} />
+        <StatCard label={t("revenue.churnThisMonth")} value={data.churnThisMonth} icon={UserMinus} color="text-red-400" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
