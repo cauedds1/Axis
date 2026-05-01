@@ -10,7 +10,7 @@ import {
 import {
   transactions, habits, habitLogs, personalTasks, userProfile, organizations,
   organizationMembers, businessExpenses, emailAlertLog, auditLogs, aiUsageLogs,
-  whatsappLogs, systemConfig, categories, type InsertTransaction,
+  whatsappLogs, systemConfig, categories,
 } from "@shared/schema";
 import {
   eq, desc, asc, sql, and, gte, lte, like, or, count, sum, inArray, isNotNull,
@@ -1050,6 +1050,33 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ─── POST /api/admin/system/test-email ────────────────────────────────────
+  app.post("/api/admin/system/test-email", requireAdmin, async (req, res) => {
+    try {
+      const actor = mustAdmin(req);
+      const recipient = (req.body.recipient as string) || actor.email;
+      if (!recipient || !recipient.includes("@")) {
+        return res.status(400).json({ message: "Valid recipient email required." });
+      }
+      await sendEmail({
+        to: recipient,
+        subject: "AXIS Admin — Test Email",
+        html: `<p>This is a test email sent from the AXIS admin panel at ${new Date().toISOString()}.</p>`,
+        fromName: "AXIS Admin",
+      });
+      await db.insert(emailAlertLog).values({
+        userId: actor.id,
+        alertType: "admin_test_email",
+        recipient,
+        status: "sent",
+      });
+      await logAudit(actor.id, actor.email, "admin.test_email_sent", "system", null, { recipient });
+      res.json({ success: true, recipient });
+    } catch (err) {
+      res.status(500).json({ message: errMsg(err) });
+    }
+  });
+
   // ─── GET /api/admin/audit-logs ────────────────────────────────────────────
   app.get("/api/admin/audit-logs", requireAdmin, async (req, res) => {
     try {
@@ -1073,88 +1100,6 @@ export function registerAdminRoutes(app: Express) {
       `);
 
       res.json({ logs: rows.rows, total: rowNum(totalCountResult.rows[0], "count") ?? 0, page, limit });
-    } catch (err) {
-      res.status(500).json({ message: errMsg(err) });
-    }
-  });
-
-  // ─── POST /api/admin/demo/seed ────────────────────────────────────────────
-  app.post("/api/admin/demo/seed", requireAdmin, async (req, res) => {
-    try {
-      const actor = mustAdmin(req);
-      const demoEmail = "demo@axis.app";
-      const demoPassword = "demo1234";
-
-      // Check if demo user already exists
-      const [existing] = await db.select().from(users).where(eq(users.email, demoEmail));
-      if (existing) {
-        return res.status(409).json({ message: "Demo user already exists. Use /reset to recreate." });
-      }
-
-      const bcrypt = await import("bcryptjs");
-      const hashed = await bcrypt.hash(demoPassword, 10);
-
-      const [demoUser] = await db.insert(users).values({
-        email: demoEmail,
-        firstName: "Demo",
-        lastName: "User",
-        password: hashed,
-        accountType: "personal",
-        plan: "personal_ai",
-        onboardingCompleted: true,
-      }).returning();
-
-      // Seed 90 days of transactions
-      const categories = ["alimentação", "mercado", "transporte", "lazer", "moradia", "saúde", "educação", "combustível"];
-      const descriptions = {
-        alimentação: ["iFood", "McDonald's", "Restaurante", "Padaria", "Café"],
-        mercado: ["Supermercado", "Atacadão", "Carrefour"],
-        transporte: ["Uber", "99", "Ônibus"],
-        lazer: ["Netflix", "Cinema", "Bar"],
-        moradia: ["Aluguel", "Conta de Luz", "Internet"],
-        saúde: ["Farmácia", "Médico", "Academia"],
-        educação: ["Curso Online", "Livros", "Escola"],
-        combustível: ["Posto Shell", "Posto Ipiranga"],
-      };
-
-      const txValues: InsertTransaction[] = [];
-      const now = new Date();
-      for (let i = 0; i < 90; i++) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-        const numTx = Math.floor(Math.random() * 3) + 1;
-        for (let j = 0; j < numTx; j++) {
-          const cat = categories[Math.floor(Math.random() * categories.length)] as keyof typeof descriptions;
-          const desc = descriptions[cat][Math.floor(Math.random() * descriptions[cat].length)];
-          txValues.push({ userId: demoUser.id, amount: Math.floor(Math.random() * 200 + 10), description: desc, categoryName: cat, type: "expense", date, source: "manual" });
-        }
-        // Occasional income
-        if (i % 30 === 0) {
-          txValues.push({ userId: demoUser.id, amount: 5000, description: "Salário", categoryName: "trabalho", type: "income", date, source: "manual" });
-        }
-      }
-      await db.insert(transactions).values(txValues);
-
-      await logAudit(actor.id, actor.email, "admin.demo_seed", "system", demoUser.id);
-      res.json({ success: true, credentials: { email: demoEmail, password: demoPassword } });
-    } catch (err) {
-      res.status(500).json({ message: errMsg(err) });
-    }
-  });
-
-  // ─── POST /api/admin/demo/reset ───────────────────────────────────────────
-  app.post("/api/admin/demo/reset", requireAdmin, async (req, res) => {
-    try {
-      const actor = mustAdmin(req);
-      const [demoUser] = await db.select().from(users).where(eq(users.email, "demo@axis.app"));
-      if (demoUser) {
-        await db.delete(transactions).where(eq(transactions.userId, demoUser.id));
-        await db.delete(habits).where(eq(habits.userId, demoUser.id));
-        await db.delete(personalTasks).where(eq(personalTasks.userId, demoUser.id));
-        await db.delete(userProfile).where(eq(userProfile.userId, demoUser.id));
-        await db.delete(users).where(eq(users.id, demoUser.id));
-      }
-      await logAudit(actor.id, actor.email, "admin.demo_reset", "system", null);
-      res.json({ success: true, message: "Demo user deleted. Seed again to recreate." });
     } catch (err) {
       res.status(500).json({ message: errMsg(err) });
     }

@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
-import { Search, Mail } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Search, Mail, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   SectionTitle, StatCard, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
 import { fmtDateTime, adminFetch } from "../admin-utils";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 const ALERT_TYPES = ["bill_due_soon", "overdue_tasks", "goal_deadline", "low_discipline", "weekly_summary", "offline_reminder"];
 
@@ -16,11 +19,13 @@ type SortDir = "asc" | "desc";
 
 export function EmailLogsSection() {
   const { t } = useTranslation("axisAdmin");
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [alertType, setAlertType] = useState("all");
   const [sortBy, setSortBy] = useState("sent_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [testRecipient, setTestRecipient] = useState("");
 
   const toggleSort = (col: string) => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -43,11 +48,55 @@ export function EmailLogsSection() {
     queryFn: () => adminFetch(`/api/admin/email-logs?${emailParams.toString()}`),
   });
 
+  const testEmailMutation = useMutation({
+    mutationFn: async (recipient: string) => {
+      const res = await fetch("/api/admin/system/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient: recipient || undefined }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message ?? res.statusText);
+      }
+      return res.json();
+    },
+    onSuccess: (result: { recipient: string }) => {
+      toast({ title: t("email.testSent"), description: result.recipient });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/email-logs"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: t("common.error"), description: err.message, variant: "destructive" });
+    },
+  });
+
   const logs = data?.logs ?? [];
 
   return (
     <div className="space-y-4">
       <SectionTitle>{t("email.title")}</SectionTitle>
+
+      <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-border bg-card">
+        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm text-muted-foreground">{t("email.testEmailLabel")}</span>
+        <Input
+          data-testid="input-test-email-recipient"
+          className="flex-1 min-w-48 h-8 text-sm"
+          placeholder={t("email.testRecipientPlaceholder")}
+          value={testRecipient}
+          onChange={e => setTestRecipient(e.target.value)}
+        />
+        <Button
+          data-testid="button-send-test-email"
+          size="sm"
+          onClick={() => testEmailMutation.mutate(testRecipient)}
+          disabled={testEmailMutation.isPending}
+        >
+          <Send className="h-3 w-3 mr-1" />
+          {testEmailMutation.isPending ? t("common.loading") : t("email.sendTest")}
+        </Button>
+      </div>
+
       {(data?.typeCounts ?? []).length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-2">
           <StatCard label="This Month" value={data!.currentMonth ?? 0} icon={Mail} color="text-yellow-400" />
