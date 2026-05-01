@@ -9,7 +9,8 @@ import {
   MessageSquare, Mail, Brain, ClipboardList, Settings,
   ChevronLeft, ChevronRight, Search, Shield, Activity,
   Database, Zap, Check, X, Trash2, Edit, LogOut, BarChart2,
-  Phone, Server, Lock, AlertTriangle
+  Phone, Server, Lock, AlertTriangle,
+  KeyRound, UserX, UserCheck, UserCog
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,6 +179,8 @@ function UsersSection() {
   const [editUser, setEditUser] = useState<any>(null);
   const [newPlan, setNewPlan] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [confirmDeactivate, setConfirmDeactivate] = useState<any>(null);
+  const [confirmResetPw, setConfirmResetPw] = useState<any>(null);
 
   const params = new URLSearchParams({ page: String(page), limit: "20" });
   if (search) params.set("search", search);
@@ -208,6 +211,26 @@ function UsersSection() {
       qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
       setConfirmDelete(null);
     },
+  });
+
+  const deactivateUser = useMutation({
+    mutationFn: ({ id, deactivated }: { id: string; deactivated: boolean }) =>
+      apiRequest("POST", `/api/admin/users/${id}/${deactivated ? "reactivate" : "deactivate"}`),
+    onSuccess: (_data, vars) => {
+      toast({ title: vars.deactivated ? t("users.reactivated") : t("users.deactivated") });
+      qc.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      setConfirmDeactivate(null);
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: (id: string) => apiRequest("POST", `/api/admin/users/${id}/reset-password`),
+    onSuccess: () => {
+      toast({ title: t("users.passwordReset") });
+      setConfirmResetPw(null);
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
 
   return (
@@ -246,32 +269,57 @@ function UsersSection() {
                 <Th>{t("users.email")}</Th>
                 <Th>{t("users.plan")}</Th>
                 <Th>Type</Th>
+                <Th>Status</Th>
                 <Th>{t("users.createdAt")}</Th>
                 <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <EmptyRow colSpan={6} label={t("common.noData")} />
-              ) : rows.map((u: any) => (
-                <tr key={u.id} className="hover:bg-accent/30 transition-colors" data-testid={`row-user-${u.id}`}>
+                <EmptyRow colSpan={7} label={t("common.noData")} />
+              ) : rows.map((u: any) => {
+                const isDeactivated = !!(u.deactivated_at ?? u.deactivatedAt);
+                return (
+                <tr key={u.id} className={`hover:bg-accent/30 transition-colors ${isDeactivated ? "opacity-60" : ""}`} data-testid={`row-user-${u.id}`}>
                   <Td><span className="font-medium text-foreground">{userName(u)}</span></Td>
                   <Td className="text-muted-foreground text-xs">{u.email}</Td>
                   <Td><Badge variant="outline" className="text-xs capitalize">{u.plan ?? "free"}</Badge></Td>
                   <Td className="text-muted-foreground text-xs capitalize">{u.account_type ?? u.accountType ?? "—"}</Td>
+                  <Td>
+                    {isDeactivated
+                      ? <Badge variant="destructive" className="text-xs">Deactivated</Badge>
+                      : <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-400/40">Active</Badge>
+                    }
+                  </Td>
                   <Td className="text-muted-foreground">{fmtDate(u.created_at ?? u.createdAt)}</Td>
                   <Td>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         data-testid={`button-edit-plan-${u.id}`}
-                        variant="ghost" size="sm"
+                        variant="ghost" size="sm" title={t("users.editPlan")}
                         onClick={() => { setEditUser(u); setNewPlan(u.plan ?? "starter"); }}
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
                       <Button
-                        data-testid={`button-delete-user-${u.id}`}
+                        data-testid={`button-reset-pw-${u.id}`}
+                        variant="ghost" size="sm" title={t("users.resetPassword")}
+                        onClick={() => setConfirmResetPw(u)}
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        data-testid={`button-deactivate-${u.id}`}
                         variant="ghost" size="sm"
+                        title={isDeactivated ? t("users.reactivate") : t("users.deactivate")}
+                        onClick={() => setConfirmDeactivate(u)}
+                        className={isDeactivated ? "text-emerald-400 hover:text-emerald-400" : "text-amber-400 hover:text-amber-400"}
+                      >
+                        {isDeactivated ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        data-testid={`button-delete-user-${u.id}`}
+                        variant="ghost" size="sm" title={t("common.delete")}
                         onClick={() => setConfirmDelete(u)}
                         className="text-destructive hover:text-destructive"
                       >
@@ -280,7 +328,8 @@ function UsersSection() {
                     </div>
                   </Td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </TableWrapper>
           <Pagination page={page} total={total} limit={20} onPage={setPage} />
@@ -318,13 +367,57 @@ function UsersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!confirmDeactivate} onOpenChange={() => setConfirmDeactivate(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDeactivate && !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt)
+                ? t("users.reactivate") : t("users.deactivate")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {confirmDeactivate && !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt)
+              ? "This will restore the user's access to AXIS."
+              : "This will block the user from logging in."}
+          </div>
+          <div className="font-medium text-foreground">{confirmDeactivate?.email}</div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDeactivate(null)}>{t("common.cancel")}</Button>
+            <Button
+              data-testid="button-confirm-deactivate"
+              variant={confirmDeactivate && !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt) ? "default" : "destructive"}
+              onClick={() => confirmDeactivate && deactivateUser.mutate({ id: confirmDeactivate.id, deactivated: !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt) })}
+              disabled={deactivateUser.isPending}
+            >
+              {confirmDeactivate && !!(confirmDeactivate.deactivated_at ?? confirmDeactivate.deactivatedAt) ? t("users.reactivate") : t("users.deactivate")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmResetPw} onOpenChange={() => setConfirmResetPw(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>{t("users.resetPassword")}</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">A temporary password will be generated and emailed to the user.</div>
+          <div className="font-medium text-foreground">{confirmResetPw?.email}</div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmResetPw(null)}>{t("common.cancel")}</Button>
+            <Button data-testid="button-confirm-reset-pw" onClick={() => confirmResetPw && resetPassword.mutate(confirmResetPw.id)} disabled={resetPassword.isPending}>{t("users.resetPassword")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function OrgsSection() {
   const { t } = useTranslation("axisAdmin");
+  const { toast } = useToast();
   const [page, setPage] = useState(1);
+  const [confirmImpersonate, setConfirmImpersonate] = useState<any>(null);
+  const navigate = useLocation()[1];
+
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/admin/organizations", page],
     queryFn: () => adminFetch(`/api/admin/organizations?page=${page}&limit=20`),
@@ -332,6 +425,16 @@ function OrgsSection() {
 
   const orgs: any[] = data?.organizations ?? [];
   const total = data?.total ?? 0;
+
+  const impersonate = useMutation({
+    mutationFn: (id: string) => apiRequest("POST", `/api/admin/organizations/${id}/impersonate`),
+    onSuccess: (data: any) => {
+      toast({ title: `Impersonating ${data?.orgName ?? "org"}. Redirecting to app…` });
+      setConfirmImpersonate(null);
+      setTimeout(() => navigate("/"), 800);
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
+  });
 
   return (
     <div className="space-y-4">
@@ -348,11 +451,12 @@ function OrgsSection() {
                 <Th>{t("orgs.members")}</Th>
                 <Th>Total Expenses</Th>
                 <Th>{t("orgs.createdAt")}</Th>
+                <Th>{t("users.actions")}</Th>
               </tr>
             </thead>
             <tbody>
               {orgs.length === 0 ? (
-                <EmptyRow colSpan={5} label={t("common.noData")} />
+                <EmptyRow colSpan={6} label={t("common.noData")} />
               ) : orgs.map((o: any) => (
                 <tr key={o.id} className="hover:bg-accent/30 transition-colors" data-testid={`row-org-${o.id}`}>
                   <Td><span className="font-medium text-foreground">{o.name}</span></Td>
@@ -360,6 +464,15 @@ function OrgsSection() {
                   <Td>{o.member_count ?? o.memberCount ?? 0}</Td>
                   <Td className="text-emerald-400">{fmtCurrency(o.total_expenses ?? o.totalExpenses)}</Td>
                   <Td className="text-muted-foreground">{fmtDate(o.created_at ?? o.createdAt)}</Td>
+                  <Td>
+                    <Button
+                      data-testid={`button-impersonate-${o.id}`}
+                      variant="ghost" size="sm" title="Impersonate org owner"
+                      onClick={() => setConfirmImpersonate(o)}
+                    >
+                      <UserCog className="h-3.5 w-3.5" />
+                    </Button>
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -367,6 +480,22 @@ function OrgsSection() {
           <Pagination page={page} total={total} limit={20} onPage={setPage} />
         </>
       )}
+
+      <Dialog open={!!confirmImpersonate} onOpenChange={() => setConfirmImpersonate(null)}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Impersonate Org Owner</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Your admin session will switch to this org's owner. You can restore it from the app by visiting <strong>/admin</strong> again.
+          </div>
+          <div className="font-medium text-foreground">{confirmImpersonate?.name} ({confirmImpersonate?.owner_email ?? confirmImpersonate?.ownerEmail ?? "no owner"})</div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmImpersonate(null)}>{t("common.cancel")}</Button>
+            <Button data-testid="button-confirm-impersonate" onClick={() => confirmImpersonate && impersonate.mutate(confirmImpersonate.id)} disabled={impersonate.isPending}>
+              Impersonate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -536,6 +665,7 @@ function WhatsAppSection() {
   const [page, setPage] = useState(1);
   const [botNumber, setBotNumber] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Backend: {configuredNumber, displayName, connectedPhone, status, isNumberMatch}
   const { data: configData, isLoading: configLoading } = useQuery<any>({ queryKey: ["/api/admin/whatsapp/config"] });
@@ -555,6 +685,16 @@ function WhatsAppSection() {
       toast({ title: t("whatsapp.saved") });
       qc.invalidateQueries({ queryKey: ["/api/admin/whatsapp/config"] });
     },
+  });
+
+  const resetConnection = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/whatsapp/config", { botNumber: "", displayName: "" }),
+    onSuccess: () => {
+      toast({ title: "WhatsApp connection reset" });
+      qc.invalidateQueries({ queryKey: ["/api/admin/whatsapp/config"] });
+      setConfirmReset(false);
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: err?.message ?? "Error" }),
   });
 
   return (
@@ -607,13 +747,38 @@ function WhatsAppSection() {
                   placeholder="AXIS Bot"
                 />
               </div>
-              <Button data-testid="button-save-whatsapp-config" size="sm" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>
-                {t("whatsapp.save")}
-              </Button>
+              <div className="flex gap-2">
+                <Button data-testid="button-save-whatsapp-config" size="sm" onClick={() => saveConfig.mutate()} disabled={saveConfig.isPending}>
+                  {t("whatsapp.save")}
+                </Button>
+                {isConnected && (
+                  <Button
+                    data-testid="button-reset-whatsapp"
+                    size="sm" variant="outline"
+                    className="text-destructive border-destructive/40"
+                    onClick={() => setConfirmReset(true)}
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" /> Disconnect
+                  </Button>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
+
+      <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Reset WhatsApp Connection</DialogTitle></DialogHeader>
+          <div className="text-sm text-muted-foreground">This will clear the configured number and disconnect the WhatsApp bot. You will need to reconfigure it afterwards.</div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmReset(false)}>{t("common.cancel")}</Button>
+            <Button data-testid="button-confirm-reset-whatsapp" variant="destructive" onClick={() => resetConnection.mutate()} disabled={resetConnection.isPending}>
+              Disconnect
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <SubTitle>{t("whatsapp.logs")}</SubTitle>
       {logsLoading ? (

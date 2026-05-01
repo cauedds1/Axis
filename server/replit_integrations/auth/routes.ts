@@ -22,6 +22,10 @@ export function registerAuthRoutes(app: Express): void {
       const userId = req.session.userId;
       const user = await authStorage.getUser(userId);
       if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if ((user as any).deactivatedAt) {
+        req.session.destroy(() => {});
+        return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
+      }
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (error) {
@@ -73,6 +77,10 @@ export function registerAuthRoutes(app: Express): void {
 
       if (user.accountType === "business") {
         return res.status(401).json({ message: "Esta conta pertence ao AXIS Business. Acesse pelo portal Business." });
+      }
+
+      if ((user as any).deactivatedAt) {
+        return res.status(403).json({ message: "Conta desativada. Entre em contato com o suporte." });
       }
 
       const valid = await bcrypt.compare(data.password, user.password);

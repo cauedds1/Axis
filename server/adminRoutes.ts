@@ -2,6 +2,7 @@ import { type Express, type Request, type Response, type NextFunction } from "ex
 import { db } from "./db";
 import { log } from "./log";
 import { logAudit } from "./adminLogger";
+import { sendEmail } from "./integrations/sendgrid";
 import {
   users, sessions,
 } from "@shared/models/auth";
@@ -226,10 +227,27 @@ export function registerAdminRoutes(app: Express) {
   app.post("/api/admin/users/:id/deactivate", requireAdmin, async (req, res) => {
     try {
       const actor = (req as any).adminUser;
-      await db.update(users).set({ updatedAt: new Date() }).where(eq(users.id, req.params.id));
+      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
+      // Set deactivatedAt to mark account as deactivated
+      await db.update(users).set({ deactivatedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, req.params.id));
       // Invalidate all sessions for this user
       await db.execute(sql`DELETE FROM sessions WHERE sess->>'userId' = ${req.params.id}`);
-      await logAudit(actor.id, actor.email, "user.deactivate", "user", req.params.id);
+      await logAudit(actor.id, actor.email, "user.deactivate", "user", req.params.id, { email: targetUser.email });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
+  // ─── POST /api/admin/users/:id/reactivate ─────────────────────────────────
+  app.post("/api/admin/users/:id/reactivate", requireAdmin, async (req, res) => {
+    try {
+      const actor = (req as any).adminUser;
+      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
+      await db.update(users).set({ deactivatedAt: null, updatedAt: new Date() }).where(eq(users.id, req.params.id));
+      await logAudit(actor.id, actor.email, "user.reactivate", "user", req.params.id, { email: targetUser.email });
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
@@ -240,10 +258,28 @@ export function registerAdminRoutes(app: Express) {
   app.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, res) => {
     try {
       const actor = (req as any).adminUser;
-      const [user] = await db.select().from(users).where(eq(users.id, req.params.id));
-      if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
-      await logAudit(actor.id, actor.email, "user.reset_password", "user", req.params.id, { email: user.email });
-      res.json({ success: true, message: `Ação registrada para ${user.email}` });
+      const [targetUser] = await db.select().from(users).where(eq(users.id, req.params.id));
+      if (!targetUser) return res.status(404).json({ message: "Usuário não encontrado" });
+
+      // Generate a temporary password
+      const bcrypt = await import("bcryptjs");
+      const tempPassword = Math.random().toString(36).slice(-10) + "Ax!";
+      const hashed = await bcrypt.hash(tempPassword, 10);
+      await db.update(users).set({ password: hashed, updatedAt: new Date() }).where(eq(users.id, req.params.id));
+
+      // Send email with temp password (if SendGrid is configured)
+      try {
+        await sendEmail({
+          to: targetUser.email!,
+          subject: "AXIS — Senha Temporária / Temporary Password",
+          html: `<p>Sua senha foi redefinida pelo administrador.</p><p><strong>Senha temporária:</strong> <code>${tempPassword}</code></p><p>Por favor, troque imediatamente após o login.</p><hr/><p>Your password was reset by an administrator.</p><p><strong>Temporary password:</strong> <code>${tempPassword}</code></p><p>Please change it immediately after logging in.</p>`,
+        });
+      } catch (emailErr: any) {
+        log(`reset-password email failed: ${emailErr?.message}`, "admin");
+      }
+
+      await logAudit(actor.id, actor.email, "user.reset_password", "user", req.params.id, { email: targetUser.email });
+      res.json({ success: true, message: `Password reset for ${targetUser.email}` });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -350,13 +386,38 @@ export function registerAdminRoutes(app: Express) {
   });
 
   // ─── POST /api/admin/organizations/:id/impersonate ────────────────────────
+  // Sets the admin's session to the org owner, so they can browse as that user
   app.post("/api/admin/organizations/:id/impersonate", requireAdmin, async (req, res) => {
     try {
       const actor = (req as any).adminUser;
       const [org] = await db.select().from(organizations).where(eq(organizations.id, req.params.id));
       if (!org) return res.status(404).json({ message: "Organização não encontrada" });
-      await logAudit(actor.id, actor.email, "org.impersonate", "organization", req.params.id, { orgName: org.name });
-      res.json({ success: true, orgName: org.name });
+
+      // Find org owner
+      const [ownerMember] = await db.select().from(organizationMembers)
+        .where(and(eq(organizationMembers.organizationId, req.params.id), eq(organizationMembers.role, "owner")));
+      if (!ownerMember) return res.status(404).json({ message: "Proprietário não encontrado" });
+
+      // Save admin session for restoration and set session to org owner
+      (req.session as any).adminImpersonating = actor.id;
+      (req.session as any).userId = ownerMember.userId;
+
+      await logAudit(actor.id, actor.email, "org.impersonate", "organization", req.params.id, { orgName: org.name, targetUserId: ownerMember.userId });
+      res.json({ success: true, orgName: org.name, redirectTo: "/" });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
+  // ─── POST /api/admin/impersonate/stop ─────────────────────────────────────
+  // Restores the admin's original session after impersonation
+  app.post("/api/admin/impersonate/stop", async (req, res) => {
+    try {
+      const originalAdminId = (req.session as any).adminImpersonating;
+      if (!originalAdminId) return res.status(400).json({ message: "Nenhuma sessão de impersonação ativa" });
+      (req.session as any).userId = originalAdminId;
+      delete (req.session as any).adminImpersonating;
+      res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ message: err?.message });
     }
@@ -686,6 +747,33 @@ export function registerAdminRoutes(app: Express) {
     });
   });
 
+  // ─── POST /api/admin/system/config ────────────────────────────────────────
+  app.post("/api/admin/system/config", requireAdmin, async (req, res) => {
+    try {
+      const actor = (req as any).adminUser;
+      const { key, value } = req.body;
+      if (!key || typeof key !== "string") return res.status(400).json({ message: "key é obrigatório" });
+      await db.insert(systemConfig).values({ key, value: String(value ?? ""), updatedAt: new Date() })
+        .onConflictDoUpdate({ target: systemConfig.key, set: { value: String(value ?? ""), updatedAt: new Date() } });
+      await logAudit(actor.id, actor.email, "admin.config_update", "system", null, { key, value });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
+  // ─── DELETE /api/admin/system/config/:key ─────────────────────────────────
+  app.delete("/api/admin/system/config/:key", requireAdmin, async (req, res) => {
+    try {
+      const actor = (req as any).adminUser;
+      await db.delete(systemConfig).where(eq(systemConfig.key, req.params.key));
+      await logAudit(actor.id, actor.email, "admin.config_delete", "system", null, { key: req.params.key });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ message: err?.message });
+    }
+  });
+
   // ─── GET /api/admin/system/health ─────────────────────────────────────────
   app.get("/api/admin/system/health", requireAdmin, async (req, res) => {
     try {
@@ -836,4 +924,29 @@ export function registerAdminRoutes(app: Express) {
   });
 
   log("Admin routes registered", "admin");
+}
+
+// ─── Maintenance Mode Middleware ───────────────────────────────────────────────
+// Returns 503 for all non-admin, non-static API routes when maintenance is on.
+// Register this BEFORE all other routes in routes.ts.
+export async function maintenanceMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Skip admin routes, auth routes, and static assets
+  if (
+    req.path.startsWith("/api/admin") ||
+    req.path.startsWith("/api/auth") ||
+    req.path.startsWith("/assets") ||
+    !req.path.startsWith("/api/")
+  ) {
+    return next();
+  }
+
+  try {
+    const [row] = await db.select().from(systemConfig).where(eq(systemConfig.key, "maintenance_mode"));
+    if (row?.value === "true") {
+      return res.status(503).json({ message: "O sistema está em manutenção. Tente novamente em breve.", maintenanceMode: true });
+    }
+  } catch {
+    // If DB check fails, allow through to not block normal operation
+  }
+  next();
 }
