@@ -81,6 +81,7 @@ export function CaptureButton({ variant = "floating" }: { variant?: "floating" |
     window.dispatchEvent(new CustomEvent("axis:limit-reached", {
       detail: {
         limitReached: true,
+        plan: "starter",
         reason: "Transcrição de voz não está disponível no plano Starter",
         current: 0,
         limit: 0,
