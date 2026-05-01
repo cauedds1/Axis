@@ -2379,7 +2379,7 @@ export async function registerRoutes(
       const items = await storage.getRecurringIncomes(userId);
       res.json(items);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao buscar rendas" });
+      serverError(res, err);
     }
   });
 
@@ -2412,7 +2412,7 @@ export async function registerRoutes(
       await storage.deleteRecurringIncome(paramId(req), userId);
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ message: "Erro ao deletar renda" });
+      serverError(res, err);
     }
   });
 
@@ -2426,7 +2426,7 @@ export async function registerRoutes(
       }));
       res.json(entries);
     } catch (err) {
-      res.status(500).json({ message: "Erro ao buscar histórico" });
+      serverError(res, err);
     }
   });
 
@@ -3236,7 +3236,7 @@ export async function registerRoutes(
       }).where(eq(users.id, user.id));
       res.json({ success: true });
     } catch (err: any) {
-      res.status(500).json({ message: err?.message });
+      serverError(res, err);
     }
   });
 
@@ -3282,8 +3282,8 @@ export async function registerRoutes(
       console.log(`[whatsapp:${instance}] connect result — status: ${newStatus}, hasQR: ${!!qr}`);
       res.json({ status: newStatus, qrCode: qr });
     } catch (error: any) {
-      console.error(`[whatsapp] connect handler error:`, error);
-      res.status(500).json({ message: error?.message || "Erro interno" });
+      console.error(`[whatsapp] connect handler error:`, error?.message);
+      serverError(res, error);
     }
   });
 
@@ -3330,7 +3330,7 @@ export async function registerRoutes(
         const prevPhone = (existing as any).whatsappPhone as string | null;
         await storage.clearWhatsappLink(existing.userId);
         if (prevPhone) whatsappManager.unlinkPhone(prevPhone);
-        log(`WhatsApp: número ${cleaned} transferido de userId=${existing.userId} para userId=${userId}`, "whatsapp");
+        log(`WhatsApp: número ****${cleaned.slice(-4)} transferido de userId=${existing.userId} para userId=${userId}`, "whatsapp");
       }
       await storage.upsertUserProfile(userId, { whatsappPhone: cleaned } as any);
       if (whatsappManager.getStatus() === "connected") {
@@ -3341,7 +3341,7 @@ export async function registerRoutes(
       const oldPhone = (existingProfile as any)?.whatsappPhone as string | null;
       await storage.clearWhatsappLink(userId);
       if (oldPhone) whatsappManager.unlinkPhone(oldPhone);
-      log(`WhatsApp: número desvinculado para userId=${userId} (phone=${oldPhone ?? "none"})`, "whatsapp");
+      log(`WhatsApp: número desvinculado para userId=${userId} (phone=****${oldPhone ? oldPhone.slice(-4) : "none"})`, "whatsapp");
     }
     res.json({ success: true, phone: cleaned });
   });
@@ -4042,7 +4042,7 @@ export async function registerRoutes(
       res.json({ url: session.url });
     } catch (err: any) {
       log(`Billing checkout error: ${err?.message}`, 'stripe');
-      res.status(500).json({ message: err?.message || "Failed to create checkout session" });
+      serverError(res, err);
     }
   });
 
@@ -4069,7 +4069,7 @@ export async function registerRoutes(
       res.json({ url: portalSession.url });
     } catch (err: any) {
       log(`Billing portal error: ${err?.message}`, 'stripe');
-      res.status(500).json({ message: err?.message || "Failed to create portal session" });
+      serverError(res, err);
     }
   });
 
