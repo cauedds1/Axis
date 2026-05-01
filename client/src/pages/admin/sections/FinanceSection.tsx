@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Search, TrendingUp, CreditCard } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Button } from "@/components/ui/button";
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+} from "recharts";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,13 +16,18 @@ import { fmtDate, fmtCurrency, adminFetch, CHART_PERIODS } from "../admin-utils"
 
 type SortDir = "asc" | "desc";
 
+const CATEGORY_COLORS = ["#7a9e8a", "#6b8cba", "#c87d52", "#a87dc8", "#c8c252", "#c85252"];
+
 export function FinanceSection() {
   const { t } = useTranslation("axisAdmin");
   const [page, setPage] = useState(1);
   const [chartPeriod, setChartPeriod] = useState(12);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("created_at");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const toggleSort = (col: string) => {
@@ -35,9 +41,12 @@ export function FinanceSection() {
   const txParams = new URLSearchParams({ page: String(page), limit: "20", sortBy, sortDir });
   if (search) txParams.set("search", search);
   if (typeFilter !== "all") txParams.set("type", typeFilter);
+  if (categoryFilter) txParams.set("category", categoryFilter);
+  if (dateFrom) txParams.set("dateFrom", dateFrom);
+  if (dateTo) txParams.set("dateTo", dateTo);
 
   const { data: txData, isLoading } = useQuery<{ transactions: Record<string, unknown>[]; total: number }>({
-    queryKey: ["/api/admin/finance/transactions", page, search, typeFilter, sortBy, sortDir],
+    queryKey: ["/api/admin/finance/transactions", page, search, typeFilter, categoryFilter, dateFrom, dateTo, sortBy, sortDir],
     queryFn: () => adminFetch(`/api/admin/finance/transactions?${txParams.toString()}`),
   });
 
@@ -46,6 +55,12 @@ export function FinanceSection() {
     Volume: (m.total_volume ?? 0) as number,
   }));
   const chartData = chartPeriod >= 999 ? allChartData : allChartData.slice(-chartPeriod);
+
+  const topCatData = ((overview?.topCategories as Record<string, unknown>[]) ?? []).map(c => ({
+    name: c.category_name as string,
+    Total: Math.round((c.total as number) || 0),
+    Count: (c.count as number) || 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -71,31 +86,31 @@ export function FinanceSection() {
             </div>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={chartData}>
+            <LineChart data={chartData}>
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#888" }} />
               <YAxis tick={{ fontSize: 11, fill: "#888" }} />
               <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
-              <Bar dataKey="Volume" fill="#7a9e8a" radius={[3, 3, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="Volume" stroke="#7a9e8a" strokeWidth={2} dot={false} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {Array.isArray(overview?.topCategories) && (overview.topCategories as Record<string, unknown>[]).length > 0 && (
-        <div>
+      {topCatData.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <SubTitle>Top Expense Categories</SubTitle>
-          <TableWrapper>
-            <thead><tr><Th>Category</Th><Th>Total</Th><Th>Count</Th></tr></thead>
-            <tbody>
-              {(overview.topCategories as Record<string, unknown>[]).map((c, i) => (
-                <tr key={i} className="hover:bg-accent/30">
-                  <Td className="capitalize">{c.category_name as string}</Td>
-                  <Td className="text-red-400">{fmtCurrency(c.total as number)}</Td>
-                  <Td>{c.count as number}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </TableWrapper>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={topCatData} layout="vertical">
+              <XAxis type="number" tick={{ fontSize: 11, fill: "#888" }} />
+              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11, fill: "#888" }} />
+              <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }} />
+              <Bar dataKey="Total" radius={[0, 3, 3, 0]}>
+                {topCatData.map((_, i) => (
+                  <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
 
@@ -108,7 +123,7 @@ export function FinanceSection() {
               value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
           <Select value={typeFilter} onValueChange={v => { setTypeFilter(v); setPage(1); }}>
-            <SelectTrigger data-testid="select-finance-type" className="w-40">
+            <SelectTrigger data-testid="select-finance-type" className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -117,9 +132,19 @@ export function FinanceSection() {
               <SelectItem value="expense">Expense</SelectItem>
             </SelectContent>
           </Select>
+          <Input data-testid="input-finance-category" className="w-36" placeholder="Category"
+            value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }} />
+          <Input data-testid="input-finance-date-from" type="date" className="w-36"
+            value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
+          <Input data-testid="input-finance-date-to" type="date" className="w-36"
+            value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
         </div>
         {isLoading ? (
-          <div className="text-muted-foreground">{t("common.loading")}</div>
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-10 bg-muted/30 rounded animate-pulse" />
+            ))}
+          </div>
         ) : (
           <>
             <TableWrapper>
@@ -127,6 +152,7 @@ export function FinanceSection() {
                 <tr>
                   <Th onClick={() => toggleSort("user_email")}>{t("finance.user")}<SortIcon field="user_email" sort={sortBy} dir={sortDir} /></Th>
                   <Th onClick={() => toggleSort("description")}>{t("finance.description")}<SortIcon field="description" sort={sortBy} dir={sortDir} /></Th>
+                  <Th>{t("finance.category")}</Th>
                   <Th onClick={() => toggleSort("amount")}>{t("finance.amount")}<SortIcon field="amount" sort={sortBy} dir={sortDir} /></Th>
                   <Th>{t("finance.type")}</Th>
                   <Th onClick={() => toggleSort("date")}>{t("finance.date")}<SortIcon field="date" sort={sortBy} dir={sortDir} /></Th>
@@ -134,11 +160,12 @@ export function FinanceSection() {
               </thead>
               <tbody>
                 {(txData?.transactions ?? []).length === 0 ? (
-                  <EmptyRow colSpan={5} label={t("common.noData")} />
+                  <EmptyRow colSpan={6} label={t("common.noData")} />
                 ) : (txData?.transactions ?? []).map((tx) => (
                   <tr key={tx.id as string} className="hover:bg-accent/30" data-testid={`row-tx-${tx.id}`}>
                     <Td className="text-muted-foreground text-xs">{(tx.user_email ?? tx.userEmail ?? "—") as string}</Td>
                     <Td className="font-medium max-w-xs truncate">{tx.description as string}</Td>
+                    <Td className="text-xs text-muted-foreground capitalize">{(tx.category_name ?? tx.categoryName ?? "—") as string}</Td>
                     <Td className={tx.type === "income" ? "text-emerald-400" : "text-red-400"}>{fmtCurrency(tx.amount as number)}</Td>
                     <Td><Badge variant="outline" className="text-xs capitalize">{tx.type as string}</Badge></Td>
                     <Td className="text-muted-foreground">{fmtDate(tx.date as string)}</Td>

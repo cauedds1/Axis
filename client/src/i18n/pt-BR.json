@@ -3633,7 +3633,8 @@
       "date": "Data",
       "type": "Tipo",
       "income": "Receita",
-      "expense": "Despesa"
+      "expense": "Despesa",
+      "category": "Categoria"
     },
     "billing": {
       "title": "Billing & Stripe",
