@@ -3730,7 +3730,13 @@
       "sender": "Sender",
       "messageType": "Type",
       "result": "Result",
-      "receivedAt": "Received At"
+      "receivedAt": "Received At",
+      "messageTypeName": {
+        "text": "Text Message",
+        "audio": "Audio Message",
+        "image_receipt": "Image Receipt",
+        "document_pdf": "PDF Document"
+      }
     },
     "email": {
       "title": "Email Alerts Log",
@@ -3749,7 +3755,16 @@
       "totalSent": "Total Sent",
       "totalFailed": "Total Failed",
       "successRate": "Success Rate",
-      "thisMonth": "This Month"
+      "thisMonth": "This Month",
+      "alertTypeName": {
+        "bill_due_soon": "Bill Due Soon",
+        "overdue_tasks": "Overdue Tasks",
+        "goal_deadline": "Goal Deadline",
+        "low_discipline": "Low Discipline",
+        "weekly_summary": "Weekly Summary",
+        "offline_reminder": "Offline Reminder",
+        "admin_test_email": "Test Email"
+      }
     },
     "ai": {
       "title": "AI Control",
@@ -3780,7 +3795,15 @@
       "keyOk": "✓ OK",
       "keySetInvalid": "⚠ Key set, invalid",
       "keyNotSet": "✗ Not set",
-      "anonymous": "anon"
+      "anonymous": "anon",
+      "callTypeName": {
+        "chat": "Chat",
+        "intent_detection": "Intent Detection",
+        "audio_transcription": "Audio Transcription",
+        "receipt_analysis": "Receipt Analysis",
+        "pdf_extract": "PDF Extract",
+        "onboarding_diagnosis": "Onboarding Diagnosis"
+      }
     },
     "audit": {
       "title": "Audit Log",
@@ -3791,7 +3814,30 @@
       "timestamp": "Timestamp",
       "metadata": "Metadata",
       "noMetadata": "—",
-      "allActions": "All Actions"
+      "allActions": "All Actions",
+      "actionName": {
+        "org_impersonate": "Impersonate Org",
+        "impersonate": "Impersonate Org",
+        "impersonate_stop": "Stop Impersonation",
+        "user_delete": "Delete User",
+        "delete_user": "Delete User",
+        "user_deactivate": "Deactivate User",
+        "deactivate_user": "Deactivate User",
+        "user_reactivate": "Reactivate User",
+        "reactivate_user": "Reactivate User",
+        "user_reset_password": "Reset Password",
+        "reset_password": "Reset Password",
+        "user_update_plan": "Update Plan",
+        "update_plan": "Update Plan",
+        "system_maintenance_on": "Enable Maintenance",
+        "maintenance_on": "Enable Maintenance",
+        "system_maintenance_off": "Disable Maintenance",
+        "maintenance_off": "Disable Maintenance",
+        "system_seed_demo": "Seed Demo Data",
+        "seed_demo": "Seed Demo Data",
+        "system_reset_demo": "Reset Demo Data",
+        "reset_demo": "Reset Demo Data"
+      }
     },
     "system": {
       "title": "System Settings",

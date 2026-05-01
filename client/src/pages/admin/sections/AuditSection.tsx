@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   SectionTitle, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDateTime, adminFetch } from "../admin-utils";
+import { fmtDateTime, adminFetch, formatAuditAction } from "../admin-utils";
 
 const ACTION_TYPES = [
   "impersonate", "impersonate_stop", "delete_user", "deactivate_user", "reactivate_user",
@@ -57,7 +57,7 @@ export function AuditSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("audit.allActions")}</SelectItem>
-            {ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            {ACTION_TYPES.map(a => <SelectItem key={a} value={a}>{formatAuditAction(a, t)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -81,7 +81,7 @@ export function AuditSection() {
               ) : logs.map((l, i) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-audit-${i}`}>
                   <Td className="text-muted-foreground text-xs">{(l.actor_email ?? l.actorEmail ?? l.actor_id ?? "—") as string}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{l.action as string}</Badge></Td>
+                  <Td><Badge variant="outline" className="text-xs">{formatAuditAction(l.action as string, t)}</Badge></Td>
                   <Td className="text-xs">{(l.target_type ?? l.targetType ?? "—") as string}</Td>
                   <Td className="font-mono text-xs text-muted-foreground max-w-xs truncate">{(l.target_id ?? l.targetId ?? "—") as string}</Td>
                   <Td className="text-muted-foreground">{fmtDateTime((l.created_at ?? l.createdAt) as string)}</Td>

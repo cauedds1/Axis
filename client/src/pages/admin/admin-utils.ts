@@ -57,6 +57,80 @@ export function formatAccountType(type: string | undefined | null, t?: TFn): str
   if (t) return t(`users.accountTypeName.${type}`, { defaultValue: ACCOUNT_TYPE_LABELS[type] ?? type });
   return ACCOUNT_TYPE_LABELS[type] ?? type;
 }
+
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  bill_due_soon: "Bill Due Soon",
+  overdue_tasks: "Overdue Tasks",
+  goal_deadline: "Goal Deadline",
+  low_discipline: "Low Discipline",
+  weekly_summary: "Weekly Summary",
+  offline_reminder: "Offline Reminder",
+  admin_test_email: "Test Email",
+};
+
+export function formatAlertType(type: string | undefined | null, t?: TFn): string {
+  if (!type) return "—";
+  if (t) return t(`email.alertTypeName.${type}`, { defaultValue: ALERT_TYPE_LABELS[type] ?? type });
+  return ALERT_TYPE_LABELS[type] ?? type;
+}
+
+const AI_CALL_TYPE_LABELS: Record<string, string> = {
+  chat: "Chat",
+  intent_detection: "Intent Detection",
+  audio_transcription: "Audio Transcription",
+  receipt_analysis: "Receipt Analysis",
+  pdf_extract: "PDF Extract",
+  onboarding_diagnosis: "Onboarding Diagnosis",
+};
+
+export function formatAiCallType(type: string | undefined | null, t?: TFn): string {
+  if (!type) return "—";
+  if (t) return t(`ai.callTypeName.${type}`, { defaultValue: AI_CALL_TYPE_LABELS[type] ?? type });
+  return AI_CALL_TYPE_LABELS[type] ?? type;
+}
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "org.impersonate": "Impersonate Org",
+  "impersonate": "Impersonate Org",
+  "impersonate_stop": "Stop Impersonation",
+  "user.delete": "Delete User",
+  "delete_user": "Delete User",
+  "user.deactivate": "Deactivate User",
+  "deactivate_user": "Deactivate User",
+  "user.reactivate": "Reactivate User",
+  "reactivate_user": "Reactivate User",
+  "user.reset_password": "Reset Password",
+  "reset_password": "Reset Password",
+  "user.update_plan": "Update Plan",
+  "update_plan": "Update Plan",
+  "system.maintenance_on": "Enable Maintenance",
+  "maintenance_on": "Enable Maintenance",
+  "system.maintenance_off": "Disable Maintenance",
+  "maintenance_off": "Disable Maintenance",
+  "system.seed_demo": "Seed Demo Data",
+  "seed_demo": "Seed Demo Data",
+  "system.reset_demo": "Reset Demo Data",
+  "reset_demo": "Reset Demo Data",
+};
+
+export function formatAuditAction(action: string | undefined | null, t?: TFn): string {
+  if (!action) return "—";
+  if (t) return t(`audit.actionName.${action.replace(/\./g, "_")}`, { defaultValue: AUDIT_ACTION_LABELS[action] ?? action });
+  return AUDIT_ACTION_LABELS[action] ?? action;
+}
+
+const WHATSAPP_TYPE_LABELS: Record<string, string> = {
+  text: "Text Message",
+  audio: "Audio Message",
+  image_receipt: "Image Receipt",
+  document_pdf: "PDF Document",
+};
+
+export function formatWhatsAppType(type: string | undefined | null, t?: TFn): string {
+  if (!type) return "—";
+  if (t) return t(`whatsapp.messageTypeName.${type}`, { defaultValue: WHATSAPP_TYPE_LABELS[type] ?? type });
+  return WHATSAPP_TYPE_LABELS[type] ?? type;
+}
 export const PIE_COLORS = ["#7a9e8a", "#6b8fa0", "#a07a9e", "#9ea07a", "#7a8ea0", "#a09a7a"];
 export const CHART_PERIODS = [
   { label: "3M", months: 3 },

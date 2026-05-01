@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   SectionTitle, StatCard, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDateTime, adminFetch } from "../admin-utils";
+import { fmtDateTime, adminFetch, formatAlertType } from "../admin-utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 
@@ -111,7 +111,7 @@ export function EmailLogsSection() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("email.allTypes")}</SelectItem>
-            {ALERT_TYPES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            {ALERT_TYPES.map(a => <SelectItem key={a} value={a}>{formatAlertType(a, t)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -134,7 +134,7 @@ export function EmailLogsSection() {
               ) : logs.map((l, i) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-email-${i}`}>
                   <Td className="text-muted-foreground text-xs">{(l.recipient ?? l.user_email ?? l.userId ?? "—") as string}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{(l.alert_type ?? l.alertType) as string}</Badge></Td>
+                  <Td><Badge variant="outline" className="text-xs">{formatAlertType((l.alert_type ?? l.alertType) as string, t)}</Badge></Td>
                   <Td>
                     <Badge variant="outline" className={`text-xs ${(l.status ?? "sent") === "failed" ? "border-red-500 text-red-400" : "border-green-500 text-green-400"}`}>
                       {(l.status ?? "sent") === "failed" ? t("email.failed") : t("email.sent")}

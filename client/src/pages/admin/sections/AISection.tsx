@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   SectionTitle, SubTitle, StatCard, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDateTime, adminFetch, PIE_COLORS, AI_CALL_TYPES } from "../admin-utils";
+import { fmtDateTime, adminFetch, PIE_COLORS, AI_CALL_TYPES, formatAiCallType } from "../admin-utils";
 
 type SortDir = "asc" | "desc";
 
@@ -89,7 +89,7 @@ export function AISection() {
                 </Pie>
                 <Tooltip
                   contentStyle={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff" }}
-                  formatter={(val: number, _name: string, props: { payload?: { callType: string } }) => [val, props.payload?.callType]}
+                  formatter={(val: number, _name: string, props: { payload?: { callType: string } }) => [val, formatAiCallType(props.payload?.callType, t)]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -102,7 +102,7 @@ export function AISection() {
               <tbody>
                 {pieData.map((b, i) => (
                   <tr key={i} className="hover:bg-accent/30">
-                    <Td><Badge variant="outline" className="text-xs">{b.callType as string}</Badge></Td>
+                    <Td><Badge variant="outline" className="text-xs">{formatAiCallType(b.callType as string, t)}</Badge></Td>
                     <Td className="font-mono">{b.count}</Td>
                     <Td className="font-mono text-xs">{b.totalTokens ?? "—"}</Td>
                   </tr>
@@ -125,7 +125,7 @@ export function AISection() {
             <SelectTrigger data-testid="select-ai-calltype" className="w-48"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("ai.allTypes")}</SelectItem>
-              {AI_CALL_TYPES.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
+              {AI_CALL_TYPES.map(ct => <SelectItem key={ct} value={ct}>{formatAiCallType(ct, t)}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -148,7 +148,7 @@ export function AISection() {
                 ) : (logsData?.logs ?? []).map((c, i) => (
                   <tr key={i} className="hover:bg-accent/30" data-testid={`row-ai-${i}`}>
                     <Td className="text-muted-foreground text-xs">{(c.user_email as string) ?? t("ai.anonymous")}</Td>
-                    <Td><Badge variant="outline" className="text-xs">{c.call_type as string}</Badge></Td>
+                    <Td><Badge variant="outline" className="text-xs">{formatAiCallType(c.call_type as string, t)}</Badge></Td>
                     <Td className="font-mono text-xs">{(c.tokens_used as string) ?? "—"}</Td>
                     <Td className="text-muted-foreground">{fmtDateTime(c.created_at as string)}</Td>
                   </tr>

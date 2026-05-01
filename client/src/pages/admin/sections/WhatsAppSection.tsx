@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   SectionTitle, SubTitle, TableWrapper, Th, Td, EmptyRow, Pagination, SortIcon,
 } from "../AdminComponents";
-import { fmtDateTime, adminFetch } from "../admin-utils";
+import { fmtDateTime, adminFetch, formatWhatsAppType } from "../admin-utils";
 
 export function WhatsAppSection() {
   const { t } = useTranslation("axisAdmin");
@@ -213,7 +213,7 @@ export function WhatsAppSection() {
               ) : (logsData?.logs ?? []).map((l, i) => (
                 <tr key={i} className="hover:bg-accent/30" data-testid={`row-wlog-${i}`}>
                   <Td className="font-mono text-xs">{(l.senderPhone ?? l.sender_phone ?? "—") as string}</Td>
-                  <Td><Badge variant="outline" className="text-xs">{(l.messageType ?? l.message_type) as string}</Badge></Td>
+                  <Td><Badge variant="outline" className="text-xs">{formatWhatsAppType((l.messageType ?? l.message_type) as string, t)}</Badge></Td>
                   <Td className="text-sm max-w-xs truncate">{(l.result ?? "—") as string}</Td>
                   <Td className="text-muted-foreground">{fmtDateTime((l.createdAt ?? l.created_at) as string)}</Td>
                 </tr>

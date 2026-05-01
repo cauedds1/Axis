@@ -3730,7 +3730,13 @@
       "sender": "Remetente",
       "messageType": "Tipo",
       "result": "Resultado",
-      "receivedAt": "Recebido em"
+      "receivedAt": "Recebido em",
+      "messageTypeName": {
+        "text": "Mensagem de Texto",
+        "audio": "Mensagem de Áudio",
+        "image_receipt": "Recibo por Imagem",
+        "document_pdf": "Documento PDF"
+      }
     },
     "email": {
       "title": "Log de Alertas de E-mail",
@@ -3749,7 +3755,16 @@
       "totalSent": "Total Enviados",
       "totalFailed": "Total de Falhas",
       "successRate": "Taxa de Sucesso",
-      "thisMonth": "Este Mês"
+      "thisMonth": "Este Mês",
+      "alertTypeName": {
+        "bill_due_soon": "Conta a Vencer",
+        "overdue_tasks": "Tarefas Atrasadas",
+        "goal_deadline": "Prazo de Meta",
+        "low_discipline": "Disciplina Baixa",
+        "weekly_summary": "Resumo Semanal",
+        "offline_reminder": "Lembrete de Inatividade",
+        "admin_test_email": "Email de Teste"
+      }
     },
     "ai": {
       "title": "Controle de IA",
@@ -3780,7 +3795,15 @@
       "keyOk": "✓ OK",
       "keySetInvalid": "⚠ Chave inválida",
       "keyNotSet": "✗ Não configurada",
-      "anonymous": "anônimo"
+      "anonymous": "anônimo",
+      "callTypeName": {
+        "chat": "Chat",
+        "intent_detection": "Detecção de Intenção",
+        "audio_transcription": "Transcrição de Áudio",
+        "receipt_analysis": "Análise de Recibo",
+        "pdf_extract": "Extração de PDF",
+        "onboarding_diagnosis": "Diagnóstico de Onboarding"
+      }
     },
     "audit": {
       "title": "Audit Log",
@@ -3791,7 +3814,30 @@
       "timestamp": "Data/Hora",
       "metadata": "Metadados",
       "noMetadata": "—",
-      "allActions": "Todas as Ações"
+      "allActions": "Todas as Ações",
+      "actionName": {
+        "org_impersonate": "Personificar Org",
+        "impersonate": "Personificar Org",
+        "impersonate_stop": "Parar Personificação",
+        "user_delete": "Excluir Usuário",
+        "delete_user": "Excluir Usuário",
+        "user_deactivate": "Desativar Usuário",
+        "deactivate_user": "Desativar Usuário",
+        "user_reactivate": "Reativar Usuário",
+        "reactivate_user": "Reativar Usuário",
+        "user_reset_password": "Redefinir Senha",
+        "reset_password": "Redefinir Senha",
+        "user_update_plan": "Atualizar Plano",
+        "update_plan": "Atualizar Plano",
+        "system_maintenance_on": "Ativar Manutenção",
+        "maintenance_on": "Ativar Manutenção",
+        "system_maintenance_off": "Desativar Manutenção",
+        "maintenance_off": "Desativar Manutenção",
+        "system_seed_demo": "Popular Demo",
+        "seed_demo": "Popular Demo",
+        "system_reset_demo": "Resetar Demo",
+        "reset_demo": "Resetar Demo"
+      }
     },
     "system": {
       "title": "Configurações do Sistema",
