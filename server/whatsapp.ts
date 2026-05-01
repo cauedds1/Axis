@@ -23,6 +23,7 @@ import * as path from "path";
 import { db } from "./db";
 import { users, whatsappAuth, transactions } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
+import { checkLimit, incrementCounter } from "./planLimits";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -457,7 +458,8 @@ class WhatsAppManager {
           const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (answer === "pessoal" || answer === "p") {
             this.pendingBusinessChoice.delete(jid);
-            const savedTx = await storage.createTransaction(pendingBusiness.transactionData);
+            const savedTx = await this.limitedCreateTx(jid, profile.userId, pendingBusiness.transactionData);
+            if (savedTx === null) return;
             if (savedTx?.id) {
               this.lastRegisteredTx.set(jid, { id: savedTx.id, description: pendingBusiness.transactionData.description || "", amount: Number(pendingBusiness.transactionData.amount), categoryName: pendingBusiness.transactionData.categoryName || "outros", establishment: pendingBusiness.transactionData.establishment || null, type: pendingBusiness.transactionData.type, expiresAt: Date.now() + 30 * 60 * 1000 });
             }
@@ -495,7 +497,8 @@ class WhatsAppManager {
           const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           if (answer === "sim" || answer === "s" || answer === "yes" || answer.startsWith("sim ") || answer === "cadastrar") {
             this.pendingDuplicates.delete(jid);
-            const confirmedTx = await storage.createTransaction(pending.transactionData);
+            const confirmedTx = await this.limitedCreateTx(jid, profile.userId, pending.transactionData);
+            if (confirmedTx === null) return;
             if (confirmedTx?.id) {
               this.lastRegisteredTx.set(jid, {
                 id: confirmedTx.id,
@@ -679,8 +682,10 @@ class WhatsAppManager {
       }
 
       const reply = await this.buildReply(result, profile.userId, jid);
-      await this.sendMessage(jid, reply);
-      log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
+      if (reply) {
+        await this.sendMessage(jid, reply);
+        log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
+      }
     } catch (err: any) {
       log(`WhatsApp: erro ao processar mensagem de ${senderPhone} — ${err.message}`, "whatsapp");
       await this.sendMessage(jid, "❌ Erro ao processar. Tente novamente.");
@@ -1066,7 +1071,8 @@ class WhatsAppManager {
         return;
       }
 
-      const savedImageTx = await storage.createTransaction(transactionData);
+      const savedImageTx = await this.limitedCreateTx(jid, userId, transactionData);
+      if (savedImageTx === null) return;
       if (savedImageTx?.id) {
         this.lastRegisteredTx.set(jid, {
           id: savedImageTx.id,
@@ -1086,10 +1092,12 @@ class WhatsAppManager {
     // Multiple receipts: save all, build consolidated summary
     const lines: string[] = [];
     let savedCount = 0;
+    let limitHit = false;
     for (const receipt of validReceipts) {
       const { transactionData, amount, transactionType, replyLine } = buildTxData(receipt);
       try {
-        await storage.createTransaction(transactionData);
+        const saved = await this.limitedCreateTx(jid, userId, transactionData);
+        if (saved === null) { limitHit = true; break; }
         lines.push(replyLine);
         savedCount++;
         log(`WhatsApp multi-receipt: saved ${transactionType} R$ ${amount}`, "whatsapp");
@@ -1098,10 +1106,11 @@ class WhatsAppManager {
       }
     }
 
-    if (savedCount === 0) {
+    if (savedCount === 0 && !limitHit) {
       await this.sendMessage(jid, "😕 Não consegui salvar os comprovantes. Tente novamente.");
       return;
     }
+    if (limitHit && savedCount === 0) return;
 
     const header = savedCount === 1
       ? `✅ *1 comprovante registrado!*`
@@ -1147,7 +1156,7 @@ class WhatsAppManager {
     const result = await detectIntentAndProcess(transcription, userId);
     log(`WhatsApp: intent=${result.intent} (áudio) para userId=${userId}`, "whatsapp");
     const reply = await this.buildReply(result, userId, jid);
-    await this.sendMessage(jid, reply);
+    if (reply) await this.sendMessage(jid, reply);
   }
 
   private async handleDocumentPDF(
@@ -1266,7 +1275,8 @@ class WhatsAppManager {
     const skipped = txns.length - toCreate.length;
 
     if (toCreate.length > 0) {
-      await storage.createManyTransactions(toCreate);
+      const pdfCreated = await this.limitedCreateManyTx(jid, userId, toCreate);
+      if (!pdfCreated) return;
     }
 
     const totalExpense = toCreate.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
@@ -1347,7 +1357,7 @@ class WhatsAppManager {
     const currentAmount = goal ? (Number(goal.currentAmount) || 0) : 0;
     const newAmount = currentAmount + amount;
     await storage.updateFinancialGoal(goalId, userId, { currentAmount: newAmount as any });
-    await storage.createTransaction({
+    const goalTx = await this.limitedCreateTx(jid, userId, {
       userId,
       type: "expense",
       amount: amount as any,
@@ -1358,10 +1368,38 @@ class WhatsAppManager {
       paymentMethod: null,
       establishment: null,
     });
+    if (goalTx === null) return;
     const fmtAmt = amount.toFixed(2).replace(".", ",");
     const fmtTotal = newAmount.toFixed(2).replace(".", ",");
     await this.sendMessage(jid, `✅ *R$ ${fmtAmt} guardado em ${goalTitle}!*\n💰 Total na reserva: R$ ${fmtTotal}`);
     log(`WhatsApp: depósito de R$ ${amount} em goal="${goalTitle}" userId=${userId}`, "whatsapp");
+  }
+
+  private async limitedCreateTx(jid: string, userId: string, data: Parameters<typeof storage.createTransaction>[0]): Promise<Awaited<ReturnType<typeof storage.createTransaction>> | null> {
+    const limitResult = await checkLimit(userId, 'transaction');
+    if (!limitResult.allowed) {
+      await this.sendMessage(jid,
+        `⚠️ *Limite de transações atingido!*\n\nVocê já registrou *${limitResult.current}* de *${limitResult.limit}* transações este mês no plano atual.\n\n💡 Faça upgrade para o AXIS Personal AI e tenha transações ilimitadas:\nhttps://axisapp.com/pricing`
+      );
+      return null;
+    }
+    const tx = await storage.createTransaction(data);
+    incrementCounter(userId, 'transaction').catch(() => {});
+    return tx;
+  }
+
+  private async limitedCreateManyTx(jid: string, userId: string, dataArray: Parameters<typeof storage.createManyTransactions>[0]): Promise<boolean> {
+    if (dataArray.length === 0) return true;
+    const limitResult = await checkLimit(userId, 'transaction', dataArray.length);
+    if (!limitResult.allowed) {
+      await this.sendMessage(jid,
+        `⚠️ *Limite de transações atingido!*\n\nVocê já registrou *${limitResult.current}* de *${limitResult.limit}* transações este mês no plano atual.\n\n💡 Faça upgrade para o AXIS Personal AI e tenha transações ilimitadas:\nhttps://axisapp.com/pricing`
+      );
+      return false;
+    }
+    await storage.createManyTransactions(dataArray);
+    incrementCounter(userId, 'transaction', dataArray.length).catch(() => {});
+    return true;
   }
 
   private async handleSavingsDeposit(jid: string, userId: string, amount: number, goalName: string | null): Promise<void> {
@@ -1459,7 +1497,8 @@ class WhatsAppManager {
                 installmentInfo: JSON.stringify({ current: i + 1, total: data.installments, groupId }),
               };
             });
-            await storage.createManyTransactions(txList);
+            const installCreated = await this.limitedCreateManyTx(jid, userId, txList);
+            if (!installCreated) return "";
             const warning = await this.buildCardWarning(card, userId);
             return `✅ ${data.installments}x de R$ ${installAmt.toFixed(2)} no *${card.name}* registrado!${warning}`;
           }
@@ -1467,9 +1506,9 @@ class WhatsAppManager {
         log(`WhatsApp buildReply: intent=${intent} amount=${amount} creditCardId=${data.creditCardId || "none"} userId=${userId}`, "whatsapp");
         const singleCard = data.creditCardId ? await storage.getCreditCard(data.creditCardId, userId) : null;
         log(`WhatsApp buildReply: singleCard=${singleCard ? singleCard.name + " id=" + singleCard.id : "null"}`, "whatsapp");
-        let savedTx: any = null;
+        let savedTx: Awaited<ReturnType<typeof storage.createTransaction>> | null = null;
         try {
-          savedTx = await storage.createTransaction({
+          savedTx = await this.limitedCreateTx(jid, userId, {
             userId,
             type: intent,
             amount: amount as any,
@@ -1481,6 +1520,7 @@ class WhatsAppManager {
             paymentMethod: null,
             creditCardId: singleCard ? singleCard.id : null,
           });
+          if (savedTx === null) return "";
           log(`WhatsApp buildReply: transação salva id=${savedTx?.id} creditCardId=${savedTx?.creditCardId}`, "whatsapp");
         } catch (txErr: any) {
           log(`WhatsApp buildReply: ERRO ao salvar transação — ${txErr?.message} — stack: ${txErr?.stack}`, "whatsapp");
