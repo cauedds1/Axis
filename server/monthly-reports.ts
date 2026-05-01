@@ -482,14 +482,22 @@ interface BusinessReportData {
   pendingExpenses: number;
   rejectedExpenses: number;
   expenseCount: number;
+  prevApprovedExpenses: number;
+  prevReceivedAmount: number;
   topCategories: { name: string; amount: number; pct: number }[];
+  topCollaborators: { name: string; amount: number; count: number }[];
   totalReceivables: number;
   receivedAmount: number;
   pendingReceivable: number;
+  overdueReceivable: number;
   receivableCount: number;
-  totalBills: number;
-  unpaidBills: number;
-  billCount: number;
+  billsPaid: number;
+  billsPaidCount: number;
+  billsPending: number;
+  billsPendingCount: number;
+  billsOverdue: number;
+  billsOverdueCount: number;
+  projectedBalance: number;
   netResult: number;
   currency: string;
   adminName: string;
@@ -505,9 +513,15 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
 
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevStart = new Date(prevYear, prevMonth, 1);
+  const prevEnd = new Date(prevYear, prevMonth + 1, 0, 23, 59, 59, 999);
+  const now = new Date();
 
-  const [expenses, receivables, bills] = await Promise.all([
+  const [expenses, prevExpenses, receivables, bills] = await Promise.all([
     storage.getBusinessExpenses(orgId, { startDate: start, endDate: end }),
+    storage.getBusinessExpenses(orgId, { startDate: prevStart, endDate: prevEnd }),
     storage.getBusinessReceivables(orgId),
     storage.getBusinessBills(orgId),
   ]);
@@ -516,6 +530,7 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
   const approvedExpenses = expenses.filter(e => e.status === "approved").reduce((s, e) => s + Number(e.amount), 0);
   const pendingExpenses = expenses.filter(e => e.status === "pending").reduce((s, e) => s + Number(e.amount), 0);
   const rejectedExpenses = expenses.filter(e => e.status === "rejected").reduce((s, e) => s + Number(e.amount), 0);
+  const prevApprovedExpenses = prevExpenses.filter(e => e.status === "approved").reduce((s, e) => s + Number(e.amount), 0);
 
   const catMap: Record<string, number> = {};
   for (const e of expenses.filter(ex => ex.status !== "rejected")) {
@@ -531,7 +546,18 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
         ? Math.round((amount / (approvedExpenses + pendingExpenses)) * 100) : 0,
     }));
 
-  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const collaboratorMap: Record<string, { name: string; amount: number; count: number }> = {};
+  for (const e of expenses.filter(ex => ex.status !== "rejected" && ex.userId)) {
+    const uid = e.userId!;
+    const name = e.userName || e.userEmail || uid;
+    if (!collaboratorMap[uid]) collaboratorMap[uid] = { name, amount: 0, count: 0 };
+    collaboratorMap[uid].amount += Number(e.amount);
+    collaboratorMap[uid].count += 1;
+  }
+  const topCollaborators = Object.values(collaboratorMap)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
   const monthReceivables = receivables.filter(r => {
     if (!r.dueDate) return false;
     const d = new Date(r.dueDate);
@@ -539,17 +565,34 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
   });
   const totalReceivables = monthReceivables.reduce((s, r) => s + Number(r.amount), 0);
   const receivedAmount = monthReceivables.filter(r => r.status === "received").reduce((s, r) => s + Number(r.amount), 0);
-  const pendingReceivable = totalReceivables - receivedAmount;
+  const pendingReceivable = monthReceivables
+    .filter(r => r.status !== "received" && new Date(r.dueDate!) >= now)
+    .reduce((s, r) => s + Number(r.amount), 0);
+  const overdueReceivable = monthReceivables
+    .filter(r => r.status !== "received" && new Date(r.dueDate!) < now)
+    .reduce((s, r) => s + Number(r.amount), 0);
 
-  const unpaidBills = bills
-    .filter(b => b.active && b.type === "expense")
-    .filter(b => {
-      const paid: string[] = (() => { try { return JSON.parse(b.paidMonths || "[]"); } catch { return []; } })();
-      return !paid.includes(monthKey);
-    });
-  const totalBills = unpaidBills.reduce((s, b) => s + Number(b.amount), 0);
+  const prevMonthReceivables = receivables.filter(r => {
+    if (!r.dueDate) return false;
+    const d = new Date(r.dueDate);
+    return d >= prevStart && d <= prevEnd;
+  });
+  const prevReceivedAmount = prevMonthReceivables.filter(r => r.status === "received").reduce((s, r) => s + Number(r.amount), 0);
+
+  const monthBills = bills.filter(b => {
+    if (!b.dueDate) return false;
+    const d = new Date(b.dueDate);
+    return d >= start && d <= end;
+  });
+  const billsPaid = monthBills.filter(b => b.status === "paid").reduce((s, b) => s + Number(b.amount), 0);
+  const billsPaidCount = monthBills.filter(b => b.status === "paid").length;
+  const billsPending = monthBills.filter(b => b.status !== "paid" && new Date(b.dueDate) >= now).reduce((s, b) => s + Number(b.amount), 0);
+  const billsPendingCount = monthBills.filter(b => b.status !== "paid" && new Date(b.dueDate) >= now).length;
+  const billsOverdue = monthBills.filter(b => b.status !== "paid" && new Date(b.dueDate) < now).reduce((s, b) => s + Number(b.amount), 0);
+  const billsOverdueCount = monthBills.filter(b => b.status !== "paid" && new Date(b.dueDate) < now).length;
 
   const netResult = receivedAmount - approvedExpenses;
+  const projectedBalance = (receivedAmount + pendingReceivable) - (approvedExpenses + pendingExpenses + billsPending + billsOverdue);
 
   const currency = profile?.currency || "BRL";
   const adminName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(" ") || "admin";
@@ -558,10 +601,14 @@ async function buildBusinessReportData(orgId: string, adminUserId: string, month
     orgName: org.name,
     totalExpenses, approvedExpenses, pendingExpenses, rejectedExpenses,
     expenseCount: expenses.length,
-    topCategories,
-    totalReceivables, receivedAmount, pendingReceivable,
+    prevApprovedExpenses, prevReceivedAmount,
+    topCategories, topCollaborators,
+    totalReceivables, receivedAmount, pendingReceivable, overdueReceivable,
     receivableCount: monthReceivables.length,
-    totalBills, unpaidBills: totalBills, billCount: unpaidBills.length,
+    billsPaid, billsPaidCount,
+    billsPending, billsPendingCount,
+    billsOverdue, billsOverdueCount,
+    projectedBalance,
     netResult,
     currency, adminName,
   };
@@ -571,14 +618,19 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
   const c = data.currency;
   const fmt = (v: number) => fmtAmt(v, c, lang);
   const mn = monthName(month, lang);
+  const prevMn = monthName(month === 0 ? 11 : month - 1, lang);
   const firstName = data.adminName.split(" ")[0];
   const isEn = lang === "en";
 
   const netColor = data.netResult >= 0 ? "#4ECDC4" : "#FF6B6B";
+  const projColor = data.projectedBalance >= 0 ? "#4ECDC4" : "#FF6B6B";
 
-  const title = isEn
-    ? `${data.orgName} — ${mn} ${year} Business Report`
-    : `${data.orgName} — Relatório Empresarial de ${mn} de ${year}`;
+  const expChange = data.prevApprovedExpenses > 0
+    ? Math.round(((data.approvedExpenses - data.prevApprovedExpenses) / data.prevApprovedExpenses) * 100)
+    : 0;
+  const revChange = data.prevReceivedAmount > 0
+    ? Math.round(((data.receivedAmount - data.prevReceivedAmount) / data.prevReceivedAmount) * 100)
+    : 0;
 
   let html = `
     <div class="badge badge-purple">🏢 ${isEn ? "Business Report" : "Relatório Empresarial"} · ${mn} ${year}</div>
@@ -606,7 +658,22 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
       </div>
     </div>
 
-    <p class="section-title">${isEn ? "EXPENSES" : "DESPESAS"}</p>
+    <div class="section-block">
+      <div class="stat-row">
+        <span class="stat-label">${isEn ? "Revenue vs" : "Receita vs"} ${prevMn}</span>
+        <span class="stat-value ${revChange >= 0 ? "highlight-green" : "highlight-red"}">${fmtPct(revChange)}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">${isEn ? "Expenses vs" : "Despesas vs"} ${prevMn}</span>
+        <span class="stat-value ${expChange <= 0 ? "highlight-green" : "highlight-red"}">${fmtPct(expChange)}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">${isEn ? "Projected balance" : "Saldo projetado"}</span>
+        <span class="stat-value" style="color:${projColor}">${fmt(data.projectedBalance)}</span>
+      </div>
+    </div>
+
+    <p class="section-title">${isEn ? "EXPENSES BREAKDOWN" : "DESPESAS DETALHADAS"}</p>
     <div class="section-block">
       <div class="stat-row">
         <span class="stat-label">${isEn ? "Total submitted" : "Total enviado"}</span>
@@ -642,10 +709,25 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
     html += `</div>`;
   }
 
+  if (data.topCollaborators.length > 0) {
+    html += `<p class="section-title">${isEn ? "TOP COLLABORATORS BY SPEND" : "TOP COLABORADORES POR GASTO"}</p>
+    <div class="section-block" style="padding-bottom:8px;">`;
+    data.topCollaborators.forEach((col, i) => {
+      html += `
+      <div class="cat-row">
+        <div class="cat-dot" style="background:${CAT_COLORS[i % CAT_COLORS.length]}"></div>
+        <span class="cat-name">${col.name}</span>
+        <span class="cat-amt">${fmt(col.amount)}</span>
+        <span class="cat-pct">${col.count} ${isEn ? "exp." : "desp."}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
   html += `<p class="section-title">${isEn ? "RECEIVABLES" : "CONTAS A RECEBER"}</p>
   <div class="section-block">
     <div class="stat-row">
-      <span class="stat-label">${isEn ? "Expected" : "Previsto"}</span>
+      <span class="stat-label">${isEn ? "Expected this month" : "Previsto no mês"}</span>
       <span class="stat-value">${fmt(data.totalReceivables)} <span style="font-size:11px;color:rgba(255,255,255,0.3);">(${data.receivableCount})</span></span>
     </div>
     <div class="stat-row">
@@ -653,22 +735,32 @@ function buildBusinessHtml(data: BusinessReportData, month: number, year: number
       <span class="stat-value highlight-green">${fmt(data.receivedAmount)}</span>
     </div>
     <div class="stat-row">
-      <span class="stat-label">${isEn ? "Still pending" : "Ainda pendente"}</span>
+      <span class="stat-label">${isEn ? "Pending (not yet due)" : "Pendente (ainda no prazo)"}</span>
       <span class="stat-value highlight-orange">${fmt(data.pendingReceivable)}</span>
     </div>
+    ${data.overdueReceivable > 0 ? `
+    <div class="stat-row">
+      <span class="stat-label">${isEn ? "Overdue" : "Em atraso"}</span>
+      <span class="stat-value highlight-red">${fmt(data.overdueReceivable)}</span>
+    </div>` : ""}
   </div>`;
 
-  if (data.billCount > 0) {
-    html += `<p class="section-title">${isEn ? "FIXED BILLS (DUE THIS MONTH)" : "CONTAS FIXAS (VENCIMENTO ESTE MÊS)"}</p>
+  if (data.billsPaidCount + data.billsPendingCount + data.billsOverdueCount > 0) {
+    html += `<p class="section-title">${isEn ? "ACCOUNTS PAYABLE (THIS MONTH)" : "CONTAS A PAGAR (ESTE MÊS)"}</p>
     <div class="section-block">
       <div class="stat-row">
-        <span class="stat-label">${isEn ? "Bills due" : "Contas a pagar"}</span>
-        <span class="stat-value">${data.billCount}</span>
+        <span class="stat-label">${isEn ? "Paid" : "Pagas"}</span>
+        <span class="stat-value highlight-green">${fmt(data.billsPaid)} <span style="font-size:11px;color:rgba(255,255,255,0.3);">(${data.billsPaidCount})</span></span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">${isEn ? "Total amount" : "Valor total"}</span>
-        <span class="stat-value highlight-red">${fmt(data.totalBills)}</span>
+        <span class="stat-label">${isEn ? "Pending (not yet due)" : "Pendente (ainda no prazo)"}</span>
+        <span class="stat-value highlight-orange">${fmt(data.billsPending)} <span style="font-size:11px;color:rgba(255,255,255,0.3);">(${data.billsPendingCount})</span></span>
       </div>
+      ${data.billsOverdueCount > 0 ? `
+      <div class="stat-row">
+        <span class="stat-label">${isEn ? "Overdue" : "Em atraso"}</span>
+        <span class="stat-value highlight-red">${fmt(data.billsOverdue)} <span style="font-size:11px;color:rgba(255,255,255,0.3);">(${data.billsOverdueCount})</span></span>
+      </div>` : ""}
     </div>`;
   }
 

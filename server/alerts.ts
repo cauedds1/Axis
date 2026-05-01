@@ -271,7 +271,8 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
   // For monthly reports, report on the previous month
   const reportMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
   const reportYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const since20DaysAgo = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
+  // Dedup window: start of today (prevents double-send if the periodic job runs multiple times on the 1st)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   for (const profile of profiles) {
     const prefs = getEmailAlertPrefs(profile);
@@ -306,7 +307,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
     }
 
     if (isFirstOfMonth && prefs.monthlyPersonal) {
-      const recentPersonal = await storage.getRecentAlerts(profile.userId, "monthly_personal", null, since20DaysAgo);
+      const recentPersonal = await storage.getRecentAlerts(profile.userId, "monthly_personal", null, todayStart);
       if (recentPersonal.length === 0) {
         const result = await sendPersonalMonthlyReport(profile.userId, reportMonth, reportYear).catch(() => "failed" as const);
         if (result !== "skipped") {
@@ -333,7 +334,7 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
       const prefs = getEmailAlertPrefs(adminProfile);
       if (!prefs.monthlyBusiness) continue;
 
-      const recentBusiness = await storage.getRecentAlerts(org.adminUserId, "monthly_business", org.id, since20DaysAgo);
+      const recentBusiness = await storage.getRecentAlerts(org.adminUserId, "monthly_business", org.id, todayStart);
       if (recentBusiness.length > 0) continue;
 
       const result = await sendBusinessMonthlyReport(org.id, org.adminUserId, reportMonth, reportYear).catch(() => "failed" as const);
