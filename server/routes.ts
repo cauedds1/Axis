@@ -503,7 +503,16 @@ export async function registerRoutes(
       let created: any = null;
       switch (result.intent) {
         case "expense":
-        case "income":
+        case "income": {
+          // Enforce transaction limit before creating — account for installments
+          const inputInstallmentCount = (result.data.creditCardId && result.data.installments && result.data.installments > 1)
+            ? result.data.installments as number
+            : 1;
+          const inputTxLimit = await checkLimit(userId, 'transaction', inputInstallmentCount);
+          if (!inputTxLimit.allowed) {
+            return res.status(402).json({ limitReached: true, plan: inputTxLimit.plan, reason: inputTxLimit.reason, current: inputTxLimit.current, limit: inputTxLimit.limit, upgradeUrl: inputTxLimit.upgradeUrl });
+          }
+
           if (result.data.creditCardId && result.data.installments && result.data.installments > 1) {
             const card = await storage.getCreditCard(result.data.creditCardId, userId);
             if (card) {
@@ -529,6 +538,7 @@ export async function registerRoutes(
                 };
               });
               created = await storage.createManyTransactions(txList);
+              incrementCounter(userId, 'transaction', txList.length).catch(() => {});
               break;
             }
           }
@@ -553,8 +563,10 @@ export async function registerRoutes(
               creditCardId: result.data.creditCardId || null,
               installmentInfo: null,
             });
+            incrementCounter(userId, 'transaction').catch(() => {});
           }
           break;
+        }
         case "task":
           created = await storage.createPersonalTask({
             userId,
@@ -618,11 +630,18 @@ export async function registerRoutes(
   app.post("/api/finance/photo/confirm", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
+      const { checkLimit, incrementCounter } = await import("./planLimits");
 
       // Support both single receipt (legacy) and array of receipts
       const receiptsRaw: any[] = Array.isArray(req.body.receipts)
         ? req.body.receipts
         : [req.body];
+
+      // Enforce transaction limit — check for all receipts at once
+      const photoTxLimit = await checkLimit(userId, 'transaction', receiptsRaw.length);
+      if (!photoTxLimit.allowed) {
+        return res.status(402).json({ limitReached: true, plan: photoTxLimit.plan, reason: photoTxLimit.reason, current: photoTxLimit.current, limit: photoTxLimit.limit, upgradeUrl: photoTxLimit.upgradeUrl });
+      }
 
       const created = await Promise.all(
         receiptsRaw.map(async (r: any) => {
@@ -650,6 +669,8 @@ export async function registerRoutes(
           });
         })
       );
+
+      incrementCounter(userId, 'transaction', created.length).catch(() => {});
       res.json(created);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -707,21 +728,29 @@ export async function registerRoutes(
         res.json({ created: "bill", bill });
       } else {
         const { transactions: txns } = req.body;
-        const created = await storage.createManyTransactions(
-          (txns || []).map((t: any) => ({
-            userId,
-            amount: t.amount,
-            description: t.description,
-            categoryName: t.categoryName || null,
-            type: t.type || "expense",
-            date: t.date ? new Date(t.date) : new Date(),
-            source: "pdf",
-            establishment: t.establishment || null,
-            paymentMethod: t.paymentMethod || null,
-            location: null,
-          }))
-        );
-        res.json(created);
+        const txList = (txns || []).map((t: any) => ({
+          userId,
+          amount: t.amount,
+          description: t.description,
+          categoryName: t.categoryName || null,
+          type: t.type || "expense",
+          date: t.date ? new Date(t.date) : new Date(),
+          source: "pdf",
+          establishment: t.establishment || null,
+          paymentMethod: t.paymentMethod || null,
+          location: null,
+        }));
+        if (txList.length > 0) {
+          const { checkLimit: pdfCheckLimit, incrementCounter: pdfIncrement } = await import("./planLimits");
+          const pdfTxLimit = await pdfCheckLimit(userId, 'transaction', txList.length);
+          if (!pdfTxLimit.allowed) {
+            return res.status(402).json({ limitReached: true, plan: pdfTxLimit.plan, reason: pdfTxLimit.reason, current: pdfTxLimit.current, limit: pdfTxLimit.limit, upgradeUrl: pdfTxLimit.upgradeUrl });
+          }
+          const created = await storage.createManyTransactions(txList);
+          pdfIncrement(userId, 'transaction', created.length).catch(() => {});
+          return res.json(created);
+        }
+        res.json([]);
       }
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -764,8 +793,23 @@ export async function registerRoutes(
       let skipped = 0;
       let botMessage = "";
 
+      const { checkLimit: uploadCheckLimit, incrementCounter: uploadIncrement } = await import("./planLimits");
+
       if (isImage) {
+        // Check AI capture limit before processing
+        const uploadAiLimit = await uploadCheckLimit(userId, 'ai_capture');
+        if (!uploadAiLimit.allowed) {
+          return res.status(402).json({ limitReached: true, plan: uploadAiLimit.plan, reason: uploadAiLimit.reason, current: uploadAiLimit.current, limit: uploadAiLimit.limit, upgradeUrl: uploadAiLimit.upgradeUrl });
+        }
+
+        // Check that at least 1 transaction slot is available before processing
+        const uploadTxLimit = await uploadCheckLimit(userId, 'transaction');
+        if (!uploadTxLimit.allowed) {
+          return res.status(402).json({ limitReached: true, plan: uploadTxLimit.plan, reason: uploadTxLimit.reason, current: uploadTxLimit.current, limit: uploadTxLimit.limit, upgradeUrl: uploadTxLimit.upgradeUrl });
+        }
+
         const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+        uploadIncrement(userId, 'ai_capture').catch(() => {});
         const multiResult = await processMultipleReceipts(base64, userId);
         const validReceipts = multiResult.receipts.filter((r: any) => r.totalAmount && r.imageType !== "unknown");
 
@@ -795,23 +839,31 @@ export async function registerRoutes(
               skipped++;
               lines.push(`⚠️ Já cadastrado: ${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""}`);
             } else {
-              const txItems = result.items && result.items.length > 1 ? result.items : null;
-              await storage.createTransaction({
-                userId,
-                amount: txAmount as any,
-                description: txEstablishment || txDesc,
-                categoryName: result.categoryName || "outros",
-                type: txType as "expense" | "income",
-                date: txDate,
-                source: "photo",
-                establishment: txEstablishment,
-                paymentMethod: result.paymentMethod || null,
-                location: result.location || null,
-                receiptItems: txItems ? JSON.stringify(txItems.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
-                dateOnly: !result.time || result.time === "00:00",
-              });
-              imported++;
-              lines.push(`${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""} · ${result.categoryName || "outros"}`);
+              // Re-check limit per transaction in case multiple receipts fill up remaining quota
+              const perTxLimit = await uploadCheckLimit(userId, 'transaction');
+              if (!perTxLimit.allowed) {
+                skipped++;
+                lines.push(`⚠️ Limite de transações atingido — ${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)} não registrado.`);
+              } else {
+                const txItems = result.items && result.items.length > 1 ? result.items : null;
+                await storage.createTransaction({
+                  userId,
+                  amount: txAmount as any,
+                  description: txEstablishment || txDesc,
+                  categoryName: result.categoryName || "outros",
+                  type: txType as "expense" | "income",
+                  date: txDate,
+                  source: "photo",
+                  establishment: txEstablishment,
+                  paymentMethod: result.paymentMethod || null,
+                  location: result.location || null,
+                  receiptItems: txItems ? JSON.stringify(txItems.map((i: any) => ({ description: String(i.description || ""), amount: Number(i.amount || 0) }))) : null,
+                  dateOnly: !result.time || result.time === "00:00",
+                });
+                uploadIncrement(userId, 'transaction').catch(() => {});
+                imported++;
+                lines.push(`${txType === "income" ? "💰" : "💸"} R$ ${txAmount.toFixed(2)}${txEstablishment ? ` — ${txEstablishment}` : ""} · ${result.categoryName || "outros"}`);
+              }
             }
           }
 
@@ -878,19 +930,25 @@ export async function registerRoutes(
             const { toCreate, skipped: sk } = await filterNewTxns(userId, txns);
             skipped = sk;
             if (toCreate.length > 0) {
-              await storage.createManyTransactions(toCreate.map((t: any) => ({
-                userId,
-                amount: Number(t.amount),
-                description: t.description || "Sem descrição",
-                categoryName: t.categoryName || "outros",
-                type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
-                date: t.date ? new Date(t.date) : new Date(),
-                source: "pdf" as const,
-                establishment: t.establishment || null,
-                paymentMethod: t.paymentMethod || null,
-                dateOnly: !t.time || t.time === "00:00",
-              })));
-              imported = toCreate.length;
+              const pdfUploadTxLimit = await uploadCheckLimit(userId, 'transaction', toCreate.length);
+              if (!pdfUploadTxLimit.allowed) {
+                botMessage = `⚠️ Limite de ${pdfUploadTxLimit.limit} transações/mês atingido. Nenhuma transação do extrato foi importada. Faça upgrade em /pricing.`;
+              } else {
+                await storage.createManyTransactions(toCreate.map((t: any) => ({
+                  userId,
+                  amount: Number(t.amount),
+                  description: t.description || "Sem descrição",
+                  categoryName: t.categoryName || "outros",
+                  type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
+                  date: t.date ? new Date(t.date) : new Date(),
+                  source: "pdf" as const,
+                  establishment: t.establishment || null,
+                  paymentMethod: t.paymentMethod || null,
+                  dateOnly: !t.time || t.time === "00:00",
+                })));
+                uploadIncrement(userId, 'transaction', toCreate.length).catch(() => {});
+                imported = toCreate.length;
+              }
             }
             const totalExpense = toCreate.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
             const totalIncome = toCreate.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
@@ -1286,6 +1344,11 @@ export async function registerRoutes(
       const userId = getUserId(req);
       const schema = z.object({ amount: z.number().positive() });
       const { amount } = schema.parse(req.body);
+
+      const { checkLimit: goalDepositCheck, incrementCounter: goalDepositInc } = await import("./planLimits");
+      const goalDepositLimit = await goalDepositCheck(userId, 'transaction');
+      if (!goalDepositLimit.allowed) return res.status(402).json({ limitReached: true, plan: goalDepositLimit.plan, reason: goalDepositLimit.reason, current: goalDepositLimit.current, limit: goalDepositLimit.limit, upgradeUrl: goalDepositLimit.upgradeUrl });
+
       const goals = await storage.getFinancialGoals(userId);
       const goal = goals.find(g => g.id === paramId(req));
       if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
@@ -1304,6 +1367,7 @@ export async function registerRoutes(
           location: null,
         }),
       ]);
+      goalDepositInc(userId, 'transaction').catch(() => {});
       saveEventToMemory(userId, `Depósito de R$${amount} na reserva "${goal.title}" — total: R$${updatedGoal?.currentAmount}`).catch(() => {});
       res.json({ goal: updatedGoal, transaction: tx });
     } catch (error: any) {
@@ -1317,6 +1381,11 @@ export async function registerRoutes(
       const userId = getUserId(req);
       const schema = z.object({ amount: z.number().positive() });
       const { amount } = schema.parse(req.body);
+
+      const { checkLimit: goalWithdrawCheck, incrementCounter: goalWithdrawInc } = await import("./planLimits");
+      const goalWithdrawLimit = await goalWithdrawCheck(userId, 'transaction');
+      if (!goalWithdrawLimit.allowed) return res.status(402).json({ limitReached: true, plan: goalWithdrawLimit.plan, reason: goalWithdrawLimit.reason, current: goalWithdrawLimit.current, limit: goalWithdrawLimit.limit, upgradeUrl: goalWithdrawLimit.upgradeUrl });
+
       const goals = await storage.getFinancialGoals(userId);
       const goal = goals.find(g => g.id === paramId(req));
       if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
@@ -1336,6 +1405,7 @@ export async function registerRoutes(
           location: null,
         }),
       ]);
+      goalWithdrawInc(userId, 'transaction').catch(() => {});
       saveEventToMemory(userId, `Saque de R$${amount} da reserva "${goal.title}" — saldo restante: R$${updatedGoal?.currentAmount}`).catch(() => {});
       res.json({ goal: updatedGoal, transaction: tx });
     } catch (error: any) {
@@ -2180,10 +2250,16 @@ export async function registerRoutes(
     const currentDay = now.getDate();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const incomes = await storage.getRecurringIncomes(userId);
+    const { checkLimit: recurringCheck, incrementCounter: recurringInc } = await import("./planLimits");
     for (const income of incomes) {
       if (!income.active) continue;
       if (income.lastPostedMonth === currentMonth) continue;
       if (currentDay < income.dayOfMonth) continue;
+      const recurringTxLimit = await recurringCheck(userId, 'transaction');
+      if (!recurringTxLimit.allowed) {
+        console.warn(`[recurring-income] User ${userId} hit transaction limit — skipping auto-post for "${income.name}"`);
+        continue;
+      }
       await storage.createTransaction({
         userId,
         amount: income.amount,
@@ -2193,6 +2269,7 @@ export async function registerRoutes(
         source: "auto",
         date: now,
       });
+      recurringInc(userId, 'transaction').catch(() => {});
       await storage.updateRecurringIncome(income.id, userId, { lastPostedMonth: currentMonth });
     }
   }
@@ -2962,7 +3039,12 @@ export async function registerRoutes(
         const removed = oldMonths.filter(m => !newMonths.includes(m));
 
         if (added.length > 0) {
-          // Marked as paid — create a transaction
+          // Marked as paid — create a transaction (enforce limit)
+          const { checkLimit: billPayCheck, incrementCounter: billPayInc } = await import("./planLimits");
+          const billPayLimit = await billPayCheck(userId, 'transaction');
+          if (!billPayLimit.allowed) {
+            return res.status(402).json({ limitReached: true, plan: billPayLimit.plan, reason: billPayLimit.reason, current: billPayLimit.current, limit: billPayLimit.limit, upgradeUrl: billPayLimit.upgradeUrl });
+          }
           await storage.createTransaction({
             userId,
             amount: bill.amount,
@@ -2972,6 +3054,7 @@ export async function registerRoutes(
             categoryName: bill.categoryName || null,
             date: new Date(),
           });
+          billPayInc(userId, 'transaction').catch(() => {});
 
           // Discipline: streak-based points for on-time payment
           const today = new Date().getDate();

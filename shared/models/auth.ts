@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar, boolean, text, integer } from "drizzle-orm/pg-core";
+import { index, uniqueIndex, jsonb, pgTable, timestamp, varchar, boolean, text, integer } from "drizzle-orm/pg-core";
 
 export const sessions = pgTable(
   "sessions",
@@ -41,7 +41,7 @@ export const usageCounters = pgTable("usage_counters", {
   whatsappPdfs: integer("whatsapp_pdfs").notNull().default(0),
   chatMessages: integer("chat_messages").notNull().default(0),
 },
-(table) => [index("idx_usage_user_month").on(table.userId, table.month)]
+(table) => [uniqueIndex("idx_usage_user_month").on(table.userId, table.month)]
 );
 
 export type UpsertUser = typeof users.$inferInsert;
