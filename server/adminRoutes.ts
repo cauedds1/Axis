@@ -420,7 +420,7 @@ export function registerAdminRoutes(app: Express) {
 
   // ─── POST /api/admin/impersonate/stop ─────────────────────────────────────
   // Clears the read-only viewing context
-  app.post("/api/admin/impersonate/stop", async (req, res) => {
+  app.post("/api/admin/impersonate/stop", requireAdmin, async (req, res) => {
     try {
       delete (req.session as any).viewingUserId;
       delete (req.session as any).viewingOrgId;

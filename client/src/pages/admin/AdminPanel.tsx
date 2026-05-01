@@ -89,12 +89,17 @@ function TableWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-3 border-b border-border">{children}</th>;
+function Th({ children, className = "", onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) {
+  return (
+    <th
+      className={`text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 py-3 border-b border-border ${onClick ? "cursor-pointer select-none hover:text-foreground transition-colors" : ""} ${className}`}
+      onClick={onClick}
+    >{children}</th>
+  );
 }
 
-function Td({ children, className = "", colSpan }: { children: React.ReactNode; className?: string; colSpan?: number }) {
-  return <td colSpan={colSpan} className={`px-4 py-3 border-b border-border/40 ${className}`}>{children}</td>;
+function Td({ children, className = "", colSpan, onClick }: { children: React.ReactNode; className?: string; colSpan?: number; onClick?: (e: React.MouseEvent) => void }) {
+  return <td colSpan={colSpan} onClick={onClick} className={`px-4 py-3 border-b border-border/40 ${className}`}>{children}</td>;
 }
 
 function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
