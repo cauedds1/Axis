@@ -3510,18 +3510,23 @@ export async function registerRoutes(
       const userOrgs = await storage.getUserOrganizations(userId);
       if (!userOrgs.find(o => o.id === orgId)) return res.status(403).json({ message: "Acesso negado" });
       const org = await storage.getOrganizationById(orgId);
+      const _excelLang = await getUserLang(userId);
+      const _locale = _excelLang === "en" ? "en-US" : "pt-BR";
       const filters: any = {};
       if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
       if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
       if (req.query.userId) filters.userId = req.query.userId as string;
       if (req.query.status) filters.status = req.query.status as string;
       const expenses = await storage.getBusinessExpenses(orgId, filters);
-      const buffer = await generateExpenseExcel(expenses, org?.name ?? "Empresa", {
-        start: req.query.startDate ? new Date(req.query.startDate as string).toLocaleDateString("pt-BR") : undefined,
-        end: req.query.endDate ? new Date(req.query.endDate as string).toLocaleDateString("pt-BR") : undefined,
-      });
+      const buffer = await generateExpenseExcel(expenses, org?.name ?? "Organization", {
+        start: req.query.startDate ? new Date(req.query.startDate as string).toLocaleDateString(_locale) : undefined,
+        end: req.query.endDate ? new Date(req.query.endDate as string).toLocaleDateString(_locale) : undefined,
+      }, _excelLang);
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-      res.setHeader("Content-Disposition", `attachment; filename="despesas-${org?.name ?? orgId}.xlsx"`);
+      const _fileName = _excelLang === "en"
+        ? `expenses-${org?.name ?? orgId}.xlsx`
+        : `despesas-${org?.name ?? orgId}.xlsx`;
+      res.setHeader("Content-Disposition", `attachment; filename="${_fileName}"`);
       res.send(buffer);
     } catch (err: any) {
       res.status(500).json({ message: err.message });

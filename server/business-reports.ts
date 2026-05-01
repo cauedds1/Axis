@@ -2,18 +2,31 @@ import ExcelJS from "exceljs";
 import type { BusinessExpense } from "@shared/schema";
 
 type EnrichedExpense = BusinessExpense & { userEmail?: string; userName?: string };
+type Lang = "en" | "pt";
 
-function formatBRL(amount: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
+function formatCurrency(amount: number, lang: Lang): string {
+  return lang === "en"
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "BRL" }).format(amount)
+    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(amount);
 }
 
-function formatDate(date: Date | string | null | undefined): string {
+function formatDate(date: Date | string | null | undefined, lang: Lang): string {
   if (!date) return "-";
   const d = new Date(date);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return lang === "en"
+    ? d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+    : d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, lang: Lang): string {
+  if (lang === "en") {
+    const labels: Record<string, string> = {
+      pending_review: "Pending",
+      approved: "Approved",
+      rejected: "Rejected",
+    };
+    return labels[status] ?? status;
+  }
   const labels: Record<string, string> = {
     pending_review: "Pendente",
     approved: "Aprovado",
@@ -25,13 +38,15 @@ function statusLabel(status: string): string {
 export async function generateExpenseExcel(
   expenses: EnrichedExpense[],
   orgName: string,
-  period?: { start?: string; end?: string }
+  period?: { start?: string; end?: string },
+  lang: Lang = "pt",
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "AXIS Business";
   workbook.created = new Date();
 
-  const sheet = workbook.addWorksheet("Despesas", {
+  const sheetName = lang === "en" ? "Expenses" : "Despesas";
+  const sheet = workbook.addWorksheet(sheetName, {
     pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true },
   });
 
@@ -46,19 +61,29 @@ export async function generateExpenseExcel(
   const thinBorder: Partial<ExcelJS.Border> = { style: "thin", color: { argb: BORDER_COLOR } };
   const cellBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
 
+  // ── Title row ──────────────────────────────────────────────────────────────
+  const reportTitle = lang === "en" ? "Expense Report" : "Relatório de Despesas";
   sheet.mergeCells("A1:H1");
   const titleCell = sheet.getCell("A1");
-  titleCell.value = `${orgName} — Relatório de Despesas`;
+  titleCell.value = `${orgName} — ${reportTitle}`;
   titleCell.font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   sheet.getRow(1).height = 36;
 
+  // ── Subtitle / period row ──────────────────────────────────────────────────
   sheet.mergeCells("A2:H2");
   const subtitleCell = sheet.getCell("A2");
-  const periodText = period?.start && period?.end
-    ? `Período: ${period.start} a ${period.end}`
-    : `Gerado em ${new Date().toLocaleDateString("pt-BR")}`;
+  let periodText: string;
+  if (period?.start && period?.end) {
+    periodText = lang === "en"
+      ? `Period: ${period.start} to ${period.end}`
+      : `Período: ${period.start} a ${period.end}`;
+  } else {
+    periodText = lang === "en"
+      ? `Generated on ${new Date().toLocaleDateString("en-US")}`
+      : `Gerado em ${new Date().toLocaleDateString("pt-BR")}`;
+  }
   subtitleCell.value = periodText;
   subtitleCell.font = { size: 10, color: { argb: "FF555555" }, italic: true };
   subtitleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE_LIGHT } };
@@ -67,7 +92,11 @@ export async function generateExpenseExcel(
 
   sheet.addRow([]);
 
-  const headers = ["Data", "Colaborador", "Estabelecimento", "Categoria", "Método", "Valor", "Status", "Observações"];
+  // ── Column headers ─────────────────────────────────────────────────────────
+  const headers = lang === "en"
+    ? ["Date", "Collaborator", "Establishment", "Category", "Method", "Amount", "Status", "Notes"]
+    : ["Data", "Colaborador", "Estabelecimento", "Categoria", "Método", "Valor", "Status", "Observações"];
+
   const headerRow = sheet.addRow(headers);
   headerRow.height = 28;
   headerRow.eachCell((cell) => {
@@ -92,7 +121,7 @@ export async function generateExpenseExcel(
   let rowIndex = 5;
 
   for (const expense of expenses) {
-    const dateStr = formatDate(expense.date);
+    const dateStr = formatDate(expense.date, lang);
 
     if (dateStr !== lastDate) {
       const dayRow = sheet.addRow([`  ${dateStr}`, "", "", "", "", "", "", ""]);
@@ -113,7 +142,7 @@ export async function generateExpenseExcel(
       expense.categoryName || "—",
       expense.paymentMethod || "—",
       expense.amount,
-      statusLabel(expense.status ?? "pending_review"),
+      statusLabel(expense.status ?? "pending_review", lang),
       expense.notes || "",
     ]);
     dataRow.height = 22;
@@ -130,7 +159,7 @@ export async function generateExpenseExcel(
       cell.border = cellBorder;
       cell.alignment = { vertical: "middle", wrapText: colNumber === 8 };
       if (colNumber === 6) {
-        cell.numFmt = '"R$"#,##0.00';
+        cell.numFmt = lang === "en" ? '"BRL "#,##0.00' : '"R$"#,##0.00';
         cell.font = { bold: true };
       }
       if (colNumber === 7) {
@@ -148,14 +177,16 @@ export async function generateExpenseExcel(
   sheet.addRow([]);
   rowIndex++;
 
+  // ── Total row ──────────────────────────────────────────────────────────────
   const total = expenses.filter(e => e.status !== "rejected").reduce((sum, e) => sum + e.amount, 0);
-  const totalRow = sheet.addRow(["", "", "", "", "TOTAL APROVADO", total, "", ""]);
+  const totalLabel = lang === "en" ? "APPROVED TOTAL" : "TOTAL APROVADO";
+  const totalRow = sheet.addRow(["", "", "", "", totalLabel, total, "", ""]);
   totalRow.height = 26;
   totalRow.getCell(5).font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
   totalRow.getCell(5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   totalRow.getCell(5).alignment = { horizontal: "right", vertical: "middle" };
   totalRow.getCell(5).border = cellBorder;
-  totalRow.getCell(6).numFmt = '"R$"#,##0.00';
+  totalRow.getCell(6).numFmt = lang === "en" ? '"BRL "#,##0.00' : '"R$"#,##0.00';
   totalRow.getCell(6).font = { bold: true, size: 12, color: { argb: "FFFFFFFF" } };
   totalRow.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: BLUE } };
   totalRow.getCell(6).border = cellBorder;
