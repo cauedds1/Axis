@@ -1,0 +1,125 @@
+Tá bem sólido — isso aqui já parece trabalho de auditoria séria, não checklist superficial. Você cobriu lógica de negócio crítica, compliance (PCI), CVEs reais, e vetores clássicos (IDOR, SQL injection, XSS em email). Isso já coloca o sistema num nível acima da média.
+
+Mas vou te provocar um pouco: ainda dá pra apertar mais alguns parafusos que normalmente passam batido 👇
+
+🧠 1. Logs: não é só mascarar — é controlar acesso
+
+Você tratou o conteúdo dos logs, ótimo. Mas faltou uma pergunta importante:
+
+Quem pode ver esses logs?
+
+Mesmo mascarado, log ainda pode vazar muita coisa.
+
+👉 Sugestões:
+
+Garantir que logs de produção:
+não ficam expostos em dashboards públicos
+têm controle de acesso (RBAC)
+Definir retenção (ex: 7–30 dias)
+Evitar logs em ambientes client-side (se houver)
+🔐 2. Rate limiting (você não mencionou)
+
+Você corrigiu vulnerabilidades, mas não falou de abuso de endpoints.
+
+Isso é crítico principalmente em:
+
+login
+reset de senha
+endpoints de webhook
+rotas de admin
+
+👉 Adiciona:
+
+rate limit por IP + userId
+proteção contra brute force
+retry com backoff
+🪝 3. Webhooks (você usa Stripe → ponto sensível)
+
+Você disse que valida assinatura — ótimo. Mas vale garantir:
+
+idempotência (evitar processamento duplicado)
+validação de event type esperado
+timeout + retry seguro
+nunca confiar em dados do payload sem revalidar no Stripe
+
+👉 ataque comum:
+replay de webhook válido
+
+🧾 4. Validação de input (não apareceu no escopo)
+
+Você tratou SQL injection via ORM, mas e antes disso?
+
+👉 garantir:
+
+schema validation (Zod, Yup, etc.)
+sanitização consistente
+limites de tamanho (evita DoS simples)
+🧱 5. Segurança em headers HTTP
+
+Não vi menção a isso — é baixo esforço, alto impacto:
+
+Content-Security-Policy
+X-Frame-Options
+X-Content-Type-Options
+Strict-Transport-Security
+
+Se ainda não tiver, mete um middleware tipo Helmet.
+
+🧍 6. Controle de autorização (além do IDOR)
+
+Você falou de IDOR (bom), mas pensa nisso:
+
+Existem ações que um usuário autenticado não deveria poder fazer mesmo com o próprio ID?
+
+Ex:
+
+alterar role
+acessar dados agregados da empresa
+exportações massivas
+
+👉 Ou seja:
+auth ≠ authorization completa
+
+💣 7. Secrets & environment
+
+Clássico, mas sempre crítico:
+
+chaves não estão em logs? (às vezes escapam em erro)
+.env nunca versionado
+rotação de secrets (Stripe, SendGrid, etc.)
+📦 8. Dependências (além do axios)
+
+Você atualizou axios (bom), mas:
+
+👉 roda:
+
+npm audit
+snyk
+pnpm audit
+
+E principalmente:
+
+dependências indiretas (transitive)
+🧪 9. Falta de testes (mesmo que fora de escopo)
+
+Você marcou como out of scope, mas aqui vai um insight estratégico:
+
+Esse tipo de correção sem teste → risco de regressão silenciosa
+
+Pelo menos:
+
+teste de autorização (auto-approve)
+teste de masking de logs
+teste de webhook
+⚠️ 10. Segurança de erros (error leakage)
+
+Confere se você não está vazando:
+
+stack trace em produção
+queries SQL
+mensagens internas
+
+👉 padrão ideal:
+
+usuário: mensagem genérica
+log interno: detalhado (mas seguro)
