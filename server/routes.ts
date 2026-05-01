@@ -3817,14 +3817,21 @@ export async function registerRoutes(
         ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
         : `http://localhost:${process.env.PORT || 5000}`;
 
-      const session = await stripe.checkout.sessions.create({
+      const sessionParams: import('stripe').default.Checkout.SessionCreateParams = {
         customer: customerId,
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: 'subscription',
         success_url: `${baseUrl}/settings?billing=success`,
         cancel_url: `${baseUrl}/pricing?canceled=true`,
-      });
+      };
+
+      // Personal AI gets a 7-day free trial — applied at session level, not price level
+      if (planMeta === 'personal_ai') {
+        sessionParams.subscription_data = { trial_period_days: 7 };
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       res.json({ url: session.url });
     } catch (err: any) {

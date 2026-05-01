@@ -14,32 +14,36 @@
  * Safe to run multiple times — it will skip creation if a matching product/price exists.
  */
 
+import Stripe from 'stripe';
 import { getUncachableStripeClient } from '../server/stripeClient';
 
-const PLANS = [
+const PLANS: Array<{
+  planKey: string;
+  name: string;
+  description: string;
+  unitAmount: number | null;
+  currency: string | null;
+}> = [
   {
     planKey: 'starter',
     name: 'AXIS Starter',
     description: 'Free tier with basic limits — 200 transactions, 30 AI captures, and 10 chat messages per month.',
-    unitAmount: null, // Free plan — product only, no recurring price
+    unitAmount: null,
     currency: null,
-    trialPeriodDays: undefined,
   },
   {
     planKey: 'personal_ai',
     name: 'AXIS Personal AI',
-    description: 'Full AI-powered personal finance and life OS — unlimited captures, voice, chat.',
-    unitAmount: 900, // R$9.00 in centavos
+    description: 'Full AI-powered personal finance and life OS — unlimited captures, voice, chat. Includes 7-day free trial.',
+    unitAmount: 900,
     currency: 'brl',
-    trialPeriodDays: 7,
   },
   {
     planKey: 'team',
     name: 'AXIS Team',
     description: 'Everything in Personal AI plus full Business version for teams and companies.',
-    unitAmount: 2900, // R$29.00 in centavos
+    unitAmount: 2900,
     currency: 'brl',
-    trialPeriodDays: undefined,
   },
 ];
 
@@ -54,7 +58,7 @@ async function seed() {
       query: `metadata['plan']:'${plan.planKey}'`,
     });
 
-    let product: any;
+    let product: Stripe.Product;
     if (existingProducts.data.length > 0) {
       product = existingProducts.data[0];
       console.log(`  ✓ Product already exists: ${product.id}`);
@@ -93,13 +97,12 @@ async function seed() {
         product: product.id,
         unit_amount: plan.unitAmount,
         currency: plan.currency,
-        recurring: {
-          interval: 'month',
-          ...(plan.trialPeriodDays ? { trial_period_days: plan.trialPeriodDays } : {}),
-        },
+        recurring: { interval: 'month' },
         metadata: { plan: plan.planKey },
       });
-      console.log(`  + Created price: ${newPrice.id} (${plan.unitAmount / 100} ${plan.currency.toUpperCase()}/month${plan.trialPeriodDays ? ` · ${plan.trialPeriodDays}-day trial` : ''})`);
+      // Note: 7-day trial for personal_ai is applied at checkout session creation
+      // via subscription_data.trial_period_days — not at the price level.
+      console.log(`  + Created price: ${newPrice.id} (${plan.unitAmount / 100} ${plan.currency.toUpperCase()}/month)`);
     }
   }
 
