@@ -33,6 +33,12 @@ function normalizeCnpjLocal(raw: string): string {
   return (raw || "").replace(/[^0-9]/g, "");
 }
 
+function maskPhone(phone: string | null | undefined): string {
+  const s = String(phone || "");
+  if (s.length <= 4) return "****";
+  return "****" + s.slice(-4);
+}
+
 function downloadWithTimeout(
   msg: proto.IWebMessageInfo,
   sock: ReturnType<typeof makeWASocket>,
@@ -178,7 +184,7 @@ class WhatsAppManager {
     for (const [jid, storedPhone] of this.lidCache.entries()) {
       if (storedPhone === phone || storedPhone === normalized || storedPhone === normalized.slice(2)) {
         this.lidCache.delete(jid);
-        log(`WhatsApp: JID removido do cache para phone=${phone}`, "whatsapp");
+        log(`WhatsApp: JID removido do cache para phone=${maskPhone(phone)}`, "whatsapp");
       }
     }
   }
@@ -207,11 +213,11 @@ class WhatsAppManager {
             const resolvedJid: string = results[0].jid ?? "";
             if (resolvedJid) {
               this.lidCache.set(resolvedJid, raw);
-              log(`WhatsApp LID cache — ${phone} → ${resolvedJid}`, "whatsapp");
+              log(`WhatsApp LID cache — ${maskPhone(phone)} → [jid]`, "whatsapp");
             }
           }
         } catch (e: any) {
-          log(`WhatsApp LID resolve failed for ${phone}: ${e.message}`, "whatsapp");
+          log(`WhatsApp LID resolve failed for ${maskPhone(phone)}: ${e.message}`, "whatsapp");
         }
       }
     } catch (e: any) {
@@ -318,7 +324,7 @@ class WhatsAppManager {
         this.qrCode = null;
         this.retryCount = 0;
         this.connectedPhone = this.sock?.user?.id?.split(":")[0] || null;
-        log(`WhatsApp connected — ${this.connectedPhone}`, "whatsapp");
+        log(`WhatsApp connected — ${maskPhone(this.connectedPhone)}`, "whatsapp");
         setTimeout(() => this.buildLidCache(), 3000);
       }
     });
@@ -332,7 +338,7 @@ class WhatsAppManager {
         if (lid && phoneJid && phoneJid.includes("@s.whatsapp.net")) {
           const phone = phoneJid.replace("@s.whatsapp.net", "").replace(/[^0-9]/g, "");
           this.lidCache.set(lid, phone);
-          log(`WhatsApp contact sync — LID ${lid} → ${phone}`, "whatsapp");
+          log(`WhatsApp contact sync — LID [lid] → ${maskPhone(phone)}`, "whatsapp");
         }
       }
     });
@@ -396,7 +402,7 @@ class WhatsAppManager {
 
     try {
       const msgType = imageMsg ? " [imagem]" : audioMsg ? " [áudio]" : docMsg ? " [documento]" : ` — "${text.substring(0, 60)}"`;
-      log(`WhatsApp: mensagem recebida de ${senderPhone}${msgType}`, "whatsapp");
+      log(`WhatsApp: mensagem recebida de ${maskPhone(senderPhone)}${msgType}`, "whatsapp");
 
       let profile = await storage.getUserProfileByJid(jid);
       if (!profile) {
@@ -733,10 +739,10 @@ class WhatsAppManager {
       const reply = await this.buildReply(result, profile.userId, jid, lang);
       if (reply) {
         await this.sendMessage(jid, reply);
-        log(`WhatsApp: resposta enviada para ${senderPhone}`, "whatsapp");
+        log(`WhatsApp: resposta enviada para ${maskPhone(senderPhone)}`, "whatsapp");
       }
     } catch (err: any) {
-      log(`WhatsApp: erro ao processar mensagem de ${senderPhone} — ${err.message}`, "whatsapp");
+      log(`WhatsApp: erro ao processar mensagem de ${maskPhone(senderPhone)} — ${err.message}`, "whatsapp");
       await this.sendMessage(jid, wt("processingError", lang));
     }
   }
@@ -1646,9 +1652,8 @@ class WhatsAppManager {
             return wt("installmentsSaved", lang, { n: data.installments, installAmt: installAmt.toFixed(2), cardName: card.name }) + warning;
           }
         }
-        log(`WhatsApp buildReply: intent=${intent} amount=${amount} creditCardId=${data.creditCardId || "none"} userId=${userId}`, "whatsapp");
+        log(`WhatsApp buildReply: intent=${intent} amount=${amount} hasCard=${!!data.creditCardId} userId=${userId}`, "whatsapp");
         const singleCard = data.creditCardId ? await storage.getCreditCard(data.creditCardId, userId) : null;
-        log(`WhatsApp buildReply: singleCard=${singleCard ? singleCard.name + " id=" + singleCard.id : "null"}`, "whatsapp");
         let savedTx: Awaited<ReturnType<typeof storage.createTransaction>> | null = null;
         try {
           savedTx = await this.limitedCreateTx(jid, userId, {

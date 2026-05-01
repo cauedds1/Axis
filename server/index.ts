@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -7,6 +8,11 @@ import { whatsappManager, whatsappPersonalManager, whatsappBusinessManager, getW
 
 const app = express();
 const httpServer = createServer(app);
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 
 declare module "http" {
   interface IncomingMessage {
@@ -108,7 +114,10 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const isServerError = status >= 500;
+    const message = (isServerError && process.env.NODE_ENV === "production")
+      ? "Internal Server Error"
+      : (err.message || "Internal Server Error");
 
     console.error("Internal Server Error:", err);
 

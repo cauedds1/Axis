@@ -4,6 +4,15 @@ import { Resend } from "resend";
 
 type Lang = "en" | "pt";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function getResendClient(): Promise<{ client: Resend; fromEmail: string }> {
   // 1. Direct env var (Railway / production)
   if (process.env.RESEND_API_KEY) {
@@ -148,7 +157,8 @@ export async function sendBillDueSoonEmail(
   daysLeft: number,
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
+  const safeTitle = escapeHtml(billTitle);
   const amountFormatted = fmtCurrency(amount, lang);
 
   let daysText: string;
@@ -185,7 +195,7 @@ export async function sendBillDueSoonEmail(
     <h1>${greeting}</h1>
     <p>${body}</p>
     <p style="margin: 20px 0;">
-      <strong style="color:#fff; font-size:16px;">${billTitle}</strong><br/>
+      <strong style="color:#fff; font-size:16px;">${safeTitle}</strong><br/>
       <span class="value-pill">${amountFormatted}</span><br/>
       <span style="color:rgba(255,255,255,0.45); font-size:13px;">${daysHtml}</span>
     </p>
@@ -203,7 +213,7 @@ export async function sendOfflineReminderEmail(
   daysOffline: number,
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
   let html: string;
   let subject: string;
 
@@ -242,7 +252,7 @@ export async function sendOverdueTaskEmail(
   tasks: { title: string; priority: string; daysOverdue: number }[],
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
   const count = tasks.length;
 
   const taskRows = tasks.slice(0, 5).map(t => {
@@ -254,7 +264,7 @@ export async function sendOverdueTaskEmail(
       <div class="task-row">
         <div class="task-dot ${dotClass}"></div>
         <div>
-          <div class="task-title">${t.title}</div>
+          <div class="task-title">${escapeHtml(t.title)}</div>
           <div class="task-sub">${overdueText}</div>
         </div>
       </div>`;
@@ -311,7 +321,7 @@ export async function sendWeeklySummaryEmail(
   },
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
   const scoreColor = summary.disciplineScore <= 3 ? "#FF6B6B" : summary.disciplineScore <= 6 ? "#4A90E2" : "#4ECDC4";
   const habitPct = summary.totalHabits > 0 ? Math.round((summary.habitsChecked / summary.totalHabits) * 100) : 0;
 
@@ -323,7 +333,7 @@ export async function sendWeeklySummaryEmail(
       const amt = fmtCurrency(b.amount, "en");
       return `
         <div class="stat-row">
-          <span class="stat-label">${b.title} (day ${b.dueDay})</span>
+          <span class="stat-label">${escapeHtml(b.title)} (day ${b.dueDay})</span>
           <span class="stat-value" style="color:#FFB347;">${amt}</span>
         </div>`;
     }).join("") || `<p style="color:rgba(255,255,255,0.3); font-size:13px;">No bills due in the next 7 days ✓</p>`;
@@ -368,7 +378,7 @@ export async function sendWeeklySummaryEmail(
       const amt = fmtCurrency(b.amount, "pt");
       return `
         <div class="stat-row">
-          <span class="stat-label">${b.title} (dia ${b.dueDay})</span>
+          <span class="stat-label">${escapeHtml(b.title)} (dia ${b.dueDay})</span>
           <span class="stat-value" style="color:#FFB347;">${amt}</span>
         </div>`;
     }).join("") || `<p style="color:rgba(255,255,255,0.3); font-size:13px;">Nenhuma conta nos próximos 7 dias ✓</p>`;
@@ -422,7 +432,8 @@ export async function sendGoalDeadlineEmail(
   daysLeft: number,
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
+  const safeGoalTitle = escapeHtml(goalTitle);
   const target = fmtCurrency(targetAmount, lang);
   const current = fmtCurrency(currentAmount, lang);
   const missing = fmtCurrency(targetAmount - currentAmount, lang);
@@ -437,7 +448,7 @@ export async function sendGoalDeadlineEmail(
     html = baseTemplate(`
       <div class="badge-warning">🎯 Goal Deadline Approaching</div>
       <h1>Hey, ${firstName}!</h1>
-      <p>Your goal <strong style="color:#fff;">${goalTitle}</strong> is ${daysText} and hasn't been reached yet.</p>
+      <p>Your goal <strong style="color:#fff;">${safeGoalTitle}</strong> is ${daysText} and hasn't been reached yet.</p>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
@@ -469,7 +480,7 @@ export async function sendGoalDeadlineEmail(
     html = baseTemplate(`
       <div class="badge-warning">🎯 Meta próxima do prazo</div>
       <h1>Ei, ${firstName}!</h1>
-      <p>Sua meta <strong style="color:#fff;">${goalTitle}</strong> ${daysText} e ainda não foi atingida.</p>
+      <p>Sua meta <strong style="color:#fff;">${safeGoalTitle}</strong> ${daysText} e ainda não foi atingida.</p>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
@@ -506,7 +517,7 @@ export async function sendLowDisciplineEmail(
   score: number,
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
   let html: string;
   let subject: string;
 
@@ -582,6 +593,8 @@ export async function sendWelcomeEmail(
   firstName: string,
   lang: Lang = "pt",
 ): Promise<void> {
+  const safeFirstName = escapeHtml(firstName);
+  const safeEmail = escapeHtml(userEmail);
   let html: string;
   let subject: string;
 
@@ -589,7 +602,7 @@ export async function sendWelcomeEmail(
     subject = `Welcome to AXIS, ${firstName}! Your account is ready`;
     html = baseTemplate(`
       <div class="badge-info">🎉 Account created</div>
-      <h1>Welcome to AXIS, ${firstName}!</h1>
+      <h1>Welcome to AXIS, ${safeFirstName}!</h1>
       <p>Your account has been created successfully. You now have access to a complete assistant to organize your finances, tasks, schedule, and habits — all in one place.</p>
 
       <hr class="divider"/>
@@ -616,14 +629,14 @@ export async function sendWelcomeEmail(
 
       <hr class="divider"/>
 
-      <p style="font-size:13px; color:rgba(255,255,255,0.4);">This email was sent to <strong style="color:rgba(255,255,255,0.6);">${userEmail}</strong> because an AXIS account was created with this address. If that wasn't you, please contact support.</p>
+      <p style="font-size:13px; color:rgba(255,255,255,0.4);">This email was sent to <strong style="color:rgba(255,255,255,0.6);">${safeEmail}</strong> because an AXIS account was created with this address. If that wasn't you, please contact support.</p>
       <a href="${APP_URL}" class="cta">Start using AXIS &rarr;</a>
     `, lang);
   } else {
     subject = `Bem-vindo ao AXIS, ${firstName}! Sua conta está pronta`;
     html = baseTemplate(`
       <div class="badge-info">🎉 Conta criada</div>
-      <h1>Bem-vindo ao AXIS, ${firstName}!</h1>
+      <h1>Bem-vindo ao AXIS, ${safeFirstName}!</h1>
       <p>Sua conta foi criada com sucesso. Agora você tem acesso a um assistente completo para organizar suas finanças, tarefas, agenda e hábitos — tudo em um só lugar.</p>
 
       <hr class="divider"/>
@@ -650,7 +663,7 @@ export async function sendWelcomeEmail(
 
       <hr class="divider"/>
 
-      <p style="font-size:13px; color:rgba(255,255,255,0.4);">Este email foi enviado para <strong style="color:rgba(255,255,255,0.6);">${userEmail}</strong> pois uma conta AXIS foi criada com este endereço. Se não foi você, entre em contato com o suporte.</p>
+      <p style="font-size:13px; color:rgba(255,255,255,0.4);">Este email foi enviado para <strong style="color:rgba(255,255,255,0.6);">${safeEmail}</strong> pois uma conta AXIS foi criada com este endereço. Se não foi você, entre em contato com o suporte.</p>
       <a href="${APP_URL}" class="cta">Começar a usar o AXIS →</a>
     `, lang);
   }
@@ -664,7 +677,7 @@ export async function sendPasswordResetCodeEmail(
   code: string,
   lang: Lang = "pt",
 ): Promise<void> {
-  const firstName = userName.split(" ")[0];
+  const firstName = escapeHtml(userName.split(" ")[0]);
   let html: string;
   let subject: string;
 
@@ -720,7 +733,10 @@ export async function sendReimbursementCollaboratorEmail(opts: {
   const { collaboratorEmail, collaboratorName, managerName, orgName, amount, description, paidAt, lang = "pt" } = opts;
   const amountFmt = fmtCurrency(amount, lang);
   const dateFmt = fmtDate(paidAt, lang);
-  const firstName = collaboratorName.split(" ")[0];
+  const firstName = escapeHtml(collaboratorName.split(" ")[0]);
+  const safeMgrName = escapeHtml(managerName);
+  const safeOrgName = escapeHtml(orgName);
+  const safeDesc = escapeHtml(description);
 
   let html: string;
   let subject: string;
@@ -731,14 +747,14 @@ export async function sendReimbursementCollaboratorEmail(opts: {
       <div class="badge-info">✅ Reimbursement Processed</div>
       <h1>Your reimbursement has been sent</h1>
       <p>Hi, <strong style="color:#fff;">${firstName}</strong>.</p>
-      <p>Your reimbursement for the expense below has been processed by <strong style="color:#fff;">${managerName}</strong> on behalf of <strong style="color:#fff;">${orgName}</strong>.</p>
+      <p>Your reimbursement for the expense below has been processed by <strong style="color:#fff;">${safeMgrName}</strong> on behalf of <strong style="color:#fff;">${safeOrgName}</strong>.</p>
 
       <hr class="divider"/>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
           <span class="stat-label">Description</span>
-          <span class="stat-value" style="font-size:13px;">${description}</span>
+          <span class="stat-value" style="font-size:13px;">${safeDesc}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Amount</span>
@@ -750,7 +766,7 @@ export async function sendReimbursementCollaboratorEmail(opts: {
         </div>
         <div class="stat-row">
           <span class="stat-label">Company</span>
-          <span class="stat-value" style="font-size:13px;">${orgName}</span>
+          <span class="stat-value" style="font-size:13px;">${safeOrgName}</span>
         </div>
       </div>
 
@@ -765,14 +781,14 @@ export async function sendReimbursementCollaboratorEmail(opts: {
       <div class="badge-info">✅ Reembolso processado</div>
       <h1>Seu reembolso foi enviado</h1>
       <p>Olá, <strong style="color:#fff;">${firstName}</strong>.</p>
-      <p>Informamos que o seu reembolso referente à despesa abaixo foi processado por <strong style="color:#fff;">${managerName}</strong> em nome de <strong style="color:#fff;">${orgName}</strong>.</p>
+      <p>Informamos que o seu reembolso referente à despesa abaixo foi processado por <strong style="color:#fff;">${safeMgrName}</strong> em nome de <strong style="color:#fff;">${safeOrgName}</strong>.</p>
 
       <hr class="divider"/>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
           <span class="stat-label">Descrição</span>
-          <span class="stat-value" style="font-size:13px;">${description}</span>
+          <span class="stat-value" style="font-size:13px;">${safeDesc}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Valor</span>
@@ -784,7 +800,7 @@ export async function sendReimbursementCollaboratorEmail(opts: {
         </div>
         <div class="stat-row">
           <span class="stat-label">Empresa</span>
-          <span class="stat-value" style="font-size:13px;">${orgName}</span>
+          <span class="stat-value" style="font-size:13px;">${safeOrgName}</span>
         </div>
       </div>
 
@@ -811,7 +827,10 @@ export async function sendReimbursementManagerEmail(opts: {
   const { managerEmail, managerName, collaboratorName, orgName, amount, description, paidAt, lang = "pt" } = opts;
   const amountFmt = fmtCurrency(amount, lang);
   const dateFmt = fmtDate(paidAt, lang);
-  const firstName = managerName.split(" ")[0];
+  const firstName = escapeHtml(managerName.split(" ")[0]);
+  const safeCollabName = escapeHtml(collaboratorName);
+  const safeOrgName = escapeHtml(orgName);
+  const safeDesc = escapeHtml(description);
 
   let html: string;
   let subject: string;
@@ -822,18 +841,18 @@ export async function sendReimbursementManagerEmail(opts: {
       <div class="badge-purple">📋 Reimbursement Confirmed</div>
       <h1>Reimbursement recorded successfully</h1>
       <p>Hi, <strong style="color:#fff;">${firstName}</strong>.</p>
-      <p>This is a confirmation that the reimbursement below has been marked as sent within <strong style="color:#fff;">${orgName}</strong>. The collaborator has been notified automatically.</p>
+      <p>This is a confirmation that the reimbursement below has been marked as sent within <strong style="color:#fff;">${safeOrgName}</strong>. The collaborator has been notified automatically.</p>
 
       <hr class="divider"/>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
           <span class="stat-label">Collaborator</span>
-          <span class="stat-value" style="font-size:13px;">${collaboratorName}</span>
+          <span class="stat-value" style="font-size:13px;">${safeCollabName}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Description</span>
-          <span class="stat-value" style="font-size:13px;">${description}</span>
+          <span class="stat-value" style="font-size:13px;">${safeDesc}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Amount reimbursed</span>
@@ -856,18 +875,18 @@ export async function sendReimbursementManagerEmail(opts: {
       <div class="badge-purple">📋 Reembolso confirmado</div>
       <h1>Reembolso registrado com sucesso</h1>
       <p>Olá, <strong style="color:#fff;">${firstName}</strong>.</p>
-      <p>Este é um comprovante de que o reembolso abaixo foi marcado como enviado em <strong style="color:#fff;">${orgName}</strong>. O colaborador foi notificado automaticamente.</p>
+      <p>Este é um comprovante de que o reembolso abaixo foi marcado como enviado em <strong style="color:#fff;">${safeOrgName}</strong>. O colaborador foi notificado automaticamente.</p>
 
       <hr class="divider"/>
 
       <div style="margin: 20px 0;">
         <div class="stat-row">
           <span class="stat-label">Colaborador</span>
-          <span class="stat-value" style="font-size:13px;">${collaboratorName}</span>
+          <span class="stat-value" style="font-size:13px;">${safeCollabName}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Descrição</span>
-          <span class="stat-value" style="font-size:13px;">${description}</span>
+          <span class="stat-value" style="font-size:13px;">${safeDesc}</span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Valor reembolsado</span>

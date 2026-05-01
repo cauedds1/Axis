@@ -3626,6 +3626,10 @@ export async function registerRoutes(
       const org = await storage.getOrganizationById(orgId);
       if (!org) return res.status(404).json({ message: "Empresa não encontrada" });
       if (org.adminUserId !== userId) return res.status(403).json({ message: "Apenas o admin pode aprovar/rejeitar/pagar despesas" });
+      const orgExpenses = await storage.getBusinessExpenses(orgId);
+      const targetExpense = orgExpenses.find(e => e.id === expenseId);
+      if (!targetExpense) return res.status(404).json({ message: "Despesa não encontrada" });
+      if (targetExpense.userId === userId) return res.status(403).json({ message: "Você não pode aprovar sua própria despesa" });
       const { status, rejectionComment } = req.body;
       if (!["approved", "rejected", "pending_review", "paid"].includes(status)) return res.status(400).json({ message: "Status inválido" });
       const updated = await storage.updateBusinessExpenseStatus(expenseId, orgId, status, rejectionComment);

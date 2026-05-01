@@ -4,6 +4,9 @@ import { eq } from 'drizzle-orm';
 import { log } from './log';
 import type Stripe from 'stripe';
 
+const processedEventIds = new Set<string>();
+const MAX_PROCESSED_IDS = 10_000;
+
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
     if (!Buffer.isBuffer(payload)) {
@@ -41,6 +44,16 @@ export class WebhookHandlers {
       log(`STRIPE WEBHOOK ERROR: Signature validation failed — ${err.message}`, 'stripe');
       throw err;
     }
+
+    if (processedEventIds.has(event.id)) {
+      log(`Stripe webhook: duplicate event ${event.id} ignored`, 'stripe');
+      return;
+    }
+    if (processedEventIds.size >= MAX_PROCESSED_IDS) {
+      const first = processedEventIds.values().next().value;
+      if (first) processedEventIds.delete(first);
+    }
+    processedEventIds.add(event.id);
 
     const relevantEvents: Stripe.Event.Type[] = [
       'customer.subscription.created',
