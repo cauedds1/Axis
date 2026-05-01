@@ -4,7 +4,7 @@ import { isAuthenticated } from "./replitAuth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import crypto from "crypto";
-import { sendPasswordResetCodeEmail } from "../../integrations/sendgrid";
+import { sendPasswordResetCodeEmail, sendWelcomeEmail } from "../../integrations/sendgrid";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -75,6 +75,7 @@ export function registerAuthRoutes(app: Express): void {
       });
 
       (req.session as any).userId = user.id;
+      sendWelcomeEmail(user.email!, data.firstName).catch(() => {});
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {
@@ -144,6 +145,7 @@ export function registerAuthRoutes(app: Express): void {
       });
 
       (req.session as any).userId = user.id;
+      sendWelcomeEmail(user.email!, data.firstName).catch(() => {});
       const { password, ...safeUser } = user;
       res.json(safeUser);
     } catch (error: any) {

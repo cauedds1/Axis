@@ -370,6 +370,50 @@ export async function sendLowDisciplineEmail(
   });
 }
 
+export async function sendWelcomeEmail(
+  userEmail: string,
+  firstName: string,
+): Promise<void> {
+  const html = baseTemplate(`
+    <div class="badge-info">🎉 Conta criada</div>
+    <h1>Bem-vindo ao AXIS, ${firstName}!</h1>
+    <p>Sua conta foi criada com sucesso. Agora você tem acesso a um assistente completo para organizar suas finanças, tarefas, agenda e hábitos — tudo em um só lugar.</p>
+
+    <hr class="divider"/>
+
+    <p style="font-size:12px; color:rgba(255,255,255,0.3); font-weight:600; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;">O que você pode fazer no AXIS</p>
+    <div style="margin: 0 0 20px;">
+      <div class="task-row">
+        <div class="task-dot" style="background:#00E6FF;"></div>
+        <div class="task-title" style="font-size:13px;">Registrar despesas por voz, foto ou WhatsApp</div>
+      </div>
+      <div class="task-row">
+        <div class="task-dot" style="background:#A78BFA;"></div>
+        <div class="task-title" style="font-size:13px;">Controlar contas, metas e reservas financeiras</div>
+      </div>
+      <div class="task-row">
+        <div class="task-dot" style="background:#4ECDC4;"></div>
+        <div class="task-title" style="font-size:13px;">Gerenciar tarefas, agenda e hábitos diários</div>
+      </div>
+      <div class="task-row">
+        <div class="task-dot" style="background:#FFB347;"></div>
+        <div class="task-title" style="font-size:13px;">Receber alertas e resumos semanais por email</div>
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <p style="font-size:13px; color:rgba(255,255,255,0.4);">Este email foi enviado para <strong style="color:rgba(255,255,255,0.6);">${userEmail}</strong> pois uma conta AXIS foi criada com este endereço. Se não foi você, entre em contato com o suporte.</p>
+    <a href="${APP_URL}" class="cta">Começar a usar o AXIS →</a>
+  `);
+
+  await sendEmail({
+    to: userEmail,
+    subject: `Bem-vindo ao AXIS, ${firstName}! Sua conta está pronta`,
+    html,
+  });
+}
+
 export async function sendPasswordResetCodeEmail(
   userEmail: string,
   userName: string,
