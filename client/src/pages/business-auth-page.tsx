@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, ArrowRight, ArrowLeft, Camera, Zap, CheckCircle2, FileSpreadsheet, Shield, Building2, Users, Check } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 
@@ -352,6 +353,20 @@ export default function BusinessAuthPage() {
 
   const [, setLocation] = useLocation();
 
+  const { data: productsData } = useQuery<any>({
+    queryKey: ["/api/billing/products"],
+  });
+
+  function getPriceId(planKey: string): string | null {
+    if (!productsData?.data) return null;
+    const rows: any[] = productsData.data;
+    const row = rows.find((r) => {
+      const meta = r.product_metadata || r.price_metadata || {};
+      return meta?.plan === planKey;
+    });
+    return row?.price_id ?? null;
+  }
+
   useEffect(() => {
     document.title = `AXIS Business — ${isLogin ? t("axisBizAuth.titleLogin") : t("axisBizAuth.titleRegister")}`;
   }, [isLogin, t]);
@@ -424,6 +439,17 @@ export default function BusinessAuthPage() {
         closingDay: closingDay ? parseInt(closingDay) : undefined,
         jobTitle: jobTitle || undefined,
       });
+
+      const priceId = getPriceId("team");
+      if (priceId) {
+        const checkRes = await apiRequest("POST", "/api/billing/checkout", { priceId });
+        const checkData = await checkRes.json();
+        if (checkData?.url) {
+          window.location.href = checkData.url;
+          return;
+        }
+      }
+
       setLocation("/business/welcome");
     } catch (err: any) {
       setSubmitError(err?.message ?? t("axisBizAuth.registerError"));
@@ -713,6 +739,26 @@ export default function BusinessAuthPage() {
                       </p>
                     </div>
 
+                    {/* Team plan requirement notice */}
+                    <div
+                      className="rounded-xl p-3.5"
+                      style={{ background: "rgba(139,92,246,0.07)", border: "1px solid rgba(139,92,246,0.2)" }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Users className="h-3.5 w-3.5 text-purple-400" />
+                        <span className="text-xs font-semibold text-white/70">Plano Team · R$29/mês</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase" style={{ background: "rgba(139,92,246,0.2)", color: "rgb(192,132,252)" }}>Necessário</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        {["Business completo", "Múltiplos colaboradores", "Relatórios de equipe", "Suporte prioritário"].map((f) => (
+                          <p key={f} className="text-[10px] text-white/40 flex items-center gap-1">
+                            <Check className="h-2.5 w-2.5 text-purple-400/70 flex-shrink-0" />{f}
+                          </p>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-white/25 mt-2">Você será redirecionado para o pagamento após criar a conta.</p>
+                    </div>
+
                     {submitError && (
                       <div className="flex items-start gap-2.5 text-xs py-3 px-4 rounded-xl" style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: PRIMARY }} data-testid="text-auth-error">
                         <span className="mt-0.5 flex-shrink-0">⚠</span>
@@ -725,7 +771,7 @@ export default function BusinessAuthPage() {
                         <ArrowLeft className="h-4 w-4" /> {t("axisBizAuth.back")}
                       </button>
                       <button type="submit" disabled={isLoading} className="flex-[2] py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white" style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, ${SECONDARY} 100%)`, boxShadow: `0 4px 24px rgba(59,130,246,0.25)` }} data-testid="button-auth-submit">
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>{t("axisBizAuth.createCorpAccount")}</span><ArrowRight className="h-4 w-4" /></>}
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><span>Criar conta e ir para pagamento</span><ArrowRight className="h-4 w-4" /></>}
                       </button>
                     </div>
                   </motion.form>
