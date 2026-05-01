@@ -1,0 +1,135 @@
+Overview
+
+FrameRent is a production-ready multi-tenant SaaS platform for equipment rental businesses.
+
+The platform combines inventory management, smart scheduling, financial tools, CRM, AI-generated contracts, and a built-in storefront website builder that allows every tenant to have their own branded rental website.
+
+Status:
+
+• 100% completed product
+• pre-revenue
+• live deployment
+• ready for global scale
+
+This is a clean-slate SaaS acquisition with no legacy customers or pricing.
+
+Key FeaturesStorefront Website Builder
+
+Each tenant automatically gets a public rental website where customers can browse equipment and request quotes.
+
+Includes 4 storefront templates:
+
+• Noir (cinematic dark theme)
+• Studio (clean minimalist design)
+• Market (conversion-focused catalog layout)
+• Bold (high-impact typography)
+
+Customizable via no-code site builder.
+
+Rental Operations
+
+• smart scheduling calendar
+• conflict prevention
+• rental lifecycle tracking
+• delivery and return logistics
+• equipment availability tracking
+
+AI Contracts & Automation
+
+Integrated with OpenAI GPT-4o
+
+• AI-generated rental contracts
+• digital signature workflow
+• ID verification and signature pad
+• PDF contract export
+
+Financial Suite
+
+• revenue tracking per item
+• maintenance cost tracking
+• accounts payable / receivable
+• income statement (DRE)
+• cashflow projections
+• late fee automation
+
+Multi-currency support.
+
+Inventory Management
+
+• SKU and serial tracking
+• equipment condition monitoring
+• maintenance lifecycle management
+• spreadsheet bulk import
+• customizable rental pricing
+
+CRM & Client Intelligence
+
+• lead and client database
+• rental history tracking
+• customer ratings
+• automatic client creation
+
+Integrations
+
+Payments via Stripe
+
+Email infrastructure via SendGrid
+
+AI integration via OpenAI
+
+Tech Stack
+
+Frontend
+React 18, TypeScript, Tailwind CSS
+
+Backend
+Node.js, Express.js, PostgreSQL
+
+Infrastructure
+Currently deployed on Railway.
+
+Monthly operating cost at zero scale: $30–50.
+
+Market Opportunity
+
+The global equipment rental market exceeds $170B annually.
+
+Most rental companies still rely on spreadsheets or outdated systems.
+
+FrameRent offers a modern SaaS platform plus a storefront website builder, helping rental companies manage operations and generate leads online.
+
+Revenue Potential
+
+Typical SaaS pricing in this category ranges between $49–$149/month.
+
+Example scenario:
+
+10 customers
+~ $500–$1,500 MRR
+
+50 customers
+~ $2,500–$7,500 MRR
+
+100 customers
+~ $5,000–$15,000 MRR
+
+What's Included
+
+• full source code
+• PostgreSQL database schema
+• production deployment
+• storefront system with 4 templates
+• no-code site builder
+• Stripe and SendGrid integrations
+• multi-language support (EN / PT-BR / ES)
+
+Reason for Sale
+
+The founder is focusing on other projects and cannot dedicate the time needed to launch and market the product.
+
+Demo
+
+A live demo environment is available.
+
+Contact me to receive full Owner and Tenant access.
+
