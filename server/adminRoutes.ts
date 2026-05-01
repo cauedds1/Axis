@@ -83,7 +83,7 @@ function rowNum(row: unknown, field: string): number {
 }
 /** Safely extract an error message from an unknown catch value. */
 function errMsg(err: unknown): string {
-  return err instanceof Error ? errMsg(err) : String(err);
+  return err instanceof Error ? err.message : String(err);
 }
 
 // ─── Sort helper ─────────────────────────────────────────────────────────────
@@ -1220,10 +1220,20 @@ const MAINTENANCE_HTML = `<!DOCTYPE html>
 </html>`;
 
 export async function maintenanceMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Always allow admin panel, admin API, auth API, and Vite HMR/assets through
+  // Always allow:
+  //   • /api/admin/*  — admin panel API
+  //   • /api/auth/login & /api/auth/user — so the admin can authenticate and
+  //     the frontend can check session state during maintenance; other auth
+  //     endpoints (register, etc.) ARE blocked so non-admin sign-ups are
+  //     prevented while the system is down.
+  //   • /admin/* and Vite HMR paths — static assets for the admin UI
+  const isAllowedAuthPath =
+    req.path === "/api/auth/login" ||
+    req.path === "/api/auth/logout" ||
+    req.path === "/api/auth/user";
   if (
     req.path.startsWith("/api/admin") ||
-    req.path.startsWith("/api/auth") ||
+    isAllowedAuthPath ||
     req.path.startsWith("/admin") ||
     req.path.startsWith("/@") ||
     req.path.startsWith("/node_modules") ||
