@@ -265,7 +265,6 @@ function CardDetailSheet({
   const computedUsed = currentTx.reduce((s: number, t: any) => s + Number(t.amount), 0);
   const displayUsed = invoiceData ? computedUsed : (card.usedThisMonth ?? 0);
 
-  const totalScheduled = (card.totalScheduled ?? 0);
   const pct = Math.min(100, (displayUsed + totalScheduled) / Math.max(card.limit, 1) * 100);
   const isHigh = pct > 80;
   const available = Math.max(0, card.limit - displayUsed - totalScheduled);
