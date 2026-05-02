@@ -1604,6 +1604,63 @@ export async function registerRoutes(
     }
   });
 
+  // History: all transactions for a specific goal (matched by description pattern)
+  app.get("/api/goals/:id/history", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const goalId = paramId(req);
+      const goals = await storage.getFinancialGoals(userId);
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
+
+      const allTx = await storage.getTransactions(userId);
+      const prefix1 = `Reserva: ${goal.title}`;
+      const prefix2 = `Saque da reserva: ${goal.title}`;
+      const history = allTx
+        .filter(tx => tx.description === prefix1 || tx.description === prefix2 || tx.description.startsWith(`[goal:${goalId}]`))
+        .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
+      res.json(history);
+    } catch (error: any) {
+      serverError(res, error);
+    }
+  });
+
+  // Edit a history entry: update tx amount + adjust goal currentAmount by delta
+  app.patch("/api/goals/:id/history/:txId", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const goalId = paramId(req);
+      const txId = req.params.txId;
+      const { amount, date } = z.object({
+        amount: z.number().positive(),
+        date: z.string().optional(),
+      }).parse(req.body);
+
+      const goals = await storage.getFinancialGoals(userId);
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) return res.status(404).json({ message: "Reserva não encontrada" });
+
+      const allTx = await storage.getTransactions(userId);
+      const tx = allTx.find(t => t.id === txId);
+      if (!tx) return res.status(404).json({ message: "Transação não encontrada" });
+
+      const delta = amount - tx.amount; // positive = deposit grew, negative = deposit shrank
+      const adjustedDelta = tx.type === "expense" ? delta : -delta; // deposits are expense type
+      const newGoalAmount = Math.max(0, goal.currentAmount + adjustedDelta);
+
+      const fields: any = { amount };
+      if (date) fields.date = new Date(date);
+      const [updatedTx, updatedGoal] = await Promise.all([
+        storage.updateTransaction(txId, userId, fields),
+        storage.updateFinancialGoal(goalId, userId, { currentAmount: newGoalAmount }),
+      ]);
+      res.json({ transaction: updatedTx, goal: updatedGoal });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      serverError(res, error);
+    }
+  });
+
   app.get("/api/schedule", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

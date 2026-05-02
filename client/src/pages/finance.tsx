@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCurrency } from "@/hooks/use-currency";
-import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp, Settings2, Pencil, Minus } from "lucide-react";
+import { DollarSign, Plus, Trash2, Upload, Camera, TrendingUp, TrendingDown, Loader2, X, Check, CreditCard, Smartphone, Banknote, Wallet, Receipt, PlusCircle, Calendar, CalendarDays, Clock, MapPin, Tag, Store, ArrowDownCircle, ArrowUpCircle, MessageCircle, Mic, FileText, Image, Hash, Package, ChevronDown, ChevronUp, Settings2, Pencil, Minus, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,7 +131,11 @@ export default function Finance() {
   const [showWithdrawGoal, setShowWithdrawGoal] = useState<string | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [editingGoal, setEditingGoal] = useState<FinancialGoal | null>(null);
-  const [editGoalForm, setEditGoalForm] = useState({ title: "", emoji: "💰", description: "", targetAmount: "" });
+  const [editGoalForm, setEditGoalForm] = useState({ title: "", emoji: "💰", description: "", targetAmount: "", currentAmount: "" });
+  const [showGoalHistory, setShowGoalHistory] = useState<string | null>(null);
+  const [historyEditId, setHistoryEditId] = useState<string | null>(null);
+  const [historyEditAmount, setHistoryEditAmount] = useState("");
+  const [historyEditDate, setHistoryEditDate] = useState("");
   const [photoResults, setPhotoResults] = useState<any[] | null>(null);
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(null);
   const [pdfPreview, setPdfPreview] = useState<any>(null);
@@ -250,6 +254,28 @@ export default function Finance() {
     },
     onError: () => toast({ title: t("axisFinance.goalUpdateError"), variant: "destructive" }),
   });
+
+  const editHistoryMutation = useMutation({
+    mutationFn: async ({ goalId, txId, amount, date }: { goalId: string; txId: string; amount: number; date?: string }) => {
+      const res = await apiRequest("PATCH", `/api/goals/${goalId}/history/${txId}`, { amount, date });
+      return res.json();
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", vars.goalId, "history"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      setHistoryEditId(null);
+      toast({ title: t("axisFinance.historyEntryUpdated") });
+    },
+    onError: () => toast({ title: t("axisFinance.historyUpdateError"), variant: "destructive" }),
+  });
+
+  const { data: goalHistory = [], isLoading: historyLoading } = useQuery<any[]>({
+    queryKey: ["/api/goals", showGoalHistory, "history"],
+    enabled: !!showGoalHistory,
+  });
+
+  const totalGuardado = goals.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
 
   const deleteGoalMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/goals/${id}`); },
@@ -937,7 +963,15 @@ export default function Finance() {
         {/* Right col (1/3): reservas */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">{t("axisFinance.reserves")}</h2>
+            <div>
+              <h2 className="text-sm font-medium text-muted-foreground">{t("axisFinance.reserves")}</h2>
+              {goals.length > 0 && totalGuardado > 0 && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <span className="font-semibold text-foreground">{fmtMoney(totalGuardado)}</span>
+                  {" "}{t("axisFinance.totalSaved")}
+                </p>
+              )}
+            </div>
             {goals.length > 0 && (
               <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => setShowAddGoal(true)} data-testid="button-add-goal">
                 <Plus className="h-3 w-3 mr-1" /> {t("axisFinance.newReserve")}
@@ -960,11 +994,18 @@ export default function Finance() {
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                           <button
-                            onClick={() => { setEditingGoal(g); setEditGoalForm({ title: g.title, emoji: g.emoji || "💰", description: g.description || "", targetAmount: g.targetAmount ? String(g.targetAmount) : "" }); }}
+                            onClick={() => { setEditingGoal(g); setEditGoalForm({ title: g.title, emoji: g.emoji || "💰", description: g.description || "", targetAmount: g.targetAmount ? String(g.targetAmount) : "", currentAmount: String(g.currentAmount ?? 0) }); }}
                             className="text-muted-foreground hover:text-foreground transition-colors"
                             data-testid={`button-edit-goal-${g.id}`}
                           >
                             <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => { setShowGoalHistory(g.id); setHistoryEditId(null); }}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid={`button-history-goal-${g.id}`}
+                          >
+                            <History className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => deleteGoalMutation.mutate(g.id)}
@@ -1356,6 +1397,7 @@ export default function Finance() {
                   emoji: editGoalForm.emoji,
                   description: editGoalForm.description || null,
                   targetAmount: editGoalForm.targetAmount ? parseFloat(editGoalForm.targetAmount) : null,
+                  currentAmount: editGoalForm.currentAmount !== "" ? parseFloat(editGoalForm.currentAmount) : undefined,
                 },
               });
             }}
@@ -1401,12 +1443,116 @@ export default function Finance() {
               onChange={(e) => setEditGoalForm(p => ({ ...p, targetAmount: e.target.value }))}
               data-testid="input-edit-goal-target"
             />
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-1.5">{t("axisFinance.editCurrentAmount")}</p>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={t("axisFinance.currentAmountPlaceholder")}
+                value={editGoalForm.currentAmount}
+                onChange={(e) => setEditGoalForm(p => ({ ...p, currentAmount: e.target.value }))}
+                data-testid="input-edit-goal-current"
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={updateGoalMutation.isPending} data-testid="button-confirm-edit-goal">
               {updateGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("axisFinance.saveChanges")}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Dialog: Histórico da reserva ── */}
+      {(() => {
+        const histGoal = goals.find(g => g.id === showGoalHistory);
+        return (
+          <Dialog open={!!showGoalHistory} onOpenChange={(open) => { if (!open) { setShowGoalHistory(null); setHistoryEditId(null); } }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{histGoal?.emoji || "💰"} {histGoal?.title} — {t("axisFinance.goalHistory")}</DialogTitle>
+              </DialogHeader>
+              {historyLoading ? (
+                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : goalHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">{t("axisFinance.noHistoryYet")}</p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {goalHistory.map((tx: any) => {
+                    const isDeposit = tx.type === "expense";
+                    const isEditing = historyEditId === tx.id;
+                    const dateStr = tx.date ? new Date(tx.date).toLocaleDateString(lang, { day: "2-digit", month: "short", year: "numeric" }) : "";
+                    return (
+                      <div key={tx.id} className="rounded-xl border border-border bg-card p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`text-base ${isDeposit ? "text-emerald-500" : "text-red-400"}`}>
+                              {isDeposit ? "+" : "−"}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground">{fmtMoney(tx.amount)}</p>
+                              <p className="text-xs text-muted-foreground">{dateStr}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDeposit ? "bg-emerald-500/10 text-emerald-500" : "bg-red-400/10 text-red-400"}`}>
+                              {isDeposit ? t("axisFinance.deposit") : t("axisFinance.withdraw")}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (isEditing) { setHistoryEditId(null); } else {
+                                  setHistoryEditId(tx.id);
+                                  setHistoryEditAmount(String(tx.amount));
+                                  setHistoryEditDate(tx.date ? new Date(tx.date).toISOString().split("T")[0] : "");
+                                }
+                              }}
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                              data-testid={`button-edit-history-${tx.id}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        {isEditing && (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const amt = parseFloat(historyEditAmount);
+                              if (isNaN(amt) || amt <= 0 || !showGoalHistory) return;
+                              editHistoryMutation.mutate({ goalId: showGoalHistory, txId: tx.id, amount: amt, date: historyEditDate || undefined });
+                            }}
+                            className="flex gap-2 pt-1 border-t border-border"
+                          >
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              value={historyEditAmount}
+                              onChange={e => setHistoryEditAmount(e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder={t("axisFinance.amount")}
+                              data-testid={`input-history-amount-${tx.id}`}
+                            />
+                            <Input
+                              type="date"
+                              value={historyEditDate}
+                              onChange={e => setHistoryEditDate(e.target.value)}
+                              className="h-8 text-sm"
+                              data-testid={`input-history-date-${tx.id}`}
+                            />
+                            <Button type="submit" size="sm" className="h-8 shrink-0" disabled={editHistoryMutation.isPending} data-testid={`button-save-history-${tx.id}`}>
+                              {editHistoryMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                            </Button>
+                          </form>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* ── Dialog: Adicionar Saldo ── */}
       <Dialog open={showBalanceDialog} onOpenChange={setShowBalanceDialog}>
