@@ -1,5 +1,5 @@
 import {
-  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, scheduleItemCancellations,
+  categories, transactions, financialGoals, scheduleItems, personalTasks, habits, habitLogs, userProfile, bills, disciplineScoreHistory, recurringIncomes, emailAlertLog, creditCards, creditCardInvoices, creditCardFutureInvoices, scheduleItemCancellations,
   organizations, organizationMembers, businessExpenses, businessBills, businessReceivables, businessCorporateCards,
   type Bill, type InsertBill,
   type Category, type InsertCategory,
@@ -15,6 +15,7 @@ import {
   type EmailAlertLog, type InsertEmailAlertLog,
   type CreditCard, type InsertCreditCard,
   type CreditCardInvoice, type InsertCreditCardInvoice,
+  type CreditCardFutureInvoice, type InsertCreditCardFutureInvoice,
   type ScheduleItemCancellation,
   type Organization, type InsertOrganization,
   type OrganizationMember, type InsertOrganizationMember,
@@ -114,6 +115,10 @@ export interface IStorage {
   getInvoiceByMonth(creditCardId: string, monthKey: string): Promise<CreditCardInvoice | undefined>;
   createInvoice(data: InsertCreditCardInvoice): Promise<CreditCardInvoice>;
   updateInvoice(id: string, data: Partial<CreditCardInvoice>): Promise<CreditCardInvoice | undefined>;
+
+  getFutureInvoices(userId: string, creditCardId: string): Promise<CreditCardFutureInvoice[]>;
+  createFutureInvoice(data: InsertCreditCardFutureInvoice): Promise<CreditCardFutureInvoice>;
+  deleteFutureInvoice(id: string, userId: string): Promise<void>;
 
   getScheduleCancellations(userId: string, startDate: string, endDate: string): Promise<ScheduleItemCancellation[]>;
   createScheduleCancellation(data: { userId: string; entityType?: string; scheduleItemId?: string; habitId?: string; date: string; reason?: string; type: string }): Promise<ScheduleItemCancellation>;
@@ -571,6 +576,21 @@ export class DatabaseStorage implements IStorage {
     const [invoice] = await db.update(creditCardInvoices).set(data)
       .where(eq(creditCardInvoices.id, id)).returning();
     return invoice;
+  }
+
+  async getFutureInvoices(userId: string, creditCardId: string): Promise<CreditCardFutureInvoice[]> {
+    return db.select().from(creditCardFutureInvoices)
+      .where(and(eq(creditCardFutureInvoices.userId, userId), eq(creditCardFutureInvoices.creditCardId, creditCardId)))
+      .orderBy(creditCardFutureInvoices.monthKey);
+  }
+
+  async createFutureInvoice(data: InsertCreditCardFutureInvoice): Promise<CreditCardFutureInvoice> {
+    const [item] = await db.insert(creditCardFutureInvoices).values(data).returning();
+    return item;
+  }
+
+  async deleteFutureInvoice(id: string, userId: string): Promise<void> {
+    await db.delete(creditCardFutureInvoices).where(and(eq(creditCardFutureInvoices.id, id), eq(creditCardFutureInvoices.userId, userId)));
   }
 
   async deleteUserAccount(userId: string): Promise<void> {

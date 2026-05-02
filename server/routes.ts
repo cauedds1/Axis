@@ -11,7 +11,7 @@ import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMu
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
 import { logAiUsage, logWhatsappMessage } from "./adminLogger";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, bills } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { whatsappManager, whatsappManagers, getWhatsAppMode, getWhatsAppManager } from "./whatsapp";
 import { generateExpenseExcel } from "./business-reports";
@@ -1281,6 +1281,78 @@ export async function registerRoutes(
     } catch (error: any) {
       serverError(res, error);
     }
+  });
+
+  // ── Future Invoices ──────────────────────────────────────────────────────
+  app.get("/api/credit-cards/:id/future-invoices", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const card = await storage.getCreditCard(cardId, userId);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+      const items = await storage.getFutureInvoices(userId, cardId);
+      res.json(items);
+    } catch (error: any) { serverError(res, error); }
+  });
+
+  app.post("/api/credit-cards/:id/future-invoices", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const card = await storage.getCreditCard(cardId, userId);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+      const schema = z.object({
+        monthKey: z.string().regex(/^\d{4}-\d{2}$/),
+        description: z.string().min(1),
+        amount: z.number().positive(),
+      });
+      const data = schema.parse(req.body);
+      // Create a bill that appears only in the target month (custom recurrence)
+      const [targetYear, targetMonth] = data.monthKey.split("-").map(Number);
+      const targetDate = new Date(targetYear, targetMonth - 1, 1);
+      const endOfTargetMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      const bill = await storage.createBill({
+        userId,
+        title: data.description,
+        amount: data.amount,
+        type: "expense",
+        dueDay: card.dueDay,
+        categoryName: "Cartão de Crédito",
+        recurrenceType: "custom" as any,
+        recurrenceEndDate: endOfTargetMonth,
+        active: true,
+        paidMonths: "[]",
+        notes: `axiscard-future:${cardId}:${data.monthKey}`,
+      });
+      // Override createdAt so the custom recurrence starts on target month
+      await db.update(bills).set({ createdAt: targetDate }).where(eq(bills.id, bill.id));
+      const item = await storage.createFutureInvoice({
+        userId,
+        creditCardId: cardId,
+        monthKey: data.monthKey,
+        description: data.description,
+        amount: data.amount,
+        billId: bill.id,
+      });
+      res.status(201).json(item);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: error.errors });
+      serverError(res, error);
+    }
+  });
+
+  app.delete("/api/credit-cards/:id/future-invoices/:fid", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const fid = req.params.fid;
+      const items = await storage.getFutureInvoices(userId, cardId);
+      const item = items.find(i => i.id === fid);
+      if (!item) return res.status(404).json({ message: "Não encontrado" });
+      if (item.billId) await storage.deleteBill(item.billId, userId).catch(() => {});
+      await storage.deleteFutureInvoice(fid, userId);
+      res.json({ success: true });
+    } catch (error: any) { serverError(res, error); }
   });
 
   app.patch("/api/transactions/:id", isAuthenticated, async (req, res) => {

@@ -220,8 +220,20 @@ export const disciplineScoreHistory = pgTable("discipline_score_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const creditCardFutureInvoices = pgTable("credit_card_future_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  creditCardId: varchar("credit_card_id").notNull(),
+  monthKey: text("month_key").notNull(),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  billId: varchar("bill_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertCreditCardSchema = createInsertSchema(creditCards).omit({ id: true, createdAt: true });
 export const insertCreditCardInvoiceSchema = createInsertSchema(creditCardInvoices).omit({ id: true, createdAt: true });
+export const insertCreditCardFutureInvoiceSchema = createInsertSchema(creditCardFutureInvoices).omit({ id: true, createdAt: true });
 export const insertBillSchema = createInsertSchema(bills).omit({ id: true, createdAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true, createdAt: true });
 export const insertTransactionSchema = createInsertSchema(transactions).omit({ id: true, createdAt: true });
@@ -267,6 +279,8 @@ export type CreditCard = typeof creditCards.$inferSelect;
 export type InsertCreditCard = z.infer<typeof insertCreditCardSchema>;
 export type CreditCardInvoice = typeof creditCardInvoices.$inferSelect;
 export type InsertCreditCardInvoice = z.infer<typeof insertCreditCardInvoiceSchema>;
+export type CreditCardFutureInvoice = typeof creditCardFutureInvoices.$inferSelect;
+export type InsertCreditCardFutureInvoice = z.infer<typeof insertCreditCardFutureInvoiceSchema>;
 
 export const scheduleItemCancellations = pgTable("schedule_item_cancellations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

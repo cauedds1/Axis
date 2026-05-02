@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
   CreditCard, Plus, Trash2, Loader2, Calendar, AlertCircle,
   Pencil, Check, X, ShoppingCart, TrendingUp, ChevronDown, ChevronUp,
-  ArrowUpRight, ArrowDownRight,
+  ArrowUpRight, ArrowDownRight, Clock,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -110,8 +110,8 @@ function CardDetailSheet({
   const cardColor = card.color || "#7C3AED";
   const currentMonthKey = getInvoiceMonthKey();
 
-  // Tabs: overview, purchase, history
-  const [tab, setTab] = useState<"overview" | "purchase" | "invoice">("overview");
+  // Tabs: overview, purchase, future, history
+  const [tab, setTab] = useState<"overview" | "purchase" | "future" | "invoice">("overview");
 
   // Edit transaction
   const [editingTx, setEditingTx] = useState<any>(null);
@@ -144,6 +144,66 @@ function CardDetailSheet({
       return res.json();
     },
   });
+
+  const { data: futureInvoices = [], isLoading: futureLoading } = useQuery<any[]>({
+    queryKey: ["/api/credit-cards", card.id, "future-invoices"],
+    queryFn: async () => {
+      const res = await fetch(`/api/credit-cards/${card.id}/future-invoices`, { credentials: "include" });
+      return res.json();
+    },
+  });
+
+  // Future invoice form
+  const [futureForm, setFutureForm] = useState({ description: "", amount: "", monthKey: "" });
+
+  const addFutureMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/credit-cards/${card.id}/future-invoices`, {
+        monthKey: futureForm.monthKey,
+        description: futureForm.description.trim(),
+        amount: parseFloat(futureForm.amount),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards", card.id, "future-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      setFutureForm({ description: "", amount: "", monthKey: "" });
+      toast({ title: t("axisFinance.futureInvoiceAdded") });
+    },
+    onError: () => toast({ title: t("axisFinance.futureInvoiceError"), variant: "destructive" }),
+  });
+
+  const deleteFutureMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/credit-cards/${card.id}/future-invoices/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards", card.id, "future-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      toast({ title: t("axisFinance.futureInvoiceRemoved") });
+    },
+    onError: () => toast({ title: t("axisFinance.futureInvoiceError"), variant: "destructive" }),
+  });
+
+  // Build next 6 months for selection
+  const nextMonths = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + i + 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleString(lang, { month: "long", year: "numeric" });
+    return { key, label };
+  });
+
+  // Scheduled amount per future month (sum)
+  const scheduledByMonth: Record<string, number> = {};
+  for (const fi of futureInvoices) {
+    scheduledByMonth[fi.monthKey] = (scheduledByMonth[fi.monthKey] ?? 0) + fi.amount;
+  }
+  const totalScheduled = futureInvoices.reduce((s: number, fi: any) => s + fi.amount, 0);
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -312,9 +372,10 @@ function CardDetailSheet({
         {/* Tab bar */}
         <div className="flex px-5 gap-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {([
-            ["overview", t("axisFinance.tabInvoice"), null],
-            ["purchase", t("axisFinance.tabRegisterPurchase"), null],
-            ["invoice", t("axisFinance.tabHistory"), null],
+            ["overview", t("axisFinance.tabInvoice")],
+            ["purchase", t("axisFinance.tabRegisterPurchase")],
+            ["future", t("axisFinance.tabFutureInvoices")],
+            ["invoice", t("axisFinance.tabHistory")],
           ] as const).map(([id, label]) => (
             <button
               key={id}
@@ -324,6 +385,14 @@ function CardDetailSheet({
               data-testid={`tab-card-${id}`}
             >
               {label}
+              {id === "future" && futureInvoices.length > 0 && (
+                <span
+                  className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded-full"
+                  style={{ background: `${cardColor}25`, color: cardColor }}
+                >
+                  {futureInvoices.length}
+                </span>
+              )}
               {tab === id && (
                 <div
                   className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
@@ -658,6 +727,156 @@ function CardDetailSheet({
                   : parseInt(purchase.installments) > 1 ? t("axisFinance.registerInInstallments", { n: purchase.installments }) : t("axisFinance.registerPurchase")}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── Tab: Próximas Faturas ── */}
+        {!editing && tab === "future" && (
+          <div className="px-5 py-5 space-y-5">
+
+            {/* Summary bar */}
+            {totalScheduled > 0 && (
+              <div
+                className="rounded-2xl p-4 flex items-center justify-between"
+                style={{ background: `${cardColor}10`, border: `1px solid ${cardColor}25` }}
+              >
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">{t("axisFinance.totalScheduled")}</p>
+                  <p className="text-xl font-bold mt-0.5" style={{ color: cardColor }}>{fmtMoney(totalScheduled)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">{t("axisFinance.remainingLimit")}</p>
+                  <p className="text-sm font-bold text-white/70 mt-0.5">{fmtMoney(Math.max(0, card.limit - displayUsed - totalScheduled))}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Add future invoice form */}
+            <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <SectionTitle icon={<Clock className="h-3.5 w-3.5" />}>{t("axisFinance.addFutureInvoice")}</SectionTitle>
+
+              {/* Month selector */}
+              <div>
+                <FieldLabel>{t("axisFinance.targetMonth")}</FieldLabel>
+                <div className="flex gap-1.5 flex-wrap">
+                  {nextMonths.map(({ key, label }) => {
+                    const active = futureForm.monthKey === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFutureForm(f => ({ ...f, monthKey: active ? "" : key }))}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize"
+                        style={{
+                          background: active ? `${cardColor}20` : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${active ? `${cardColor}40` : "rgba(255,255,255,0.08)"}`,
+                          color: active ? cardColor : "rgba(255,255,255,0.4)",
+                        }}
+                        data-testid={`future-month-${key}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <FieldLabel>{t("axisFinance.descriptionLabel")}</FieldLabel>
+                <FieldInput
+                  value={futureForm.description}
+                  onChange={e => setFutureForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder={t("axisFinance.futureInvoiceDescPlaceholder")}
+                  data-testid="input-future-invoice-description"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <FieldLabel>{t("axisFinance.amountLabel")}</FieldLabel>
+                <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+                  <span className="text-white/35 text-sm font-semibold">{symbol}</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={futureForm.amount}
+                    onChange={e => setFutureForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="0.00"
+                    className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20 font-medium"
+                    data-testid="input-future-invoice-amount"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => addFutureMutation.mutate()}
+                disabled={
+                  addFutureMutation.isPending ||
+                  !futureForm.monthKey ||
+                  !futureForm.description.trim() ||
+                  !futureForm.amount ||
+                  parseFloat(futureForm.amount) <= 0
+                }
+                className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-40 active:scale-[0.98]"
+                style={{ background: cardColor, color: "#060608" }}
+                data-testid="button-add-future-invoice"
+              >
+                {addFutureMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {addFutureMutation.isPending ? t("axisFinance.adding") : t("axisFinance.addFutureInvoice")}
+              </button>
+            </div>
+
+            {/* List by month */}
+            {futureLoading && (
+              <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-white/30" /></div>
+            )}
+
+            {!futureLoading && nextMonths.map(({ key, label }) => {
+              const monthItems = futureInvoices.filter((fi: any) => fi.monthKey === key);
+              if (monthItems.length === 0) return null;
+              const monthTotal = monthItems.reduce((s: number, fi: any) => s + fi.amount, 0);
+              return (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40 capitalize">{label}</p>
+                    <span className="text-xs font-bold" style={{ color: cardColor }}>{fmtMoney(monthTotal)}</span>
+                  </div>
+                  {monthItems.map((fi: any) => (
+                    <div
+                      key={fi.id}
+                      className="flex items-center justify-between rounded-xl px-4 py-3"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                      data-testid={`future-invoice-${fi.id}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-white truncate">{fi.description}</p>
+                        <p className="text-[11px] text-white/35">{t("axisFinance.preScheduledBill")}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <span className="text-sm font-bold text-orange-400">{fmtMoney(fi.amount)}</span>
+                        <button
+                          onClick={() => deleteFutureMutation.mutate(fi.id)}
+                          disabled={deleteFutureMutation.isPending}
+                          className="p-1 rounded opacity-30 hover:opacity-80 transition-opacity"
+                          data-testid={`button-delete-future-invoice-${fi.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+
+            {!futureLoading && futureInvoices.length === 0 && (
+              <div className="text-center py-6">
+                <Clock className="h-8 w-8 text-white/15 mx-auto mb-2" />
+                <p className="text-sm text-white/30">{t("axisFinance.noFutureInvoices")}</p>
+                <p className="text-[11px] text-white/20 mt-1">{t("axisFinance.noFutureInvoicesHint")}</p>
+              </div>
+            )}
           </div>
         )}
 
