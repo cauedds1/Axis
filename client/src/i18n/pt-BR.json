@@ -1733,7 +1733,12 @@
     "alertMonthlyPersonal": "Relatório mensal pessoal",
     "alertMonthlyPersonalDesc": "Enviado todo dia 1°: receitas, gastos, hábitos, tarefas e score de disciplina",
     "alertMonthlyBusiness": "Relatório mensal empresarial",
-    "alertMonthlyBusinessDesc": "Enviado todo dia 1°: despesas, recebíveis e resultado financeiro da sua organização"
+    "alertMonthlyBusinessDesc": "Enviado todo dia 1°: despesas, recebíveis e resultado financeiro da sua organização",
+    "whatsappAlertsTitle": "Notificações WhatsApp",
+    "whatsappAlertsDesc": "Check-ins enviados pelo bot do WhatsApp, diretamente no seu celular.",
+    "alertHabitCheckin": "Check-in diário de hábitos e compromissos",
+    "alertHabitCheckinDesc": "Toda manhã o bot pergunta se você completou seus hábitos e compromissos do dia — registra automaticamente no score de disciplina",
+    "whatsappNotLinked": "WhatsApp não vinculado — vá em Configurações > WhatsApp para ativar."
   },
   "axisFinance": {
     "pageTitle": "Finanças | AXIS",

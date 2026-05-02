@@ -925,6 +925,59 @@ export default function SettingsPage() {
                   })}
                 </div>
               ) : null}
+
+              {/* WhatsApp Notifications */}
+              {notifData && (
+                <div className="mt-6 space-y-3">
+                  <div>
+                    <h2 className="text-base font-semibold">{t("axisSettings.whatsappAlertsTitle")}</h2>
+                    <p className="text-sm text-muted-foreground mt-1">{t("axisSettings.whatsappAlertsDesc")}</p>
+                    {!notifData.whatsappLinked && (
+                      <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: "hsl(38 92% 50%)" }}>
+                        <TriangleAlert className="h-3.5 w-3.5 flex-shrink-0" />
+                        {t("axisSettings.whatsappNotLinked")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {([
+                      { key: "whatsappHabitAlerts", label: t("axisSettings.alertHabitCheckin"), desc: t("axisSettings.alertHabitCheckinDesc") },
+                    ] as { key: string; label: string; desc: string }[]).map(({ key, label, desc }) => {
+                      const enabled: boolean = notifData[key] === true;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => toggleNotif(key, enabled)}
+                          disabled={notifMutation.isPending}
+                          className="w-full text-left px-4 py-3 rounded-xl border transition-colors flex items-center justify-between gap-3"
+                          style={{
+                            borderColor: enabled ? "rgba(34,197,94,0.4)" : "hsl(var(--border))",
+                            background: enabled ? "rgba(34,197,94,0.07)" : "transparent",
+                          }}
+                          data-testid={`toggle-notif-${key}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium flex items-center gap-1.5">
+                              <span style={{ fontSize: 14 }}>💬</span>
+                              {label}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{desc}</p>
+                          </div>
+                          <div
+                            className="w-10 h-6 rounded-full relative flex-shrink-0 transition-all"
+                            style={{ background: enabled ? "rgb(34,197,94)" : "rgba(255,255,255,0.1)" }}
+                          >
+                            <div
+                              className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
+                              style={{ left: enabled ? "calc(100% - 20px)" : "4px" }}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

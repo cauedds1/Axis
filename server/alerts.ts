@@ -12,6 +12,7 @@ import {
   sendLowDisciplineEmail,
 } from "./integrations/sendgrid";
 import { sendPersonalMonthlyReport, sendBusinessMonthlyReport } from "./monthly-reports";
+import { whatsappManager, whatsappPersonalManager, getWhatsAppMode } from "./whatsapp";
 
 type Lang = "en" | "pt";
 
@@ -42,6 +43,7 @@ function getEmailAlertPrefs(profile: { emailAlerts?: string | null }): {
   lowDiscipline: boolean;
   monthlyPersonal: boolean;
   monthlyBusiness: boolean;
+  whatsappHabitAlerts: boolean;
 } {
   try {
     const p = JSON.parse(profile.emailAlerts || "{}");
@@ -54,9 +56,10 @@ function getEmailAlertPrefs(profile: { emailAlerts?: string | null }): {
       lowDiscipline: p.lowDiscipline !== false,
       monthlyPersonal: p.monthlyPersonal !== false,
       monthlyBusiness: p.monthlyBusiness !== false,
+      whatsappHabitAlerts: p.whatsappHabitAlerts === true,
     };
   } catch {
-    return { billDueSoon: true, offlineReminder: true, overdueTask: true, weeklySummary: true, goalDeadline: true, lowDiscipline: true, monthlyPersonal: true, monthlyBusiness: true };
+    return { billDueSoon: true, offlineReminder: true, overdueTask: true, weeklySummary: true, goalDeadline: true, lowDiscipline: true, monthlyPersonal: true, monthlyBusiness: true, whatsappHabitAlerts: false };
   }
 }
 
@@ -270,6 +273,80 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
   if (weeklyStatus === "sent") console.log(`[alerts] Weekly summary sent to ${maskEmail(userInfo.email)}`);
 }
 
+export async function sendDailyHabitCheckinsForAll(): Promise<void> {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  if (utcHour < 8 || utcHour >= 13) return;
+
+  const todayStr = now.toISOString().split("T")[0];
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayEnd   = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+  let manager: typeof whatsappManager;
+  try {
+    const mode = await getWhatsAppMode();
+    manager = mode === "dual" ? whatsappPersonalManager : whatsappManager;
+  } catch {
+    return;
+  }
+
+  if (manager.getStatus() !== "connected") return;
+
+  const profiles = await storage.getAllProfiles();
+
+  for (const profile of profiles) {
+    try {
+      const prefs = getEmailAlertPrefs(profile);
+      if (!prefs.whatsappHabitAlerts) continue;
+
+      const jid: string | null = (profile as any).whatsappJid ?? null;
+      if (!jid) continue;
+
+      const recentAlerts = await storage.getRecentAlerts(profile.userId, "whatsapp_habit_checkin", todayStr, todayStart);
+      if (recentAlerts.length > 0) continue;
+
+      const todayDow = now.getUTCDay();
+      const habits = await storage.getHabits(profile.userId);
+      const habitQueue = habits
+        .filter(h => {
+          if (h.frequency === "daily") return true;
+          if (h.frequency === "weekly") {
+            try {
+              const days: number[] = typeof h.weekdays === "string" ? JSON.parse(h.weekdays) : (h.weekdays ?? []);
+              return days.includes(todayDow);
+            } catch { return false; }
+          }
+          return false;
+        })
+        .map(h => ({ type: "habit" as const, id: h.id, name: h.name }));
+
+      const schedItems = await storage.getScheduleItems(profile.userId, {
+        startDate: todayStart,
+        endDate: todayEnd,
+        status: "pending",
+      });
+      const schedQueue = schedItems.map(s => ({ type: "schedule" as const, id: s.id, name: s.title }));
+
+      const queue = [...habitQueue, ...schedQueue];
+      if (queue.length === 0) continue;
+
+      const lang = getLang(profile);
+      await manager.startHabitCheckin(jid, profile.userId, queue, lang);
+
+      await storage.createEmailAlertLog({
+        userId: profile.userId,
+        alertType: "whatsapp_habit_checkin",
+        referenceId: todayStr,
+        recipient: jid,
+        status: "sent",
+      });
+      console.log(`[alerts] WhatsApp habit checkin sent — userId=${profile.userId} (${queue.length} items)`);
+    } catch (err: any) {
+      console.error(`[alerts] WhatsApp habit checkin failed — userId=${profile.userId}: ${err?.message}`);
+    }
+  }
+}
+
 export async function runPeriodicAlertsForAll(): Promise<void> {
   const profiles = await storage.getAllProfiles();
   const now = new Date();
@@ -371,6 +448,8 @@ export async function runPeriodicAlertsForAll(): Promise<void> {
       }
     }
   }
+
+  await sendDailyHabitCheckinsForAll().catch(() => {});
 }
 
 // Keep for backwards compatibility (called from index.ts)

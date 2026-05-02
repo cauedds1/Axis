@@ -26,6 +26,7 @@ import { db } from "./db";
 import { users, whatsappAuth, transactions, systemConfig } from "@shared/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { checkLimit, incrementCounter } from "./planLimits";
+import { adjustDisciplinePoints, DISCIPLINE_POINTS } from "./discipline";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -146,6 +147,14 @@ interface PendingSavingsDeposit {
   expiresAt: number;
 }
 
+interface PendingHabitCheckin {
+  userId: string;
+  queue: Array<{ type: "habit" | "schedule"; id: string; name: string }>;
+  currentIndex: number;
+  awaitingJustification: boolean;
+  expiresAt: number;
+}
+
 class WhatsAppManager {
   private instanceName: string;
   private sock: any = null;
@@ -162,6 +171,7 @@ class WhatsAppManager {
   private pendingBillIdentity: Map<string, PendingBillIdentity> = new Map();
   private pendingSavingsDeposit: Map<string, PendingSavingsDeposit> = new Map();
   private pendingBusinessChoice: Map<string, { transactionData: any; dataUrl: string; replyLine: string; orgs: { id: string; name: string }[]; expiresAt: number }> = new Map();
+  private pendingHabitCheckin: Map<string, PendingHabitCheckin> = new Map();
   private pgAuthClearAll: (() => Promise<void>) | null = null;
   private lastRegisteredTx: Map<string, {
     id: string;
@@ -178,6 +188,22 @@ class WhatsAppManager {
   resetRetryCount(): void { this.retryCount = 0; }
   getConnectedPhone(): string | null { return this.connectedPhone; }
   getInstanceName(): string { return this.instanceName; }
+
+  async sendNotification(jid: string, text: string): Promise<void> {
+    return this.sendMessage(jid, text);
+  }
+
+  async startHabitCheckin(jid: string, userId: string, queue: Array<{ type: "habit" | "schedule"; id: string; name: string }>, lang: Lang): Promise<void> {
+    if (queue.length === 0) return;
+    this.pendingHabitCheckin.set(jid, {
+      userId,
+      queue,
+      currentIndex: 0,
+      awaitingJustification: false,
+      expiresAt: Date.now() + 4 * 60 * 60 * 1000,
+    });
+    await this.sendCheckinQuestion(jid, queue[0], 0, queue.length, lang, true);
+  }
 
   unlinkPhone(phone: string): void {
     const normalized = phone.startsWith("55") ? phone : "55" + phone;
@@ -489,6 +515,17 @@ class WhatsAppManager {
       if (userRow?.accountType === "collaborator") {
         await this.handleCollaboratorMessage(msg, jid, profile.userId, imageMsg, text, lang);
         return;
+      }
+
+      // Check for pending habit/schedule check-in conversation
+      const pendingCheckin = this.pendingHabitCheckin.get(jid);
+      if (pendingCheckin && !imageMsg && !audioMsg && !docMsg) {
+        if (Date.now() > pendingCheckin.expiresAt) {
+          this.pendingHabitCheckin.delete(jid);
+        } else {
+          await this.handleCheckinReply(jid, text, profile.userId, lang, pendingCheckin);
+          return;
+        }
       }
 
       // In dual mode, pendingBusinessChoice is never used (context is pre-determined)
@@ -1783,6 +1820,142 @@ class WhatsAppManager {
 
     await this.sendMessage(jid, lines.join("\n"));
     log(`WhatsApp PDF bill: "${title}" R$ ${amount} (${billType}) criada (userId=${userId})`, "whatsapp");
+  }
+
+  private async sendCheckinQuestion(jid: string, item: { type: "habit" | "schedule"; name: string }, index: number, total: number, lang: Lang, isFirst = false): Promise<void> {
+    const emoji = item.type === "habit" ? "⚡" : "📅";
+    const typeLabel = item.type === "habit"
+      ? (lang === "en" ? "habit" : "hábito")
+      : (lang === "en" ? "appointment" : "compromisso");
+    const progress = total > 1 ? ` (${index + 1}/${total})` : "";
+    const prefix = isFirst
+      ? (lang === "en" ? `☀️ Daily check-in 🎯\n\n` : `☀️ Check-in diário 🎯\n\n`)
+      : "";
+    const question = lang === "en"
+      ? `${prefix}${emoji} *${item.name}*${progress}\n\nDid you complete this ${typeLabel} today? Reply *yes* or *no*`
+      : `${prefix}${emoji} *${item.name}*${progress}\n\nVocê completou este ${typeLabel} hoje? Responda *sim* ou *não*`;
+    await this.sendMessage(jid, question);
+  }
+
+  private async advanceCheckin(jid: string, checkin: PendingHabitCheckin, lang: Lang): Promise<void> {
+    const nextIndex = checkin.currentIndex + 1;
+    if (nextIndex >= checkin.queue.length) {
+      this.pendingHabitCheckin.delete(jid);
+      const done = lang === "en"
+        ? `✅ Daily check-in complete! Keep it up 💪`
+        : `✅ Check-in diário concluído! Continue firme 💪`;
+      await this.sendMessage(jid, done);
+    } else {
+      const updated: PendingHabitCheckin = { ...checkin, currentIndex: nextIndex, awaitingJustification: false };
+      this.pendingHabitCheckin.set(jid, updated);
+      await this.sendCheckinQuestion(jid, updated.queue[nextIndex], nextIndex, checkin.queue.length, lang);
+    }
+  }
+
+  private async handleCheckinReply(jid: string, text: string, userId: string, lang: Lang, checkin: PendingHabitCheckin): Promise<void> {
+    const answer = text.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const currentItem = checkin.queue[checkin.currentIndex];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    if (!checkin.awaitingJustification) {
+      const isYes = answer === "sim" || answer === "s" || answer === "yes" || answer === "y" || answer === "1";
+      const isNo  = answer === "nao" || answer === "n" || answer === "no" || answer === "2";
+
+      if (isYes) {
+        if (currentItem.type === "habit") {
+          await storage.checkHabit(currentItem.id, userId, todayStr).catch(() => {});
+          const msg = lang === "en"
+            ? `⚡ Habit "${currentItem.name}" done — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`
+            : `⚡ Hábito "${currentItem.name}" feito — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`;
+          await adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, msg);
+        } else {
+          await storage.updateScheduleItem(currentItem.id, userId, { status: "done" }).catch(() => {});
+          const msg = lang === "en"
+            ? `⚡ "${currentItem.name}" completed — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`
+            : `⚡ "${currentItem.name}" concluído — +${DISCIPLINE_POINTS.HABIT_CHECK} pts`;
+          await adjustDisciplinePoints(userId, DISCIPLINE_POINTS.HABIT_CHECK, msg);
+        }
+        const confirmMsg = lang === "en" ? `✅ Logged!` : `✅ Registrado!`;
+        await this.sendMessage(jid, confirmMsg);
+        await this.advanceCheckin(jid, checkin, lang);
+      } else if (isNo) {
+        const updated: PendingHabitCheckin = { ...checkin, awaitingJustification: true };
+        this.pendingHabitCheckin.set(jid, updated);
+        const prompt = lang === "en"
+          ? `Why not? Reply:\n• *holiday* — no penalty\n• *medical* — -1 pt\n• *other* — -3 pts`
+          : `Por que não? Responda:\n• *feriado* — sem penalidade\n• *atestado* — -1 pt\n• *outro* — -3 pts`;
+        await this.sendMessage(jid, prompt);
+      } else {
+        const hint = lang === "en"
+          ? `Please reply *yes* or *no*.`
+          : `Por favor responda *sim* ou *não*.`;
+        await this.sendMessage(jid, hint);
+      }
+    } else {
+      let type: "holiday" | "medical" | "other" | null = null;
+      if (answer === "feriado" || answer === "holiday" || answer === "1") type = "holiday";
+      else if (answer === "atestado" || answer === "medico" || answer === "medical" || answer === "2") type = "medical";
+      else if (answer === "outro" || answer === "other" || answer === "3" || answer.length > 4) type = "other";
+
+      if (!type) {
+        const hint = lang === "en"
+          ? `Reply *holiday*, *medical* or *other*.`
+          : `Responda *feriado*, *atestado* ou *outro*.`;
+        await this.sendMessage(jid, hint);
+        return;
+      }
+
+      const reason = type === "other" ? text.trim() : undefined;
+      if (currentItem.type === "habit") {
+        await storage.createScheduleCancellation({
+          userId,
+          habitId: currentItem.id,
+          entityType: "habit",
+          date: todayStr,
+          reason,
+          type,
+        } as any).catch(() => {});
+      } else {
+        await storage.createScheduleCancellation({
+          userId,
+          scheduleItemId: currentItem.id,
+          date: todayStr,
+          reason,
+          type,
+        } as any).catch(() => {});
+      }
+
+      let delta = 0;
+      let disciplineMsg = "";
+      if (type === "holiday") {
+        delta = 0;
+        disciplineMsg = lang === "en"
+          ? `🏖️ Holiday: "${currentItem.name}" — no penalty`
+          : `🏖️ Feriado — "${currentItem.name}" sem penalidade`;
+      } else if (type === "medical") {
+        delta = -1;
+        disciplineMsg = lang === "en"
+          ? `🏥 Medical: "${currentItem.name}" — accepted (-1 pt)`
+          : `🏥 Atestado — "${currentItem.name}" aceito (-1 pt)`;
+      } else {
+        delta = -3;
+        disciplineMsg = lang === "en"
+          ? `❌ Missed: "${currentItem.name}" without justification (-3 pts)`
+          : `❌ Falta em "${currentItem.name}" sem justificativa (-3 pts)`;
+      }
+      if (delta !== 0) await adjustDisciplinePoints(userId, delta, disciplineMsg);
+
+      const cancelConfirm = type === "holiday"
+        ? (lang === "en" ? `🏖️ Noted — no penalty.` : `🏖️ Registrado — sem penalidade.`)
+        : type === "medical"
+        ? (lang === "en" ? `🏥 Noted — medical excuse (-1 pt).` : `🏥 Registrado — atestado (-1 pt).`)
+        : (lang === "en" ? `❌ Noted — missed (-3 pts).` : `❌ Registrado — falta (-3 pts).`);
+      await this.sendMessage(jid, cancelConfirm);
+
+      const updated: PendingHabitCheckin = { ...checkin, awaitingJustification: false };
+      this.pendingHabitCheckin.set(jid, updated);
+      await this.advanceCheckin(jid, updated, lang);
+    }
   }
 
   private async sendMessage(jid: string, text: string): Promise<void> {

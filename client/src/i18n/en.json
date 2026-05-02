@@ -1733,7 +1733,12 @@
     "alertMonthlyPersonal": "Personal monthly report",
     "alertMonthlyPersonalDesc": "Sent on the 1st: income, expenses, habits, tasks and discipline score",
     "alertMonthlyBusiness": "Business monthly report",
-    "alertMonthlyBusinessDesc": "Sent on the 1st: expenses, receivables and financial result for your organization"
+    "alertMonthlyBusinessDesc": "Sent on the 1st: expenses, receivables and financial result for your organization",
+    "whatsappAlertsTitle": "WhatsApp Notifications",
+    "whatsappAlertsDesc": "Check-ins sent by the WhatsApp bot, directly to your phone.",
+    "alertHabitCheckin": "Daily habit & schedule check-in",
+    "alertHabitCheckinDesc": "Every morning the bot asks if you completed your habits and appointments for the day — automatically logs to your discipline score",
+    "whatsappNotLinked": "WhatsApp not linked — go to Settings > WhatsApp to enable."
   },
   "axisFinance": {
     "pageTitle": "Finance | AXIS",

@@ -57,32 +57,7 @@ function getISOWeekLabel(d: Date): string {
   return monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-// ── DISCIPLINE POINT VALUES ────────────────────────────────────────────
-// Positive actions
-const DISCIPLINE_POINTS = {
-  TASK_HIGH:           6,   // tarefa alta prioridade concluída
-  TASK_MEDIUM:         4,   // tarefa média prioridade concluída
-  TASK_LOW:            3,   // tarefa baixa prioridade concluída
-  HABIT_CHECK:         2,   // hábito diário marcado como feito
-  HABIT_MISSED:       -3,   // hábito não feito no dia programado
-  TASK_OVERDUE:       -4,   // tarefa em atraso detectada
-  SPENDING_OTIMO:     +4,   // finanças excelentes: gastos supérfluos < 5% da renda
-  SPENDING_BOM:       +2,   // finanças boas: gastos supérfluos 5-10% da renda
-  SPENDING_LEVE:      -2,   // gastos com besteiras leves (15-25% da renda)
-  SPENDING_MODERADO:  -4,   // gastos com besteiras moderados (25-35% da renda)
-  SPENDING_GRAVE:     -6,   // gastos com besteiras graves (>35% da renda)
-  BILL_PAID_LATE:     -2,   // conta paga com atraso — quebra a sequência
-} as const;
-const DISCIPLINE_THRESHOLD = 8; // pontos para subir/descer 1 nível
-
-async function getUserLang(userId: string): Promise<"en" | "pt"> {
-  try {
-    const profile = await storage.getUserProfile(userId);
-    return ((profile as any)?.language ?? "pt") as "en" | "pt";
-  } catch {
-    return "pt";
-  }
-}
+import { DISCIPLINE_POINTS, DISCIPLINE_THRESHOLD, getUserLang, adjustDisciplinePoints } from "./discipline";
 
 async function getUserCurrency(userId: string): Promise<string> {
   try {
@@ -93,43 +68,6 @@ async function getUserCurrency(userId: string): Promise<string> {
   }
 }
 
-async function adjustDisciplinePoints(userId: string, delta: number, reason: string): Promise<void> {
-  try {
-    const profile = await storage.getUserProfile(userId);
-    const prevScore  = profile?.disciplineScore  ?? 5;
-    const prevPoints = profile?.disciplinePoints ?? 0;
-    const lang = ((profile as any)?.language ?? "pt") as "en" | "pt";
-
-    let newPoints = prevPoints + delta;
-    let newScore  = prevScore;
-
-    while (newPoints >= DISCIPLINE_THRESHOLD) {
-      newScore = Math.min(10, newScore + 1);
-      newPoints -= DISCIPLINE_THRESHOLD;
-    }
-    while (newPoints <= -DISCIPLINE_THRESHOLD) {
-      newScore = Math.max(1, newScore - 1);
-      newPoints += DISCIPLINE_THRESHOLD;
-    }
-
-    await storage.upsertUserProfile(userId, { disciplineScore: newScore, disciplinePoints: newPoints });
-
-    if (newScore !== prevScore) {
-      const levelMsg = lang === "en"
-        ? `Discipline ${prevScore} → ${newScore} (${delta > 0 ? "+" : ""}${delta} accumulated pts)`
-        : `Disciplina ${prevScore} → ${newScore} (${delta > 0 ? "+" : ""}${delta} pts acumulados)`;
-      await storage.createDisciplineHistory({
-        userId,
-        score: newScore,
-        previousScore: prevScore,
-        delta: newScore - prevScore,
-        reasons: JSON.stringify([reason, levelMsg]),
-      });
-    }
-  } catch {
-    // silently fail
-  }
-}
 
 async function penalizeOverdueTasks(userId: string): Promise<void> {
   try {
@@ -513,6 +451,8 @@ export async function registerRoutes(
         lowDiscipline: prefs.lowDiscipline !== false,
         monthlyPersonal: prefs.monthlyPersonal !== false,
         monthlyBusiness: prefs.monthlyBusiness !== false,
+        whatsappHabitAlerts: prefs.whatsappHabitAlerts === true,
+        whatsappLinked: !!((profile as any)?.whatsappJid),
       });
     } catch (error: any) {
       serverError(res, error);
@@ -522,7 +462,7 @@ export async function registerRoutes(
   app.patch("/api/user/notifications", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { billDueSoon, offlineReminder, overdueTask, weeklySummary, goalDeadline, lowDiscipline, monthlyPersonal, monthlyBusiness } = req.body;
+      const { billDueSoon, offlineReminder, overdueTask, weeklySummary, goalDeadline, lowDiscipline, monthlyPersonal, monthlyBusiness, whatsappHabitAlerts } = req.body;
       const prefs = {
         billDueSoon: billDueSoon !== false,
         offlineReminder: offlineReminder !== false,
@@ -532,6 +472,7 @@ export async function registerRoutes(
         lowDiscipline: lowDiscipline !== false,
         monthlyPersonal: monthlyPersonal !== false,
         monthlyBusiness: monthlyBusiness !== false,
+        whatsappHabitAlerts: whatsappHabitAlerts === true,
       };
       await storage.upsertUserProfile(userId, { emailAlerts: JSON.stringify(prefs) });
       res.json(prefs);
