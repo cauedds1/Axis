@@ -3373,10 +3373,7 @@ export async function registerRoutes(
     try {
       const userId = getUserId(req);
       const result = await storage.getBills(userId);
-      // Exclude internal credit-card future-invoice backing records — those are
-      // managed exclusively through the credit-card UI, not the bills list.
-      const filtered = result.filter((b: any) => !b.notes?.startsWith("axiscard-future:"));
-      res.json(filtered);
+      res.json(result);
     } catch (error: any) {
       serverError(res, error);
     }

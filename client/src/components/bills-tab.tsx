@@ -581,9 +581,7 @@ export function BillsTab() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: rawBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
-  // axiscard-future bills are internal credit-card records managed in the
-  // credit-card UI — they must never appear in the regular bills list.
-  const allBills = rawBills.filter(b => !b.notes?.startsWith("axiscard-future:"));
+  const allBills = rawBills;
   const { data: allTransactions = [] } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: creditCards = [] } = useQuery<CreditCardType[]>({ queryKey: ["/api/credit-cards"] });
   const { data: recurringIncomes = [] } = useQuery<RecurringIncome[]>({ queryKey: ["/api/recurring-incomes"] });
@@ -676,7 +674,9 @@ export function BillsTab() {
         dueMonthIdx = (closingMonthNorm + 1) % 12;
       }
 
-      const showInPeriod = periodMonths.some(({ y, m }) => y === dueYear && m === dueMonthIdx);
+      // Show the projected invoice in the CLOSING month (not the due month).
+      // e.g. Mercado Pago closes May 28 → appears in May, even though due June 4.
+      const showInPeriod = periodMonths.some(({ y, m }) => y === closingYear2 && m === closingMonthNorm);
       return { card, openCycleTotal, dueYear, dueMonthIdx, showInPeriod };
     })
     .filter(p => p.showInPeriod && p.openCycleTotal > 0);
@@ -844,6 +844,7 @@ export function BillsTab() {
         <div className="space-y-2">
           <AnimatePresence initial={false}>
             {filtered.map(bill => {
+              const isCardFuture = bill.notes?.startsWith("axiscard-future:");
               const paid = isBillPaidThisMonth(bill);
               const overdue = isBillOverdue(bill);
               const isExpense = bill.type === "expense";
@@ -883,14 +884,17 @@ export function BillsTab() {
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${rowAccent}15` }}>
-                            {isExpense ? <TrendingDown className="h-4 w-4" style={{ color: rowAccent }} /> : <TrendingUp className="h-4 w-4" style={{ color: rowAccent }} />}
+                            {isCardFuture ? <CreditCard className="h-4 w-4" style={{ color: rowAccent }} /> : isExpense ? <TrendingDown className="h-4 w-4" style={{ color: rowAccent }} /> : <TrendingUp className="h-4 w-4" style={{ color: rowAccent }} />}
                           </div>
                           <div className="min-w-0">
                             <p className={`text-sm font-semibold truncate ${paid ? "line-through text-white/40" : "text-white"}`}>{bill.title}</p>
                             <div className="flex items-center gap-2 mt-0.5">
                               {bill.categoryName && <span className="text-[10px] text-white/30">{bill.categoryName}</span>}
-                              <span className="text-[10px] font-medium" style={{ color: statusColor }}>{statusLabel}</span>
-                              <span className="text-[10px] text-white/20">{recLabel(bill.recurrenceType as RecurrenceType, t)}</span>
+                              {isCardFuture
+                                ? <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: `${EXPENSE_COLOR}15`, color: EXPENSE_COLOR }}>Fatura agendada</span>
+                                : <span className="text-[10px] font-medium" style={{ color: statusColor }}>{statusLabel}</span>
+                              }
+                              {!isCardFuture && <span className="text-[10px] text-white/20">{recLabel(bill.recurrenceType as RecurrenceType, t)}</span>}
                             </div>
                           </div>
                         </div>
@@ -915,7 +919,7 @@ export function BillsTab() {
                             className="space-y-3 pt-3"
                             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
                           >
-                            {bill.notes && (() => {
+                            {!isCardFuture && bill.notes && (() => {
                               const lines = bill.notes.split("\n");
                               const info: { label: string; value: string; icon: any }[] = [];
                               for (const line of lines) {
@@ -978,39 +982,50 @@ export function BillsTab() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
-                                disabled={togglePaidMutation.isPending}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                                style={{
-                                  background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
-                                  border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
-                                  color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
-                                }}
-                                data-testid={`button-toggle-paid-${bill.id}`}
-                              >
-                                {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                                {paid ? t("axisFinance.undoPayment") : t("axisFinance.markAsPaid")}
-                              </button>
+                              {!isCardFuture && (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
+                                  disabled={togglePaidMutation.isPending}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                                  style={{
+                                    background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
+                                    border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
+                                    color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
+                                  }}
+                                  data-testid={`button-toggle-paid-${bill.id}`}
+                                >
+                                  {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                  {paid ? t("axisFinance.undoPayment") : t("axisFinance.markAsPaid")}
+                                </button>
+                              )}
+                              {isCardFuture && (
+                                <p className="text-[11px] text-white/25 italic flex items-center gap-1">
+                                  <CreditCard className="h-3 w-3" /> Gerenciado pelo cartão
+                                </p>
+                              )}
                               <div className="flex-1" />
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setEditingBill(bill); }}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
-                                data-testid={`button-edit-bill-${bill.id}`}
-                              >
-                                <Pencil className="h-3.5 w-3.5 text-white/30" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteMutation.mutate(bill.id)}
-                                disabled={deleteMutation.isPending}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
-                                data-testid={`button-delete-bill-${bill.id}`}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" style={{ color: EXPENSE_COLOR }} />
-                              </button>
+                              {!isCardFuture && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setEditingBill(bill); }}
+                                    className="p-1.5 rounded-lg transition-colors hover:bg-white/5"
+                                    data-testid={`button-edit-bill-${bill.id}`}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-white/30" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteMutation.mutate(bill.id)}
+                                    disabled={deleteMutation.isPending}
+                                    className="p-1.5 rounded-lg transition-colors hover:bg-red-500/10"
+                                    data-testid={`button-delete-bill-${bill.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" style={{ color: EXPENSE_COLOR }} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </motion.div>
                         )}
