@@ -682,7 +682,34 @@ export function BillsTab() {
     .filter(p => p.showInPeriod && p.openCycleTotal > 0);
 
   const projectedInvoiceTotal = projectedCardInvoices.reduce((s, p) => s + p.openCycleTotal, 0);
-  const totalPagar2 = totalPagar + projectedInvoiceTotal;
+
+  // For each axiscard-future bill, compute installment transactions that land in that
+  // card's closing cycle for the target month. These are parcelada purchases registered
+  // after the base invoice was scheduled — they must be added to the displayed amount.
+  const cardFutureExtras = new Map<string, number>();
+  activeBills
+    .filter(b => b.notes?.startsWith("axiscard-future:"))
+    .forEach(b => {
+      const parts = b.notes!.split(":");
+      const cardId = parseInt(parts[1]);
+      const [yearStr, monthStr] = parts[2].split("-");
+      const cycleYear = parseInt(yearStr);
+      const cycleMonthIdx = parseInt(monthStr) - 1; // 0-indexed
+      const card = creditCards.find(c => c.id === cardId);
+      if (!card) return;
+      // Cycle: previous month's (closingDay+1) → this month's closingDay
+      // new Date with month=-1 correctly wraps to Dec of previous year in JS
+      const cycleStart = new Date(cycleYear, cycleMonthIdx - 1, card.closingDay + 1);
+      const cycleEnd = new Date(cycleYear, cycleMonthIdx, card.closingDay, 23, 59, 59);
+      const extra = allTransactions
+        .filter(tx => tx.creditCardId === cardId && tx.type === "expense")
+        .filter(tx => { const d = new Date(tx.date!); return d >= cycleStart && d <= cycleEnd; })
+        .reduce((s, tx) => s + tx.amount, 0);
+      if (extra > 0) cardFutureExtras.set(b.id, extra);
+    });
+  const totalCardFutureExtras = Array.from(cardFutureExtras.values()).reduce((s, v) => s + v, 0);
+
+  const totalPagar2 = totalPagar + projectedInvoiceTotal + totalCardFutureExtras;
 
   // Recurring incomes (salary, freelance, etc.) — active ones expected every month in the period
   const activeRecurringIncomes = recurringIncomes.filter(r => r.active);
@@ -901,7 +928,7 @@ export function BillsTab() {
 
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-base font-bold" style={{ color: paid ? "rgba(255,255,255,0.3)" : rowAccent }}>
-                            {isExpense ? "-" : "+"}{fmtMoney(bill.amount)}
+                            {isExpense ? "-" : "+"}{fmtMoney(isCardFuture ? bill.amount + (cardFutureExtras.get(bill.id) ?? 0) : bill.amount)}
                           </span>
                           <div className="p-1.5">
                             {expanded ? <ChevronUp className="h-4 w-4 text-white/30" /> : <ChevronDown className="h-4 w-4 text-white/30" />}
@@ -1000,9 +1027,27 @@ export function BillsTab() {
                                 </button>
                               )}
                               {isCardFuture && (
-                                <p className="text-[11px] text-white/25 italic flex items-center gap-1">
-                                  <CreditCard className="h-3 w-3" /> Gerenciado pelo cartão
-                                </p>
+                                <div className="space-y-1">
+                                  {(cardFutureExtras.get(bill.id) ?? 0) > 0 && (
+                                    <div className="rounded-lg p-2.5 space-y-1" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                                      <div className="flex justify-between text-[11px]">
+                                        <span className="text-white/40">Fatura agendada</span>
+                                        <span className="text-white/50">-{fmtMoney(bill.amount)}</span>
+                                      </div>
+                                      <div className="flex justify-between text-[11px]">
+                                        <span className="text-white/40">+ Parcelas registradas</span>
+                                        <span style={{ color: EXPENSE_COLOR }}>-{fmtMoney(cardFutureExtras.get(bill.id)!)}</span>
+                                      </div>
+                                      <div className="flex justify-between text-[11px] font-semibold pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                                        <span className="text-white/60">Total estimado</span>
+                                        <span className="text-white/80">-{fmtMoney(bill.amount + cardFutureExtras.get(bill.id)!)}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <p className="text-[11px] text-white/25 italic flex items-center gap-1">
+                                    <CreditCard className="h-3 w-3" /> Gerenciado pelo cartão
+                                  </p>
+                                </div>
                               )}
                               <div className="flex-1" />
                               {!isCardFuture && (
