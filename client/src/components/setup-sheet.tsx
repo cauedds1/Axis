@@ -499,43 +499,43 @@ function SectionGastos() {
       const amtNum = parseFloat(amount);
       if (!desc.trim() || isNaN(amtNum) || amtNum <= 0) throw new Error(t("axisSetup.expenses.errorFillDescAndValue"));
 
-      const endDate = getEndDate(recurrence);
-      const today = new Date();
       const diaNum = diaToggle ? parseInt(dia) || 1 : 1;
+      const resolvedCategory = category === "outros" && customCategory.trim()
+        ? customCategory.trim().toLowerCase()
+        : category;
 
-      const monthsToCreate: Date[] = [];
-      const cur = new Date(today.getFullYear(), today.getMonth(), diaNum);
-      if (cur < today) cur.setMonth(cur.getMonth() + 1);
+      const body: Record<string, any> = {
+        title: desc.trim(),
+        amount: amtNum,
+        type: "expense",
+        dueDay: diaNum,
+        categoryName: resolvedCategory,
+        recurrenceType: recurrence.type,
+      };
 
-      while (cur <= endDate && monthsToCreate.length < 12) {
-        monthsToCreate.push(new Date(cur));
-        cur.setMonth(cur.getMonth() + 1);
+      if (recurrence.type === "custom" && recurrence.endDate) {
+        body.recurrenceEndDate = recurrence.endDate;
       }
 
-      const results = await Promise.all(
-        monthsToCreate.map(async (date) => {
-          const resolvedCategory = category === "outros" && customCategory.trim()
-            ? customCategory.trim().toLowerCase()
-            : category;
-          const res = await apiRequest("POST", "/api/transactions", {
-            amount: amtNum,
-            description: desc.trim(),
-            type: "expense",
-            categoryName: resolvedCategory,
-            date: date.toISOString(),
-          });
-          return res.json();
-        })
-      );
+      const res = await apiRequest("POST", "/api/bills", body);
+      const bill = await res.json();
 
-      return { results, months: monthsToCreate.length };
+      const monthsDisplay =
+        recurrence.type === "permanent" ? 12
+        : recurrence.type === "this_month" ? 1
+        : recurrence.type === "three_months" ? 3
+        : recurrence.endDate
+          ? Math.max(1, Math.round((new Date(recurrence.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)))
+          : 1;
+
+      return { bill, months: monthsDisplay };
     },
-    onSuccess: ({ results, months }) => {
+    onSuccess: ({ bill, months }) => {
       const isCustom = category === "outros" && customCategory.trim();
       const cat = CATEGORIES.find(c => c.id === category);
       setAddedItems(prev => [
         {
-          ids: results.map((r: any) => r.id),
+          ids: [bill.id],
           description: desc.trim(),
           amount: parseFloat(amount),
           category: isCustom ? customCategory.trim() : category,
@@ -547,7 +547,7 @@ function SectionGastos() {
       setDesc("");
       setAmount("");
       if (isCustom) setCustomCategory("");
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     },
     onError: (e: any) => {
@@ -558,9 +558,9 @@ function SectionGastos() {
   const deleteItem = async (item: AddedExpense) => {
     setDeletingId(item.ids[0]);
     try {
-      await Promise.all(item.ids.map(id => apiRequest("DELETE", `/api/transactions/${id}`)));
+      await apiRequest("DELETE", `/api/bills/${item.ids[0]}`);
       setAddedItems(prev => prev.filter(i => i.ids[0] !== item.ids[0]));
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     } catch {
       toast({ title: t("axisSetup.expenses.errorDelete"), variant: "destructive" });
