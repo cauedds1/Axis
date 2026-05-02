@@ -720,7 +720,9 @@ export async function chatWithContext(message: string, userId: string, executedA
   }
 
   const curMonthKey = billMonthKey();
-  const activeBills = billsData.filter(billActiveThisMonth);
+  // Exclude internal credit-card future-invoice backing records
+  const visibleBills = billsData.filter((b: any) => !b.notes?.startsWith("axiscard-future:"));
+  const activeBills = visibleBills.filter(billActiveThisMonth);
   const unpaidBills = activeBills.filter(b => b.type === "expense" && !billPaidMonths(b).includes(curMonthKey));
   const paidBills = activeBills.filter(b => b.type === "expense" && billPaidMonths(b).includes(curMonthKey));
   const totalBillsFixed = activeBills.filter(b => b.type === "expense").reduce((s, b) => s + b.amount, 0);

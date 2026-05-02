@@ -75,7 +75,8 @@ export async function checkAndSendBillAlerts(userId: string): Promise<void> {
   if (!userInfo) return;
 
   const lang = getLang(profile);
-  const bills = await storage.getBills(userId);
+  const allBillsRaw = await storage.getBills(userId);
+  const bills = allBillsRaw.filter((b: any) => !b.notes?.startsWith("axiscard-future:"));
   const now = new Date();
   const today = now.getDate();
   const currentMonth = now.getMonth();
@@ -226,7 +227,8 @@ async function checkAndSendWeeklySummaryForUser(userId: string): Promise<void> {
   const tasks = await storage.getPersonalTasks(userId);
   const pendingTasks = tasks.filter(t => t.status === "pending").length;
 
-  const bills = await storage.getBills(userId);
+  const billsRaw2 = await storage.getBills(userId);
+  const bills = billsRaw2.filter((b: any) => !b.notes?.startsWith("axiscard-future:"));
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();

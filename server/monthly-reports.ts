@@ -393,7 +393,7 @@ async function buildPersonalReportData(userId: string, month: number, year: numb
   const overdueTasks = monthTasks.filter(t => t.status === "pending" && t.dueDate && new Date(t.dueDate) < now).length;
 
   const upcomingBills = bills
-    .filter(b => b.active && b.type === "expense")
+    .filter((b: any) => b.active && b.type === "expense" && !b.notes?.startsWith("axiscard-future:"))
     .map(b => ({ title: b.title, amount: Number(b.amount), dueDay: b.dueDay }))
     .sort((a, b) => a.dueDay - b.dueDay)
     .slice(0, 6);

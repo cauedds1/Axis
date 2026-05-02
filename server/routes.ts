@@ -1355,8 +1355,11 @@ export async function registerRoutes(
       const data = schema.parse(req.body);
       // Create a bill that appears only in the target month (custom recurrence)
       const [targetYear, targetMonth] = data.monthKey.split("-").map(Number);
-      const targetDate = new Date(targetYear, targetMonth - 1, 1);
-      const endOfTargetMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+      // Use noon UTC so that any client timezone (e.g. UTC-3 Brazil) still
+      // reads the date as the 1st of the target month, not the last day of the
+      // previous month (which happens with UTC midnight).
+      const targetDate = new Date(Date.UTC(targetYear, targetMonth - 1, 1, 12, 0, 0));
+      const endOfTargetMonth = new Date(Date.UTC(targetYear, targetMonth, 0, 23, 59, 59));
       const bill = await storage.createBill({
         userId,
         title: data.description,
@@ -3370,7 +3373,10 @@ export async function registerRoutes(
     try {
       const userId = getUserId(req);
       const result = await storage.getBills(userId);
-      res.json(result);
+      // Exclude internal credit-card future-invoice backing records — those are
+      // managed exclusively through the credit-card UI, not the bills list.
+      const filtered = result.filter((b: any) => !b.notes?.startsWith("axiscard-future:"));
+      res.json(filtered);
     } catch (error: any) {
       serverError(res, error);
     }

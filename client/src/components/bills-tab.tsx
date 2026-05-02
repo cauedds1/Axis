@@ -580,7 +580,10 @@ export function BillsTab() {
   const [customEnd, setCustomEnd] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: allBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
+  const { data: rawBills = [], isLoading } = useQuery<Bill[]>({ queryKey: ["/api/bills"] });
+  // axiscard-future bills are internal credit-card records managed in the
+  // credit-card UI — they must never appear in the regular bills list.
+  const allBills = rawBills.filter(b => !b.notes?.startsWith("axiscard-future:"));
   const { data: allTransactions = [] } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: creditCards = [] } = useQuery<CreditCardType[]>({ queryKey: ["/api/credit-cards"] });
 
