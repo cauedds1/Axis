@@ -1,21 +1,21 @@
 {
-  "name": "VoiceCRM - CRM Inteligente por Voz",
-  "short_name": "VoiceCRM",
-  "description": "Grave reuniões por voz e a IA organiza tudo automaticamente no seu CRM.",
+  "name": "AXIS — Your life. Orchestrated.",
+  "short_name": "AXIS",
+  "description": "Organize finanças, agenda, tarefas e hábitos por voz ou texto. O AXIS aprende como você pensa e organiza tudo automaticamente.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0f1a",
+  "background_color": "#080808",
   "theme_color": "#0d9488",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/favicon-personal.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/favicon-personal.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
