@@ -265,9 +265,10 @@ function CardDetailSheet({
   const computedUsed = currentTx.reduce((s: number, t: any) => s + Number(t.amount), 0);
   const displayUsed = invoiceData ? computedUsed : (card.usedThisMonth ?? 0);
 
-  const pct = Math.min(100, displayUsed / Math.max(card.limit, 1) * 100);
+  const totalScheduled = (card.totalScheduled ?? 0);
+  const pct = Math.min(100, (displayUsed + totalScheduled) / Math.max(card.limit, 1) * 100);
   const isHigh = pct > 80;
-  const available = Math.max(0, card.limit - displayUsed);
+  const available = Math.max(0, card.limit - displayUsed - totalScheduled);
 
   return (
     <div
@@ -1044,9 +1045,10 @@ export function CreditCardsTab() {
       {/* Card list — each card is clickable */}
       <div className="space-y-3">
         {cards.map((card: any) => {
-          const pct = Math.min(100, (card.usedThisMonth ?? 0) / Math.max(card.limit, 1) * 100);
+          const usedTotal = (card.usedThisMonth ?? 0) + (card.totalScheduled ?? 0);
+          const pct = Math.min(100, usedTotal / Math.max(card.limit, 1) * 100);
           const isHigh = pct > 80;
-          const available = Math.max(0, card.limit - (card.usedThisMonth ?? 0));
+          const available = Math.max(0, card.limit - usedTotal);
           const daysLeft = daysUntilClosing(card.closingDay);
           const cardColor = card.color || "#7C3AED";
 
@@ -1087,7 +1089,7 @@ export function CreditCardsTab() {
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {[
                     { label: t("axisFinance.cardLimit"), value: card.limit, color: "text-white" },
-                    { label: t("axisFinance.cardUsed"), value: card.usedThisMonth ?? 0, color: isHigh ? "text-red-400" : "text-white" },
+                    { label: t("axisFinance.cardUsed"), value: usedTotal, color: isHigh ? "text-red-400" : "text-white" },
                     { label: t("axisFinance.cardAvailable"), value: available, color: "text-emerald-400" },
                   ].map(({ label, value, color }) => (
                     <div key={label} className="text-center">

@@ -11,7 +11,7 @@ import { transcribeAudio, detectIntentAndProcess, processReceiptPhoto, processMu
 import { updateLastLogin, checkAndSendBillAlerts, checkAndSendOverdueTaskAlerts, checkAndSendGoalDeadlineAlerts, checkAndSendLowDisciplineAlert } from "./alerts";
 import { logAiUsage, logWhatsappMessage } from "./adminLogger";
 import { db } from "./db";
-import { users, bills } from "@shared/schema";
+import { users, bills, creditCardFutureInvoices } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { whatsappManager, whatsappManagers, getWhatsAppMode, getWhatsAppManager } from "./whatsapp";
 import { generateExpenseExcel } from "./business-reports";
@@ -1202,12 +1202,18 @@ export async function registerRoutes(
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-      const monthTx = await storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfMonth });
+      const [monthTx, allFutureInvoices] = await Promise.all([
+        storage.getTransactions(userId, { startDate: startOfMonth, endDate: endOfMonth }),
+        db.select().from(creditCardFutureInvoices).where(eq(creditCardFutureInvoices.userId, userId)),
+      ]);
       const enriched = cards.map(card => {
         const usedThisMonth = monthTx
           .filter(t => t.creditCardId === card.id && t.type === "expense")
           .reduce((s, t) => s + Number(t.amount), 0);
-        return { ...card, usedThisMonth };
+        const totalScheduled = allFutureInvoices
+          .filter(fi => fi.creditCardId === card.id)
+          .reduce((s, fi) => s + Number(fi.amount), 0);
+        return { ...card, usedThisMonth, totalScheduled };
       });
       res.json(enriched);
     } catch (error: any) {
