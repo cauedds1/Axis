@@ -37,6 +37,16 @@ function recLabel(type: RecurrenceType, t: (k: string) => string): string {
 
 function isBillActiveInMonth(bill: Bill, y: number, m: number): boolean {
   if (!bill.active) return false;
+
+  // axiscard-future bills: use the monthKey in notes as the single source of
+  // truth for which month they belong to — never rely on createdAt, which may
+  // have been stored as midnight UTC and shifted by client timezone.
+  if (bill.notes?.startsWith("axiscard-future:")) {
+    const parts = bill.notes.split(":");
+    const [yearStr, monthStr] = parts[2].split("-");
+    return y === parseInt(yearStr) && m === parseInt(monthStr) - 1;
+  }
+
   const created = new Date(bill.createdAt!);
   const createdY = created.getFullYear();
   const createdM = created.getMonth();
