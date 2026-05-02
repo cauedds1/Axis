@@ -83,7 +83,7 @@ function FaviconSwitcher() {
   const [location] = useLocation();
   useEffect(() => {
     const isBusiness = location.startsWith("/business");
-    const href = isBusiness ? "/favicon-business.png" : "/favicon-personal.png";
+    const href = isBusiness ? "/favicon-business.png?v=2" : "/favicon-personal.png?v=2";
     let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
     if (!link) {
       link = document.createElement("link");
