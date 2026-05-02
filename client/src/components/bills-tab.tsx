@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme, getPrimaryHex, getModulePalette } from "@/components/theme-provider";
-import type { Bill, Transaction, CreditCard as CreditCardType } from "@shared/schema";
+import type { Bill, Transaction, CreditCard as CreditCardType, RecurringIncome } from "@shared/schema";
 
 type RecurrenceType = "permanent" | "this_month" | "three_months" | "custom";
 
@@ -586,6 +586,7 @@ export function BillsTab() {
   const allBills = rawBills.filter(b => !b.notes?.startsWith("axiscard-future:"));
   const { data: allTransactions = [] } = useQuery<Transaction[]>({ queryKey: ["/api/transactions"] });
   const { data: creditCards = [] } = useQuery<CreditCardType[]>({ queryKey: ["/api/credit-cards"] });
+  const { data: recurringIncomes = [] } = useQuery<RecurringIncome[]>({ queryKey: ["/api/recurring-incomes"] });
 
   const lang = i18n.language === "pt-BR" ? "pt-BR" : "en-US";
   const periodMonths = getMonthsForPeriod(filterPeriod, customStart, customEnd);
@@ -682,7 +683,14 @@ export function BillsTab() {
 
   const projectedInvoiceTotal = projectedCardInvoices.reduce((s, p) => s + p.openCycleTotal, 0);
   const totalPagar2 = totalPagar + projectedInvoiceTotal;
-  const saldoPrevisto = totalReceber - totalPagar2;
+
+  // Recurring incomes (salary, freelance, etc.) — active ones expected every month in the period
+  const activeRecurringIncomes = recurringIncomes.filter(r => r.active);
+  const totalRendaRecorrente = activeRecurringIncomes.reduce((s, r) => s + r.amount, 0) * periodMonths.length;
+
+  // Projected balance = all income sources (income bills + recurring incomes) minus expenses
+  const totalReceberTotal = totalReceber + totalRendaRecorrente;
+  const saldoPrevisto = totalReceberTotal - totalPagar2;
 
   const todayMidnight = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
   const overdueProjectedInvoices = projectedCardInvoices.filter(p => {
@@ -776,7 +784,15 @@ export function BillsTab() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <SummaryCard label={t("axisFinance.toBePaid")} value={fmtMoney(totalPagar2)} sub={`${unpaidExpenses.length + projectedCardInvoices.length} ${t("axisFinance.billsCount")}`} accent={EXPENSE_COLOR} icon={TrendingDown} />
-        <SummaryCard label={t("axisFinance.toBeReceived")} value={fmtMoney(totalReceber)} sub={`${unpaidIncomes.length} ${t("axisFinance.billsCount")}`} accent={INCOME_COLOR} icon={TrendingUp} />
+        <SummaryCard
+          label={t("axisFinance.toBeReceived")}
+          value={fmtMoney(totalReceberTotal)}
+          sub={activeRecurringIncomes.length > 0
+            ? `${unpaidIncomes.length} ${t("axisFinance.billsCount")} + ${activeRecurringIncomes.length} renda${activeRecurringIncomes.length > 1 ? "s" : ""}`
+            : `${unpaidIncomes.length} ${t("axisFinance.billsCount")}`}
+          accent={INCOME_COLOR}
+          icon={TrendingUp}
+        />
         <SummaryCard label={t("axisFinance.projectedBalance")} value={fmtMoney(saldoPrevisto)} accent={saldoPrevisto >= 0 ? INCOME_COLOR : EXPENSE_COLOR} icon={DollarSign} />
         <SummaryCard label={t("axisFinance.overdue")} value={`${vencidas.length + overdueProjectedInvoices.length}`} sub={(vencidas.length + overdueProjectedInvoices.length) > 0 ? fmtMoney(vencidas.reduce((s, b) => s + b.amount, 0) + overdueProjectedInvoices.reduce((s, p) => s + p.openCycleTotal, 0)) : undefined} accent={(vencidas.length + overdueProjectedInvoices.length) > 0 ? EXPENSE_COLOR : "rgba(255,255,255,0.3)"} icon={AlertCircle} />
         {isSingleCurrentMonth ? (
