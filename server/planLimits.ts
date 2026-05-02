@@ -30,7 +30,7 @@ export const PLAN_LIMITS = {
     whatsapp_photo: 10,
     whatsapp_pdf: 3,
     chat_message: 10,
-    credit_card: 1,
+    credit_card: 3,
     financial_goal: 2,
     habit: 5,
     voice: false,
