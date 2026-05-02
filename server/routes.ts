@@ -23,6 +23,18 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 
 const pendingChatBills = new Map<string, { extracted: any; expiresAt: number }>();
 
+interface PendingInstallment {
+  amount: number;
+  description: string;
+  categoryName: string | null;
+  establishment: string | null;
+  installments: number;
+  date: string;
+  source: string;
+  expiresAt: number;
+}
+const pendingInstallments = new Map<string, PendingInstallment>();
+
 function serverError(res: any, err: any): void {
   console.error("[server] 500 error:", err?.message || err);
   const msg = process.env.NODE_ENV === "production" ? "Internal Server Error" : (err?.message || "Internal Server Error");
@@ -605,6 +617,34 @@ export async function registerRoutes(
               break;
             }
           }
+
+          // Parcelamento sem cartão informado — perguntar qual cartão foi usado
+          if (!result.data.creditCardId && result.data.installments && result.data.installments > 1 && result.intent === "expense") {
+            const userCards = await storage.getCreditCards(userId);
+            pendingInstallments.set(userId, {
+              amount: result.data.amount,
+              description: result.data.description,
+              categoryName: result.data.categoryName || null,
+              establishment: result.data.establishment || null,
+              installments: result.data.installments,
+              date: result.data.date || new Date().toISOString().split("T")[0],
+              source: req.file ? "voice" : "text",
+              expiresAt: Date.now() + 10 * 60 * 1000,
+            });
+            const installAmt = Math.round((result.data.amount / result.data.installments) * 100) / 100;
+            const cardList = userCards.length > 0
+              ? userCards.map(c => `• ${c.name}${c.bank ? ` (${c.bank})` : ""}`).join("\n")
+              : "";
+            const question = userCards.length > 0
+              ? `💳 *${result.data.description}* — ${result.data.installments}x de R$ ${installAmt.toFixed(2)}\n\nQual cartão você usou?\n${cardList}\n\nOu me diz: _débito_, _pix_, _dinheiro_ — se foi à vista.`
+              : `💳 *${result.data.description}* — ${result.data.installments}x de R$ ${installAmt.toFixed(2)}\n\nQual cartão você usou? Me diz o nome (ex: Nubank, Inter, Bradesco…)\n\nOu: _débito_, _pix_, _dinheiro_ — se foi à vista.`;
+            return res.json({
+              created: null,
+              message: question,
+              pendingInstallment: true,
+            });
+          }
+
           {
             let chatTxDate = result.data.date ? new Date(result.data.date) : new Date();
             if (result.data.creditCardId && result.intent === "expense") {
@@ -2059,6 +2099,95 @@ export async function registerRoutes(
         pendingChatBills.delete(userId);
       }
 
+      // ── Resolver parcelamento pendente ──────────────────────────────────
+      const pendingInst = pendingInstallments.get(userId);
+      if (pendingInst && Date.now() < pendingInst.expiresAt) {
+        const answer = message.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const isAvista = /\b(debito|dinheiro|pix|a vista|avista|especie)\b/.test(answer);
+
+        if (isAvista) {
+          pendingInstallments.delete(userId);
+          const { checkLimit, incrementCounter } = await import("./planLimits");
+          const txLimit = await checkLimit(userId, 'transaction');
+          if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
+          await storage.createTransaction({
+            userId,
+            amount: pendingInst.amount,
+            description: pendingInst.description,
+            categoryName: pendingInst.categoryName,
+            type: "expense",
+            date: new Date(pendingInst.date),
+            source: pendingInst.source,
+            establishment: pendingInst.establishment,
+            location: null,
+            creditCardId: null,
+            installmentInfo: null,
+          });
+          incrementCounter(userId, 'transaction').catch(() => {});
+          const reply = `✅ *${pendingInst.description}* — R$ ${pendingInst.amount.toFixed(2)} registrado à vista.`;
+          await storage.createChatMessage({ userId, role: "assistant", content: reply });
+          return res.json({ response: reply });
+        }
+
+        // Tentar encontrar cartão pelo nome/banco
+        const userCards = await storage.getCreditCards(userId);
+        const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const matched = userCards.find(c =>
+          normalize(answer).includes(normalize(c.name)) ||
+          normalize(answer).includes(normalize(c.bank || "")) ||
+          normalize(c.name).split(/\s+/).some(w => w.length > 3 && normalize(answer).includes(w)) ||
+          normalize(c.bank || "").split(/\s+/).some(w => w.length > 3 && normalize(answer).includes(w))
+        );
+
+        if (matched) {
+          pendingInstallments.delete(userId);
+          const { checkLimit, incrementCounter } = await import("./planLimits");
+          const txLimit = await checkLimit(userId, 'transaction', pendingInst.installments);
+          if (!txLimit.allowed) return res.status(402).json({ limitReached: true, plan: txLimit.plan, reason: txLimit.reason, current: txLimit.current, limit: txLimit.limit, upgradeUrl: txLimit.upgradeUrl });
+
+          const groupId = crypto.randomUUID();
+          const baseDate = new Date(pendingInst.date);
+          const installAmt = Math.round((pendingInst.amount / pendingInst.installments) * 100) / 100;
+          const afterClosing = baseDate.getDate() >= matched.closingDay;
+          const txList = Array.from({ length: pendingInst.installments }, (_, i) => {
+            const offset = afterClosing ? i + 1 : i;
+            return {
+              userId,
+              amount: installAmt,
+              description: `${pendingInst.description} (${i + 1}/${pendingInst.installments})`,
+              categoryName: pendingInst.categoryName,
+              type: "expense" as const,
+              date: new Date(baseDate.getFullYear(), baseDate.getMonth() + offset, 1),
+              source: pendingInst.source,
+              establishment: pendingInst.establishment,
+              location: null,
+              creditCardId: matched.id,
+              installmentInfo: JSON.stringify({ current: i + 1, total: pendingInst.installments, groupId }),
+            };
+          });
+          await storage.createManyTransactions(txList);
+          incrementCounter(userId, 'transaction', txList.length).catch(() => {});
+          saveEventToMemory(userId, `Parcelado ${pendingInst.installments}x de R$${installAmt} no ${matched.name}: "${pendingInst.description}"`).catch(() => {});
+
+          const reply = `✅ *${pendingInst.description}* parcelado em ${pendingInst.installments}x de R$ ${installAmt.toFixed(2)} no *${matched.name}* — tudo registrado nas faturas certas!`;
+          await storage.createChatMessage({ userId, role: "assistant", content: reply });
+          return res.json({ response: reply });
+        }
+
+        // Não reconheceu — pedir novamente
+        const cardList = userCards.length > 0
+          ? userCards.map(c => `• ${c.name}${c.bank ? ` (${c.bank})` : ""}`).join("\n")
+          : "";
+        const retry = userCards.length > 0
+          ? `Não reconheci o cartão. Qual desses você usou?\n${cardList}\n\nOu: _débito_, _pix_, _dinheiro_.`
+          : `Não encontrei esse cartão. Me diz o nome certinho (ex: Nubank, Inter) ou _débito_ / _pix_ / _dinheiro_.`;
+        await storage.createChatMessage({ userId, role: "assistant", content: retry });
+        return res.json({ response: retry });
+      } else if (pendingInst) {
+        pendingInstallments.delete(userId);
+      }
+      // ───────────────────────────────────────────────────────────────────
+
       try {
         const intentResult = await detectIntentAndProcess(message, userId);
         logAiUsage(userId, "intent_detection").catch(() => {});
@@ -2085,6 +2214,34 @@ export async function registerRoutes(
           await storage.createChatMessage({ userId, role: "user", content: message });
           await storage.createChatMessage({ userId, role: "assistant", content: reply });
           return res.json({ response: reply });
+        }
+
+        // Parcelamento sem cartão via chat — perguntar qual cartão
+        if (
+          intentResult.intent === "expense" &&
+          intentResult.data.installments && intentResult.data.installments > 1 &&
+          !intentResult.data.creditCardId
+        ) {
+          const userCards = await storage.getCreditCards(userId);
+          pendingInstallments.set(userId, {
+            amount: intentResult.data.amount,
+            description: intentResult.data.description,
+            categoryName: intentResult.data.categoryName || null,
+            establishment: intentResult.data.establishment || null,
+            installments: intentResult.data.installments,
+            date: intentResult.data.date || new Date().toISOString().split("T")[0],
+            source: "chat",
+            expiresAt: Date.now() + 10 * 60 * 1000,
+          });
+          const installAmt = Math.round((intentResult.data.amount / intentResult.data.installments) * 100) / 100;
+          const cardList = userCards.length > 0
+            ? userCards.map(c => `• ${c.name}${c.bank ? ` (${c.bank})` : ""}`).join("\n")
+            : "";
+          const question = userCards.length > 0
+            ? `💳 *${intentResult.data.description}* — ${intentResult.data.installments}x de R$ ${installAmt.toFixed(2)}\n\nQual cartão você usou?\n${cardList}\n\nOu me diz: _débito_, _pix_, _dinheiro_ — se foi à vista.`
+            : `💳 *${intentResult.data.description}* — ${intentResult.data.installments}x de R$ ${installAmt.toFixed(2)}\n\nQual cartão você usou? Me diz o nome (ex: Nubank, Inter, Bradesco…)\n\nOu: _débito_, _pix_, _dinheiro_ — se foi à vista.`;
+          await storage.createChatMessage({ userId, role: "assistant", content: question });
+          return res.json({ response: question });
         }
 
         if (intentResult.intent !== "chat" && intentResult.intent !== "unknown") {
