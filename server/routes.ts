@@ -1358,7 +1358,7 @@ export async function registerRoutes(
       if (rawMonthKey && !/^\d{4}-\d{2}$/.test(rawMonthKey)) {
         return res.status(400).json({ message: "monthKey inválido — use formato YYYY-MM" });
       }
-      const targetMonthKey = rawMonthKey || await resolveInvoiceMonthKey(userId, cardId);
+      const targetMonthKey = rawMonthKey || resolveInvoiceMonthKey(card);
 
       const result = await markCardInvoicePaid(userId, cardId, targetMonthKey);
       res.json(result);

@@ -27,7 +27,7 @@ import { users, whatsappAuth, transactions, systemConfig } from "@shared/schema"
 import { eq, and, gte, sql } from "drizzle-orm";
 import { checkLimit, incrementCounter } from "./planLimits";
 import { adjustDisciplinePoints, DISCIPLINE_POINTS } from "./discipline";
-import { markCardInvoicePaid, resolveInvoiceMonthKey } from "./invoiceService";
+import { markCardInvoicePaid, resolveCurrentPayableMonthKey } from "./invoiceService";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -1799,7 +1799,7 @@ class WhatsAppManager {
             : `❓ Qual fatura você pagou? Responda com o nome do cartão:\n${cardList}`;
         }
 
-        const monthKey = await resolveInvoiceMonthKey(userId, matched.id);
+        const monthKey = resolveCurrentPayableMonthKey(matched);
         const { total } = await markCardInvoicePaid(userId, matched.id, monthKey);
 
         const totalStr = total > 0 ? ` (R$ ${total.toFixed(2).replace(".", ",")})` : "";
