@@ -1778,14 +1778,18 @@ class WhatsAppManager {
         const cards = await storage.getCreditCards(userId);
         const cardName: string | null = data.cardName ? String(data.cardName).toLowerCase().trim() : null;
 
-        // Fuzzy match card by name or bank field
-        const matched = cards.find(c => {
-          if (!cardName) return false;
-          const cName = (c.name || "").toLowerCase();
-          const cBank = (c.bank || "").toLowerCase();
-          return cName.includes(cardName) || cardName.includes(cName) ||
-                 cBank.includes(cardName) || cardName.includes(cBank);
-        }) || (cards.length === 1 ? cards[0] : null);
+        // Fuzzy match card by name or bank field.
+        // Single-card fallback is only used when the user did NOT specify a name;
+        // if they named a card but no match was found, ask for clarification.
+        const fuzzyMatch = cardName
+          ? cards.find(c => {
+              const cName = (c.name || "").toLowerCase();
+              const cBank = (c.bank || "").toLowerCase();
+              return cName.includes(cardName) || cardName.includes(cName) ||
+                     cBank.includes(cardName) || cardName.includes(cBank);
+            }) ?? null
+          : (cards.length === 1 ? cards[0] : null);
+        const matched = fuzzyMatch;
 
         if (!matched) {
           if (cards.length === 0) {

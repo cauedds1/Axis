@@ -114,6 +114,7 @@ export async function markCardInvoicePaid(
   if (existingInvoice) {
     await storage.updateInvoice(existingInvoice.id, {
       status: "paid",
+      total,
       billId: bill!.id,
       ...(existingInvoice.closedAt ? {} : { closedAt: now }),
     });
