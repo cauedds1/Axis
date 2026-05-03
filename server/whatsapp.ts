@@ -1798,23 +1798,25 @@ class WhatsAppManager {
             : `❓ Qual fatura você pagou? Responda com o nome do cartão:\n${cardList}`;
         }
 
-        // Mark the invoice as paid via the same logic as the API endpoint
+        // Determine the target monthKey: prefer the most recently closed invoice
+        // (consistent with autoCloseInvoices which uses the current calendar month).
         const now = new Date();
-        const today = now.getDate();
-        const pastClosing = today >= matched.closingDay;
-        const openMonth = pastClosing
-          ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
-          : new Date(now.getFullYear(), now.getMonth(), 1);
-        const monthKey = `${openMonth.getFullYear()}-${String(openMonth.getMonth() + 1).padStart(2, "0")}`;
+        const calendarMK = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const allInvoices = await storage.getInvoices(userId, matched.id);
+        const latestClosed = allInvoices
+          .filter(i => i.status === "closed" || i.status === "paid")
+          .sort((a, b) => b.monthKey.localeCompare(a.monthKey))[0];
+        const monthKey = latestClosed?.monthKey ?? calendarMK;
 
-        const cycleStart = pastClosing
-          ? new Date(now.getFullYear(), now.getMonth(), matched.closingDay + 1)
-          : new Date(now.getFullYear(), now.getMonth(), 1);
-        const cycleEnd = pastClosing
-          ? new Date(now.getFullYear(), now.getMonth() + 1, matched.closingDay, 23, 59, 59)
-          : new Date(now.getFullYear(), now.getMonth(), matched.closingDay, 23, 59, 59);
-        const cardTx = await storage.getTransactions(userId, { creditCardId: matched.id, startDate: cycleStart, endDate: cycleEnd });
-        const total = cardTx.reduce((s, t) => s + Number(t.amount), 0);
+        // Compute total for that exact calendar month
+        const allCardTx = await storage.getTransactions(userId, { creditCardId: matched.id });
+        const total = allCardTx
+          .filter(tx => {
+            const d = new Date(tx.date!);
+            const txMK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            return txMK === monthKey;
+          })
+          .reduce((s, t) => s + Number(t.amount), 0);
 
         const allUserBills = await storage.getBills(userId);
         const cardMarker = `axiscard:${matched.id}`;

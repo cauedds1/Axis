@@ -1353,25 +1353,32 @@ export async function registerRoutes(
       if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
 
       const now = new Date();
-      const today = now.getDate();
-      const pastClosing = today >= card.closingDay;
+      // Default monthKey follows the same convention as autoCloseInvoices:
+      // the current calendar month when today >= closingDay, otherwise check
+      // the most recently closed invoice for this card.
+      const calendarMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const allInvoicesForDefault = await storage.getInvoices(userId, cardId);
+      const latestClosed = allInvoicesForDefault
+        .filter(i => i.status === "closed" || i.status === "paid")
+        .sort((a, b) => b.monthKey.localeCompare(a.monthKey))[0];
+      const defaultMonthKey = latestClosed?.monthKey ?? calendarMonthKey;
 
-      // Compute the open cycle monthKey (same logic as projectedCardInvoices on the frontend)
-      const openMonth = pastClosing
-        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
-      const defaultMonthKey = `${openMonth.getFullYear()}-${String(openMonth.getMonth() + 1).padStart(2, "0")}`;
-      const targetMonthKey: string = (req.body?.monthKey as string) || defaultMonthKey;
+      // targetMonthKey is authoritative: validate YYYY-MM format
+      const rawMonthKey = req.body?.monthKey as string | undefined;
+      if (rawMonthKey && !/^\d{4}-\d{2}$/.test(rawMonthKey)) {
+        return res.status(400).json({ message: "monthKey inválido — use formato YYYY-MM" });
+      }
+      const targetMonthKey: string = rawMonthKey || defaultMonthKey;
 
-      // Compute total for the current open cycle
-      const cycleStart = pastClosing
-        ? new Date(now.getFullYear(), now.getMonth(), card.closingDay + 1)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
-      const cycleEnd = pastClosing
-        ? new Date(now.getFullYear(), now.getMonth() + 1, card.closingDay, 23, 59, 59)
-        : new Date(now.getFullYear(), now.getMonth(), card.closingDay, 23, 59, 59);
-      const cardTx = await storage.getTransactions(userId, { creditCardId: cardId, startDate: cycleStart, endDate: cycleEnd });
-      const total = cardTx.reduce((s, t) => s + Number(t.amount), 0);
+      // Compute total for the exact targetMonthKey calendar month
+      const allCardTx = await storage.getTransactions(userId, { creditCardId: cardId });
+      const total = allCardTx
+        .filter(tx => {
+          const d = new Date(tx.date!);
+          const txMK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          return txMK === targetMonthKey;
+        })
+        .reduce((s, t) => s + Number(t.amount), 0);
 
       // Find or create the bill for this card (permanent recurring bill)
       const allUserBills = await storage.getBills(userId);

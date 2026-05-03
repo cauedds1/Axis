@@ -612,14 +612,19 @@ export function BillsTab() {
     onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
 
-  const markProjectedInvoicePaidMutation = useMutation({
-    mutationFn: async ({ cardId, closingMonthKey }: { cardId: string; closingMonthKey: string }) => {
+  const markProjectedInvoicePaidMutation = useMutation<
+    { bill: Bill; monthKey: string; total: number },
+    Error,
+    { cardId: string; closingMonthKey: string }
+  >({
+    mutationFn: async ({ cardId, closingMonthKey }) => {
       const res = await apiRequest("PATCH", `/api/credit-cards/${cardId}/invoices/mark-paid`, { monthKey: closingMonthKey });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/credit-cards/${variables.cardId}/invoices`] });
     },
     onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
@@ -1113,7 +1118,7 @@ export function BillsTab() {
           </AnimatePresence>
           {showProjectedInvoices && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx, closingMonthKey }) => {
             const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
-            const isPaying = markProjectedInvoicePaidMutation.isPending && (markProjectedInvoicePaidMutation.variables as any)?.cardId === card.id;
+            const isPaying = markProjectedInvoicePaidMutation.isPending && markProjectedInvoicePaidMutation.variables?.cardId === card.id;
             return (
               <motion.div
                 key={`projected-${card.id}`}
