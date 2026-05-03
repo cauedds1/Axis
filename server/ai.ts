@@ -99,7 +99,7 @@ EXEMPLOS CRÍTICOS:
 `;
 
 export interface IntentResult {
-  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last" | "savings_deposit";
+  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last" | "savings_deposit" | "pay_invoice";
   data: any;
   rawText: string;
 }
@@ -195,6 +195,7 @@ INTENÇÕES POSSÍVEIS:
 7. "chat" — Qualquer outra coisa que não se encaixa acima — uma pergunta, reflexão, ou conversa.
 8. "edit_last" — O usuário está CORRIGINDO ou AJUSTANDO a última transação registrada. Use SOMENTE quando existir uma "ÚLTIMA TRANSAÇÃO REGISTRADA" no contexto acima E a mensagem for claramente uma correção, não uma nova transação. Indicadores: menciona um valor diferente sem contexto de nova compra ("foi 50", "era 30 reais", "na verdade foi"), corrige o tipo ("era uma notinha de posto", "foi abastecimento"), corrige o estabelecimento/descrição ("era na padaria", "foi no mercado"), usa palavras como "editar", "corrigir", "muda", "altera", "na verdade", "não foi", "era". Mensagens curtas como "foi 50 reais" ou "era combustível" sem contexto de nova compra → "edit_last".
 9. "savings_deposit" — O usuário guardou/depositou dinheiro em uma reserva, caixinha ou meta de economia. Palavras: "guardei", "coloquei na caixinha", "joguei na reserva", "depositei na reserva", "botei de lado", "separei", "poupi", "economizei X para", "coloquei na reserva". Exemplos: "guardei 200 na caixinha viagem", "botei 500 na reserva do carro", "coloquei 100 na caixinha emergência". REGRA: se for claramente uma ação de guardar/depositar em reserva própria (não pagar conta/boleto), use "savings_deposit".
+10. "pay_invoice" — O usuário pagou a FATURA de um cartão de crédito (não uma compra no cartão, mas o pagamento da fatura em si). Palavras-chave: "paguei a fatura", "paguei o nubank", "quitei a fatura", "paguei a fatura do cartão", "paguei a fatura mercado pago", "paguei a fatura inter". REGRA CRÍTICA: use "pay_invoice" SOMENTE quando NÃO há valor mencionado E a mensagem é claramente sobre quitar a fatura do cartão. Se há um valor ("paguei 1500 no nubank") → "expense" com creditCardId.
 
 RESPONDA EM JSON:
 
@@ -271,6 +272,12 @@ Para savings_deposit:
   "goalName": "nome da reserva/caixinha mencionada, ou null se não mencionada"
 }
 
+Para pay_invoice:
+{
+  "intent": "pay_invoice",
+  "cardName": "nome do banco/cartão mencionado (ex: Nubank, Mercado Pago, Inter, Itaú). Se não mencionado, null"
+}
+
 ${CATEGORY_RULES}
 ${creditCardsContext}
 REGRAS GERAIS:
@@ -286,10 +293,12 @@ REGRAS GERAIS:
 - "Preciso ligar pro dentista" → task
 - "Reunião com João terça às 14h" → schedule
 
-REGRA CRÍTICA — bill vs expense:
+REGRA CRÍTICA — bill vs expense vs pay_invoice:
 - "bill" SOMENTE quando é claramente RECORRENTE/FIXO (todo mês, mensalidade, fixo, parcela recorrente)
 - Pagamento pontual → "expense" mesmo que seja uma conta (ex: "paguei a conta de luz" → expense)
 - "bill" SEM VALOR → retorne "chat" e pergunte o valor
+- "pay_invoice" quando menciona pagar a FATURA do cartão SEM valor específico (ex: "paguei a fatura nubank", "quitei o nubank", "paguei a fatura do cartão") → pay_invoice com cardName
+- "paguei 1500 no nubank" COM VALOR → "expense" com creditCardId (NÃO é pay_invoice)
 
 REGRA CRÍTICA — habit/schedule SEM DETALHES → retorne "chat":
 - "schedule": retorne SOMENTE quando há data/hora ESPECÍFICA (ex: "reunião amanhã às 14h"). Se o horário for vago ou ausente → retorne "chat".

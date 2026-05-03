@@ -612,6 +612,18 @@ export function BillsTab() {
     onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
 
+  const markProjectedInvoicePaidMutation = useMutation({
+    mutationFn: async ({ cardId, closingMonthKey }: { cardId: string; closingMonthKey: string }) => {
+      const res = await apiRequest("PATCH", `/api/credit-cards/${cardId}/invoices/mark-paid`, { monthKey: closingMonthKey });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+    },
+    onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/bills/${id}`); },
     onSuccess: () => {
@@ -687,9 +699,17 @@ export function BillsTab() {
       // Show the projected invoice in the CLOSING month (not the due month).
       // e.g. Mercado Pago closes May 28 → appears in May, even though due June 4.
       const showInPeriod = periodMonths.some(({ y, m }) => y === closingYear2 && m === closingMonthNorm);
-      return { card, openCycleTotal, dueYear, dueMonthIdx, showInPeriod };
+      const closingMonthKey = `${closingYear2}-${String(closingMonthNorm + 1).padStart(2, "0")}`;
+      return { card, openCycleTotal, dueYear, dueMonthIdx, showInPeriod, closingMonthKey };
     })
-    .filter(p => p.showInPeriod && p.openCycleTotal > 0);
+    .filter(p => {
+      if (!p.showInPeriod || p.openCycleTotal <= 0) return false;
+      // Hide projected invoice if the corresponding bill is already marked as paid
+      const cardMarker = `axiscard:${p.card.id}`;
+      const bill = activeBills.find(b => b.notes?.includes(cardMarker));
+      if (bill && getPaidMonths(bill).includes(p.closingMonthKey)) return false;
+      return true;
+    });
 
   const projectedInvoiceTotal = projectedCardInvoices.reduce((s, p) => s + p.openCycleTotal, 0);
 
@@ -1091,8 +1111,9 @@ export function BillsTab() {
               );
             })}
           </AnimatePresence>
-          {showProjectedInvoices && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx }) => {
+          {showProjectedInvoices && projectedCardInvoices.map(({ card, openCycleTotal, dueYear, dueMonthIdx, closingMonthKey }) => {
             const dueLabel = new Date(dueYear, dueMonthIdx, card.dueDay).toLocaleString(lang, { day: "numeric", month: "short", year: "numeric" });
+            const isPaying = markProjectedInvoicePaidMutation.isPending && (markProjectedInvoicePaidMutation.variables as any)?.cardId === card.id;
             return (
               <motion.div
                 key={`projected-${card.id}`}
@@ -1122,6 +1143,16 @@ export function BillsTab() {
                     <span className="text-base font-bold shrink-0" style={{ color: EXPENSE_COLOR }}>
                       -{fmtMoney(openCycleTotal)}
                     </span>
+                    <button
+                      onClick={() => markProjectedInvoicePaidMutation.mutate({ cardId: card.id, closingMonthKey })}
+                      disabled={isPaying}
+                      data-testid={`button-mark-invoice-paid-${card.id}`}
+                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}
+                    >
+                      {isPaying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      {t("axisFinance.markAsPaid")}
+                    </button>
                   </div>
                 </div>
               </motion.div>

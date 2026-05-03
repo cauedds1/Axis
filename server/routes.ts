@@ -1345,6 +1345,75 @@ export async function registerRoutes(
     } catch (error: any) { serverError(res, error); }
   });
 
+  app.patch("/api/credit-cards/:id/invoices/mark-paid", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const card = await storage.getCreditCard(cardId, userId);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+
+      const now = new Date();
+      const today = now.getDate();
+      const pastClosing = today >= card.closingDay;
+
+      // Compute the open cycle monthKey (same logic as projectedCardInvoices on the frontend)
+      const openMonth = pastClosing
+        ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const defaultMonthKey = `${openMonth.getFullYear()}-${String(openMonth.getMonth() + 1).padStart(2, "0")}`;
+      const targetMonthKey: string = (req.body?.monthKey as string) || defaultMonthKey;
+
+      // Compute total for the current open cycle
+      const cycleStart = pastClosing
+        ? new Date(now.getFullYear(), now.getMonth(), card.closingDay + 1)
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const cycleEnd = pastClosing
+        ? new Date(now.getFullYear(), now.getMonth() + 1, card.closingDay, 23, 59, 59)
+        : new Date(now.getFullYear(), now.getMonth(), card.closingDay, 23, 59, 59);
+      const cardTx = await storage.getTransactions(userId, { creditCardId: cardId, startDate: cycleStart, endDate: cycleEnd });
+      const total = cardTx.reduce((s, t) => s + Number(t.amount), 0);
+
+      // Find or create the bill for this card (permanent recurring bill)
+      const allUserBills = await storage.getBills(userId);
+      const cardMarker = `axiscard:${cardId}`;
+      const existingBill = allUserBills.find(b => b.notes?.includes(cardMarker));
+      let paidArr: string[];
+      let bill;
+      if (existingBill) {
+        paidArr = JSON.parse(existingBill.paidMonths || "[]");
+        if (!paidArr.includes(targetMonthKey)) paidArr.push(targetMonthKey);
+        bill = await storage.updateBill(existingBill.id, userId, {
+          amount: total > 0 ? total : Number(existingBill.amount),
+          paidMonths: JSON.stringify(paidArr),
+        });
+      } else {
+        paidArr = [targetMonthKey];
+        bill = await storage.createBill({
+          userId,
+          title: `Fatura ${card.name}`,
+          amount: total,
+          type: "expense",
+          dueDay: card.dueDay,
+          categoryName: "Cartão de Crédito",
+          recurrenceType: "permanent",
+          active: true,
+          paidMonths: JSON.stringify(paidArr),
+          notes: `Fatura automática do cartão ${card.name} — ${targetMonthKey}\n${cardMarker}`,
+        });
+      }
+
+      // Update or create the invoice record
+      const existingInvoice = await storage.getInvoiceByMonth(cardId, targetMonthKey);
+      if (existingInvoice) {
+        await storage.updateInvoice(existingInvoice.id, { status: "paid", total, billId: bill!.id, closedAt: now });
+      } else {
+        await storage.createInvoice({ userId, creditCardId: cardId, monthKey: targetMonthKey, total, status: "paid", billId: bill!.id, closedAt: now });
+      }
+
+      res.json({ bill, monthKey: targetMonthKey, total });
+    } catch (error: any) { serverError(res, error); }
+  });
+
   app.patch("/api/transactions/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);

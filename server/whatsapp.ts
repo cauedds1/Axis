@@ -1773,6 +1773,87 @@ class WhatsAppManager {
         return wt("habitCreated", lang, { name: data.name });
       }
 
+      case "pay_invoice": {
+        const cards = await storage.getCreditCards(userId);
+        const cardName: string | null = data.cardName ? String(data.cardName).toLowerCase().trim() : null;
+
+        // Fuzzy match card by name or bank field
+        const matched = cards.find(c => {
+          if (!cardName) return false;
+          const cName = (c.name || "").toLowerCase();
+          const cBank = (c.bank || "").toLowerCase();
+          return cName.includes(cardName) || cardName.includes(cName) ||
+                 cBank.includes(cardName) || cardName.includes(cBank);
+        }) || (cards.length === 1 ? cards[0] : null);
+
+        if (!matched) {
+          if (cards.length === 0) {
+            return lang === "en"
+              ? "❌ You have no credit cards registered. Add one in the app first."
+              : "❌ Você não tem cartões de crédito cadastrados. Adicione um no app primeiro.";
+          }
+          const cardList = cards.map(c => `• ${c.name}`).join("\n");
+          return lang === "en"
+            ? `❓ Which card did you pay? Reply with the card name:\n${cardList}`
+            : `❓ Qual fatura você pagou? Responda com o nome do cartão:\n${cardList}`;
+        }
+
+        // Mark the invoice as paid via the same logic as the API endpoint
+        const now = new Date();
+        const today = now.getDate();
+        const pastClosing = today >= matched.closingDay;
+        const openMonth = pastClosing
+          ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+          : new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthKey = `${openMonth.getFullYear()}-${String(openMonth.getMonth() + 1).padStart(2, "0")}`;
+
+        const cycleStart = pastClosing
+          ? new Date(now.getFullYear(), now.getMonth(), matched.closingDay + 1)
+          : new Date(now.getFullYear(), now.getMonth(), 1);
+        const cycleEnd = pastClosing
+          ? new Date(now.getFullYear(), now.getMonth() + 1, matched.closingDay, 23, 59, 59)
+          : new Date(now.getFullYear(), now.getMonth(), matched.closingDay, 23, 59, 59);
+        const cardTx = await storage.getTransactions(userId, { creditCardId: matched.id, startDate: cycleStart, endDate: cycleEnd });
+        const total = cardTx.reduce((s, t) => s + Number(t.amount), 0);
+
+        const allUserBills = await storage.getBills(userId);
+        const cardMarker = `axiscard:${matched.id}`;
+        const existingBill = allUserBills.find(b => b.notes?.includes(cardMarker));
+        let bill;
+        if (existingBill) {
+          const paidArr: string[] = JSON.parse(existingBill.paidMonths || "[]");
+          if (!paidArr.includes(monthKey)) paidArr.push(monthKey);
+          bill = await storage.updateBill(existingBill.id, userId, {
+            amount: total > 0 ? total : Number(existingBill.amount),
+            paidMonths: JSON.stringify(paidArr),
+          });
+        } else {
+          bill = await storage.createBill({
+            userId,
+            title: `Fatura ${matched.name}`,
+            amount: total,
+            type: "expense",
+            dueDay: matched.dueDay,
+            categoryName: "Cartão de Crédito",
+            recurrenceType: "permanent",
+            active: true,
+            paidMonths: JSON.stringify([monthKey]),
+            notes: `Fatura automática do cartão ${matched.name} — ${monthKey}\n${cardMarker}`,
+          });
+        }
+        const existingInvoice = await storage.getInvoiceByMonth(matched.id, monthKey);
+        if (existingInvoice) {
+          await storage.updateInvoice(existingInvoice.id, { status: "paid", total, billId: bill!.id, closedAt: now });
+        } else {
+          await storage.createInvoice({ userId, creditCardId: matched.id, monthKey, total, status: "paid", billId: bill!.id, closedAt: now });
+        }
+
+        const totalStr = total > 0 ? ` (R$ ${total.toFixed(2).replace(".", ",")})` : "";
+        return lang === "en"
+          ? `✅ *${matched.name}* invoice marked as paid!${totalStr}`
+          : `✅ Fatura *${matched.name}* marcada como paga!${totalStr}`;
+      }
+
       case "chat": {
         const chatReply = await chatWithContext(result.rawText, userId).catch(() => null);
         logAiUsage(userId, "chat").catch(() => {});
