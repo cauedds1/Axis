@@ -136,3 +136,33 @@ export async function markCardInvoicePaid(
 
   return { bill: bill!, monthKey: targetMonthKey, total };
 }
+
+/**
+ * Reverses a previous mark-paid for a credit card invoice.
+ * - Removes targetMonthKey from the bill's paidMonths array.
+ * - Sets the invoice record status back to "open".
+ */
+export async function unmarkCardInvoicePaid(
+  userId: string,
+  cardId: string,
+  targetMonthKey: string,
+): Promise<{ bill: NonNullable<Awaited<ReturnType<typeof storage.updateBill>>>; monthKey: string }> {
+  const card = await storage.getCreditCard(cardId, userId);
+  if (!card) throw new Error("Cartão não encontrado");
+
+  const allUserBills = await storage.getBills(userId);
+  const cardMarker = `axiscard:${cardId}`;
+  const existingBill = allUserBills.find(b => b.notes?.includes(cardMarker));
+  if (!existingBill) throw new Error("Conta do cartão não encontrada");
+
+  const paidArr: string[] = JSON.parse(existingBill.paidMonths || "[]");
+  const updated = paidArr.filter(m => m !== targetMonthKey);
+  const bill = await storage.updateBill(existingBill.id, userId, { paidMonths: JSON.stringify(updated) });
+
+  const existingInvoice = await storage.getInvoiceByMonth(cardId, targetMonthKey);
+  if (existingInvoice) {
+    await storage.updateInvoice(existingInvoice.id, { status: "open" });
+  }
+
+  return { bill: bill!, monthKey: targetMonthKey };
+}

@@ -27,7 +27,7 @@ import { users, whatsappAuth, transactions, systemConfig } from "@shared/schema"
 import { eq, and, gte, sql } from "drizzle-orm";
 import { checkLimit, incrementCounter } from "./planLimits";
 import { adjustDisciplinePoints, DISCIPLINE_POINTS } from "./discipline";
-import { markCardInvoicePaid, resolveCurrentPayableMonthKey } from "./invoiceService";
+import { markCardInvoicePaid, unmarkCardInvoicePaid, resolveCurrentPayableMonthKey } from "./invoiceService";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -1810,6 +1810,40 @@ class WhatsAppManager {
         return lang === "en"
           ? `✅ *${matched.name}* invoice marked as paid!${totalStr}`
           : `✅ Fatura *${matched.name}* marcada como paga!${totalStr}`;
+      }
+
+      case "unpay_invoice": {
+        const cards = await storage.getCreditCards(userId);
+        const cardName: string | null = data.cardName ? String(data.cardName).toLowerCase().trim() : null;
+
+        const fuzzyMatch = cardName
+          ? cards.find(c => {
+              const cName = (c.name || "").toLowerCase();
+              const cBank = (c.bank || "").toLowerCase();
+              return cName.includes(cardName) || cardName.includes(cName) ||
+                     cBank.includes(cardName) || cardName.includes(cBank);
+            }) ?? null
+          : (cards.length === 1 ? cards[0] : null);
+        const matched = fuzzyMatch;
+
+        if (!matched) {
+          if (cards.length === 0) {
+            return lang === "en"
+              ? "❌ You have no credit cards registered."
+              : "❌ Você não tem cartões de crédito cadastrados.";
+          }
+          const cardList = cards.map(c => `• ${c.name}`).join("\n");
+          return lang === "en"
+            ? `❓ Which card invoice would you like to undo? Reply with the card name:\n${cardList}`
+            : `❓ Qual fatura deseja desfazer? Responda com o nome do cartão:\n${cardList}`;
+        }
+
+        const monthKey = resolveCurrentPayableMonthKey(matched);
+        await unmarkCardInvoicePaid(userId, matched.id, monthKey);
+
+        return lang === "en"
+          ? `↩️ *${matched.name}* invoice payment undone. It will appear as pending again.`
+          : `↩️ Pagamento da fatura *${matched.name}* desfeito. Ela voltará a aparecer como pendente.`;
       }
 
       case "chat": {

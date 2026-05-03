@@ -630,6 +630,24 @@ export function BillsTab() {
     onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });
 
+  const unmarkCardInvoicePaidMutation = useMutation<
+    { bill: Bill; monthKey: string },
+    Error,
+    { cardId: string; closingMonthKey: string }
+  >({
+    mutationFn: async ({ cardId, closingMonthKey }) => {
+      const res = await apiRequest("PATCH", `/api/credit-cards/${cardId}/invoices/unmark-paid`, { monthKey: closingMonthKey });
+      return res.json();
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/credit-cards/${variables.cardId}/invoices`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards", variables.cardId, "invoices"] });
+    },
+    onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => { await apiRequest("DELETE", `/api/bills/${id}`); },
     onSuccess: () => {
@@ -1045,23 +1063,44 @@ export function BillsTab() {
                             </div>
 
                             <div className="flex items-center gap-2">
-                              {!isCardFuture && (
-                                <button
-                                  type="button"
-                                  onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
-                                  disabled={togglePaidMutation.isPending}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                                  style={{
-                                    background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
-                                    border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
-                                    color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
-                                  }}
-                                  data-testid={`button-toggle-paid-${bill.id}`}
-                                >
-                                  {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                                  {paid ? t("axisFinance.undoPayment") : t("axisFinance.markAsPaid")}
-                                </button>
-                              )}
+                              {!isCardFuture && (() => {
+                                const isAxisCard = !!(bill.notes?.includes("axiscard:") && !bill.notes?.startsWith("axiscard-future:"));
+                                if (isAxisCard && paid) {
+                                  const cardIdMatch = bill.notes?.match(/axiscard:([^\s\n]+)/);
+                                  const cardId = cardIdMatch ? cardIdMatch[1] : null;
+                                  const isUndoing = unmarkCardInvoicePaidMutation.isPending && unmarkCardInvoicePaidMutation.variables?.cardId === cardId;
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => cardId && unmarkCardInvoicePaidMutation.mutate({ cardId, closingMonthKey: monthKey() })}
+                                      disabled={isUndoing || !cardId}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.4)" }}
+                                      data-testid={`button-undo-invoice-${bill.id}`}
+                                    >
+                                      {isUndoing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                                      {t("axisFinance.undoPayment")}
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => togglePaidMutation.mutate({ bill, paid: !paid })}
+                                    disabled={togglePaidMutation.isPending}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                                    style={{
+                                      background: paid ? "rgba(255,255,255,0.06)" : `${INCOME_COLOR}15`,
+                                      border: `1px solid ${paid ? "rgba(255,255,255,0.09)" : `${INCOME_COLOR}30`}`,
+                                      color: paid ? "rgba(255,255,255,0.4)" : INCOME_COLOR,
+                                    }}
+                                    data-testid={`button-toggle-paid-${bill.id}`}
+                                  >
+                                    {togglePaidMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : paid ? <X className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                                    {paid ? t("axisFinance.undoPayment") : t("axisFinance.markAsPaid")}
+                                  </button>
+                                );
+                              })()}
                               {isCardFuture && (
                                 <div className="space-y-1">
                                   {(cardFutureExtras.get(bill.id) ?? 0) > 0 && (

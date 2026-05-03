@@ -58,7 +58,7 @@ function getISOWeekLabel(d: Date): string {
 }
 
 import { DISCIPLINE_POINTS, DISCIPLINE_THRESHOLD, getUserLang, adjustDisciplinePoints } from "./discipline";
-import { markCardInvoicePaid, resolveInvoiceMonthKey } from "./invoiceService";
+import { markCardInvoicePaid, unmarkCardInvoicePaid, resolveInvoiceMonthKey } from "./invoiceService";
 
 async function getUserCurrency(userId: string): Promise<string> {
   try {
@@ -1343,6 +1343,24 @@ export async function registerRoutes(
       if (item.billId) await storage.deleteBill(item.billId, userId).catch(() => {});
       await storage.deleteFutureInvoice(fid, userId);
       res.json({ success: true });
+    } catch (error: any) { serverError(res, error); }
+  });
+
+  app.patch("/api/credit-cards/:id/invoices/unmark-paid", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const cardId = req.params.id;
+      const card = await storage.getCreditCard(cardId, userId);
+      if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
+
+      const rawMonthKey = req.body?.monthKey as string | undefined;
+      if (rawMonthKey && !/^\d{4}-\d{2}$/.test(rawMonthKey)) {
+        return res.status(400).json({ message: "monthKey inválido — use formato YYYY-MM" });
+      }
+      const targetMonthKey = rawMonthKey || resolveInvoiceMonthKey(card);
+
+      const result = await unmarkCardInvoicePaid(userId, cardId, targetMonthKey);
+      res.json(result);
     } catch (error: any) { serverError(res, error); }
   });
 

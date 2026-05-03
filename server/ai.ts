@@ -99,7 +99,7 @@ EXEMPLOS CRÍTICOS:
 `;
 
 export interface IntentResult {
-  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last" | "savings_deposit" | "pay_invoice";
+  intent: "expense" | "income" | "bill" | "task" | "schedule" | "habit" | "chat" | "unknown" | "edit_last" | "savings_deposit" | "pay_invoice" | "unpay_invoice";
   data: any;
   rawText: string;
 }
@@ -196,6 +196,7 @@ INTENÇÕES POSSÍVEIS:
 8. "edit_last" — O usuário está CORRIGINDO ou AJUSTANDO a última transação registrada. Use SOMENTE quando existir uma "ÚLTIMA TRANSAÇÃO REGISTRADA" no contexto acima E a mensagem for claramente uma correção, não uma nova transação. Indicadores: menciona um valor diferente sem contexto de nova compra ("foi 50", "era 30 reais", "na verdade foi"), corrige o tipo ("era uma notinha de posto", "foi abastecimento"), corrige o estabelecimento/descrição ("era na padaria", "foi no mercado"), usa palavras como "editar", "corrigir", "muda", "altera", "na verdade", "não foi", "era". Mensagens curtas como "foi 50 reais" ou "era combustível" sem contexto de nova compra → "edit_last".
 9. "savings_deposit" — O usuário guardou/depositou dinheiro em uma reserva, caixinha ou meta de economia. Palavras: "guardei", "coloquei na caixinha", "joguei na reserva", "depositei na reserva", "botei de lado", "separei", "poupi", "economizei X para", "coloquei na reserva". Exemplos: "guardei 200 na caixinha viagem", "botei 500 na reserva do carro", "coloquei 100 na caixinha emergência". REGRA: se for claramente uma ação de guardar/depositar em reserva própria (não pagar conta/boleto), use "savings_deposit".
 10. "pay_invoice" — O usuário pagou a FATURA de um cartão de crédito (não uma compra no cartão, mas o pagamento da fatura em si). Palavras-chave: "paguei a fatura", "paguei o nubank", "quitei a fatura", "paguei a fatura do cartão", "paguei a fatura mercado pago", "paguei a fatura inter". REGRA CRÍTICA: use "pay_invoice" SOMENTE quando NÃO há valor mencionado E a mensagem é claramente sobre quitar a fatura do cartão. Se há um valor ("paguei 1500 no nubank") → "expense" com creditCardId.
+11. "unpay_invoice" — O usuário quer DESFAZER o pagamento de uma fatura de cartão que foi marcada como paga por engano. Palavras-chave: "desfazer fatura", "cancelar pagamento da fatura", "desmarcar fatura", "errei ao marcar fatura", "fatura nubank paga por engano", "desfazer pagamento nubank", "desfazer fatura inter". Use SOMENTE quando for claramente uma reversão/desfazer de pagamento de fatura.
 
 RESPONDA EM JSON:
 
@@ -275,6 +276,12 @@ Para savings_deposit:
 Para pay_invoice:
 {
   "intent": "pay_invoice",
+  "cardName": "nome do banco/cartão mencionado (ex: Nubank, Mercado Pago, Inter, Itaú). Se não mencionado, null"
+}
+
+Para unpay_invoice:
+{
+  "intent": "unpay_invoice",
   "cardName": "nome do banco/cartão mencionado (ex: Nubank, Mercado Pago, Inter, Itaú). Se não mencionado, null"
 }
 
