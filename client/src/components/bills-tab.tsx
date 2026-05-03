@@ -625,6 +625,7 @@ export function BillsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: [`/api/credit-cards/${variables.cardId}/invoices`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards", variables.cardId, "invoices"] });
     },
     onError: () => toast({ title: t("axisFinance.billUpdateError"), variant: "destructive" }),
   });

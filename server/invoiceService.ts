@@ -93,6 +93,10 @@ export async function markCardInvoicePaid(
     if (!paidArr.includes(targetMonthKey)) paidArr.push(targetMonthKey);
     const updateFields: Record<string, unknown> = { paidMonths: JSON.stringify(paidArr) };
     if (total > 0) updateFields.amount = total;
+    // Normalise notes so the axiscard marker is always present (legacy bills may lack it)
+    if (!existingBill.notes?.includes(cardMarker)) {
+      updateFields.notes = `${existingBill.notes ?? ""}\n${cardMarker}`.trimStart();
+    }
     bill = await storage.updateBill(existingBill.id, userId, updateFields);
   } else {
     bill = await storage.createBill({
