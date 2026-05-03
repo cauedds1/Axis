@@ -27,6 +27,7 @@ import { users, whatsappAuth, transactions, systemConfig } from "@shared/schema"
 import { eq, and, gte, sql } from "drizzle-orm";
 import { checkLimit, incrementCounter } from "./planLimits";
 import { adjustDisciplinePoints, DISCIPLINE_POINTS } from "./discipline";
+import { markCardInvoicePaid, resolveInvoiceMonthKey } from "./invoiceService";
 
 export type WhatsAppStatus = "disconnected" | "qr_pending" | "connected";
 
@@ -1798,57 +1799,8 @@ class WhatsAppManager {
             : `❓ Qual fatura você pagou? Responda com o nome do cartão:\n${cardList}`;
         }
 
-        // Determine the target monthKey: prefer the most recently closed invoice
-        // (consistent with autoCloseInvoices which uses the current calendar month).
-        const now = new Date();
-        const calendarMK = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const allInvoices = await storage.getInvoices(userId, matched.id);
-        const latestClosed = allInvoices
-          .filter(i => i.status === "closed" || i.status === "paid")
-          .sort((a, b) => b.monthKey.localeCompare(a.monthKey))[0];
-        const monthKey = latestClosed?.monthKey ?? calendarMK;
-
-        // Compute total for that exact calendar month
-        const allCardTx = await storage.getTransactions(userId, { creditCardId: matched.id });
-        const total = allCardTx
-          .filter(tx => {
-            const d = new Date(tx.date!);
-            const txMK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-            return txMK === monthKey;
-          })
-          .reduce((s, t) => s + Number(t.amount), 0);
-
-        const allUserBills = await storage.getBills(userId);
-        const cardMarker = `axiscard:${matched.id}`;
-        const existingBill = allUserBills.find(b => b.notes?.includes(cardMarker));
-        let bill;
-        if (existingBill) {
-          const paidArr: string[] = JSON.parse(existingBill.paidMonths || "[]");
-          if (!paidArr.includes(monthKey)) paidArr.push(monthKey);
-          bill = await storage.updateBill(existingBill.id, userId, {
-            amount: total > 0 ? total : Number(existingBill.amount),
-            paidMonths: JSON.stringify(paidArr),
-          });
-        } else {
-          bill = await storage.createBill({
-            userId,
-            title: `Fatura ${matched.name}`,
-            amount: total,
-            type: "expense",
-            dueDay: matched.dueDay,
-            categoryName: "Cartão de Crédito",
-            recurrenceType: "permanent",
-            active: true,
-            paidMonths: JSON.stringify([monthKey]),
-            notes: `Fatura automática do cartão ${matched.name} — ${monthKey}\n${cardMarker}`,
-          });
-        }
-        const existingInvoice = await storage.getInvoiceByMonth(matched.id, monthKey);
-        if (existingInvoice) {
-          await storage.updateInvoice(existingInvoice.id, { status: "paid", total, billId: bill!.id, closedAt: now });
-        } else {
-          await storage.createInvoice({ userId, creditCardId: matched.id, monthKey, total, status: "paid", billId: bill!.id, closedAt: now });
-        }
+        const monthKey = await resolveInvoiceMonthKey(userId, matched.id);
+        const { total } = await markCardInvoicePaid(userId, matched.id, monthKey);
 
         const totalStr = total > 0 ? ` (R$ ${total.toFixed(2).replace(".", ",")})` : "";
         return lang === "en"

@@ -58,6 +58,7 @@ function getISOWeekLabel(d: Date): string {
 }
 
 import { DISCIPLINE_POINTS, DISCIPLINE_THRESHOLD, getUserLang, adjustDisciplinePoints } from "./discipline";
+import { markCardInvoicePaid, resolveInvoiceMonthKey } from "./invoiceService";
 
 async function getUserCurrency(userId: string): Promise<string> {
   try {
@@ -1352,72 +1353,15 @@ export async function registerRoutes(
       const card = await storage.getCreditCard(cardId, userId);
       if (!card) return res.status(404).json({ message: "Cartão não encontrado" });
 
-      const now = new Date();
-      // Default monthKey follows the same convention as autoCloseInvoices:
-      // the current calendar month when today >= closingDay, otherwise check
-      // the most recently closed invoice for this card.
-      const calendarMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const allInvoicesForDefault = await storage.getInvoices(userId, cardId);
-      const latestClosed = allInvoicesForDefault
-        .filter(i => i.status === "closed" || i.status === "paid")
-        .sort((a, b) => b.monthKey.localeCompare(a.monthKey))[0];
-      const defaultMonthKey = latestClosed?.monthKey ?? calendarMonthKey;
-
-      // targetMonthKey is authoritative: validate YYYY-MM format
+      // targetMonthKey is authoritative when provided; validate YYYY-MM format
       const rawMonthKey = req.body?.monthKey as string | undefined;
       if (rawMonthKey && !/^\d{4}-\d{2}$/.test(rawMonthKey)) {
         return res.status(400).json({ message: "monthKey inválido — use formato YYYY-MM" });
       }
-      const targetMonthKey: string = rawMonthKey || defaultMonthKey;
+      const targetMonthKey = rawMonthKey || await resolveInvoiceMonthKey(userId, cardId);
 
-      // Compute total for the exact targetMonthKey calendar month
-      const allCardTx = await storage.getTransactions(userId, { creditCardId: cardId });
-      const total = allCardTx
-        .filter(tx => {
-          const d = new Date(tx.date!);
-          const txMK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          return txMK === targetMonthKey;
-        })
-        .reduce((s, t) => s + Number(t.amount), 0);
-
-      // Find or create the bill for this card (permanent recurring bill)
-      const allUserBills = await storage.getBills(userId);
-      const cardMarker = `axiscard:${cardId}`;
-      const existingBill = allUserBills.find(b => b.notes?.includes(cardMarker));
-      let paidArr: string[];
-      let bill;
-      if (existingBill) {
-        paidArr = JSON.parse(existingBill.paidMonths || "[]");
-        if (!paidArr.includes(targetMonthKey)) paidArr.push(targetMonthKey);
-        bill = await storage.updateBill(existingBill.id, userId, {
-          amount: total > 0 ? total : Number(existingBill.amount),
-          paidMonths: JSON.stringify(paidArr),
-        });
-      } else {
-        paidArr = [targetMonthKey];
-        bill = await storage.createBill({
-          userId,
-          title: `Fatura ${card.name}`,
-          amount: total,
-          type: "expense",
-          dueDay: card.dueDay,
-          categoryName: "Cartão de Crédito",
-          recurrenceType: "permanent",
-          active: true,
-          paidMonths: JSON.stringify(paidArr),
-          notes: `Fatura automática do cartão ${card.name} — ${targetMonthKey}\n${cardMarker}`,
-        });
-      }
-
-      // Update or create the invoice record
-      const existingInvoice = await storage.getInvoiceByMonth(cardId, targetMonthKey);
-      if (existingInvoice) {
-        await storage.updateInvoice(existingInvoice.id, { status: "paid", total, billId: bill!.id, closedAt: now });
-      } else {
-        await storage.createInvoice({ userId, creditCardId: cardId, monthKey: targetMonthKey, total, status: "paid", billId: bill!.id, closedAt: now });
-      }
-
-      res.json({ bill, monthKey: targetMonthKey, total });
+      const result = await markCardInvoicePaid(userId, cardId, targetMonthKey);
+      res.json(result);
     } catch (error: any) { serverError(res, error); }
   });
 
