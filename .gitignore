@@ -4,3 +4,13 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+# Segredos e variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Sessão local do bot do WhatsApp (contém chaves privadas)
+.whatsapp-session/
+
+# Anexos locais (documentos pessoais, prints)
+attached_assets/

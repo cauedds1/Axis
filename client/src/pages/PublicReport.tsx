@@ -8,7 +8,7 @@ import {
   FileText, CheckCircle2, Clock, XCircle, Banknote,
   ImageOff, X, Eye, ShieldCheck,
 } from "lucide-react";
-import axisLogoPath from "@assets/image_1772909978438.png";
+import axisLogoPath from "@/assets/images/logo-report.png";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import { motion } from "framer-motion";
